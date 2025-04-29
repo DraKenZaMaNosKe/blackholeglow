@@ -19,8 +19,9 @@ public class StarShader {
                     "varying vec4 v_Color;" +
                     "void main() {" +
                     "    float dist = length(gl_PointCoord - vec2(0.5));" +
-                    "    if (dist > 0.5) discard;" +  // Hace la estrella redonda
-                    "    gl_FragColor = v_Color;" +
+                    "    float alpha = smoothstep(0.5, 0.0, dist);" +  // transición suave
+                    "    if (alpha < 0.01) discard;" +                 // bordes invisibles
+                    "    gl_FragColor = vec4(v_Color.rgb, v_Color.a * alpha);" +
                     "}";
 
 }
