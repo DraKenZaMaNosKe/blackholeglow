@@ -66,7 +66,7 @@ public class Star {
 
         // === NUEVO cálculo tipo túnel ===
         float perspective = 1.0f / z;
-        float radius = 1.2f * (1.0f - z / 7.0f); // más cerca del centro al inicio
+        float radius = 1.5f * (1.0f - z / 20.0f); // estiramos el túnel hacia el fondo
 
         x = radius * (float)Math.cos(angle);
         y = radius * (float)Math.sin(angle);

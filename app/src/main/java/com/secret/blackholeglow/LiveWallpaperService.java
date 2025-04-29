@@ -52,11 +52,11 @@ public class LiveWallpaperService extends WallpaperService {
         public void onVisibilityChanged(boolean visible) {
             super.onVisibilityChanged(visible);
             if (visible) {
-                // Si el wallpaper es visible, reanudar el dibujo.
-                glSurfaceView.onResume();
+                sceneRenderer.resume();         // 👉 REANUDA la lógica
+                glSurfaceView.onResume();       // 👉 REANUDA la vista
             } else {
-                // Si deja de ser visible, pausar el dibujo.
-                glSurfaceView.onPause();
+                sceneRenderer.pause();          // 👉 PAUSA la lógica
+                glSurfaceView.onPause();        // 👉 PAUSA la vista
             }
         }
 

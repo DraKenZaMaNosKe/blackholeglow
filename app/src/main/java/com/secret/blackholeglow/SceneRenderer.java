@@ -9,10 +9,19 @@ import java.util.List;
 
 public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
 
+    private boolean paused = false;
     public boolean isWallpaper = false;
     private final List<SceneObject> sceneObjects = new ArrayList<>();
 
     private long lastTime = System.nanoTime();
+
+    public void pause() {
+        paused = true;
+    }
+
+    public void resume() {
+        paused = false;
+    }
 
     // Puedes usar esto para agregar objetos a la escena desde fuera
     public void addObject(SceneObject object) {
@@ -40,14 +49,14 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
 
     @Override
     public void onDrawFrame(GL10 gl) {
+        if (paused) return; // 👈 no renderiza nada si está en pausa
+
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
 
-        // Calcular tiempo entre frames
         long currentTime = System.nanoTime();
         float deltaTime = (currentTime - lastTime) / 1_000_000_000f;
         lastTime = currentTime;
 
-        // Actualizar y dibujar cada objeto de la escena
         for (SceneObject object : sceneObjects) {
             object.update(deltaTime);
             object.draw();
