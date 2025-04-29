@@ -4,7 +4,7 @@ import android.opengl.GLES20;
 import java.util.Random;
 
 public class Star {
-    String holamundo = "hola chatGPt aqui estoy contigo";
+
     private float baseSize;
 
     private static int uTimeLocation;
