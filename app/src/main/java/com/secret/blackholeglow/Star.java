@@ -4,6 +4,7 @@ import android.opengl.GLES20;
 import java.util.Random;
 
 public class Star {
+    public float colorR, colorG, colorB;
 
     private float baseSize;
 
@@ -38,6 +39,20 @@ public class Star {
         z = 1.0f + rand.nextFloat() * 10.0f; // Estrellas más lejanas
         speed = 1.0f + rand.nextFloat() * 2.5f;
         alpha = 0.2f + rand.nextFloat() * 0.6f;
+        // Asignar color basado en tipo espectral
+        float[][] coloresEstelares = {
+                {0.6f, 0.8f, 1.0f},  // Azul (Tipo O/B)
+                {0.9f, 0.9f, 1.0f},  // Blanco (Tipo A)
+                {1.0f, 1.0f, 0.8f},  // Amarillo claro (Tipo F/G)
+                {1.0f, 0.8f, 0.6f},  // Naranja (Tipo K)
+                {1.0f, 0.6f, 0.6f}   // Rojo (Tipo M)
+        };
+
+        int tipo = rand.nextInt(coloresEstelares.length);
+        float[] rgb = coloresEstelares[tipo];
+        colorR = rgb[0];
+        colorG = rgb[1];
+        colorB = rgb[2];
     }
 
     public void update(float deltaTime, float tunnelAngle) {
@@ -91,7 +106,8 @@ public class Star {
                 x, y, 0f  // ya están transformadas con perspectiva en update()
         };
 
-        float[] colors = {1f, 1f, 1f, alpha};
+        float[] colors = {colorR, colorG, colorB, alpha};
+
 
         int vertexBufferId = ShaderUtils.createBuffer(vertices);
         int colorBufferId = ShaderUtils.createBuffer(colors);
