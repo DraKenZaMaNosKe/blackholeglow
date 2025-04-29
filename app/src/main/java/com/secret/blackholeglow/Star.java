@@ -4,6 +4,7 @@ import android.opengl.GLES20;
 import java.util.Random;
 
 public class Star {
+    String test = "hola esmerealda aqui estoy";
     private float baseSize;
 
     private static int uTimeLocation;
