@@ -5,6 +5,10 @@ import android.opengl.Matrix;
 
 import java.nio.FloatBuffer;
 
+import static com.secret.blackholeglow.SceneRenderer.screenWidth;
+import static com.secret.blackholeglow.SceneRenderer.screenHeight;
+
+
 public class StarTunnelBackground implements SceneObject {
 
     private int uResolutionLocation;
@@ -53,7 +57,8 @@ public class StarTunnelBackground implements SceneObject {
     public void draw() {
         GLES20.glUseProgram(program);
         GLES20.glUniform1f(uTimeLocation, time);
-        GLES20.glUniform2f(uResolutionLocation, 720f, 1280f); // Sustituiremos con valores dinámicos si quieres más adelante
+        GLES20.glUniform2f(uResolutionLocation, (float)screenWidth, (float)screenHeight);
+
 
         float[] quad = {
                 -1f, -1f,

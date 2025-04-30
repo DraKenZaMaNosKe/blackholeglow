@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
+    public static int screenWidth = 1;
+    public static int screenHeight = 1;
 
     private boolean paused = false;
     public boolean isWallpaper = false;
@@ -46,6 +48,8 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
     @Override
     public void onSurfaceChanged(GL10 gl, int width, int height) {
         GLES20.glViewport(0, 0, width, height);
+        screenWidth = width;
+        screenHeight = height;
     }
 
     @Override
