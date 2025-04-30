@@ -39,6 +39,7 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
 
         // Inicializar los objetos de la escena
         StarField starField = new StarField(200);
+        sceneObjects.add(new StarTunnelBackground());
         sceneObjects.add(starField);
     }
 

@@ -24,4 +24,28 @@ public class ShaderUtils {
 
         return bufferIds[0];
     }
+    public static FloatBuffer createFloatBuffer(float[] data) {
+        ByteBuffer bb = ByteBuffer.allocateDirect(data.length * 4);
+        bb.order(ByteOrder.nativeOrder());
+        FloatBuffer fb = bb.asFloatBuffer();
+        fb.put(data);
+        fb.position(0);
+        return fb;
+    }
+    public static int createProgram(String vertexSource, String fragmentSource) {
+        int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexSource);
+        int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentSource);
+        int program = GLES20.glCreateProgram();
+        GLES20.glAttachShader(program, vertexShader);
+        GLES20.glAttachShader(program, fragmentShader);
+        GLES20.glLinkProgram(program);
+        return program;
+    }
+
+    private static int loadShader(int type, String shaderCode) {
+        int shader = GLES20.glCreateShader(type);
+        GLES20.glShaderSource(shader, shaderCode);
+        GLES20.glCompileShader(shader);
+        return shader;
+    }
 }
