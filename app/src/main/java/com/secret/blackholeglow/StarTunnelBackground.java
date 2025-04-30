@@ -7,6 +7,8 @@ import java.nio.FloatBuffer;
 
 public class StarTunnelBackground implements SceneObject {
 
+    private int uResolutionLocation;
+
     private final float[] modelMatrix = new float[16];
     private int program;
     private int uTimeLocation;
@@ -27,8 +29,9 @@ public class StarTunnelBackground implements SceneObject {
         String fragmentShader =
                 "precision mediump float;" +
                         "uniform float u_Time;" +
+                        "uniform vec2 u_Resolution;" +
                         "void main() {" +
-                        "    vec2 uv = gl_FragCoord.xy / vec2(720.0, 1280.0);" + // Ajusta a tu resolución
+                        "    vec2 uv = gl_FragCoord.xy / u_Resolution;" + // Ajusta a tu resolución
                         "    vec2 center = vec2(0.5, 0.5);" +
                         "    float dist = distance(uv, center);" +
                         "    float glow = smoothstep(0.5, 0.1, dist);" +
@@ -38,6 +41,7 @@ public class StarTunnelBackground implements SceneObject {
 
         program = ShaderUtils.createProgram(vertexShader, fragmentShader);
         uTimeLocation = GLES20.glGetUniformLocation(program, "u_Time");
+        uResolutionLocation = GLES20.glGetUniformLocation(program, "u_Resolution");
     }
 
     @Override
@@ -49,6 +53,7 @@ public class StarTunnelBackground implements SceneObject {
     public void draw() {
         GLES20.glUseProgram(program);
         GLES20.glUniform1f(uTimeLocation, time);
+        GLES20.glUniform2f(uResolutionLocation, 720f, 1280f); // Sustituiremos con valores dinámicos si quieres más adelante
 
         float[] quad = {
                 -1f, -1f,
