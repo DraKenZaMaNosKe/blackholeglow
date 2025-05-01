@@ -1,4 +1,3 @@
-// ✅ ARCHIVO: SceneRenderer.java
 package com.secret.blackholeglow;
 
 import android.content.Context;
@@ -6,6 +5,7 @@ import android.opengl.GLES20;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,7 +21,7 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
 
     private long lastTime = System.nanoTime();
 
-    private StarField starField;
+    private TextureManager textureManager;
 
     public SceneRenderer(Context context) {
         this.context = context;
@@ -48,17 +48,15 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
 
         Star.release(); // Reset shaders
 
-        sceneObjects.clear();
+        // Inicializar TextureManager SOLO cuando OpenGL ya esté listo
+        textureManager = new TextureManager(context);
+        textureManager.initialize();
+
+        // Fondo de vórtice
         sceneObjects.add(new StarTunnelBackground());
 
-        // Creamos el objeto, pero la textura se carga aparte
-        starField = new StarField();
-        try {
-            starField.initialize(context); // Se carga la textura aquí, con contexto válido
-            sceneObjects.add(starField);
-        } catch (RuntimeException e) {
-            android.util.Log.e("SceneRenderer", "❌ Error al inicializar StarField", e);
-        }
+        // Campo estelar con gestor de texturas
+        sceneObjects.add(new StarField(textureManager, 50));
     }
 
     @Override

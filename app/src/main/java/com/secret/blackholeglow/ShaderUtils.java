@@ -47,7 +47,7 @@ public class ShaderUtils {
         return program;
     }
 
-    private static int loadShader(int type, String shaderCode) {
+    public static int loadShader(int type, String shaderCode) {
         int shader = GLES20.glCreateShader(type);
         GLES20.glShaderSource(shader, shaderCode);
         GLES20.glCompileShader(shader);
