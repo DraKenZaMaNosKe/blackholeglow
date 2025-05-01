@@ -23,7 +23,7 @@ public class MainActivity extends AppCompatActivity {
         // Crear la vista GLSurfaceView para OpenGL
         glSurfaceView = new GLSurfaceView(this);
         glSurfaceView.setEGLContextClientVersion(2); // OpenGL ES 2.0
-        glSurfaceView.setRenderer(new SceneRenderer());
+        glSurfaceView.setRenderer(new SceneRenderer(this));
 
         // Crear el botón para abrir la selección de Live Wallpaper
         Button setWallpaperButton = new Button(this);

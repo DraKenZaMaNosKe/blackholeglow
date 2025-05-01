@@ -1,13 +1,17 @@
+// ✅ ARCHIVO: SceneRenderer.java
 package com.secret.blackholeglow;
 
+import android.content.Context;
 import android.opengl.GLES20;
-import javax.microedition.khronos.opengles.GL10;
+
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 import java.util.ArrayList;
 import java.util.List;
 
 public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
+    private final Context context;
+
     public static int screenWidth = 1;
     public static int screenHeight = 1;
 
@@ -17,6 +21,12 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
 
     private long lastTime = System.nanoTime();
 
+    private StarField starField;
+
+    public SceneRenderer(Context context) {
+        this.context = context;
+    }
+
     public void pause() {
         paused = true;
     }
@@ -25,24 +35,30 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
         paused = false;
     }
 
-    // Puedes usar esto para agregar objetos a la escena desde fuera
     public void addObject(SceneObject object) {
         sceneObjects.add(object);
     }
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-        //GLES20.glEnable(GLES20.GL_PROGRAM_POINT_SIZE);
         GLES20.glEnable(GLES20.GL_BLEND);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
-        GLES20.glClearColor(0f, 0f, 0f, 1f); // Fondo negro
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES20.glClearColor(0f, 0f, 0f, 1f);
 
-        Star.release(); // Resetear el shader de las estrellas
+        Star.release(); // Reset shaders
 
-        // Inicializar los objetos de la escena
-        StarField starField = new StarField(200);
+        sceneObjects.clear();
         sceneObjects.add(new StarTunnelBackground());
-        sceneObjects.add(starField);
+
+        // Creamos el objeto, pero la textura se carga aparte
+        starField = new StarField();
+        try {
+            starField.initialize(context); // Se carga la textura aquí, con contexto válido
+            sceneObjects.add(starField);
+        } catch (RuntimeException e) {
+            android.util.Log.e("SceneRenderer", "❌ Error al inicializar StarField", e);
+        }
     }
 
     @Override
@@ -54,7 +70,7 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
 
     @Override
     public void onDrawFrame(GL10 gl) {
-        if (paused) return; // 👈 no renderiza nada si está en pausa
+        if (paused) return;
 
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
 

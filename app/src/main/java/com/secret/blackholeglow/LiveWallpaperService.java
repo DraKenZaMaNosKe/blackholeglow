@@ -38,7 +38,7 @@ public class LiveWallpaperService extends WallpaperService {
             // Usamos OpenGL ES 2.0.
             glSurfaceView.setEGLContextClientVersion(2);
             // Instanciamos el renderer que ya existe (SceneRenderer) para dibujar la escena.
-            sceneRenderer = new SceneRenderer();
+            sceneRenderer = new SceneRenderer(context);
             glSurfaceView.setRenderer(sceneRenderer);
             // Modo de renderizado continuo (actualizaciones constantes).
             glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);

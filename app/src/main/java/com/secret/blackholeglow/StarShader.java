@@ -5,23 +5,21 @@ import android.opengl.GLES20;
 public class StarShader {
     public static final String VERTEX_SHADER =
             "attribute vec4 a_Position;" +
-                    "attribute vec4 a_Color;" +
-                    "varying vec4 v_Color;" +
-                    "uniform float u_PointSize;" +
+                    "attribute vec2 a_TexCoord;" +
+                    "varying vec2 v_TexCoord;" +
                     "void main() {" +
                     "    gl_Position = a_Position;" +
-                    "    gl_PointSize = u_PointSize;" +
-                    "    v_Color = a_Color;" +
+                    "    v_TexCoord = a_TexCoord;" +
                     "}";
 
     public static final String FRAGMENT_SHADER =
             "precision mediump float;" +
-                    "varying vec4 v_Color;" +
+                    "uniform sampler2D u_Texture;" +
+                    "varying vec2 v_TexCoord;" +
                     "void main() {" +
-                    "    float dist = length(gl_PointCoord - vec2(0.5));" +
-                    "    float alpha = smoothstep(0.5, 0.0, dist);" +  // transición suave
-                    "    if (alpha < 0.01) discard;" +                 // bordes invisibles
-                    "    gl_FragColor = vec4(v_Color.rgb, v_Color.a * alpha);" +
+                    "    vec4 texColor = texture2D(u_Texture, v_TexCoord);" +
+                    "    if (texColor.a < 0.05) discard;" +
+                    "    texColor.rgb *= texColor.a;" +  // Atenúa el color según la transparencia
+                    "    gl_FragColor = texColor;" +
                     "}";
-
 }

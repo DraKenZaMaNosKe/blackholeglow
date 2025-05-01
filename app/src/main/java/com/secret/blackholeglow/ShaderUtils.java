@@ -6,6 +6,11 @@ import java.nio.FloatBuffer;
 
 import android.opengl.GLES20;
 
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.opengl.GLUtils;
+
 public class ShaderUtils {
 
     public static int createBuffer(float[] data) {
@@ -43,6 +48,49 @@ public class ShaderUtils {
     }
 
     private static int loadShader(int type, String shaderCode) {
+        int shader = GLES20.glCreateShader(type);
+        GLES20.glShaderSource(shader, shaderCode);
+        GLES20.glCompileShader(shader);
+        return shader;
+    }
+
+    public static int loadTexture(Context context, int resourceId) {
+        final int[] textureHandle = new int[1];
+        GLES20.glGenTextures(1, textureHandle, 0);
+
+        if (textureHandle[0] != 0) {
+            final BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inScaled = false;
+
+            final Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), resourceId, options);
+            if (bitmap == null) {
+                throw new RuntimeException("❌ No se pudo decodificar el recurso: " + resourceId);
+            }
+
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureHandle[0]);
+
+            GLES20.glEnable(GLES20.GL_BLEND);
+            GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+
+            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
+
+            int error = GLES20.glGetError();
+            if (error != GLES20.GL_NO_ERROR) {
+                throw new RuntimeException("❌ Error al cargar textura. OpenGL error: " + error);
+            }
+
+            bitmap.recycle();
+        } else {
+            throw new RuntimeException("❌ Error al generar el ID de textura.");
+        }
+
+        return textureHandle[0];
+    }
+
+    public static int createShader(int type, String shaderCode) {
         int shader = GLES20.glCreateShader(type);
         GLES20.glShaderSource(shader, shaderCode);
         GLES20.glCompileShader(shader);
