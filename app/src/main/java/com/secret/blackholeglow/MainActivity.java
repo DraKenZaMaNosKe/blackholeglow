@@ -2,6 +2,7 @@ package com.secret.blackholeglow;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.opengl.GLSurfaceView;
@@ -14,6 +15,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Gatito.lineaseparadora();
+        Log.d("MainActivity", "onCreate: ");
         super.onCreate(savedInstanceState);
 
         // Crear un LinearLayout para colocar tanto el GLSurfaceView como el botón
@@ -27,6 +30,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Crear el botón para abrir la selección de Live Wallpaper
         Button setWallpaperButton = new Button(this);
+        Gatito.lineaseparadora();
         setWallpaperButton.setText("Establecer como fondo de pantalla");
 
         // Añadir el GLSurfaceView y el botón al layout
@@ -51,12 +55,16 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onPause() {
+        Gatito.lineaseparadora();
+        Log.d("MainActivity", "onPause: ");
         super.onPause();
         glSurfaceView.onPause();
     }
 
     @Override
     protected void onResume() {
+        Gatito.lineaseparadora();
+        Log.d("MainActivity", "onResume: ");
         super.onResume();
         glSurfaceView.onResume();
     }

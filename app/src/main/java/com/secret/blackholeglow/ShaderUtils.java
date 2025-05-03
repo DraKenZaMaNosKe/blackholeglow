@@ -10,6 +10,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.opengl.GLUtils;
+import android.util.Log;
 
 public class ShaderUtils {
 
@@ -55,6 +56,8 @@ public class ShaderUtils {
     }
 
     public static int loadTexture(Context context, int resourceId) {
+        Log.d("ShaderUtils", "loadTexture: ");
+        Gatito.mensajito("la textura es: " + resourceId + " este es el resourceId");
         final int[] textureHandle = new int[1];
         GLES20.glGenTextures(1, textureHandle, 0);
 
@@ -91,6 +94,7 @@ public class ShaderUtils {
     }
 
     public static int createShader(int type, String shaderCode) {
+        Log.d("ShaderUtils", "createShader: ");
         int shader = GLES20.glCreateShader(type);
         GLES20.glShaderSource(shader, shaderCode);
         GLES20.glCompileShader(shader);

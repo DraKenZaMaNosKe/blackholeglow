@@ -1,6 +1,8 @@
 package com.secret.blackholeglow;
 
 import android.opengl.GLES20;
+import android.util.Log;
+
 import java.util.Random;
 import java.nio.FloatBuffer;
 
@@ -20,17 +22,21 @@ public class Star {
     private static final Random rand = new Random();
 
     public Star(int textureId) {
+        Log.d("Star", "Constructor con textura: " + textureId + " es es el textureId");
         this.textureId = textureId;
         reset();
     }
 
     public Star() {
+        Log.d("Star", "Constructor sin textura, textureId= 0 ");
         this.textureId = 0; // textura desactivada
         reset();
     }
 
     public static void release() {
+        Log.d("Star", "release: ");
         if (program != -1) {
+            Log.d("releaseStar","");
             GLES20.glDeleteProgram(program);
             program = -1;
         }
@@ -57,15 +63,18 @@ public class Star {
 
     public void draw() {
         if (textureId <= 0) {
-            // Modo punto (fallback seguro)
+                // Modo punto (fallback seguro)
+            Log.d("Star", "🌠 Dibujando estrella con texturaId=" + textureId);
             drawAsPoint();
         } else {
             // Modo textura
+            Log.d("Star", "🌠 Dibujando estrella con PUNTO=" + textureId);
             drawWithTexture();
         }
     }
 
     private void drawAsPoint() {
+        Log.d("Star", "drawAsPoint() dibujando como punto");
         if (program == -1) {
             program = ShaderUtils.createProgram(
                     "attribute vec4 a_Position;\n" +
@@ -95,6 +104,16 @@ public class Star {
     }
 
     private void drawWithTexture() {
+        Log.d("Star", "drawWithTexture dibujando como textura");
+        if (textureId <= 0 || !GLES20.glIsTexture(textureId)) {
+            Gatito.mensajito("dentro de drawithtexture , if, se dibuja como punto");
+            drawAsPoint();
+            Gatito.mensajito("texture id es: " + textureId);
+            return;
+        }
+        Log.w("Star", "⚠️ Textura válida. textureId=" + textureId + ", glIsTexture=" + GLES20.glIsTexture(textureId));
+
+
         if (program == -1) {
             program = ShaderUtils.createProgram(StarShader.VERTEX_SHADER, StarShader.FRAGMENT_SHADER);
             aPositionLocation = GLES20.glGetAttribLocation(program, "a_Position");

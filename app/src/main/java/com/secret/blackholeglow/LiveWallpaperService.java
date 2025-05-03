@@ -1,6 +1,7 @@
 package com.secret.blackholeglow;
 
 import android.service.wallpaper.WallpaperService;
+import android.util.Log;
 import android.view.SurfaceHolder;
 import android.content.Context;
 import android.opengl.GLSurfaceView;
@@ -66,6 +67,7 @@ public class LiveWallpaperService extends WallpaperService {
          */
         @Override
         public void onSurfaceCreated(SurfaceHolder holder) {
+            Log.d("LiveWallpaperService", "onSurfaceCreated() called");
             super.onSurfaceCreated(holder);
             // Delegamos la creación de la superficie al GLSurfaceView.
             glSurfaceView.surfaceCreated(holder);
@@ -77,6 +79,7 @@ public class LiveWallpaperService extends WallpaperService {
          */
         @Override
         public void onSurfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+            Log.d("LiveWallpaperService", "onSurfaceChanged() called");
             super.onSurfaceChanged(holder, format, width, height);
             // Informamos a GLSurfaceView del cambio de tamaño de la superficie.
             glSurfaceView.surfaceChanged(holder, format, width, height);
@@ -88,6 +91,7 @@ public class LiveWallpaperService extends WallpaperService {
          */
         @Override
         public void onSurfaceDestroyed(SurfaceHolder holder) {
+            Log.d("LiveWallpaperService", "onSurfaceDestroyed: ");
             super.onSurfaceDestroyed(holder);
             // Delegamos la destrucción de la superficie al GLSurfaceView.
             glSurfaceView.surfaceDestroyed(holder);
@@ -102,6 +106,7 @@ public class LiveWallpaperService extends WallpaperService {
             // Detach GLSurfaceView del motor de wallpaper.
             glSurfaceView.onDestroy();
             super.onDestroy();
+            Log.d("LiveWallpaperService", "onDestroy: ");
         }
 
         /**
