@@ -1,5 +1,7 @@
 package com.secret.blackholeglow;
 
+import android.util.Log;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,11 +17,20 @@ public class StarField implements SceneObject {
 
     public StarField(TextureLoader textureLoader, int count) {
         this.textureLoader = textureLoader;
-        this.textureId = textureLoader.getStarTexture();
+        if (textureLoader != null) {
+            this.textureId = textureLoader.getStarTexture();
+        } else {
+            this.textureId = -1; // Modo sin textura
+        }
 
         for (int i = 0; i < count; i++) {
-            stars.add(new Star(textureId));
+            if (textureId > 0) {
+                stars.add(new Star(textureId));
+            } else {
+                stars.add(new Star()); // Fallback sin textura
+            }
         }
+        Log.d("StarField", "✅ Constructor: textureId=" + textureId);
     }
 
     @Override
