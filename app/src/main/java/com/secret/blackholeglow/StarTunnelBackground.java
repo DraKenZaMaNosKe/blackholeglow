@@ -65,8 +65,8 @@ public class StarTunnelBackground implements SceneObject {
                 1f, -1f,
                 -1f,  1f,
                 1f,  1f
-        };
 
+        };
         FloatBuffer buffer = ShaderUtils.createFloatBuffer(quad);  // ✔️ Usa FloatBuffer
         int aPosition = GLES20.glGetAttribLocation(program, "a_Position");
         GLES20.glEnableVertexAttribArray(aPosition);
