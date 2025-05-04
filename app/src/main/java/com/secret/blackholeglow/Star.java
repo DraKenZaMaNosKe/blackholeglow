@@ -1,6 +1,8 @@
 package com.secret.blackholeglow;
 
 import android.opengl.GLES20;
+import android.util.Log;
+
 import java.util.Random;
 import java.nio.FloatBuffer;
 
@@ -58,14 +60,17 @@ public class Star {
     public void draw() {
         if (textureId <= 0) {
             // Modo punto (fallback seguro)
+            Log.d("Star", "🌠 Dibujando estrella con texturaId=" + textureId);
             drawAsPoint();
         } else {
             // Modo textura
+            Log.d("Star", "🌠 Dibujando estrella con PUNTO=" + textureId);
             drawWithTexture();
         }
     }
 
     private void drawAsPoint() {
+        Log.d("Star", "drawAsPoint() dibujando como punto");
         if (program == -1) {
             program = ShaderUtils.createProgram(
                     "attribute vec4 a_Position;\n" +
@@ -95,6 +100,14 @@ public class Star {
     }
 
     private void drawWithTexture() {
+        Log.d("Star", "drawWithTexture dibujando como textura");
+        if (textureId <= 0 || !GLES20.glIsTexture(textureId)) {
+            drawAsPoint();
+            return;
+        }
+        Log.w("Star", "⚠️ Textura no válida. textureId=" + textureId + ", glIsTexture=" + GLES20.glIsTexture(textureId));
+
+
         if (program == -1) {
             program = ShaderUtils.createProgram(StarShader.VERTEX_SHADER, StarShader.FRAGMENT_SHADER);
             aPositionLocation = GLES20.glGetAttribLocation(program, "a_Position");

@@ -25,15 +25,18 @@ public class TextureManager implements TextureLoader {
      * Inicializa todas las texturas necesarias si OpenGL está listo.
      * Este método se debe llamar desde onSurfaceCreated.
      */
-    public void initialize() {
-        if (initialized) return;
+    public boolean initialize() {
+        if (initialized) return true;  // Ya está inicializado, no repetir
+
         try {
             textureCache.put(R.drawable.star_glow,
                     ShaderUtils.loadTexture(context, R.drawable.star_glow));
-            // Aquí podrías cargar más texturas si quieres
+            // Aquí podrías cargar más texturas si deseas
             initialized = true;
+            return true;
         } catch (RuntimeException e) {
             Log.e("TextureManager", "❌ Error al inicializar texturas", e);
+            return false;
         }
     }
 
@@ -44,6 +47,8 @@ public class TextureManager implements TextureLoader {
     public int getTexture(int resourceId) {
         if (!initialized) return 0;
         Integer tex = textureCache.get(resourceId);
+        Log.d("TextureManager", "🌀 Iniciando carga de textura star_glow...");
+        Log.d("TextureManager", "✅ Textura cargada con ID=" + tex);
         return tex != null ? tex : 0;
     }
 

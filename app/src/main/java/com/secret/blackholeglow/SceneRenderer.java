@@ -2,6 +2,7 @@ package com.secret.blackholeglow;
 
 import android.content.Context;
 import android.opengl.GLES20;
+import android.util.Log;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -9,6 +10,9 @@ import javax.microedition.khronos.opengles.GL10;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Clase principal que renderiza todos los objetos de la escena con OpenGL ES 2.0.
+ */
 public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
     private final Context context;
 
@@ -17,11 +21,12 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
 
     private boolean paused = false;
     public boolean isWallpaper = false;
-    private final List<SceneObject> sceneObjects = new ArrayList<>();
 
+    private final List<SceneObject> sceneObjects = new ArrayList<>();
     private long lastTime = System.nanoTime();
 
     private TextureManager textureManager;
+
 
     public SceneRenderer(Context context) {
         this.context = context;
@@ -46,17 +51,16 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
         GLES20.glDisable(GLES20.GL_DEPTH_TEST);
         GLES20.glClearColor(0f, 0f, 0f, 1f);
 
-        Star.release(); // Reset shaders
+        // Reinicia shaders por si se perdieron
+        Star.release();
 
-        // Inicializar TextureManager SOLO cuando OpenGL ya esté listo
-        textureManager = new TextureManager(context);
-        textureManager.initialize();
+        textureManager = new TextureManager(context); // ✅ Solo instanciamos aquí
 
-        // Fondo de vórtice
-        sceneObjects.add(new StarTunnelBackground());
-
-        // Campo estelar con gestor de texturas
-        sceneObjects.add(new StarField(textureManager, 50));
+        // No creamos ningún objeto todavía
+        sceneObjects.clear();
+        // ⚠️ Aún no agregamos StarField aquí. Lo haremos en onSurfaceChanged.
+        Log.d("SceneRenderer", "🛸 Texturas inicializadas: " + textureManager.isInitialized());
+        Log.d("SceneRenderer", "🧱 Objetos en escena: " + sceneObjects.size());
     }
 
     @Override
@@ -64,6 +68,17 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
         GLES20.glViewport(0, 0, width, height);
         screenWidth = width;
         screenHeight = height;
+
+        Log.d("SceneRenderer", "🧭 onSurfaceChanged: tamaño = " + width + "x" + height);
+
+        // ✅ Inicializamos aquí el TextureManager (momento seguro)
+        textureManager = new TextureManager(context);
+        textureManager.initialize(); // Ya no se necesita variable texturesTried
+
+        // ⚠️ Limpieza previa antes de añadir objetos
+        sceneObjects.clear();
+        prepareScene();
+
     }
 
     @Override
@@ -80,5 +95,19 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
             object.update(deltaTime);
             object.draw();
         }
+    }
+
+    private void prepareScene() {
+        // ⚠️ Solo continuar si el textureManager está listo
+        if (textureManager != null && textureManager.initialize()) {
+            Log.d("SceneRenderer", "🎨 Texturas listas, creando objetos con textura...");
+            sceneObjects.add(new StarTunnelBackground());
+            sceneObjects.add(new StarField(textureManager, 200));
+        } else {
+            Log.w("SceneRenderer", "🚫 No se pudieron inicializar texturas. Usando modo sin textura...");
+            sceneObjects.add(new StarTunnelBackground());
+            sceneObjects.add(new StarField(null, 200));
+        }
+        Log.d("SceneRenderer", "🎬 Objetos en escena: " + sceneObjects.size());
     }
 }
