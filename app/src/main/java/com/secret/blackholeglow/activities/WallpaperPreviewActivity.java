@@ -1,4 +1,4 @@
-package com.secret.blackholeglow;
+package com.secret.blackholeglow.activities;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -8,7 +8,10 @@ import android.opengl.GLSurfaceView;
 import android.app.WallpaperManager; // Importa WallpaperManager
 import androidx.appcompat.app.AppCompatActivity;
 
-public class MainActivity extends AppCompatActivity {
+import com.secret.blackholeglow.LiveWallpaperService;
+import com.secret.blackholeglow.SceneRenderer;
+
+public class WallpaperPreviewActivity extends AppCompatActivity {
 
     private GLSurfaceView glSurfaceView;
 

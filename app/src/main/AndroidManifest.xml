@@ -29,15 +29,23 @@
                 android:name="android.service.wallpaper"
                 android:resource="@xml/live_wallpaper" />
         </service>
+
         <activity
-            android:name=".MainActivity"
+            android:name=".activities.SplashActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".activities.WallpaperPreviewActivity"
+            android:exported="true" />
+
+        <activity
+            android:name=".activities.MainActivity"
+            android:exported="true" />
     </application>
 
 </manifest>
