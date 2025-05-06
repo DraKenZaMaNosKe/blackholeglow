@@ -10,6 +10,7 @@ import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import com.google.android.material.navigation.NavigationView;
 import com.secret.blackholeglow.R;
+import com.secret.blackholeglow.fragments.AnimatedWallpaperListFragment;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
 
@@ -40,22 +41,34 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         // 4. Selección por defecto
         if (savedInstanceState == null) {
-            navigationView.setCheckedItem(R.id.nav_home);
+            navigationView.setCheckedItem(R.id.nav_animated);
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.fragment_container, new AnimatedWallpaperListFragment())
+                    .commit();
         }
     }
 
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-        // Aquí puedes abrir fragmentos o actividades según el ítem del menú
         int id = item.getItemId();
+
         if (id == R.id.nav_home) {
-            // Acción al seleccionar Inicio
-        } else if (id == R.id.nav_home) {
-            // Acción al seleccionar Fondos animados
+            // Por ahora, reutilizamos el mismo fragmento como placeholder
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.fragment_container, new AnimatedWallpaperListFragment()) // temporal
+                    .commit();
+        } else if (id == R.id.nav_animated) {
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.fragment_container, new AnimatedWallpaperListFragment())
+                    .commit();
         } else if (id == R.id.nav_favorites) {
-            // Acción al seleccionar Favoritos
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.fragment_container, new AnimatedWallpaperListFragment()) // temporal
+                    .commit();
         } else if (id == R.id.nav_settings) {
-            // Acción al seleccionar Configuración
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.fragment_container, new AnimatedWallpaperListFragment()) // temporal
+                    .commit();
         }
 
         drawerLayout.closeDrawer(GravityCompat.START);
