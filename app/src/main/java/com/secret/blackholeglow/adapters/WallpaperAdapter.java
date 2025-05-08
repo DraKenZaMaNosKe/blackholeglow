@@ -1,21 +1,24 @@
 package com.secret.blackholeglow.adapters;
 
 import android.content.Context;
-import android.graphics.drawable.AnimationDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
+
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.models.WallpaperItem;
+
 import java.util.List;
 
 /**
  * Adaptador para mostrar una lista de fondos de pantalla animados en un RecyclerView.
+ * Esta versión usa AuraGLView como fondo animado del marco.
  */
 public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.WallpaperViewHolder> {
 
@@ -50,13 +53,6 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         holder.textTitle.setText(item.getNombre());
         holder.textDescription.setText(item.getDescripcion());
         holder.buttonApply.setOnClickListener(v -> listener.onApplyClicked(item));
-        View animatedFrame = holder.itemView.findViewById(R.id.animated_frame);
-        if (animatedFrame.getBackground() instanceof AnimationDrawable) {
-            AnimationDrawable anim = (AnimationDrawable) animatedFrame.getBackground();
-            anim.setEnterFadeDuration(500);
-            anim.setExitFadeDuration(500);
-            anim.start();
-        }
     }
 
     @Override

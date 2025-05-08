@@ -1,0 +1,33 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Fondo transparente para no cubrir nada -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@android:color/transparent"/>
+        </shape>
+    </item>
+
+    <!-- Borde con sweep gradient -->
+    <item>
+        <rotate
+            android:fromDegrees="0"
+            android:toDegrees="360"
+            android:pivotX="50%"
+            android:pivotY="50%"
+            android:repeatCount="infinite"
+            android:duration="3000">
+            <shape android:shape="rectangle">
+                <stroke
+                    android:width="4dp"
+                    android:color="@android:color/transparent"/>
+                <corners android:radius="16dp"/>
+                <gradient
+                    android:type="sweep"
+                    android:useLevel="false"
+                    android:startColor="#00FFFFFF"
+                    android:centerColor="#FF00FFFF"
+                    android:endColor="#00FFFFFF"
+                    android:angle="0"/>
+            </shape>
+        </rotate>
+    </item>
+</layer-list>

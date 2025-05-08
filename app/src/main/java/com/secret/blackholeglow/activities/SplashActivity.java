@@ -13,11 +13,11 @@ public class SplashActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
 
-        // Iniciar la MainActivity después de 2.5 segundos
+        // Iniciar la AuraTestActivity después de 2.5 segundos
         new Handler().postDelayed(() -> {
-            Intent intent = new Intent(SplashActivity.this, MainActivity.class);
+            Intent intent = new Intent(SplashActivity.this, AuraTestActivity.class);
             startActivity(intent);
-            finish(); // Finaliza la splash para no volver atrás
+            finish();
         }, 2500);
     }
 }
