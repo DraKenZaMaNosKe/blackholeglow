@@ -1,3 +1,4 @@
+
 package com.secret.blackholeglow.adapters;
 
 import android.content.Context;
@@ -13,12 +14,12 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.models.WallpaperItem;
+import com.secret.blackholeglow.opengl.AuraTextureView;
 
 import java.util.List;
 
 /**
- * Adaptador para mostrar una lista de fondos de pantalla animados en un RecyclerView.
- * Esta versión usa AuraGLView como fondo animado del marco.
+ * Adaptador limpio y estable que usa AuraTextureView desde layout item_wallpaper_card_textureview.xml
  */
 public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.WallpaperViewHolder> {
 
@@ -26,9 +27,6 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
     private final Context context;
     private final OnWallpaperClickListener listener;
 
-    /**
-     * Interfaz para manejar clics en el botón de aplicar fondo.
-     */
     public interface OnWallpaperClickListener {
         void onApplyClicked(WallpaperItem item);
     }
@@ -42,7 +40,8 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
     @NonNull
     @Override
     public WallpaperViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(context).inflate(R.layout.item_wallpaper_card, parent, false);
+        // ⚠️ Forzamos uso del layout con AuraTextureView
+        View view = LayoutInflater.from(context).inflate(R.layout.item_wallpaper_card_textureview, parent, false);
         return new WallpaperViewHolder(view);
     }
 
@@ -53,16 +52,18 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         holder.textTitle.setText(item.getNombre());
         holder.textDescription.setText(item.getDescripcion());
         holder.buttonApply.setOnClickListener(v -> listener.onApplyClicked(item));
+
+        // ✅ Activar AuraTextureView
+        AuraTextureView aura = holder.itemView.findViewById(R.id.aura_effect);
+        aura.setVisibility(View.VISIBLE);
     }
 
     @Override
     public int getItemCount() {
-        return wallpapers.size();
+        // Paso 2: Prueba con 1 solo elemento visible
+        return Math.min(wallpapers.size(), 1);
     }
 
-    /**
-     * ViewHolder que contiene la tarjeta del fondo de pantalla.
-     */
     public static class WallpaperViewHolder extends RecyclerView.ViewHolder {
         ImageView imagePreview;
         TextView textTitle;

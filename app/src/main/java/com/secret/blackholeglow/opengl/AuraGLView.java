@@ -16,7 +16,7 @@ public class AuraGLView extends GLSurfaceView {
         super(context);
         setEGLContextClientVersion(2);
         getHolder().setFormat(PixelFormat.TRANSLUCENT); // transparencia habilitada
-        setZOrderOnTop(true); // permite dibujar encima de otras vistas
+        setZOrderOnTop(false); // permite dibujar encima de otras vistas
         renderer = new AuraRenderer(context);
         setRenderer(renderer);
         setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
