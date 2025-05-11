@@ -15,7 +15,7 @@ public class SplashActivity extends AppCompatActivity {
 
         // Iniciar la AuraTestActivity después de 2.5 segundos
         new Handler().postDelayed(() -> {
-            Intent intent = new Intent(SplashActivity.this, AuraTestActivity.class);
+            Intent intent = new Intent(SplashActivity.this, MainActivity.class);
             startActivity(intent);
             finish();
         }, 2500);

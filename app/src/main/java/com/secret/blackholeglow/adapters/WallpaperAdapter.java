@@ -1,10 +1,14 @@
-
 package com.secret.blackholeglow.adapters;
 
 import android.content.Context;
+import android.graphics.SurfaceTexture;
+import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Surface;
+import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
+
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -14,13 +18,11 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.models.WallpaperItem;
+import com.secret.blackholeglow.opengl.AuraRendererThread;
 import com.secret.blackholeglow.opengl.AuraTextureView;
 
 import java.util.List;
 
-/**
- * Adaptador limpio y estable que usa AuraTextureView desde layout item_wallpaper_card_textureview.xml
- */
 public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.WallpaperViewHolder> {
 
     private final List<WallpaperItem> wallpapers;
@@ -40,7 +42,6 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
     @NonNull
     @Override
     public WallpaperViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        // ⚠️ Forzamos uso del layout con AuraTextureView
         View view = LayoutInflater.from(context).inflate(R.layout.item_wallpaper_card_textureview, parent, false);
         return new WallpaperViewHolder(view);
     }
@@ -48,20 +49,46 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
     @Override
     public void onBindViewHolder(@NonNull WallpaperViewHolder holder, int position) {
         WallpaperItem item = wallpapers.get(position);
-        holder.imagePreview.setImageResource(item.getResourceIdPreview());
+
+        // Información visual
         holder.textTitle.setText(item.getNombre());
         holder.textDescription.setText(item.getDescripcion());
+        holder.imagePreview.setImageResource(item.getResourceIdPreview());
+
         holder.buttonApply.setOnClickListener(v -> listener.onApplyClicked(item));
 
-        // ✅ Activar AuraTextureView
-        AuraTextureView aura = holder.itemView.findViewById(R.id.aura_effect);
-        aura.setVisibility(View.VISIBLE);
+        AuraTextureView auraView = holder.itemView.findViewById(R.id.aura_effect);
+        if (auraView != null) {
+            Log.d("WallpaperAdapter", "🎨 Aura encontrada en posición: " + position);
+
+            if (auraView.isAvailable()) {
+                Log.d("WallpaperAdapter", "🌟 SurfaceTexture ya disponible, iniciando render ahora");
+                Surface surface = new Surface(auraView.getSurfaceTexture());
+                AuraRendererThread thread = new AuraRendererThread(surface, auraView.getWidth(), auraView.getHeight(), context);
+                thread.start();
+            } else {
+                auraView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
+                    @Override
+                    public void onSurfaceTextureAvailable(@NonNull SurfaceTexture surfaceTexture, int width, int height) {
+                        Log.d("WallpaperAdapter", "🌀 SurfaceTexture listener activado en posición: " + holder.getAdapterPosition());
+                        Surface surface = new Surface(surfaceTexture);
+                        AuraRendererThread thread = new AuraRendererThread(surface, width, height, context);
+                        thread.start();
+                    }
+
+                    @Override public void onSurfaceTextureSizeChanged(@NonNull SurfaceTexture surface, int width, int height) {}
+                    @Override public boolean onSurfaceTextureDestroyed(@NonNull SurfaceTexture surface) { return true; }
+                    @Override public void onSurfaceTextureUpdated(@NonNull SurfaceTexture surface) {}
+                });
+            }
+        } else {
+            Log.w("WallpaperAdapter", "⚠️ AuraTextureView NO encontrada en posición: " + holder.getAdapterPosition());
+        }
     }
 
     @Override
     public int getItemCount() {
-        // Paso 2: Prueba con 1 solo elemento visible
-        return Math.min(wallpapers.size(), 1);
+        return wallpapers.size();
     }
 
     public static class WallpaperViewHolder extends RecyclerView.ViewHolder {

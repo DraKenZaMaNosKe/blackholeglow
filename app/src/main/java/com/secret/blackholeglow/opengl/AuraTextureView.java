@@ -4,6 +4,7 @@ package com.secret.blackholeglow.opengl;
 import android.content.Context;
 import android.graphics.SurfaceTexture;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.TextureView;
 import android.view.Surface;
 
@@ -29,8 +30,11 @@ public class AuraTextureView extends TextureView implements TextureView.SurfaceT
 
     @Override
     public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-        Surface eglSurface = new Surface(surface); // 👈 Se convierte SurfaceTexture a Surface
+        Surface eglSurface = new Surface(surface);
+        Log.d("AuraTextureView", "🌀 SurfaceTexture disponible. Iniciando render...");
+
         rendererThread = new AuraRendererThread(eglSurface, width, height, getContext());
+        rendererThread.start();
     }
 
     @Override

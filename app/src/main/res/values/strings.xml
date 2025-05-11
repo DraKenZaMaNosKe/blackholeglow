@@ -4,4 +4,9 @@
     <string name="navigation_drawer_close">Cerrar menú</string>
     <string name="wallpaper_preview">Vista previa del fondo</string>
 
+    <string name="apply">Aplicar</string>
+    <string name="wallpaper_title">Nombre del fondo</string>
+    <string name="wallpaper_description">Descripción breve del fondo animado.</string>
+    <string name="preview_image_desc">Vista previa del fondo animado</string>
+
 </resources>
