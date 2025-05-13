@@ -86,10 +86,10 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         int flameH = flameW; // si el sprite es cuadrado; o usa 40dp×40dp
 
 // 2. Rellena cada contenedor:
-        populateFlames(holder.fireTopContainer,    true,  flameW, flameH);
-        populateFlames(holder.fireBottomContainer, true,  flameW, flameH);
-        populateFlames(holder.fireLeftContainer,   false, flameH, flameW);
-        populateFlames(holder.fireRightContainer,  false, flameH, flameW);
+        populateFlames(holder.fireTopContainer,    true,  3);
+        populateFlames(holder.fireBottomContainer, true,  1);
+        populateFlames(holder.fireLeftContainer,   false, 1);
+        populateFlames(holder.fireRightContainer,  false, 1);
 
         AuraTextureView auraView = holder.itemView.findViewById(R.id.aura_effect);
         if (auraView != null) {
@@ -120,37 +120,44 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         }
     }
 
-    private void populateFlames(LinearLayout container, boolean horizontal, int w, int h) {
+    /**
+     * Rellena el container con N llamas uniformes usando layout_weight.
+     * @param container  el LinearLayout a rellenar
+     * @param horizontal true si es borde superior/inferior, false si es izquierdo/derecho
+     * @param flameCount cuántas llamas poner (p.ej. 4)
+     */
+    private void populateFlames(LinearLayout container, boolean horizontal, int flameCount) {
         container.removeAllViews();
-        container.post(() -> {
-            int length = horizontal ? container.getWidth() : container.getHeight();
-            int count = length / (horizontal ? w : h) + 2; // +2 para tapar cualquier esquina
+        // Aseguramos que el container reparta en flameCount trozos
+        container.setWeightSum(flameCount);
 
-            // margen de solapamiento en px
-            int overlap = (int) TypedValue.applyDimension(
-                    TypedValue.COMPLEX_UNIT_DIP, 4, context.getResources().getDisplayMetrics());
-
-            for (int i = 0; i < count; i++) {
-                ImageView iv = new ImageView(context);
-                LinearLayout.LayoutParams lp = horizontal
-                        ? new LinearLayout.LayoutParams(w, LinearLayout.LayoutParams.MATCH_PARENT)
-                        : new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, h);
-
-                // solapamiento
-                if (horizontal) {
-                    lp.setMargins(-overlap, 0, 0, 0);
-                } else {
-                    lp.setMargins(0, -overlap, 0, 0);
-                }
-
-                iv.setLayoutParams(lp);
-                iv.setBackgroundResource(R.drawable.fire_animation);
-                container.addView(iv);
-
-                AnimationDrawable anim = (AnimationDrawable) iv.getBackground();
-                iv.post(anim::start);
+        for (int i = 0; i < flameCount; i++) {
+            ImageView iv = new ImageView(context);
+            LinearLayout.LayoutParams lp;
+            if (horizontal) {
+                // ancho 0 + weight=1 para que se reparta equitativamente
+                lp = new LinearLayout.LayoutParams(
+                        0,
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        1f
+                );
+            } else {
+                // altura 0 + weight=1
+                lp = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        0,
+                        1f
+                );
             }
-        });
+            iv.setLayoutParams(lp);
+            //iv.setBackgroundResource(R.drawable.fire_animation);
+            iv.setImageResource(R.drawable.fire_animation);
+            container.addView(iv);
+            // Arrancamos la animación frame-list
+           // AnimationDrawable anim = (AnimationDrawable) iv.getBackground();
+            AnimationDrawable anim = (AnimationDrawable) iv.getDrawable();
+            iv.post(anim::start);
+        }
     }
 
     @Override

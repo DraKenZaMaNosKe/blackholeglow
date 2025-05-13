@@ -79,28 +79,32 @@
                 android:layout_width="match_parent"
                 android:layout_height="40dp"
                 android:orientation="horizontal"
-                android:layout_gravity="top"/>
+                android:layout_gravity="top"
+                android:weightSum="4"/>
 
             <LinearLayout
                 android:id="@+id/fire_bottom_container"
                 android:layout_width="match_parent"
                 android:layout_height="40dp"
                 android:orientation="horizontal"
-                android:layout_gravity="bottom"/>
+                android:layout_gravity="bottom"
+                android:weightSum="4"/>
 
             <LinearLayout
                 android:id="@+id/fire_left_container"
                 android:layout_width="30dp"
                 android:layout_height="match_parent"
                 android:orientation="vertical"
-                android:layout_gravity="start"/>
+                android:layout_gravity="start"
+                android:weightSum="4"/>
 
             <LinearLayout
                 android:id="@+id/fire_right_container"
                 android:layout_width="30dp"
                 android:layout_height="match_parent"
                 android:orientation="vertical"
-                android:layout_gravity="end"/>
+                android:layout_gravity="end"
+                android:weightSum="4"/>
         </FrameLayout>
     </androidx.cardview.widget.CardView>
 </FrameLayout>
