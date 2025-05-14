@@ -3,19 +3,18 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/aura_frame"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="300dp"
     android:background="@android:color/transparent">
 
-    <!-- 🌟 Aura animada como marco exterior sin background directo -->
-    <com.secret.blackholeglow.opengl.AuraTextureView
-        android:id="@+id/aura_effect"
+    <!-- 🌟 Efecto Neón animado (shader) -->
+    <com.secret.blackholeglow.opengl.NeonBorderTextureView
+        android:id="@+id/neon_border_effect"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:padding="0dp"
-        android:visibility="visible"
-        android:alpha="1.0" />
+        android:alpha="1.0"
+        android:visibility="visible" />
 
-    <!-- 🧱 Contenido de la tarjeta encima del aura -->
+    <!-- 🧱 Contenido de la tarjeta encima del neón -->
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -25,86 +24,46 @@
         app:cardCornerRadius="16dp"
         app:cardElevation="8dp">
 
-        <FrameLayout
+        <LinearLayout
+            android:id="@+id/content_container"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#121212"
+            android:padding="16dp">
 
-            <!-- 1) Tu contenido normal: imagen + texto + botón -->
-            <LinearLayout
-                android:id="@+id/content_container"
+            <ImageView
+                android:id="@+id/image_preview"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_image"
+                android:contentDescription="@string/preview_image_desc" />
+
+            <TextView
+                android:id="@+id/text_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="#121212"
-                android:padding="16dp">
+                android:paddingTop="8dp"
+                android:text="@string/wallpaper_title"
+                android:textColor="@android:color/white"
+                android:textStyle="bold"/>
 
-                <!-- Preview, texto, botón... igual que antes -->
-                <ImageView
-                    android:id="@+id/image_preview"
-                    android:layout_width="match_parent"
-                    android:layout_height="200dp"
-                    android:scaleType="centerCrop"
-                    android:src="@drawable/ic_image"
-                    android:contentDescription="@string/preview_image_desc" />
-
-                <TextView
-                    android:id="@+id/text_title"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:paddingTop="8dp"
-                    android:text="@string/wallpaper_title"
-                    android:textColor="@android:color/white"
-                    android:textStyle="bold"/>
-
-                <TextView
-                    android:id="@+id/text_description"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:paddingTop="4dp"
-                    android:text="@string/wallpaper_description"
-                    android:textColor="#CCCCCC"/>
-
-                <Button
-                    android:id="@+id/button_apply"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="end"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/apply"/>
-            </LinearLayout>
-
-            <!-- 2) Contenedores vacíos que llenaremos programáticamente -->
-            <LinearLayout
-                android:id="@+id/fire_top_container"
+            <TextView
+                android:id="@+id/text_description"
                 android:layout_width="match_parent"
-                android:layout_height="40dp"
-                android:orientation="horizontal"
-                android:layout_gravity="top"
-                android:weightSum="4"/>
+                android:layout_height="wrap_content"
+                android:paddingTop="4dp"
+                android:text="@string/wallpaper_description"
+                android:textColor="#CCCCCC"/>
 
-            <LinearLayout
-                android:id="@+id/fire_bottom_container"
-                android:layout_width="match_parent"
-                android:layout_height="40dp"
-                android:orientation="horizontal"
-                android:layout_gravity="bottom"
-                android:weightSum="4"/>
-
-            <LinearLayout
-                android:id="@+id/fire_left_container"
-                android:layout_width="30dp"
-                android:layout_height="match_parent"
-                android:orientation="vertical"
-                android:layout_gravity="start"
-                android:weightSum="4"/>
-
-            <LinearLayout
-                android:id="@+id/fire_right_container"
-                android:layout_width="30dp"
-                android:layout_height="match_parent"
-                android:orientation="vertical"
+            <Button
+                android:id="@+id/button_apply"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:layout_gravity="end"
-                android:weightSum="4"/>
-        </FrameLayout>
+                android:layout_marginTop="8dp"
+                android:text="@string/apply"/>
+        </LinearLayout>
     </androidx.cardview.widget.CardView>
 </FrameLayout>
