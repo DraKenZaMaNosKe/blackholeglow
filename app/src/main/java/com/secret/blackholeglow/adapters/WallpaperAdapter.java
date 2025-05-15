@@ -1,6 +1,7 @@
 package com.secret.blackholeglow.adapters;
 
 import android.content.Context;
+import android.os.Vibrator;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -10,11 +11,16 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.content.Intent;
+
 import com.secret.blackholeglow.R;
+import com.secret.blackholeglow.fragments.WallpaperInfoDialogFragment;
 import com.secret.blackholeglow.models.WallpaperItem;
 import com.secret.blackholeglow.opengl.NeonBorderTextureView;
+import com.secret.blackholeglow.activities.WallpaperPreviewActivity;
 
 import java.util.List;
 
@@ -46,23 +52,65 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
 
     @Override
     public void onBindViewHolder(@NonNull WallpaperViewHolder holder, int position) {
-
         WallpaperItem item = wallpapers.get(position);
 
-        // Información visual
         holder.textTitle.setText(item.getNombre());
         holder.textDescription.setText(item.getDescripcion());
         holder.imagePreview.setImageResource(item.getResourceIdPreview());
 
-        holder.buttonApply.setOnClickListener(v -> listener.onApplyClicked(item));
+        // Al tocar la tarjeta o el marco neón, muestra el modal
+        View.OnClickListener showModal = v -> showInfoDialog(item);
 
-        // NeonBorderTextureView: el shader se activa automáticamente
+        holder.itemView.setOnClickListener(showModal);
+
         NeonBorderTextureView neonView = holder.itemView.findViewById(R.id.neon_border_effect);
-        if (neonView != null) {
-            Log.d("WallpaperAdapter", "✨ Neon Border encontrado en posición: " + position);
-            // No es necesario hacer nada más: el NeonBorderTextureView maneja el render animado solo
+        if (neonView != null) neonView.setOnClickListener(showModal);
+
+        // Al tocar el botón, animación y muestra el modal (no aplica directo)
+        holder.buttonApply.setOnClickListener(v -> {
+            // Animación bounce
+            v.animate()
+                    .scaleX(0.92f)
+                    .scaleY(0.92f)
+                    .setDuration(80)
+                    .withEndAction(() -> {
+                        v.animate()
+                                .scaleX(1f)
+                                .scaleY(1f)
+                                .setDuration(100)
+                                .start();
+                    })
+                    .start();
+
+            // Vibración suave
+            Vibrator vib = (Vibrator) v.getContext().getSystemService(Context.VIBRATOR_SERVICE);
+            if (vib != null) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    vib.vibrate(android.os.VibrationEffect.createOneShot(40, android.os.VibrationEffect.DEFAULT_AMPLITUDE));
+                } else {
+                    vib.vibrate(40);
+                }
+            }
+
+            showInfoDialog(item);
+        });
+    }
+
+    private void showInfoDialog(WallpaperItem item) {
+        if (context instanceof FragmentActivity) {
+            WallpaperInfoDialogFragment dialog = WallpaperInfoDialogFragment.newInstance(item);
+            dialog.setOnApplyClickListener(() -> {
+                // 👉 Al dar click en "Aplicar", lanzar la actividad de previsualización
+                Intent intent = new Intent(context, WallpaperPreviewActivity.class);
+                intent.putExtra("WALLPAPER_PREVIEW_ID", item.getResourceIdPreview());
+                context.startActivity(intent);
+
+                // Si tienes un listener global también lo llamas (opcional)
+                if (listener != null) listener.onApplyClicked(item);
+            });
+            dialog.show(((FragmentActivity) context).getSupportFragmentManager(), "wallpaper_info");
         } else {
-            Log.w("WallpaperAdapter", "⚠️ NeonBorderTextureView NO encontrado en posición: " + holder.getAdapterPosition());
+            Log.w("WallpaperAdapter", "Context NO es FragmentActivity, no se puede mostrar el modal.");
         }
     }
 

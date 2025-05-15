@@ -3,6 +3,7 @@ package com.secret.blackholeglow.activities;
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.opengl.GLSurfaceView;
 import android.app.WallpaperManager; // Importa WallpaperManager
@@ -10,14 +11,20 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.secret.blackholeglow.LiveWallpaperService;
 import com.secret.blackholeglow.SceneRenderer;
+import com.secret.blackholeglow.R;
 
 public class WallpaperPreviewActivity extends AppCompatActivity {
 
     private GLSurfaceView glSurfaceView;
+    // (opcional) Si quieres mostrar preview de imagen
+    // private ImageView imageViewPreview;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Leer el id del recurso del wallpaper seleccionado
+        int previewId = getIntent().getIntExtra("WALLPAPER_PREVIEW_ID", R.drawable.ic_launcher_background);
 
         // Crear un LinearLayout para colocar tanto el GLSurfaceView como el botón
         LinearLayout layout = new LinearLayout(this);
@@ -27,6 +34,9 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         glSurfaceView = new GLSurfaceView(this);
         glSurfaceView.setEGLContextClientVersion(2); // OpenGL ES 2.0
         glSurfaceView.setRenderer(new SceneRenderer(this));
+        // Si quieres mostrar un preview de imagen, descomenta esto:
+        // imageViewPreview = new ImageView(this);
+        // imageViewPreview.setImageResource(previewId);
 
         // Crear el botón para abrir la selección de Live Wallpaper
         Button setWallpaperButton = new Button(this);
@@ -35,6 +45,8 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         // Añadir el GLSurfaceView y el botón al layout
         layout.addView(glSurfaceView, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));  // GLSurfaceView ocupa el espacio principal
+        // layout.addView(imageViewPreview, new LinearLayout.LayoutParams(
+        //         LinearLayout.LayoutParams.MATCH_PARENT, 400));
         layout.addView(setWallpaperButton, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
@@ -45,7 +57,6 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         setWallpaperButton.setOnClickListener(v -> {
             // Crear la Intent para abrir el selector de Live Wallpaper
             Intent intent = new Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER);
-            // Asegúrate de que el nombre del servicio del wallpaper esté correctamente configurado
             intent.putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
                     new android.content.ComponentName(this, LiveWallpaperService.class));
             startActivity(intent);
