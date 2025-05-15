@@ -11,15 +11,14 @@ import java.nio.FloatBuffer;
 
 import javax.microedition.khronos.egl.*;
 
-public class NeonBorderRendererThread extends Thread {
-
+public class RainbowGlowRendererThread extends Thread {
     private final Surface surface;
     private final int width;
     private final int height;
     private final Context context;
     private volatile boolean running = true;
 
-    public NeonBorderRendererThread(Surface surface, int width, int height, Context context) {
+    public RainbowGlowRendererThread(Surface surface, int width, int height, Context context) {
         this.surface = surface;
         this.width = width;
         this.height = height;
@@ -28,11 +27,7 @@ public class NeonBorderRendererThread extends Thread {
 
     public void requestExitAndWait() {
         running = false;
-        try {
-            join();
-        } catch (InterruptedException e) {
-            Log.e("NeonBorderRendererThread", "Thread interrupted during join()", e);
-        }
+        try { join(); } catch (InterruptedException e) { }
     }
 
     @Override
@@ -56,16 +51,12 @@ public class NeonBorderRendererThread extends Thread {
         egl.eglChooseConfig(display, configSpec, configs, 1, num_config);
         EGLConfig config = configs[0];
 
-        int[] attrib_list = {
-                0x3098, 2, // EGL_CONTEXT_CLIENT_VERSION
-                EGL10.EGL_NONE
-        };
-
+        int[] attrib_list = {0x3098, 2, EGL10.EGL_NONE};
         EGLContext eglContext = egl.eglCreateContext(display, config, EGL10.EGL_NO_CONTEXT, attrib_list);
         EGLSurface eglSurface = egl.eglCreateWindowSurface(display, config, surface, null);
         egl.eglMakeCurrent(display, eglSurface, eglSurface, eglContext);
 
-        int program = ShaderUtils.createProgram(context, "shaders/neon_border_vertex.glsl", "shaders/neon_border_fragment.glsl");
+        int program = ShaderUtils.createProgram(context, "shaders/rainbow_glow_vertex.glsl", "shaders/rainbow_glow_fragment.glsl");
         GLES20.glUseProgram(program);
 
         int aPosition = GLES20.glGetAttribLocation(program, "a_Position");
@@ -78,7 +69,6 @@ public class NeonBorderRendererThread extends Thread {
                 -1f,  1f,
                 1f,  1f
         };
-
         FloatBuffer vertexBuffer = ByteBuffer.allocateDirect(vertices.length * 4)
                 .order(ByteOrder.nativeOrder())
                 .asFloatBuffer();
@@ -86,20 +76,10 @@ public class NeonBorderRendererThread extends Thread {
 
         long startTime = System.nanoTime();
 
-        // ⏱️ Control de reinicio de animación (cada 3 minutos)
-        float time = 0f;
-
         while (running) {
-            // Tiempo en segundos
-            time = (System.nanoTime() - startTime) / 1_000_000_000f;
-            if (time > 180f) { // Cada 3 minutos reinicia
-                startTime = System.nanoTime();
-                time = 0f;
-            }
-
-            // Color totalmente transparente para limpiar bien el buffer (sin esto se pixelea)
-            GLES20.glClearColor(0f, 0f, 0f, 0f);
-            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
+            float time = (System.nanoTime() - startTime) / 1_000_000_000f;
+            GLES20.glViewport(0, 0, width, height);
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
             GLES20.glUseProgram(program);
             GLES20.glEnableVertexAttribArray(aPosition);
@@ -110,21 +90,15 @@ public class NeonBorderRendererThread extends Thread {
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
 
             GLES20.glDisableVertexAttribArray(aPosition);
-
             egl.eglSwapBuffers(display, eglSurface);
 
-            try {
-                Thread.sleep(16); // ~60fps
-            } catch (InterruptedException e) {
-                break;
-            }
+            try { Thread.sleep(16); } catch (InterruptedException e) { break; }
         }
 
         egl.eglMakeCurrent(display, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_CONTEXT);
         egl.eglDestroySurface(display, eglSurface);
         egl.eglDestroyContext(display, eglContext);
         egl.eglTerminate(display);
-
         surface.release();
     }
 }

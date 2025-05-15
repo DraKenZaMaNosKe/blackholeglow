@@ -1,0 +1,7 @@
+<animation-list xmlns:android="http://schemas.android.com/apk/res/android"
+    android:oneshot="false">
+    <item android:drawable="@drawable/image_inner_glow_frame1" android:duration="100"/>
+    <item android:drawable="@drawable/image_inner_glow_frame2" android:duration="100"/>
+    <item android:drawable="@drawable/image_inner_glow_frame3" android:duration="100"/>
+    <item android:drawable="@drawable/image_inner_glow_frame2" android:duration="100"/>
+</animation-list>

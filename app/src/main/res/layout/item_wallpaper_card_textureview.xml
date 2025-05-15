@@ -24,12 +24,24 @@
             android:background="#161926"
             android:padding="0dp">
 
-            <!-- 🌟 PREVIEW + MARCO NEÓN -->
+            <!-- 🌟 PREVIEW + MARCO NEÓN + INNER GLOW -->
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="220dp"
                 android:layout_margin="18dp"
                 android:layout_gravity="center">
+
+                <!-- 🌈 Glow arcoíris animado, con margen pequeño -->
+                <ImageView
+                    android:id="@+id/image_inner_glow"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_gravity="center"
+                    android:layout_margin="8dp"
+                    android:background="@drawable/image_inner_glow_anim"
+                    android:alpha="0.65"
+                    android:scaleType="fitXY"
+                    android:contentDescription="@null"/>
 
                 <!-- Shader neón (solo alrededor de la imagen) -->
                 <com.secret.blackholeglow.opengl.NeonBorderTextureView
@@ -45,13 +57,14 @@
                     android:id="@+id/image_preview"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:scaleType="centerCrop"
+                    android:layout_gravity="center"
+                    android:layout_margin="18dp"
                     android:background="@drawable/card_background"
-                    android:layout_margin="12dp"
+                    android:scaleType="centerCrop"
+                    android:clipToOutline="true"
                     android:elevation="4dp"
                     android:contentDescription="@string/preview_image_desc"
-                    app:cornerRadius="16dp"
-                    android:clipToOutline="true"/>
+                    app:cornerRadius="16dp"/>
             </FrameLayout>
 
             <!-- Título -->
