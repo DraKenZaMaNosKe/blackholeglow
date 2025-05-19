@@ -1,7 +1,6 @@
 package com.secret.blackholeglow.adapters;
 
 import android.content.Context;
-import android.graphics.drawable.AnimationDrawable;
 import android.os.Vibrator;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -59,16 +58,6 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         holder.textDescription.setText(item.getDescripcion());
         holder.imagePreview.setImageResource(item.getResourceIdPreview());
 
-        // ⭐ MARCO ANIMADO SUTIL (inner glow alrededor de la imagen de preview)
-        ImageView imageGlow = holder.itemView.findViewById(R.id.image_inner_glow);
-        if (imageGlow != null) {
-            imageGlow.setBackgroundResource(R.drawable.image_inner_glow_anim);
-            AnimationDrawable glowAnim = (AnimationDrawable) imageGlow.getBackground();
-            if (glowAnim != null && !glowAnim.isRunning()) {
-                glowAnim.start();
-            }
-        }
-
         // Al tocar la tarjeta o el marco neón, muestra el modal
         View.OnClickListener showModal = v -> showInfoDialog(item);
 
@@ -111,12 +100,10 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         if (context instanceof FragmentActivity) {
             WallpaperInfoDialogFragment dialog = WallpaperInfoDialogFragment.newInstance(item);
             dialog.setOnApplyClickListener(() -> {
-                // 👉 Al dar click en "Aplicar", lanzar la actividad de previsualización
                 Intent intent = new Intent(context, WallpaperPreviewActivity.class);
                 intent.putExtra("WALLPAPER_PREVIEW_ID", item.getResourceIdPreview());
                 context.startActivity(intent);
 
-                // Si tienes un listener global también lo llamas (opcional)
                 if (listener != null) listener.onApplyClicked(item);
             });
             dialog.show(((FragmentActivity) context).getSupportFragmentManager(), "wallpaper_info");

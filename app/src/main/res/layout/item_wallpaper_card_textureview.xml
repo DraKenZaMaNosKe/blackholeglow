@@ -1,13 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/card_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="10dp"
     android:background="@android:color/transparent">
 
-    <!-- 🌈 Contenedor general con sombra elegante -->
+    <com.secret.blackholeglow.opengl.NeonBorderTextureView
+        android:id="@+id/neon_border_effect"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        android:alpha="1"
+        android:visibility="visible" />
+
+
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -21,44 +28,19 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:background="#161926"
-            android:padding="0dp">
+            android:padding="0dp"
+            android:background="#161926">
 
-            <!-- 🌟 PREVIEW + MARCO NEÓN + INNER GLOW -->
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="220dp"
-                android:layout_margin="18dp"
+                android:layout_margin="16dp"
                 android:layout_gravity="center">
 
-                <!-- 🌈 Glow arcoíris animado, con margen pequeño -->
-                <ImageView
-                    android:id="@+id/image_inner_glow"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:layout_gravity="center"
-                    android:layout_margin="8dp"
-                    android:background="@drawable/image_inner_glow_anim"
-                    android:alpha="0.65"
-                    android:scaleType="fitXY"
-                    android:contentDescription="@null"/>
-
-                <!-- Shader neón (solo alrededor de la imagen) -->
-                <com.secret.blackholeglow.opengl.NeonBorderTextureView
-                    android:id="@+id/neon_border_effect"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:alpha="1"
-                    android:visibility="visible"
-                    android:layout_gravity="center" />
-
-                <!-- Imagen centrada, con esquinas redondeadas y sombra -->
                 <ImageView
                     android:id="@+id/image_preview"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:layout_gravity="center"
-                    android:layout_margin="18dp"
                     android:background="@drawable/card_background"
                     android:scaleType="centerCrop"
                     android:clipToOutline="true"
@@ -67,20 +49,17 @@
                     app:cornerRadius="16dp"/>
             </FrameLayout>
 
-            <!-- Título -->
             <TextView
                 android:id="@+id/text_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:paddingTop="0dp"
                 android:text="@string/wallpaper_title"
                 android:textColor="@android:color/white"
-                android:textStyle="bold"
                 android:textSize="20sp"
-                android:gravity="center"
-                android:paddingTop="2dp"
-                android:paddingBottom="0dp"/>
+                android:textStyle="bold"
+                android:gravity="center"/>
 
-            <!-- Descripción -->
             <TextView
                 android:id="@+id/text_description"
                 android:layout_width="match_parent"
@@ -89,18 +68,15 @@
                 android:textColor="#BBBBBB"
                 android:textSize="14sp"
                 android:gravity="center"
-                android:paddingBottom="4dp"
-                android:paddingTop="0dp"
                 android:paddingLeft="18dp"
-                android:paddingRight="18dp" />
+                android:paddingRight="18dp"
+                android:paddingBottom="6dp"/>
 
-            <!-- Botón Aplicar -->
             <Button
                 android:id="@+id/button_apply"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
-                android:layout_marginTop="8dp"
                 android:layout_marginBottom="14dp"
                 android:backgroundTint="@color/purple_500"
                 android:textColor="@android:color/white"
