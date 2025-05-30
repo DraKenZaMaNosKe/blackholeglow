@@ -102,11 +102,11 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
         if (textureManager != null && textureManager.initialize()) {
             Log.d("SceneRenderer", "🎨 Texturas listas, creando objetos con textura...");
             sceneObjects.add(new StarTunnelBackground());
-            sceneObjects.add(new StarField(textureManager, 200));
+            sceneObjects.add(new StarField(textureManager, 5));
         } else {
             Log.w("SceneRenderer", "🚫 No se pudieron inicializar texturas. Usando modo sin textura...");
             sceneObjects.add(new StarTunnelBackground());
-            sceneObjects.add(new StarField(null, 200));
+            sceneObjects.add(new StarField(null, 5));
         }
         Log.d("SceneRenderer", "🎬 Objetos en escena: " + sceneObjects.size());
     }
