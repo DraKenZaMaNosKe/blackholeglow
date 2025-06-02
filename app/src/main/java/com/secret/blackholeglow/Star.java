@@ -163,7 +163,7 @@ public class Star {
         baseSize = 2.0f + rand.nextFloat() * 3.0f;
         angle = rand.nextFloat() * (float)(2 * Math.PI);
         z = 1.0f + rand.nextFloat() * 10.0f;
-        speed = 1.0f + rand.nextFloat() * 2.5f;
+        speed = 20.0f + rand.nextFloat() * 2.5f;
         alpha = 0.2f + rand.nextFloat() * 0.6f;
     }
 
