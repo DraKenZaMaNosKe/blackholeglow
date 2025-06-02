@@ -141,60 +141,75 @@ public class StarTunnelBackground implements SceneObject {
                         "    vec3 bottomColor = vec3(0.0, 0.0, 0.0);\n" +
                         "    vec3 color = mix(topColor, bottomColor, uv.y);\n" +
                         "\n" +
-                        "    // 3️⃣ Cálculo de túnel centrado con glow variable según rnd\n" +
+                        "    // 3️⃣ Cálculo de túnel centrado con glow variable según rnd (sin mover)\n" +
                         "    vec2 center = u_Resolution * 0.5;\n" +
-                        "    vec2 pos    = gl_FragCoord.xy - center;\n" +
-                        "    pos /= min(u_Resolution.x, u_Resolution.y);\n" +
-                        "    float dist = length(pos);\n" +
+                        "    vec2 pos0   = gl_FragCoord.xy - center;\n" +
+                        "    pos0 /= min(u_Resolution.x, u_Resolution.y);\n" +
                         "\n" +
                         "    // 4️⃣ Ruido pseudoaleatorio único por fragmento\n" +
                         "    float rnd = fract(sin(dot(gl_FragCoord.xy,\n" +
                         "                            vec2(12.9898,78.233)))\n" +
                         "                      * 43758.5453);\n" +
                         "\n" +
-                        "    // 5️⃣ Glow del túnel: depende de rnd para simular profundidad\n" +
+                        "    // 5️⃣ Decidimos si esta estrella caminará (flicker) o no\n" +
+                        "    bool isMover = (rnd > 0.995);\n" +
+                        "\n" +
+                        "    // 6️⃣ Si es mover, definimos una dirección aleatoria basada en rnd\n" +
+                        "    vec2 direction = normalize(vec2(\n" +
+                        "        cos(rnd * 6.2831),\n" +
+                        "        sin(rnd * 6.2831)\n" +
+                        "    ));\n" +
+                        "    // Velocidad de movimiento: cuanto más alto rnd, más rápida (pero lenta en general)\n" +
+                        "    float moveSpeed = mix(0.01, 0.03, rnd); // ajuste suave: [0.01, 0.03]\n" +
+                        "\n" +
+                        "    // 7️⃣ Desplazamos pos0 según isMover y u_Time\n" +
+                        "    vec2 pos = pos0;\n" +
+                        "    if (isMover) {\n" +
+                        "        pos += direction * (u_Time * moveSpeed);\n" +
+                        "    }\n" +
+                        "\n" +
+                        "    // 8️⃣ Cálculo de distancia tras mover (para glow)\n" +
+                        "    float dist = length(pos);\n" +
                         "    float glowFactor = mix(0.05, 0.15, rnd);\n" +
                         "    float glow = smoothstep(4.0, 0.0, dist) * glowFactor;\n" +
                         "    color += vec3(0.0, 0.0, glow);\n" +
                         "\n" +
-                        "    // 6️⃣ Máscaras de tamaño para estrellas:\n" +
+                        "    // 9️⃣ Máscaras de tamaño para estrellas:\n" +
                         "    float largeMask = step(0.999, rnd);\n" +
                         "    float medMask   = step(0.997, rnd) - largeMask;\n" +
                         "    float smallMask = step(0.995, rnd) - (largeMask + medMask);\n" +
                         "\n" +
-                        "    // 7️⃣ Parpadeo para medianas: flicker muy lento o parpadeo normal\n" +
+                        "    // 🔟 Parpadeo: flicker suave o normal\n" +
                         "    float blink;\n" +
-                        "    if (rnd > 0.995) {\n" +
-                        "        // 🎇 Flicker suave para una fracción mínima (~0.5%)\n" +
-                        "        float flickerSpeed = mix(0.5, 1.0, rnd);          // velocidad lenta\n" +
-                        "        float phaseOffset  = rnd * 12.5664;               // fase variada 2π·2\n" +
+                        "    if (isMover) {\n" +
+                        "        // 🎇 Flicker muy lento y desvanecimiento\n" +
+                        "        float flickerSpeed = mix(0.1, 1.0, rnd);\n" +
+                        "        float phaseOffset  = rnd * 12.5664;\n" +
                         "        float flickRaw     = sin(u_Time * flickerSpeed + phaseOffset);\n" +
-                        "        // Desvanecimiento muy suave: valor absoluto y brillo mínimo\n" +
-                        "        float flickBase    = abs(flickRaw);               // oscilación 0→1\n" +
-                        "        float flickMin     = 0.2;                         // no desaparece\n" +
+                        "        float flickBase    = abs(flickRaw);\n" +
+                        "        float flickMin     = 0.2;\n" +
                         "        float flick        = max(flickBase, flickMin);\n" +
-                        "        // Destello leve al apagarse (peaks de sin → ±1)\n" +
                         "        float flash        = pow(abs(flickRaw), 20.0) * 0.3;\n" +
                         "        blink = clamp(flick + flash, 0.0, 1.0);\n" +
                         "    } else {\n" +
-                        "        // 🌟 Parpadeo normal para la mayoría de medianas\n" +
+                        "        // 🌟 Parpadeo normal suave\n" +
                         "        float blinkSpeed = mix(0.2, 1.0, rnd);\n" +
                         "        float base       = mix(0.2, 0.5, rnd);\n" +
                         "        float amp        = mix(0.3, 0.7, rnd);\n" +
-                        "        float phaseNorm  = rnd * 6.2831;                   // fase variada 2π·1\n" +
+                        "        float phaseNorm  = rnd * 6.2831;\n" +
                         "        blink = base + amp * sin(u_Time * blinkSpeed + phaseNorm);\n" +
                         "        blink = clamp(blink, base, base + amp);\n" +
                         "    }\n" +
                         "\n" +
-                        "    // 8️⃣ Brillo base para estrellas pequeñas, siempre visible [0.1,0.3]\n" +
+                        "    // 1️⃣1️⃣ Brillo base para estrellas pequeñas [0.1,0.3]\n" +
                         "    float smallBrightness = mix(0.1, 0.3, rnd);\n" +
                         "\n" +
-                        "    // 9️⃣ Suma de contribuciones de cada tipo de estrella:\n" +
-                        "    color += largeMask * 1.0;            // ⭐ grandes: brillo máximo siempre\n" +
-                        "    color += medMask   * blink;          // ✴️ medianas: flicker muy suave o normal\n" +
-                        "    color += smallMask * smallBrightness; // · pequeñas: brillo fijo tenue\n" +
+                        "    // 1️⃣2️⃣ Suma de cada tipo de estrella:\n" +
+                        "    color += largeMask * 1.0;\n" +
+                        "    color += medMask   * blink;\n" +
+                        "    color += smallMask * smallBrightness;\n" +
                         "\n" +
-                        "    // 🔟 Clamp final del color en [0,1]\n" +
+                        "    // 1️⃣3️⃣ Clamp final del color en [0,1]\n" +
                         "    color = clamp(color, 0.0, 1.0);\n" +
                         "\n" +
                         "    gl_FragColor = vec4(color, 1.0);\n" +
