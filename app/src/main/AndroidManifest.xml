@@ -8,31 +8,24 @@
       ║    ⚡️ PERMISO PARA VIBRAR ⚡️     ║
       ╚═══════════════════════════════════╝
       (~˘▾˘)~  📳 ¡Android Droid vibra!  📳  ~(^▾^)~
-      Aquí activamos el temblor cósmico
-      para sentir el pulso de tus constelaciones.
+      Permiso necesario si en el código se invoca Vibrator.
     -->
     <uses-permission android:name="android.permission.VIBRATE"/>
-
 
     <!--
       ╔══════════════════════════════════════════════╗
       ║     🪄 OPENGL ES 2.0 – MAGIA ACTIVADA 🪄    ║
       ╚══════════════════════════════════════════════╝
-       ／人◕ ‿‿ ◕人＼ ✨ Invocamos shaders estelares ✨
-      Versión requerida: 0x00020000
+      Requerimos OpenGL ES 2.0 para todos los efectos en SceneRenderer, shaders, etc.
     -->
-    <uses-feature
-        android:glEsVersion="0x00020000"
-        android:required="true" />
-
+    <uses-feature android:glEsVersion="0x00020000" android:required="true" />
 
     <!--
       ╔════════════════════════════════════════════════════════╗
       ║      🌌 CONFIGURACIÓN DE LA APLICACIÓN GALÁCTICA 🌌    ║
       ╚════════════════════════════════════════════════════════╝
-         ʕ•ᴥ•ʔ  Icono: ic_launcher,  Label: @string/app_name  ʕ•ᴥ•ʔ
-      Aquí definimos el rostro de tu app, la esencia que Athena
-      protege bajo el nombre BlackholeGlow.
+      Icono, label, tema y reglas de backup.
+      data_extraction_rules.xml y backup_rules.xml deben existir en res/xml.
     -->
     <application
         android:allowBackup="true"
@@ -45,97 +38,68 @@
         android:theme="@style/Theme.Blackholeglow"
         tools:targetApi="31">
 
-
         <!--
           ╔════════════════════════════════════════╗
           ║ 🚀 SERVICIO LIVE WALLPAPER INVOCADO 🚀 ║
           ╚════════════════════════════════════════╝
-           ＿人人人人人人人人人人人人人人人人人人人人人人人人人人人＿
-           ＞    “¡Oh sistema, concede poder de fondo!”    ＜
-           ￣Y^Y^Y^Y^Y^Y^Y^Y^Y^Y^Y^Y^Y^Y^Y^Y^Y^Y^Y^Y^Y￣
-          (⌐■_■)  android.permission.BIND_WALLPAPER  (⌐■_■)
+          La clase LiveWallpaperService.java debe existir en com.secret.blackholeglow.
         -->
         <service
             android:name=".LiveWallpaperService"
             android:exported="true"
             android:permission="android.permission.BIND_WALLPAPER">
-
-            <!--
-              ╔════════════════════════════════╗
-              ║   🤖 INTENT FILTER: ACCIÓN 🤖   ║
-              ╚════════════════════════════════╝
-              ʕ◔ϖ◔ʔ ¡Android Droid al acecho del intent!
-            -->
             <intent-filter>
                 <action android:name="android.service.wallpaper.WallpaperService" />
             </intent-filter>
-
-            <!--
-              ╔═══════════════════════════════════╗
-              ║    🌟 META-DATOS DE WALLPAPER 🌟   ║
-              ╚═══════════════════════════════════╝
-              Athena sonríe mientras enlazamos @xml/live_wallpaper
-            -->
             <meta-data
                 android:name="android.service.wallpaper"
                 android:resource="@xml/live_wallpaper" />
         </service>
 
-
         <!--
           ╔════════════════════════════════════════════════════════╗
           ║   🎆 ACTIVITY: SPLASH – LLAMADA INICIAL 🎆           ║
           ╚════════════════════════════════════════════════════════╝
-           (ง°ل͜°)ง  Seiya listo para proteger a Athena  (ง°ل͜°)ง
-          Primer vistazo: la pantalla que forja tu leyenda.
+          Ruta: app/src/main/java/com/secret/blackholeglow/activities/SplashActivity.java
         -->
         <activity
             android:name=".activities.SplashActivity"
             android:exported="true">
-
-            <!--
-              ╔════════════════════════════════╗
-              ║   🤖 INTENT FILTER: ARRANQUE 🤖  ║
-              ╚════════════════════════════════╝
-              ヽ(•‿•)ノ  Android Droid espera la acción MAIN
-            -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-
         <!--
           ╔══════════════════════════════════╗
           ║   🌠 ACTIVITY: PREVIEW ESTELAR 🌠 ║
           ╚══════════════════════════════════╝
-           (⌐■_■)  Admira tu wallpaper antes de entregarlo al cosmos.
+          Ruta: app/src/main/java/com/secret/blackholeglow/activities/WallpaperPreviewActivity.java
         -->
         <activity
             android:name=".activities.WallpaperPreviewActivity"
             android:exported="true" />
 
-
         <!--
           ╔════════════════════════════════╗
           ║   🪐 ACTIVITY: MENÚ GALÁCTICO 🪐 ║
           ╚════════════════════════════════╝
-           (ง •̀_•́)ง  Elige tu destino: universo, galaxia o agujero de gusano.
+          Ruta: app/src/main/java/com/secret/blackholeglow/activities/MainActivity.java
         -->
         <activity
             android:name=".activities.MainActivity"
             android:exported="true" />
 
-
         <!--
           ╔══════════════════════════════════╗
           ║   ✨ ACTIVITY: LABORATORIO AURAS ✨ ║
           ╚══════════════════════════════════╝
-           (^◕ᴥ◕^)  Prueba tus experimentos de brillo y partículas.
+          Ruta: app/src/main/java/com/secret/blackholeglow/activities/AuraTestActivity.java
         -->
-        <activity android:name=".activities.AuraTestActivity" />
+        <activity
+            android:name=".activities.AuraTestActivity"
+            android:exported="false" />
 
     </application>
-
 </manifest>
