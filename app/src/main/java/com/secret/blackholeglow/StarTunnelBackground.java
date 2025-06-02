@@ -180,42 +180,47 @@ public class StarTunnelBackground implements SceneObject {
         // ╚════════════════════════════════════════════════════════════════════════════╝
         String fragmentShader =
                 "precision mediump float;\n" +
-                        "uniform float u_Time;\n" +                // Tiempo en segundos para animar parpadeo
-                        "uniform vec2 u_Resolution;\n" +           // Resolución de la pantalla (width, height)
+                        "uniform float u_Time;\n" +
+                        "uniform vec2 u_Resolution;\n" +
                         "void main() {\n" +
-                        "    // 1️⃣ Coordenadas normalizadas en [0,1]\n" +
+                        "    // 1️⃣ Coordenadas normalizadas en [0, 1]\n" +
                         "    vec2 uv = gl_FragCoord.xy / u_Resolution;\n" +
                         "\n" +
-                        "    // 2️⃣ Degradado estático: cielo azul abajo, negro abajo\n" +
+                        "    // 2️⃣ Degradado estático: cielo azul oscuro → negro\n" +
                         "    vec3 topColor    = vec3(0.0, 0.0, 0.2);\n" +
                         "    vec3 bottomColor = vec3(0.0, 0.0, 0.0);\n" +
                         "    vec3 color = mix(topColor, bottomColor, uv.y);\n" +
                         "\n" +
-                        "    // 3️⃣ Túnel sutil centrado: halo azul tenue\n" +
+                        "    // 3️⃣ Túnel sutil con desplazamiento radial en función del tiempo\n" +
                         "    vec2 center = u_Resolution * 0.5;\n" +
-                        "    vec2 pos    = gl_FragCoord.xy - center;\n" +
+                        "    vec2 pos = gl_FragCoord.xy - center;\n" +
                         "    pos /= min(u_Resolution.x, u_Resolution.y);\n" +
+                        "\n" +
+                        "    // ✨ Desplazamiento radial: las estrellas se mueven hacia afuera con velocidad “speed”\n" +
+                        "    float speed = 2.0; // Ajusta este valor: 2.0 → más rápido que 0.1 por defecto\n" +
+                        "    pos += normalize(pos) * (u_Time * speed * 0.1);\n" +
+                        "\n" +
                         "    float dist = length(pos);\n" +
                         "    float glow = smoothstep(4.0, 0.0, dist);\n" +
                         "    color += vec3(0.0, 0.0, glow * 0.08);\n" +
                         "\n" +
-                        "    // 4️⃣ Ruido pseudoaleatorio único por fragmento\n" +
+                        "    // 4️⃣ Ruido pseudoaleatorio por fragmento\n" +
                         "    float rnd = fract(sin(dot(gl_FragCoord.xy,\n" +
                         "                            vec2(12.9898,78.233)))\n" +
                         "                      * 43758.5453);\n" +
                         "\n" +
-                        "    // 5️⃣ Máscaras de tamaño para estrellas\n" +
-                        "    float largeMask = step(0.9985, rnd);\n" +
-                        "    float medMask   = step(0.997, rnd)  - largeMask;\n" +
+                        "    // 5️⃣ Máscaras de tamaño para estrellas (densidad aumentada)\n" +
+                        "    float largeMask = step(0.9995, rnd);   // Umbral más alto: menos estrellas grandes\n" +
+                        "    float medMask   = step(0.998, rnd)  - largeMask;  // Un poco más de medianas\n" +
                         "    float smallMask = step(0.995, rnd)  - (largeMask + medMask);\n" +
                         "\n" +
-                        "    // 6️⃣ Parpadeo lento para estrellas medianas (~ 60s de ciclo)\n" +
-                        "    float blink = 0.5 + 0.5 * sin(u_Time * 0.1 + rnd * 6.2831);\n" +
+                        "    // 6️⃣ Parpadeo más rápido para estrellas medianas (u_Time * 1.0 en lugar de 0.1)\n" +
+                        "    float blink = 0.5 + 0.5 * sin(u_Time * 1.0 + rnd * 6.2831);\n" +
                         "\n" +
                         "    // 7️⃣ Sumatoria del brillo de cada categoría de estrella\n" +
-                        "    color += largeMask * 1.0;    // ⭐ grandes: brillo máximo siempre\n" +
-                        "    color += medMask   * blink;  // ✴️ medianas: parpadeo suave\n" +
-                        "    color += smallMask * 0.4;    // · pequeñas: brillo tenue fijo\n" +
+                        "    color += largeMask * 1.0;    // ⭐ grandes\n" +
+                        "    color += medMask   * blink;  // ✴️ medianas parpadean rápido\n" +
+                        "    color += smallMask * 0.4;    // · pequeñas\n" +
                         "\n" +
                         "    // 8️⃣ Clamp final del color en rango [0,1]\n" +
                         "    color = clamp(color, 0.0, 1.0);\n" +
