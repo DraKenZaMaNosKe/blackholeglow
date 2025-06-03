@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <?xml version="1.0" encoding="utf-8"?>
     <resources>
         <!-- ──────────────────────────── -->
         <!--  Colores para tu tema (día & noche)  -->
@@ -42,4 +40,3 @@
         <color name="nav_item_background_selected">#1B263B</color>
     </resources>
 
-</resources>
