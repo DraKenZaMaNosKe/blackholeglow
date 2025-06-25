@@ -40,18 +40,18 @@ import java.util.List;
 
 /**
  * SceneRenderer - Clase principal que renderiza todos los objetos de la escena con OpenGL ES 2.0.
- *
+ * <p>
  * 📝 Propósito Principal:
- *   - Gestionar la inicialización de OpenGL (configuración de blend, clear color, etc.).
- *   - Mantener y dibujar múltiples SceneObject (por ejemplo StarField, StarTunnelBackground).
- *   - Manejar la carga de texturas a través de TextureManager.
- *   - Controlar la pausa/reanudación del renderizado cuando el wallpaper
- *     pierde/gana visibilidad.
- *
+ * - Gestionar la inicialización de OpenGL (configuración de blend, clear color, etc.).
+ * - Mantener y dibujar múltiples SceneObject (por ejemplo StarField, StarTunnelBackground).
+ * - Manejar la carga de texturas a través de TextureManager.
+ * - Controlar la pausa/reanudación del renderizado cuando el wallpaper
+ * pierde/gana visibilidad.
+ * <p>
  * 📚 Buenas Prácticas:
- *   - Separar la inicialización de texturas (onSurfaceChanged) para evitar pérdidas de contexto.
- *   - Usar System.nanoTime() para calcular deltaTime preciso.
- *   - No bloquear el hilo de renderizado: actualizar y dibujar rápidamente.
+ * - Separar la inicialización de texturas (onSurfaceChanged) para evitar pérdidas de contexto.
+ * - Usar System.nanoTime() para calcular deltaTime preciso.
+ * - No bloquear el hilo de renderizado: actualizar y dibujar rápidamente.
  */
 public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
 
@@ -83,30 +83,37 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
     // 🧱 textureManager - Maneja la carga y liberación de texturas OpenGL.
     private TextureManager textureManager;
 
+    private String item_seleccinado = "Fondo2";
+
 
     /**
      * Constructor SceneRenderer - Recibe el contexto de la aplicación.
-     * @param context - Contexto necesario para inicializar TextureManager y otros recursos.
      *
-     * ASCII Art:
-     *   ╔═════════════════════════════════╗
-     *   ║  ⚙️  SceneRenderer Inicializado  ⚙️ ║
-     *   ╚═════════════════════════════════╝
-     *        /\\         🌠       /\\
-     *       /  \\  new SceneRenderer /  \\
-     *      /____\\       🚀       /____\\
+     * @param context - Contexto necesario para inicializar TextureManager y otros recursos.
+     *                <p>
+     *                ASCII Art:
+     *                ╔═════════════════════════════════╗
+     *                ║  ⚙️  SceneRenderer Inicializado  ⚙️ ║
+     *                ╚═════════════════════════════════╝
+     *                /\\         🌠       /\\
+     *                /  \\  new SceneRenderer /  \\
+     *                /____\\       🚀       /____\\
      */
     public SceneRenderer(Context context) {
+        this.context = context;
+    }
+    public SceneRenderer(Context context, String item_seleccinado) {
+        this.item_seleccinado = item_seleccinado;
         this.context = context;
     }
 
     /**
      * pause - Pausa el renderizado de la escena. next onDrawFrame no hará nada.
-     *
+     * <p>
      * ASCII Art:
-     *   ╔═════════════════════════════════╗
-     *   ║      ⏸️  Pausando Escena  ⏸️      ║
-     *   ╚═════════════════════════════════╝
+     * ╔═════════════════════════════════╗
+     * ║      ⏸️  Pausando Escena  ⏸️      ║
+     * ╚═════════════════════════════════╝
      */
     public void pause() {
         paused = true;
@@ -114,11 +121,11 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
 
     /**
      * resume - Reanuda el renderizado de la escena. onDrawFrame volverá a procesar.
-     *
+     * <p>
      * ASCII Art:
-     *   ╔═════════════════════════════════╗
-     *   ║      ▶️  Reanudando Escena  ▶️    ║
-     *   ╚═════════════════════════════════╝
+     * ╔═════════════════════════════════╗
+     * ║      ▶️  Reanudando Escena  ▶️    ║
+     * ╚═════════════════════════════════╝
      */
     public void resume() {
         paused = false;
@@ -126,21 +133,24 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
 
     /**
      * addObject - Agrega un SceneObject a la lista de renderizado.
-     * @param object - Instancia de SceneObject (StarField, StarTunnelBackground, etc.).
      *
-     * ASCII Art:
-     *   ╔═════════════════════════════════╗
-     *   ║  ➕  Objeto añadido a la escena  ➕  ║
-     *   ╚═════════════════════════════════╝
-     *          .-""""-.
-     *         /  🚀   \
-     *        |  Scene   |
-     *         \Object /
-     *          '----'
+     * @param object - Instancia de SceneObject (StarField, StarTunnelBackground, etc.).
+     *               <p>
+     *               ASCII Art:
+     *               ╔═════════════════════════════════╗
+     *               ║  ➕  Objeto añadido a la escena  ➕  ║
+     *               ╚═════════════════════════════════╝
+     *               .-""""-.
+     *               /  🚀   \
+     *               |  Scene   |
+     *               \Object /
+     *               '----'
      */
     public void addObject(SceneObject object) {
         sceneObjects.add(object);
     }
+
+
 
     /**
      * onSurfaceCreated - Se invoca al crear la superficie OpenGL.
@@ -149,19 +159,19 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
      *
      * @param gl     - Objeto GL10 (heredado de OpenGL ES 1.x, no usado aquí).
      * @param config - Configuración EGL actual (información de configuración).
-     *
-     * ASCII Art:
-     *   ╔════════════════════════════════════════════════╗
-     *   ║   🎨  onSurfaceCreated: Setup OpenGL Global 🎨   ║
-     *   ╚════════════════════════════════════════════════╝
-     *     ┌──────────────────────────────────────────┐
-     *     │ ▪ Habilitar BLEND para transparencia     │
-     *     │ ▪ Deshabilitar DEPTH_TEST para efectos   │
-     *     │ ▪ Establecer CLEAR COLOR a negro puro    │
-     *     │ ▪ Liberar shaders antiguos (Star.release) │
-     *     │ ▪ Instanciar TextureManager               │
-     *     │ ▪ Vaciar lista de sceneObjects           │
-     *     └──────────────────────────────────────────┘
+     *               <p>
+     *               ASCII Art:
+     *               ╔════════════════════════════════════════════════╗
+     *               ║   🎨  onSurfaceCreated: Setup OpenGL Global 🎨   ║
+     *               ╚════════════════════════════════════════════════╝
+     *               ┌──────────────────────────────────────────┐
+     *               │ ▪ Habilitar BLEND para transparencia     │
+     *               │ ▪ Deshabilitar DEPTH_TEST para efectos   │
+     *               │ ▪ Establecer CLEAR COLOR a negro puro    │
+     *               │ ▪ Liberar shaders antiguos (Star.release) │
+     *               │ ▪ Instanciar TextureManager               │
+     *               │ ▪ Vaciar lista de sceneObjects           │
+     *               └──────────────────────────────────────────┘
      */
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
@@ -197,19 +207,19 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
      * @param gl     - Objeto GL10 (no usado directamente).
      * @param width  - Nuevo ancho de la superficie en píxeles.
      * @param height - Nuevo alto de la superficie en píxeles.
-     *
-     * ASCII Art:
-     *   ╔════════════════════════════════════════════════╗
-     *   ║   🔄 onSurfaceChanged: Ajuste de Dimensiones 🔄  ║
-     *   ╚════════════════════════════════════════════════╝
-     *     ┌──────────────────────────────────────────┐
-     *     │ ▪ glViewport(0,0,width,height)           │
-     *     │ ▪ screenWidth = width                    │
-     *     │ ▪ screenHeight = height                  │
-     *     │ ▪ Inicializar TextureManager.realmente    │
-     *     │ ▪ sceneObjects.clear()                   │
-     *     │ ▪ prepareScene()                         │
-     *     └──────────────────────────────────────────┘
+     *               <p>
+     *               ASCII Art:
+     *               ╔════════════════════════════════════════════════╗
+     *               ║   🔄 onSurfaceChanged: Ajuste de Dimensiones 🔄  ║
+     *               ╚════════════════════════════════════════════════╝
+     *               ┌──────────────────────────────────────────┐
+     *               │ ▪ glViewport(0,0,width,height)           │
+     *               │ ▪ screenWidth = width                    │
+     *               │ ▪ screenHeight = height                  │
+     *               │ ▪ Inicializar TextureManager.realmente    │
+     *               │ ▪ sceneObjects.clear()                   │
+     *               │ ▪ prepareScene()                         │
+     *               └──────────────────────────────────────────┘
      */
     @Override
     public void onSurfaceChanged(GL10 gl, int width, int height) {
@@ -238,19 +248,19 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
      * Si no está pausado, limpia la pantalla y actualiza/dibuja cada SceneObject.
      *
      * @param gl - Objeto GL10 (no utilizado directamente).
-     *
-     * ASCII Art:
-     *   ╔════════════════════════════════════════════════╗
-     *   ║       🔄 onDrawFrame: Ciclo de Renderizado 🔄    ║
-     *   ╚════════════════════════════════════════════════╝
-     *      ┌──────────────────────────────────────────┐
-     *      │ ▪ Si paused = true, no hacer nada         │
-     *      │ ▪ GLES20.glClear(...) limpia pantalla     │
-     *      │ ▪ Calcular deltaTime (tiempo transcurrido)│
-     *      │ ▪ Para cada SceneObject:                  │
-     *      │     • object.update(deltaTime)            │
-     *      │     • object.draw()                       │
-     *      └──────────────────────────────────────────┘
+     *           <p>
+     *           ASCII Art:
+     *           ╔════════════════════════════════════════════════╗
+     *           ║       🔄 onDrawFrame: Ciclo de Renderizado 🔄    ║
+     *           ╚════════════════════════════════════════════════╝
+     *           ┌──────────────────────────────────────────┐
+     *           │ ▪ Si paused = true, no hacer nada         │
+     *           │ ▪ GLES20.glClear(...) limpia pantalla     │
+     *           │ ▪ Calcular deltaTime (tiempo transcurrido)│
+     *           │ ▪ Para cada SceneObject:                  │
+     *           │     • object.update(deltaTime)            │
+     *           │     • object.draw()                       │
+     *           └──────────────────────────────────────────┘
      */
     @Override
     public void onDrawFrame(GL10 gl) {
@@ -275,32 +285,52 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
     /**
      * prepareScene - Crea y agrega objetos a la escena según disponibilidad de texturas.
      * Verifica si TextureManager inicializó correctamente; si no, usa modo sin textura.
-     *
+     * <p>
      * ASCII Art:
-     *   ╔════════════════════════════════════════════════════════════════╗
-     *   ║       🎬 prepareScene: Creación de Objetos en Escena       ║
-     *   ╚════════════════════════════════════════════════════════════════╝
-     *     ┌────────────────────────────────────────────────────────┐
-     *     │ ▪ if textureManager.initialize() == true:              │
-     *     │      • Agregar StarTunnelBackground()                  │
-     *     │      • Agregar StarField(textureManager, cantidad)     │
-     *     │   else:                                                │
-     *     │      • Agregar StarTunnelBackground()                  │
-     *     │      • Agregar StarField(null, cantidad) (sin textura) │
-     *     │ ▪ Log de objetos creados                               │
-     *     └────────────────────────────────────────────────────────┘
+     * ╔════════════════════════════════════════════════════════════════╗
+     * ║       🎬 prepareScene: Creación de Objetos en Escena       ║
+     * ╚════════════════════════════════════════════════════════════════╝
+     * ┌────────────────────────────────────────────────────────┐
+     * │ ▪ if textureManager.initialize() == true:              │
+     * │      • Agregar StarTunnelBackground()                  │
+     * │      • Agregar StarField(textureManager, cantidad)     │
+     * │   else:                                                │
+     * │      • Agregar StarTunnelBackground()                  │|1
+     * │      • Agregar StarField(null, cantidad) (sin textura) │
+     * │ ▪ Log de objetos creados                               │
+     * └────────────────────────────────────────────────────────┘
      */
     private void prepareScene() {
+        Log.d("SceneRenderer", "prepareScene() Recibio el siguiente id de item: " + item_seleccinado);
+
         // Intentar inicializar texturas verdaderamente; retorna true si tuvo éxito
         if (textureManager != null && textureManager.initialize()) {
             Log.d("SceneRenderer", "🎨 Texturas listas, creando objetos con textura...");
-            sceneObjects.add(new StarTunnelBackground());
-            sceneObjects.add(new StarField(textureManager, 10));
+            Log.d("SceneRenderer", "🔑 Item seleccionado en primer if: " + item_seleccinado);
+
+            if(item_seleccinado.equals("Fondoxx")){
+                Log.d("SceneRenderer", "item seleccionado en primer if" + item_seleccinado);
+                sceneObjects.add(new StarTunnelBackground());
+            }else if(item_seleccinado.equals("Fondoxxx")){
+                Log.d("SceneRenderer", "item seleccionado en primer if" + item_seleccinado);
+                sceneObjects.add(new StarField(textureManager, 10));
+            }
+
         } else {
-            Log.w("SceneRenderer", "🚫 No se pudieron inicializar texturas. Usando modo sin textura...");
-            sceneObjects.add(new StarTunnelBackground());
-            sceneObjects.add(new StarField(null, 10));
+            Log.d("SceneRenderer", "item seleccionado en segundo if" + item_seleccinado);
+            if(item_seleccinado.equals("Fondoxx")){
+                Log.d("SceneRenderer", "dentro del segundo if sin texturas listas");
+                sceneObjects.add(new StarTunnelBackground());
+            }else if(item_seleccinado.equals("Fondoxxx")){
+                sceneObjects.add(new StarField(null, 10));
+            }
+
+            Log.d("SceneRenderer", "🚫 No se pudieron inicializar texturas. Usando modo sin textura...");
         }
         Log.d("SceneRenderer", "🎬 Objetos en escena: " + sceneObjects.size());
+    }
+
+    public void setItem_seleccinado(String item_seleccinado) {
+        this.item_seleccinado = item_seleccinado;
     }
 }

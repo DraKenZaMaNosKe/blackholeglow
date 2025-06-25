@@ -1,6 +1,14 @@
 package com.secret.blackholeglow;
 
+
+
+
+
+import static android.content.Intent.getIntent;
+
+import android.content.SharedPreferences;
 import android.service.wallpaper.WallpaperService;
+import android.util.Log;
 import android.view.SurfaceHolder;
 import android.content.Context;
 import android.opengl.GLSurfaceView;
@@ -117,8 +125,16 @@ public class LiveWallpaperService extends WallpaperService {
             // 🔧 Configurar GL ES 2.0
             glSurfaceView.setEGLContextClientVersion(2);
 
+
+            // 🔑 Leemos la elección guardada
+            SharedPreferences prefs = context
+                    .getSharedPreferences("blackholeglow_prefs", MODE_PRIVATE);
+            String nombreWallpaper = prefs.getString("selected_wallpaper", "Estrellas");
+
+            Log.d("LiveWallpaperService", "Wallpaper seleccionado: " + nombreWallpaper);
+
             // 🖌️ Instanciar el renderizador que dibuja las estrellas y efectos.
-            sceneRenderer = new SceneRenderer(context);
+            sceneRenderer = new SceneRenderer(context, nombreWallpaper);
             glSurfaceView.setRenderer(sceneRenderer);
 
             // 🔁 Modo continuo: redibuja permanentemente para animaciones fluidas.

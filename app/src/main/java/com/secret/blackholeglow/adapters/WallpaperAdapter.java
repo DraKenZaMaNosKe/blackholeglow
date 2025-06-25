@@ -25,31 +25,66 @@ import com.secret.blackholeglow.activities.WallpaperPreviewActivity;
 import java.util.List;
 
 /**
- * Adaptador para la lista de wallpapers, usando un shader neón animado como marco.
+ * ╔════════════════════════════════════════════════════════════════╗
+ * ║                     WallpaperAdapter.java                    ║
+ * ║       Patron ViewHolder + OpenGL ES Neon Border Frame         ║
+ * ╚════════════════════════════════════════════════════════════════╝
+ * • adaptador para RecyclerView que muestra items de fondos animados,
+ *   resaltados con un borde neón OpenGL (NeonBorderTextureView).
+ * • Implementa animaciones, clics y diálogos de info.
  */
 public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.WallpaperViewHolder> {
 
-    private final List<WallpaperItem> wallpapers;
-    private final Context context;
-    private final OnWallpaperClickListener listener;
+    // ╔═════════════════════════════════╗
+    // ║  🗂️ Datos y Contexto            ║
+    // ╚═════════════════════════════════╝
+    private final List<WallpaperItem> wallpapers;    // lista de modelos
+    private final Context context;                    // contexto para inflar y lanzar intents
+    private final OnWallpaperClickListener listener; // callback al aplicar fondo
 
+    /**
+     * Interface para notificar evento "aplicar wallpaper".
+     */
     public interface OnWallpaperClickListener {
         void onApplyClicked(WallpaperItem item);
     }
 
-    public WallpaperAdapter(Context context, List<WallpaperItem> wallpapers, OnWallpaperClickListener listener) {
+    /**
+     * ╔═════════════════════════════════╗
+     * ║  🔧 Constructor                   ║
+     * ╚═════════════════════════════════╝
+     * @param context     Contexto actual (Activity/Fragment).
+     * @param wallpapers  Lista de ítems a mostrar.
+     * @param listener    Callback para acción "aplicar".
+     */
+    public WallpaperAdapter(Context context, List<WallpaperItem> wallpapers,
+                            OnWallpaperClickListener listener) {
         this.context = context;
         this.wallpapers = wallpapers;
         this.listener = listener;
     }
 
+    /**
+     * ╔═════════════════════════════════╗
+     * ║  📐 onCreateViewHolder           ║
+     * ╚═════════════════════════════════╝
+     *  • Infla el layout XML de cada item y crea el ViewHolder.
+     */
     @NonNull
     @Override
     public WallpaperViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(context).inflate(R.layout.item_wallpaper_card_textureview, parent, false);
+        View view = LayoutInflater.from(context)
+                .inflate(R.layout.item_wallpaper_card_textureview, parent, false);
         return new WallpaperViewHolder(view);
     }
 
+    /**
+     * ╔═════════════════════════════════╗
+     * ║  🔄 onBindViewHolder             ║
+     * ╚═════════════════════════════════╝
+     *  • Vincula datos con vistas: título, descripción, imagen.
+     *  • Configura listeners: clic en tarjeta, borde neón y botón.
+     */
     @Override
     public void onBindViewHolder(@NonNull WallpaperViewHolder holder, int position) {
         WallpaperItem item = wallpapers.get(position);
@@ -58,65 +93,70 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         holder.textDescription.setText(item.getDescripcion());
         holder.imagePreview.setImageResource(item.getResourceIdPreview());
 
-        // Al tocar la tarjeta o el marco neón, muestra el modal
+        // listener común para mostrar diálogo de info
         View.OnClickListener showModal = v -> showInfoDialog(item);
 
         holder.itemView.setOnClickListener(showModal);
-
         NeonBorderTextureView neonView = holder.itemView.findViewById(R.id.neon_border_effect);
         if (neonView != null) neonView.setOnClickListener(showModal);
 
-        // Al tocar el botón, animación y muestra el modal (no aplica directo)
+        // animación "bounce" + vibración + diálogo info
         holder.buttonApply.setOnClickListener(v -> {
-            // Animación bounce
-            v.animate()
-                    .scaleX(0.92f)
-                    .scaleY(0.92f)
+            v.animate().scaleX(0.92f).scaleY(0.92f)
                     .setDuration(80)
-                    .withEndAction(() -> {
-                        v.animate()
-                                .scaleX(1f)
-                                .scaleY(1f)
-                                .setDuration(100)
-                                .start();
-                    })
+                    .withEndAction(() -> v.animate().scaleX(1f).scaleY(1f)
+                            .setDuration(100).start())
                     .start();
-
-            // Vibración suave
             Vibrator vib = (Vibrator) v.getContext().getSystemService(Context.VIBRATOR_SERVICE);
             if (vib != null) {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                    vib.vibrate(android.os.VibrationEffect.createOneShot(40, android.os.VibrationEffect.DEFAULT_AMPLITUDE));
+                    vib.vibrate(android.os.VibrationEffect.createOneShot(40,
+                            android.os.VibrationEffect.DEFAULT_AMPLITUDE));
                 } else {
                     vib.vibrate(40);
                 }
             }
-
             showInfoDialog(item);
         });
     }
 
+    /**
+     * Muestra un dialogo con información del wallpaper y lanza Preview.
+     */
     private void showInfoDialog(WallpaperItem item) {
         if (context instanceof FragmentActivity) {
             WallpaperInfoDialogFragment dialog = WallpaperInfoDialogFragment.newInstance(item);
             dialog.setOnApplyClickListener(() -> {
                 Intent intent = new Intent(context, WallpaperPreviewActivity.class);
                 intent.putExtra("WALLPAPER_PREVIEW_ID", item.getResourceIdPreview());
+                intent.putExtra("WALLPAPER_ID", item.getNombre());
                 context.startActivity(intent);
-
                 if (listener != null) listener.onApplyClicked(item);
             });
             dialog.show(((FragmentActivity) context).getSupportFragmentManager(), "wallpaper_info");
         } else {
-            Log.w("WallpaperAdapter", "Context NO es FragmentActivity, no se puede mostrar el modal.");
+            Log.w("WallpaperAdapter", "Context NO es FragmentActivity");
         }
     }
 
+    /**
+     * ╔═════════════════════════════════╗
+     * ║  📏 getItemCount                ║
+     * ╚═════════════════════════════════╝
+     *  • Retorna el número de ítems en la lista.
+     */
     @Override
     public int getItemCount() {
         return wallpapers.size();
     }
 
+    /**
+     * ╔═════════════════════════════════╗
+     * ║  📦 WallpaperViewHolder          ║
+     * ╚═════════════════════════════════╝
+     *  • Patrón ViewHolder: guarda referencias a vistas.
+     *  • Optimiza rendimiento evitando findViewById repetido.
+     */
     public static class WallpaperViewHolder extends RecyclerView.ViewHolder {
         ImageView imagePreview;
         TextView textTitle;
@@ -125,10 +165,10 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
 
         public WallpaperViewHolder(@NonNull View itemView) {
             super(itemView);
-            imagePreview = itemView.findViewById(R.id.image_preview);
-            textTitle = itemView.findViewById(R.id.text_title);
-            textDescription = itemView.findViewById(R.id.text_description);
-            buttonApply = itemView.findViewById(R.id.button_apply);
+            imagePreview   = itemView.findViewById(R.id.image_preview);
+            textTitle      = itemView.findViewById(R.id.text_title);
+            textDescription= itemView.findViewById(R.id.text_description);
+            buttonApply    = itemView.findViewById(R.id.button_apply);
         }
     }
 }

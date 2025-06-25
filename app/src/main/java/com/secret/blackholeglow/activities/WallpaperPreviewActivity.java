@@ -2,6 +2,7 @@ package com.secret.blackholeglow.activities;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -25,6 +26,8 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
 
         // Leer el id del recurso del wallpaper seleccionado
         int previewId = getIntent().getIntExtra("WALLPAPER_PREVIEW_ID", R.drawable.ic_launcher_background);
+        String nombre_wallpaper = getIntent().getStringExtra("WALLPAPER_ID");
+        Log.d("WallpaperPreviewActivity", "Wallpaper seleccionado: " + nombre_wallpaper);
 
         // Crear un LinearLayout para colocar tanto el GLSurfaceView como el botón
         LinearLayout layout = new LinearLayout(this);
@@ -33,7 +36,7 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         // Crear la vista GLSurfaceView para OpenGL
         glSurfaceView = new GLSurfaceView(this);
         glSurfaceView.setEGLContextClientVersion(2); // OpenGL ES 2.0
-        glSurfaceView.setRenderer(new SceneRenderer(this));
+        glSurfaceView.setRenderer(new SceneRenderer(this, nombre_wallpaper));
         // Si quieres mostrar un preview de imagen, descomenta esto:
         // imageViewPreview = new ImageView(this);
         // imageViewPreview.setImageResource(previewId);
@@ -55,10 +58,16 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
 
         // Configurar el evento de clic para el botón
         setWallpaperButton.setOnClickListener(v -> {
+            // 1️⃣ Almacenamos el nombre del wallpaper en preferencias
+            getSharedPreferences("blackholeglow_prefs", MODE_PRIVATE)
+                    .edit()
+                    .putString("selected_wallpaper", nombre_wallpaper)
+                    .apply();
             // Crear la Intent para abrir el selector de Live Wallpaper
             Intent intent = new Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER);
             intent.putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
                     new android.content.ComponentName(this, LiveWallpaperService.class));
+
             startActivity(intent);
         });
     }
