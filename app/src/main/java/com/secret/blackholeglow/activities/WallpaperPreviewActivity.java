@@ -17,6 +17,7 @@ import com.secret.blackholeglow.R;
 public class WallpaperPreviewActivity extends AppCompatActivity {
 
     private GLSurfaceView glSurfaceView;
+    private String nombre_wallpaper = "";
     // (opcional) Si quieres mostrar preview de imagen
     // private ImageView imageViewPreview;
 
@@ -26,7 +27,7 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
 
         // Leer el id del recurso del wallpaper seleccionado
         int previewId = getIntent().getIntExtra("WALLPAPER_PREVIEW_ID", R.drawable.ic_launcher_background);
-        String nombre_wallpaper = getIntent().getStringExtra("WALLPAPER_ID");
+        nombre_wallpaper = getIntent().getStringExtra("WALLPAPER_ID");
         Log.d("WallpaperPreviewActivity", "Wallpaper seleccionado: " + nombre_wallpaper);
 
         // Crear un LinearLayout para colocar tanto el GLSurfaceView como el botón

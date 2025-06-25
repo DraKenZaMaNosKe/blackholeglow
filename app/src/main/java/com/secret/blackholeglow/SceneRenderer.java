@@ -102,6 +102,7 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
     public SceneRenderer(Context context) {
         this.context = context;
     }
+
     public SceneRenderer(Context context, String item_seleccinado) {
         this.item_seleccinado = item_seleccinado;
         this.context = context;
@@ -149,7 +150,6 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
     public void addObject(SceneObject object) {
         sceneObjects.add(object);
     }
-
 
 
     /**
@@ -308,22 +308,22 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
             Log.d("SceneRenderer", "🎨 Texturas listas, creando objetos con textura...");
             Log.d("SceneRenderer", "🔑 Item seleccionado en primer if: " + item_seleccinado);
 
-            if(item_seleccinado.equals("Fondoxx")){
+            if (item_seleccinado.equals("Fondoxx")) {
                 Log.d("SceneRenderer", "item seleccionado en primer if" + item_seleccinado);
                 sceneObjects.add(new StarTunnelBackground());
-            }else if(item_seleccinado.equals("Fondoxxx")){
+            } else if (item_seleccinado.equals("Fondoxxx")) {
                 Log.d("SceneRenderer", "item seleccionado en primer if" + item_seleccinado);
                 sceneObjects.add(new StarField(textureManager, 10));
             }
 
         } else {
             Log.d("SceneRenderer", "item seleccionado en segundo if" + item_seleccinado);
-            if(item_seleccinado.equals("Fondoxx")){
-                Log.d("SceneRenderer", "dentro del segundo if sin texturas listas");
-                sceneObjects.add(new StarTunnelBackground());
-            }else if(item_seleccinado.equals("Fondoxxx")){
-                sceneObjects.add(new StarField(null, 10));
-            }
+
+            Log.d("SceneRenderer", "dentro del segundo if sin texturas listas");
+            sceneObjects.add(new StarTunnelBackground());
+
+            sceneObjects.add(new StarField(null, 10));
+
 
             Log.d("SceneRenderer", "🚫 No se pudieron inicializar texturas. Usando modo sin textura...");
         }
@@ -332,5 +332,11 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
 
     public void setItem_seleccinado(String item_seleccinado) {
         this.item_seleccinado = item_seleccinado;
+    }
+    public void setSelectedItem(String item) {
+        this.item_seleccinado = item;
+        // Vacía y reconstruye la escena:
+        sceneObjects.clear();
+        prepareScene();
     }
 }

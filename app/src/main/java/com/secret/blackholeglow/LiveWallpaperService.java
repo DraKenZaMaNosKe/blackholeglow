@@ -84,6 +84,8 @@ public class LiveWallpaperService extends WallpaperService {
     */
     private class GLWallpaperEngine extends Engine {
 
+        private final SharedPreferences prefs;
+
         // 🌐 Contexto de la aplicación, necesario para crear vistas y cargar recursos.
         private final Context context;
 
@@ -116,6 +118,8 @@ public class LiveWallpaperService extends WallpaperService {
         GLWallpaperEngine(Context context) {
             this.context = context;
 
+            prefs = context.getSharedPreferences("blackholeglow_prefs", MODE_PRIVATE);
+
             // ❌ Deshabilita eventos táctiles (Touch), cambiar si se desea interacción.
             setTouchEventsEnabled(false);
 
@@ -130,6 +134,7 @@ public class LiveWallpaperService extends WallpaperService {
             SharedPreferences prefs = context
                     .getSharedPreferences("blackholeglow_prefs", MODE_PRIVATE);
             String nombreWallpaper = prefs.getString("selected_wallpaper", "Estrellas");
+
 
             Log.d("LiveWallpaperService", "Wallpaper seleccionado: " + nombreWallpaper);
 
@@ -160,6 +165,10 @@ public class LiveWallpaperService extends WallpaperService {
         public void onVisibilityChanged(boolean visible) {
             super.onVisibilityChanged(visible);
             if (visible) {
+                // ① Leer de nuevo la preferencia
+                String nuevo = prefs.getString("selected_wallpaper", "Estrellas");
+                // ② Si cambió, avisar al renderer
+                sceneRenderer.setSelectedItem(nuevo);
                 // ▶️ Reanuda la lógica de actualización de la escena.
                 sceneRenderer.resume();
                 // ▶️ Reactiva el hilo de renderizado de GLSurfaceView.

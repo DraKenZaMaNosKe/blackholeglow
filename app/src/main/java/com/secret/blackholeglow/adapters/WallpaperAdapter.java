@@ -1,5 +1,7 @@
 package com.secret.blackholeglow.adapters;
 
+import static android.content.Context.MODE_PRIVATE;
+
 import android.content.Context;
 import android.os.Vibrator;
 import android.util.Log;
@@ -128,8 +130,11 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
             WallpaperInfoDialogFragment dialog = WallpaperInfoDialogFragment.newInstance(item);
             dialog.setOnApplyClickListener(() -> {
                 Intent intent = new Intent(context, WallpaperPreviewActivity.class);
+
                 intent.putExtra("WALLPAPER_PREVIEW_ID", item.getResourceIdPreview());
                 intent.putExtra("WALLPAPER_ID", item.getNombre());
+
+
                 context.startActivity(intent);
                 if (listener != null) listener.onApplyClicked(item);
             });
