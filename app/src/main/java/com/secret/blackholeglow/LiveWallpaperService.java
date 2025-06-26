@@ -126,6 +126,8 @@ public class LiveWallpaperService extends WallpaperService {
             // ▪️ Crear la vista OpenGL específica para wallpapers.
             glSurfaceView = new GLWallpaperSurfaceView(context);
 
+            glSurfaceView.setEGLConfigChooser(8,8,8,8,16,0);
+
             // 🔧 Configurar GL ES 2.0
             glSurfaceView.setEGLContextClientVersion(2);
 

@@ -354,7 +354,7 @@ public class Star {
         // Verificar validez de la textura
         if (textureId <= 0 || !GLES20.glIsTexture(textureId)) {
             // Caer al modo punto si no hay textura válida
-            Log.w("Star", "⚠️ Textura no válida. textureId=" + textureId + ", glIsTexture=" + GLES20.glIsTexture(textureId));
+            Log.d("Star", "⚠️ Textura no válida. textureId=" + textureId + ", glIsTexture=" + GLES20.glIsTexture(textureId));
             drawAsPoint();
             return;
         }

@@ -35,7 +35,7 @@ public class TextureManager implements TextureLoader {
             initialized = true;
             return true;
         } catch (RuntimeException e) {
-            Log.e("TextureManager", "❌ Error al inicializar texturas", e);
+            Log.d("TextureManager", "❌ Error al inicializar texturas", e);
             return false;
         }
     }
@@ -58,6 +58,14 @@ public class TextureManager implements TextureLoader {
 
     @Override
     public int getStarTexture() {
+        return getTexture(R.drawable.star_glow);
+    }
+
+    /**
+     * Devuelve el ID de textura OpenGL para nuestro cubo (cubotexture1.png).
+     */
+    public int getCubeTexture() {
+        // Reusa tu método getTexture existente para cargarla o recuperarla.
         return getTexture(R.drawable.star_glow);
     }
 }

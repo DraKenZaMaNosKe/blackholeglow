@@ -121,7 +121,7 @@ public class AnimatedWallpaperListFragment extends Fragment {
         // • Ejemplo 1: Aurora Boreal
         list.add(new WallpaperItem(
                 R.drawable.aurora_boreal,
-                "FondoNulo",
+                "FondoCubo",
                 "Luces del norte en movimiento cósmico."
         ));
 

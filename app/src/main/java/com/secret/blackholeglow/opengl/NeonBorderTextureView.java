@@ -72,7 +72,7 @@ public class NeonBorderTextureView extends TextureView
                 "🌀 SurfaceTexture disponible: " + width + "x" + height);
         // ❌ Validar tamaño
         if (width == 0 || height == 0) {
-            Log.e("NeonBorderTextureView", "❌ TAMAÑO CERO, no renderizar.");
+            Log.d("NeonBorderTextureView", "❌ TAMAÑO CERO, no renderizar.");
             return;
         }
         // 🌐 Crear superficie EGL a partir del SurfaceTexture

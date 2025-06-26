@@ -31,7 +31,7 @@ public class NeonBorderRendererThread extends Thread {
         try {
             join();
         } catch (InterruptedException e) {
-            Log.e("NeonBorderRendererThread", "Thread interrupted during join()", e);
+            Log.d("NeonBorderRendererThread", "Thread interrupted during join()", e);
         }
     }
 

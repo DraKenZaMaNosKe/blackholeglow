@@ -42,7 +42,7 @@ public class ShaderUtils {
             return 0;
         }
 
-        Log.d(TAG, "✅ Shader program created successfully.");
+        Log.d("openGL/ShaderUtils", "✅ Shader program created successfully.");
         return program;
     }
 

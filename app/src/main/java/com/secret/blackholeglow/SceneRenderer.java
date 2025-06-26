@@ -175,12 +175,16 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
      */
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
+
         // Habilitar fusión alfa para transparencia en texturas
-        GLES20.glEnable(GLES20.GL_BLEND);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
 
-        // Deshabilitar prueba de profundidad: dibujamos en 2D/planar
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+
+
+
+
+
 
         // Establecer color de borrado: negro opaco
         GLES20.glClearColor(0f, 0f, 0f, 1f);
@@ -314,6 +318,9 @@ public class SceneRenderer implements android.opengl.GLSurfaceView.Renderer {
             } else if (item_seleccinado.equals("Fondoxxx")) {
                 Log.d("SceneRenderer", "item seleccionado en primer if" + item_seleccinado);
                 sceneObjects.add(new StarField(textureManager, 10));
+            }else if (item_seleccinado.equals("FondoCubo")) {
+                // "MiCubo" puede ser el ID que guardes en prefs
+                sceneObjects.add(new RotatingTexturedCubeBackground(textureManager));
             }
 
         } else {
