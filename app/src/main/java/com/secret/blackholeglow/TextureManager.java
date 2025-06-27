@@ -31,6 +31,8 @@ public class TextureManager implements TextureLoader {
         try {
             textureCache.put(R.drawable.star_glow,
                     ShaderUtils.loadTexture(context, R.drawable.star_glow));
+            textureCache.put(R.drawable.cubotextura1,
+                    ShaderUtils.loadTexture(context, R.drawable.cubotextura1));
             // Aquí podrías cargar más texturas si deseas
             initialized = true;
             return true;
@@ -66,6 +68,6 @@ public class TextureManager implements TextureLoader {
      */
     public int getCubeTexture() {
         // Reusa tu método getTexture existente para cargarla o recuperarla.
-        return getTexture(R.drawable.star_glow);
+        return getTexture(R.drawable.cubotextura1);
     }
 }
