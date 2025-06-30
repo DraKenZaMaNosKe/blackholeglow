@@ -128,14 +128,14 @@ public class AnimatedWallpaperListFragment extends Fragment {
         // • Ejemplo 2: Estrellas
         list.add(new WallpaperItem(
                 R.drawable.star_glow,
-                "Fondoxx",
+                "MeshMano",
                 "Cielo lleno de partículas brillantes."
         ));
 
         // • Ejemplo 3: Estrellas Fugaces
         list.add(new WallpaperItem(
                 R.drawable.estrellas_fugaces,
-                "Fondoxxx",
+                "BevelCubeColored",
                 "Estrellas fugaces cruzando el cielo."
         ));
 
