@@ -83,8 +83,6 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
                 sceneObjects.add(new RotatingHandMeshBackground(textureManager));
             }else if ("CuboDeformable".equals(item_seleccinado)) {
                 sceneObjects.add(new DeformableCubeBackground(context, textureManager));
-            }else if ("BevelCubeColored".equals(item_seleccinado)) {
-                sceneObjects.add(new ColoredBevelCubeBackground(context, textureManager));
             }
             // otros items...
         } else {
