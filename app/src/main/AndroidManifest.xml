@@ -91,15 +91,5 @@
             android:name=".activities.MainActivity"
             android:exported="true" />
 
-        <!--
-          ╔══════════════════════════════════╗
-          ║   ✨ ACTIVITY: LABORATORIO AURAS ✨ ║
-          ╚══════════════════════════════════╝
-          Ruta: app/src/main/java/com/secret/blackholeglow/activities/AuraTestActivity.java
-        -->
-        <activity
-            android:name=".activities.AuraTestActivity"
-            android:exported="false" />
-
     </application>
 </manifest>
