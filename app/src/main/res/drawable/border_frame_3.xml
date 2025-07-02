@@ -1,8 +1,0 @@
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="rectangle">
-    <solid android:color="@android:color/transparent" />
-    <stroke
-        android:width="3dp"
-        android:color="#AA2196F3" /> <!-- Azul más intenso -->
-    <corners android:radius="16dp"/>
-</shape>

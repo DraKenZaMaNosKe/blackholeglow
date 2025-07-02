@@ -1,3 +1,12 @@
+// ╔════════════════════════════════════════════════════════════════════╗
+// ║ 🌟 NeonBorderTextureView.java – Borde Neón (OpenGL ES) 🌟          ║
+// ║                                                                    ║
+// ║  ✨ Este componente extiende TextureView y forja un aura de neón   ║
+// ║     tan poderosa como las flechas de Sagitario, iluminando cada   ║
+// ║     elemento en tu lista con la energía cósmica de los Caballeros   ║
+// ║     del Zodiaco.                                                  ║
+// ╚════════════════════════════════════════════════════════════════════╝
+
 package com.secret.blackholeglow.opengl;
 
 import android.content.Context;
@@ -7,54 +16,55 @@ import android.util.Log;
 import android.view.Surface;
 import android.view.TextureView;
 
-/*
-╔════════════════════════════════════════════════════════════════════╗
-║ 🌟 NeonBorderTextureView.java – Borde Neón (OpenGL ES) 🌟          ║
-║                                                                    ║
-║  ✨ Este componente extiende TextureView para renderizar un marco   ║
-║     animado de neón alrededor de cada tarjeta en la lista.         ║
-║  🌌 Inspirado en la energía cósmica de Saint Seiya y el poder de    ║
-║     Sagitario disparando flechas luminosas.                        ║
-╚════════════════════════════════════════════════════════════════════╝
-*/
+/**
+ * ╔══════════════════════════════════════════════════════════════════╗
+ * ║ ⚔️ NeonBorderTextureView: Guardián del Resplandor                 ║
+ * ║     • Actúa como un escudo transparente, para que solo el neón    ║
+ * ║       sea visible, dejando el fondo de la UI intacto.            ║
+ * ║     • Escucha los eventos del SurfaceTexture para encender o      ║
+ * ║       apagar la forja del borde neón en su hilo dedicado.         ║
+ * ╚══════════════════════════════════════════════════════════════════╝
+ */
 public class NeonBorderTextureView extends TextureView
         implements TextureView.SurfaceTextureListener {
 
     // ╔══════════════════════════════════════════════╗
-    // ║ 🔧 Variable Miembro: rendererThread         ║
-    // ║   • NeonBorderRendererThread: hilo dedicado ║
-    // ║     a ejecutar el shader de frontera neón. ║
+    // ║ 🔧 rendererThread – Hilo de Combate            ║
+    // ║   • Tipo: NeonBorderRendererThread             ║
+    // ║   • Forja y ejecuta el shader neón en segundo    ║
+    // ║     plano (EGL), protegiendo al main thread.    ║
     // ╚══════════════════════════════════════════════╝
     private NeonBorderRendererThread rendererThread;
 
     // ╔══════════════════════════════════════════════╗
-    // ║ 🛡 Constructores                             ║
+    // ║ 🛡 Constructores                               ║
     // ╚══════════════════════════════════════════════╝
     /**
-     * Constructor usado al instanciar desde código.
+     * Invocado cuando instancias programáticamente.
      */
     public NeonBorderTextureView(Context context) {
         super(context);
-        init();  // inicialización común
+        init();  // Configuración épica
     }
 
     /**
-     * Constructor usado al inflar desde XML.
+     * Invocado cuando inflas desde XML.
      */
     public NeonBorderTextureView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        init();  // inicialización común
+        init();  // Configuración épica
     }
 
     // ╔══════════════════════════════════════════════╗
-    // ║ ⚙️ init(): Configuración Inicial           ║
+    // ║ ⚙️ init(): Ritual de Preparación              ║
     // ╚══════════════════════════════════════════════╝
     /**
-     * • setOpaque(false): fondo transparente para que
-     *   solo se vea el shader de neón.
-     * • setSurfaceTextureListener: escucha eventos
-     *   de disponibilidad del SurfaceTexture.
-     * • setWillNotDraw(false): permite que se invoque draw().
+     * 1️⃣ setOpaque(false): el campo de batalla se vuelve transparente,
+     *    solo el neón resplandece sobre la UI.
+     * 2️⃣ setSurfaceTextureListener(this): "Oye, SurfaceTexture,
+     *    cuando estés listo avísame y encenderé el fuego neón".
+     * 3️⃣ setWillNotDraw(false): habilita llamadas a draw(),
+     *    aunque aquí no las usemos, es requisito de TextureView.
      */
     private void init() {
         setOpaque(false);
@@ -63,54 +73,55 @@ public class NeonBorderTextureView extends TextureView
     }
 
     // ╔══════════════════════════════════════════════╗
-    // ║ 🌠 onSurfaceTextureAvailable(): Inicio Render ║
+    // ║ 🌠 onSurfaceTextureAvailable(): Despertar del Neón ║
     // ╚══════════════════════════════════════════════╝
     @Override
     public void onSurfaceTextureAvailable(SurfaceTexture surface,
                                           int width, int height) {
         Log.d("NeonBorderTextureView",
-                "🌀 SurfaceTexture disponible: " + width + "x" + height);
-        // ❌ Validar tamaño
+                "🌀 SurfaceTexture listo: " + width + "x" + height);
+        // 🛑 Validación: no renderizar si cualquier dimensión es cero
         if (width == 0 || height == 0) {
-            Log.d("NeonBorderTextureView", "❌ TAMAÑO CERO, no renderizar.");
+            Log.d("NeonBorderTextureView", "❌ Dimensiones inválidas, cancelando render.");
             return;
         }
-        // 🌐 Crear superficie EGL a partir del SurfaceTexture
+        // 🌐 Crea Surface EGL desde SurfaceTexture
         Surface eglSurface = new Surface(surface);
-        // 🚀 Iniciar hilo de render con dimensiones y contexto
+        // 🚀 Comienza el hilo de render para el borde neón
         rendererThread = new NeonBorderRendererThread(
                 eglSurface, width, height, getContext());
         rendererThread.start();
     }
 
     // ╔══════════════════════════════════════════════╗
-    // ║ 🔄 onSurfaceTextureSizeChanged(): Opcional   ║
+    // ║ 🔄 onSurfaceTextureSizeChanged(): Ajuste Cósmico ║
     // ╚══════════════════════════════════════════════╝
     @Override
     public void onSurfaceTextureSizeChanged(SurfaceTexture surface,
                                             int width, int height) {
-        // No implementado: tamaño de viewport fijo en este diseño
+        // 🛠️ No reconfiguramos aquí: el viewport se fija en el hilo EGL.
     }
 
     // ╔══════════════════════════════════════════════╗
-    // ║ 🧹 onSurfaceTextureDestroyed(): Limpieza      ║
+    // ║ 🧹 onSurfaceTextureDestroyed(): Apagado del Fénix ║
     // ╚══════════════════════════════════════════════╝
     @Override
     public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-        Log.d("NeonBorderTextureView", "🧹 SurfaceTexture destruido, deteniendo hilo...");
+        Log.d("NeonBorderTextureView",
+                "🧹 SurfaceTexture destruido, deteniendo forja neón...");
         if (rendererThread != null) {
-            // Solicitar fin y esperar terminación segura
+            // 🛡 Solicita cese del hilo y espera su fin limpio
             rendererThread.requestExitAndWait();
             rendererThread = null;
         }
-        return true;  // libera el SurfaceTexture
+        return true; // Liberar SurfaceTexture
     }
 
     // ╔══════════════════════════════════════════════╗
-    // ║ 🔄 onSurfaceTextureUpdated(): No necesario   ║
+    // ║ 🔄 onSurfaceTextureUpdated(): Eco de la Luz    ║
     // ╚══════════════════════════════════════════════╝
     @Override
     public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-        // Invocado cuando la textura ha sido actualizada (opcional)
+        // ✨ Invocado tras update(): opcional, no usado aquí.
     }
 }
