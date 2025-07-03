@@ -1,53 +1,56 @@
+/*
+╔════════════════════════════════════════════════╗
+║   🌌 Shader FullScreenNeonFlow v1.0 🌌        ║
+║  • Flujo neón dinámico a pantalla completa    ║
+║  • Ondas, remolinos y chispeo de ruido        ║
+╚════════════════════════════════════════════════╝
+*/
 precision mediump float;
 
-uniform float u_Time;       // segundos desde inicio
-uniform vec2  u_Resolution; // tamaño en px
+// Uniforms
+uniform float u_Time;        // Tiempo en segundos
+uniform vec2  u_Resolution;  // Resolución del viewport (px)
 
-// Grosor del borde aumentado al 4%
-const float THICKNESS = 0.02;
-// Velocidad más rápida: 1 vuelta por segundo
-const float SPEED     = 0.25;
-// Anchura del haz ampliada al 8%
-const float HEAD_WID  = 0.08;
+// Colores base neón
+const vec3 neonColor1 = vec3(0.8, 0.2, 1.0); // Magenta vibrante
+const vec3 neonColor2 = vec3(0.2, 0.8, 1.0); // Cian brillante
 
-void main(){
-    vec2 uv = gl_FragCoord.xy / u_Resolution;
-    // Distancia al área central
-    float b = min(min(uv.x, 1.0-uv.x), min(uv.y, 1.0-uv.y));
-    // Sólo dibujamos en la banda del borde
-    if (b > THICKNESS) discard;
+// ── Ruido sencillo para chispeo ─────────────────
+float rand(vec2 co) {
+    return fract(sin(dot(co.xy, vec2(12.9898,78.233))) * 43758.5453);
+}
 
-    // Calcula la posición a lo largo del perímetro [0,1)
-    float inner = 1.0 - THICKNESS;
-    float p;
-    if (uv.x < THICKNESS) {
-        p = uv.y;
-    } else if (uv.y > inner) {
-        p = THICKNESS + uv.x;
-    } else if (uv.x > inner) {
-        p = THICKNESS + inner + (inner - uv.y);
-    } else {
-        p = THICKNESS + inner*2.0 + (inner - uv.x);
-    }
-    float perim = 4.0 * inner;
-    float pos   = p / perim;
+void main() {
+    // 1) Coordenadas normalizadas [0,1]
+    vec2 uv = gl_FragCoord.xy / u_Resolution.xy;
 
-    // Posición del haz, avanza con el tiempo y SPEED
-    float headPos = fract(u_Time * SPEED);
-    float d = abs(headPos - pos);
-    d = min(d, 1.0 - d);
+    // 2) Remapeo a [-1,1], conservando proporción
+    vec2 p = uv * 2.0 - 1.0;
+    p.x *= u_Resolution.x / u_Resolution.y;
 
-    // Perfil de brillo: 1 en el centro, 0 fuera de HEAD_WID
-    float glow = smoothstep(0.0, HEAD_WID, HEAD_WID - d);
+    // 3) Distancia radial y ángulo polar
+    float len   = length(p);
+    float angle = atan(p.y, p.x);
 
-    // Color base semitransparente (azul suave)
-    vec3 baseColor = vec3(0.0, 0.5, 1.0);
-    // Color del haz blanco brillante
-    vec3 headColor = vec3(1.0, 1.0, 1.0);
+    // 4) Remolino base (varía con el ángulo y el tiempo)
+    float swirl = sin(angle * 4.0 - u_Time * 0.8) * 0.5 + 0.5;
 
-    // Mezcla según glow, y alpha igual a 0.6 + 0.4*glow
-    vec3 col = mix(baseColor, headColor, glow);
-    float alpha = 0.6 + 0.4 * glow;
+    // 5) Ondas concéntricas (se propagan hacia afuera)
+    float waves = sin(len * 10.0 - u_Time * 3.0) * 0.5 + 0.5;
 
-    gl_FragColor = vec4(col, alpha);
+    // 6) Gradiente suave para fundir bordes
+    float borderFade = smoothstep(1.0, 0.7, len);
+
+    // 7) Chispeo aleatorio por píxel
+    float noise = rand(gl_FragCoord.xy * 0.3 + u_Time * 0.5);
+
+    // 8) Mezcla de colores neón según remolino
+    vec3 colorMix = mix(neonColor1, neonColor2, swirl);
+
+    // 9) Composición final de color
+    vec3 col = colorMix * waves * borderFade;
+    col += noise * 0.15; // destellos de ruido
+
+    // 10) Salida final (alpha = 1.0 para full-screen)
+    gl_FragColor = vec4(col, 1.0);
 }
