@@ -21,6 +21,7 @@ import android.content.Intent;
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.fragments.WallpaperInfoDialogFragment;
 import com.secret.blackholeglow.models.WallpaperItem;
+import com.secret.blackholeglow.opengl.AnimatedBorderTextureView;
 import com.secret.blackholeglow.opengl.NeonBorderTextureView;
 import com.secret.blackholeglow.activities.WallpaperPreviewActivity;
 
@@ -95,12 +96,35 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         holder.textDescription.setText(item.getDescripcion());
         holder.imagePreview.setImageResource(item.getResourceIdPreview());
 
+
         // listener común para mostrar diálogo de info
         View.OnClickListener showModal = v -> showInfoDialog(item);
 
         holder.itemView.setOnClickListener(showModal);
-        NeonBorderTextureView neonView = holder.itemView.findViewById(R.id.neon_border_effect);
-        if (neonView != null) neonView.setOnClickListener(showModal);
+
+
+        AnimatedBorderTextureView vista = holder.itemView.findViewById(R.id.neon_border_effect);
+
+        // Ejemplo: alterna entre dos efectos
+        if (position  == 0) {
+            vista.setShaderAssets(
+                    "shaders/neon_border_vertex.glsl",
+                    "shaders/neon_border_fragment.glsl"
+            );
+        } else if (position == 1){
+            vista.setShaderAssets(
+                    "shaders/test_border_vertex.glsl",
+                    "shaders/test_border_fragment.glsl"
+            );
+        }else if(position == 2){
+            vista.setShaderAssets(
+                    "shaders/sparkle_border_vertex.glsl",
+                    "shaders/sparkle_border_fragment.glsl"
+            );
+        }
+
+
+        if (vista != null) vista.setOnClickListener(showModal);
 
         // animación "bounce" + vibración + diálogo info
         holder.buttonApply.setOnClickListener(v -> {

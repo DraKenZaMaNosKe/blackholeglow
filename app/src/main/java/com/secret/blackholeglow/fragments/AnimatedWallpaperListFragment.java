@@ -139,6 +139,13 @@ public class AnimatedWallpaperListFragment extends Fragment {
                 "Estrellas fugaces cruzando el cielo."
         ));
 
+        // • Ejemplo 3: Estrellas Fugaces
+        list.add(new WallpaperItem(
+                R.drawable.estrellas_fugaces,
+                "CuboDeformable",
+                "Estrellas fugaces cruzando el cielo."
+        ));
+
         return list;
     }
 }

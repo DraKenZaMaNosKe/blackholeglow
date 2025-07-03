@@ -6,7 +6,7 @@
     android:layout_margin="10dp"
     android:background="@android:color/transparent">
 
-    <com.secret.blackholeglow.opengl.NeonBorderTextureView
+    <com.secret.blackholeglow.opengl.AnimatedBorderTextureView
         android:id="@+id/neon_border_effect"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
