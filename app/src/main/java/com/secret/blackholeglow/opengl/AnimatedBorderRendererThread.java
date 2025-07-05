@@ -112,6 +112,7 @@ public class AnimatedBorderRendererThread extends Thread {
         int uTime     = GLES20.glGetUniformLocation(program, "u_Time");
         int uRes      = GLES20.glGetUniformLocation(program, "u_Resolution");
 
+
         // 7️⃣ Crear buffer de un quad fullscreen
         float[] quad = {-1f, -1f, 1f, -1f, -1f, 1f, 1f, 1f};
         FloatBuffer vb = ByteBuffer

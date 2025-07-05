@@ -121,6 +121,11 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
                     "shaders/sparkle_border_vertex.glsl",
                     "shaders/sparkle_border_fragment.glsl"
             );
+        }else if(position == 3) {
+            vista.setShaderAssets(
+                    "shaders/test_efecto_vertex.glsl",
+                    "shaders/test_efecto_fragment.glsl"
+            );
         }
 
 
