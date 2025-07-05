@@ -5,7 +5,7 @@
 ║  • Ondas, remolinos y chispeo de ruido        ║
 ╚════════════════════════════════════════════════╝
 */
-precision mediump float;
+precision highp  float;
 
 // Uniforms
 uniform float u_Time;        // Tiempo en segundos

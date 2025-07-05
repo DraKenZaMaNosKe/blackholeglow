@@ -1,4 +1,4 @@
-precision mediump float;
+precision highp  float;
 
 uniform float u_Time;
 uniform vec2 u_Resolution;

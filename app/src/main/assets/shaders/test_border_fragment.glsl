@@ -1,6 +1,6 @@
 // blobs_adaptado_fragment.glsl
 #version 100
-precision mediump float;
+precision highp  float;
 
 // — Uniforms que debes setear desde tu Renderer en Java —
 uniform float u_Time;        // tiempo en segundos

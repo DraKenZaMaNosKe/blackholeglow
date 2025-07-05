@@ -77,6 +77,7 @@ public class AnimatedBorderRendererThread extends Thread {
         EGLDisplay display = egl.eglGetDisplay(EGL10.EGL_DEFAULT_DISPLAY);
         egl.eglInitialize(display, null);
 
+
         // 2️⃣ Elegir configuración RGBA8888
         int[] configSpec = {
                 EGL10.EGL_RENDERABLE_TYPE, 4,
@@ -151,6 +152,8 @@ public class AnimatedBorderRendererThread extends Thread {
         // 8️⃣ Limpieza EGL
         egl.eglMakeCurrent(display, EGL10.EGL_NO_SURFACE,
                 EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_CONTEXT);
+        // 4.1️⃣ Asegurarnos de que el viewport cubre todo el TextureView
+        GLES20.glViewport(0, 0, width, height);
         egl.eglDestroySurface(display, eglSurface);
         egl.eglDestroyContext(display, eglContext);
         egl.eglTerminate(display);
