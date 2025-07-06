@@ -145,6 +145,11 @@ public class AnimatedWallpaperListFragment extends Fragment {
                 "CuboDeformable",
                 "Estrellas fugaces cruzando el cielo."
         ));
+        list.add(new WallpaperItem(
+                R.drawable.estrellas_fugaces,    // o cualquier ícono
+                "RayoMesh",
+                "Rayo animado desde Blender"
+        ));
 
         return list;
     }

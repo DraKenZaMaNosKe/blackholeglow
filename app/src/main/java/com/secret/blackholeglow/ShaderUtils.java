@@ -1,5 +1,9 @@
 package com.secret.blackholeglow;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -100,5 +104,35 @@ public class ShaderUtils {
         GLES20.glShaderSource(shader, shaderCode);
         GLES20.glCompileShader(shader);
         return shader;
+    }
+
+    /**
+     * Lee un archivo de texto de assets y lo devuelve como String.
+     */
+    public static String loadAssetAsString(Context ctx, String assetPath) {
+        try (InputStream is = ctx.getAssets().open(assetPath);
+             BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = br.readLine()) != null) {
+                sb.append(line).append('\n');
+            }
+            return sb.toString();
+        } catch (IOException e) {
+            throw new RuntimeException("Error leyendo asset: " + assetPath, e);
+        }
+    }
+
+    /**
+     * Crea un programa OpenGL ES compilando los shaders que están
+     * en assets bajo las rutas dadas.
+     */
+    public static int createProgramFromAssets(
+            Context ctx,
+            String vertexAssetPath,
+            String fragmentAssetPath) {
+        String vSrc = loadAssetAsString(ctx, vertexAssetPath);
+        String fSrc = loadAssetAsString(ctx, fragmentAssetPath);
+        return createProgram(vSrc, fSrc);
     }
 }
