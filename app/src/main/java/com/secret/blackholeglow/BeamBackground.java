@@ -78,6 +78,7 @@ public class BeamBackground implements SceneObject {
         uColorLoc  = GLES20.glGetUniformLocation(program, "u_Color");
         uRevealLoc = GLES20.glGetUniformLocation(program, "u_Reveal");
 
+
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
         scheduleNextStrike();
     }
@@ -159,7 +160,7 @@ public class BeamBackground implements SceneObject {
 // revealStep es entero 0..10
         GLES20.glUniform1f(uRevealLoc, revealStep / 10f);
 // Define anchura de halo, p.e. 0.1 (10%)
-        GLES20.glUniform1f(uHaloWidthLoc, 0.1f);
+        GLES20.glUniform1f(uHaloWidthLoc, 0.9f);
         GLES20.glDrawElements(
                 GLES20.GL_TRIANGLES,
                 indexCount,
