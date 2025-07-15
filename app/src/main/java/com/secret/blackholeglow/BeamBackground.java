@@ -10,23 +10,6 @@ import java.util.List;
 
 public class BeamBackground implements SceneObject {
 
-    // Estados de animación
-    private enum State { WAITING, REVEAL, HOLD }
-    private State state = State.WAITING;
-
-    // Temporizadores
-    private float timer = 0f;
-    private float nextStrikeIn = 0f;
-    private float stepTimer = 0f;
-
-    // Pasos de revelado (0..10)
-    private int revealStep = 0;
-    private final float stepDuration = 0.1f;   // 0.1s por paso
-    private final float holdTime     = 0.2f;
-
-    // Posición X aleatoria del rayo
-    private float strikePosX = 0f;
-
     // Geometría
     private final Mesh mesh;
     private final ShortBuffer indexBuffer;
@@ -34,14 +17,21 @@ public class BeamBackground implements SceneObject {
 
     // Shaders
     private final int program;
-    private final int aPosLoc, uMVPLoc, uColorLoc, uRevealLoc;
+    private final int aPosLoc;
+    private final int uMVPLoc;
+    private final int uRevealLoc;
+    private final int uHaloWidthLoc;
 
-    // Matrizes
+    // Matrices
     private final float[] proj  = new float[16];
     private final float[] view  = new float[16];
     private final float[] model = new float[16];
     private final float[] tmp   = new float[16];
     private final float[] mvp   = new float[16];
+
+    // Parámetros de prueba para revelar y halo
+    private float reveal    = 0.5f;  // 50% de altura
+    private float haloWidth = 0.1f;  // 10% de ancho
 
     public BeamBackground(Context ctx, TextureManager ignore) {
         // Carga OBJ
@@ -67,64 +57,31 @@ public class BeamBackground implements SceneObject {
         ib.position(0);
         indexBuffer = ib;
 
-        // Compila shaders de assets
+        // Compila tus shaders GLSL
         program = ShaderUtils.createProgramFromAssets(
                 ctx,
                 "shaders/beam_vertex.glsl",
                 "shaders/beam_fragment.glsl"
         );
-        aPosLoc    = GLES20.glGetAttribLocation(program, "a_Position");
-        uMVPLoc    = GLES20.glGetUniformLocation(program, "u_MVP");
-        uColorLoc  = GLES20.glGetUniformLocation(program, "u_Color");
-        uRevealLoc = GLES20.glGetUniformLocation(program, "u_Reveal");
+        aPosLoc       = GLES20.glGetAttribLocation(program, "a_Position");
+        uMVPLoc       = GLES20.glGetUniformLocation(program, "u_MVP");
+        uRevealLoc    = GLES20.glGetUniformLocation(program, "u_Reveal");
+        uHaloWidthLoc = GLES20.glGetUniformLocation(program, "u_HaloWidth");
 
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-        scheduleNextStrike();
-    }
-
-    private void scheduleNextStrike() {
-        state = State.WAITING;
-        timer = 0f;
-        stepTimer = 0f;
-        revealStep = 0;
-        nextStrikeIn = 0.5f + (float)Math.random() * 1.5f;
-        strikePosX = -0.5f + (float)Math.random();
     }
 
     @Override
     public void update(float dt) {
-        timer += dt;
-        switch (state) {
-            case WAITING:
-                if (timer >= nextStrikeIn) {
-                    state = State.REVEAL;
-                    timer = 0f;
-                }
-                break;
-            case REVEAL:
-                stepTimer += dt;
-                while (stepTimer >= stepDuration && revealStep < 10) {
-                    stepTimer -= stepDuration;
-                    revealStep++;
-                }
-                if (revealStep >= 10) {
-                    state = State.HOLD;
-                    timer = 0f;
-                }
-                break;
-            case HOLD:
-                if (timer >= holdTime) {
-                    scheduleNextStrike();
-                }
-                break;
-        }
+        // Por si quieres animar el reveal:
+        // reveal = Math.min(1f, reveal + dt * 0.2f);
     }
 
     @Override
     public void draw() {
         GLES20.glUseProgram(program);
 
-        // Proyección ortográfica y cámara
+        // 1) Proyección ortográfica centrada
         float aspect = (float)SceneRenderer.screenWidth / SceneRenderer.screenHeight;
         Matrix.orthoM(proj, 0, -aspect, aspect, -1f, 1f, 0.1f, 10f);
         Matrix.setLookAtM(view, 0,
@@ -132,39 +89,37 @@ public class BeamBackground implements SceneObject {
                 0f, 0f, 0f,
                 0f, 1f, 0f);
 
-        // Model matrix: translate X, scale, rotate
+        // 2) Model matrix
         Matrix.setIdentityM(model, 0);
-        Matrix.translateM(model, 0, strikePosX, 0f, 0f);
-        Matrix.scaleM(    model, 0, 0.5f, 0.5f, 0.5f);
-        Matrix.rotateM(   model, 0, 90f, 0f, 0f, 1f);
+        // Mantener tamaño original de mesh
+        float scale = 1f;
+        Matrix.scaleM(model, 0, scale, scale, 1f);
 
-        // MVP
+        // 3) MVP final
         Matrix.multiplyMM(tmp, 0, view, 0, model, 0);
         Matrix.multiplyMM(mvp, 0, proj, 0, tmp,   0);
         GLES20.glUniformMatrix4fv(uMVPLoc, 1, false, mvp, 0);
 
-        // Color
-        GLES20.glUniform4f(uColorLoc, 0.2f, 0.6f, 1.0f, 1.0f);
-        // Reveal uniform
-        float reveal = revealStep / 10f;
+        // 4) Uniforms fragment shader
         GLES20.glUniform1f(uRevealLoc, reveal);
+        GLES20.glUniform1f(uHaloWidthLoc, haloWidth);
 
-        // Dibujar mesh
+        // 5) Draw
         mesh.vertexBuffer.position(0);
         GLES20.glEnableVertexAttribArray(aPosLoc);
-        GLES20.glVertexAttribPointer(aPosLoc, 3, GLES20.GL_FLOAT,
-                false, 3 * Float.BYTES, mesh.vertexBuffer);
-        int uRevealLoc    = GLES20.glGetUniformLocation(program, "u_Reveal");
-        int uHaloWidthLoc = GLES20.glGetUniformLocation(program, "u_HaloWidth");
-// revealStep es entero 0..10
-        GLES20.glUniform1f(uRevealLoc, revealStep / 10f);
-// Define anchura de halo, p.e. 0.1 (10%)
-        GLES20.glUniform1f(uHaloWidthLoc, 0.1f);
+        GLES20.glVertexAttribPointer(
+                aPosLoc, 3,
+                GLES20.GL_FLOAT,
+                false,
+                3 * Float.BYTES,
+                mesh.vertexBuffer
+        );
         GLES20.glDrawElements(
                 GLES20.GL_TRIANGLES,
                 indexCount,
                 GLES20.GL_UNSIGNED_SHORT,
-                indexBuffer);
+                indexBuffer
+        );
         GLES20.glDisableVertexAttribArray(aPosLoc);
     }
 }
