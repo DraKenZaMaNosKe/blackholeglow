@@ -139,15 +139,23 @@ public class AnimatedWallpaperListFragment extends Fragment {
                 "Estrellas fugaces cruzando el cielo."
         ));
 
-        // • Ejemplo 3: Estrellas Fugaces
+        // • Ejemplo 4: Estrellas Fugaces
         list.add(new WallpaperItem(
                 R.drawable.estrellas_fugaces,
                 "CuboDeformable",
                 "Estrellas fugaces cruzando el cielo."
         ));
+
+        // • Ejemplo 5: Rayo Test
         list.add(new WallpaperItem(
                 R.drawable.estrellas_fugaces,    // o cualquier ícono
                 "RayoMesh",
+                "Rayo animado desde Blender"
+        ));
+
+        list.add(new WallpaperItem(
+                R.drawable.estrellas_fugaces,    // o cualquier ícono
+                "CuboMesh",
                 "Rayo animado desde Blender"
         ));
 
