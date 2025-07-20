@@ -10,10 +10,9 @@ import javax.microedition.khronos.opengles.GL10;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Renderiza la escena y deja que cada objeto maneje su cámara.
- */
 public class SceneRenderer implements GLSurfaceView.Renderer {
+    private static final String TAG = "Depurando";
+
     private CameraController sharedCamera;
     private final Context context;
     public static int screenWidth = 1, screenHeight = 1;
@@ -28,13 +27,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
         this.item_seleccinado = item;
     }
 
-    /**
-     * Este método es invocado por LiveWallpaperService para rotar manualmente la cámara
-     * cuando el usuario arrastra el dedo.
-     */
     public void adjustYaw(float deltaDegrees) {
-        // Por ahora simplemente afectamos el ángulo de órbita directamente:
-        // avanzamos (o retrocedemos) el tiempo de órbita según el delta
         sharedCamera.addOrbitOffset(deltaDegrees);
     }
 
@@ -53,8 +46,9 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
         GLES20.glClearColor(0, 0, 0, 1);
         textureManager = new TextureManager(context);
-        sharedCamera = new CameraController();
+        sharedCamera   = new CameraController();
         sceneObjects.clear();
+        Log.d(TAG, "onSurfaceCreated");
     }
 
     @Override
@@ -62,10 +56,21 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
         GLES20.glViewport(0, 0, w, h);
         screenWidth  = w;
         screenHeight = h;
+        // Proyección
         sharedCamera.updateProjection(w, h);
+        // Vista inicial + ciclos
+        sharedCamera.setView(
+                0f, 0f, 6f,    // ojo X,Y,Z
+                0f, 0f, 0f,    // centro
+                0f, 1f, 0f     // up
+        );
+        sharedCamera.startOrbit(12f);
+        sharedCamera.startZoomLoop(20f, 10f);
+
         textureManager.initialize();
         sceneObjects.clear();
         prepareScene();
+        Log.d(TAG, "onSurfaceChanged to " + w + "x" + h);
     }
 
     @Override
@@ -78,24 +83,31 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
         float dt = (now - lastTime) / 1_000_000_000f;
         lastTime = now;
 
-        // Actualiza la cámara global (ó rbita + zoom)
         sharedCamera.update(dt);
-        Log.d("SceneRenderer", "onDrawFrame dt=" + dt);
+        Log.d(TAG, "onDrawFrame dt=" + dt);
 
-        // Dibuja cada objeto de la escena
         for (SceneObject obj : sceneObjects) {
+            Log.d(TAG, "Actualizando objeto: " + obj.getClass().getSimpleName());
             obj.update(dt);
+            Log.d(TAG, "Dibujando objeto: " + obj.getClass().getSimpleName());
             obj.draw();
         }
     }
 
     private void prepareScene() {
-        if (!textureManager.initialize()) return;
+        if (!textureManager.initialize()) {
+            Log.e(TAG, "No se pudo inicializar TextureManager");
+            return;
+        }
         if ("CuboMesh".equals(item_seleccinado)) {
             BlenderCubeBackground bg = new BlenderCubeBackground(context, textureManager);
-            bg.setCameraController(sharedCamera);
+            if (bg instanceof CameraAware) {
+                ((CameraAware) bg).setCameraController(sharedCamera);
+                Log.d(TAG, "CameraController inyectado en BlenderCubeBackground");
+            }
             sceneObjects.add(bg);
+            Log.d(TAG, "BlenderCubeBackground agregado a la escena");
         }
-        // ... otros casos si los necesitas
+        // ... otros casos ...
     }
 }

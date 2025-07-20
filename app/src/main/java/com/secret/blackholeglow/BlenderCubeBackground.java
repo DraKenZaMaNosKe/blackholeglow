@@ -1,115 +1,171 @@
+// BlenderCubeBackground.java
 package com.secret.blackholeglow;
 
 import android.content.Context;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
+import android.util.Log;
 
 import com.secret.blackholeglow.util.ObjLoader;
-import com.secret.blackholeglow.util.ObjLoader.Mesh;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
+import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 
-/**
- * Dibuja un cubo importado sin rotación propia, con cámara que se aleja.
- */
-public class BlenderCubeBackground implements SceneObject, CameraAware {
+public class BlenderCubeBackground
+        extends BaseShaderProgram
+        implements SceneObject, CameraAware {
+    private static final String TAG = "Depurando";
 
-    private CameraController camera;
-    private final Mesh mesh;
+    // Buffers + counts
+    private final FloatBuffer vertexBuffer;
     private final ShortBuffer indexBuffer;
     private final int indexCount;
+    private final int[] faceIndexOffsets;
+    private final int[] faceTriangleCounts;
+    private final int faceCount;
 
-    private final int program;
+    // attribute / color location
     private final int aPosLoc;
-    private final int uMVPLoc;
+    private final int uColorLoc;
 
-    private final float[] model = new float[16];
-    private final float[] mvp   = new float[16];
+    private CameraController camera;
+    private float rotationAngle = 0f;
+    private float lastDeltaTime = 0f;
 
-    public BlenderCubeBackground(Context ctx, TextureManager ignore) {
-        // 1) Cargar malla
+    public BlenderCubeBackground(Context ctx, TextureManager texMgr) {
+        super(ctx,
+                "shaders/cube_vertex.glsl",
+                "shaders/cube_fragment.glsl");
+
+        Log.d(TAG, "=== BLENDER CUBE: START constructor ===");
+
+        ObjLoader.Mesh mesh;
         try {
-            mesh = ObjLoader.loadObj(ctx, "cubo.obj");
-        } catch (Exception e) {
-            throw new RuntimeException("❌ Error cargando cubo.obj", e);
+            mesh = ObjLoader.loadObj(ctx, "cube.obj");
+            Log.d(TAG, "Mesh loaded: vertexCount=" + mesh.vertexCount +
+                    ", faces=" + mesh.faces.size());
+        } catch (IOException e) {
+            Log.e(TAG, "Error loading cube.obj", e);
+            mesh = createEmptyMesh();
         }
 
-        // 2) Triangulación
+        vertexBuffer = mesh.vertexBuffer;
         List<short[]> faces = mesh.faces;
-        int tris = faces.stream().mapToInt(f -> f.length - 2).sum();
-        indexCount = tris * 3;
+        faceCount = faces.size();
+
+        int totalTris = 0;
+        for (short[] f : faces) totalTris += (f.length - 2);
+        indexCount = totalTris * 3;
+
         ShortBuffer ib = ByteBuffer
                 .allocateDirect(indexCount * 2)
                 .order(ByteOrder.nativeOrder())
                 .asShortBuffer();
-        for (short[] f : faces) {
+
+        faceIndexOffsets   = new int[faceCount];
+        faceTriangleCounts = new int[faceCount];
+
+        int offset = 0;
+        for (int i = 0; i < faceCount; i++) {
+            short[] f = faces.get(i);
+            int triCount = f.length - 2;
+            faceIndexOffsets[i]   = offset;
+            faceTriangleCounts[i] = triCount;
             short i0 = f[0];
             for (int k = 1; k < f.length - 1; k++) {
-                ib.put(i0).put(f[k]).put(f[k + 1]);
+                ib.put(i0).put(f[k]).put(f[k+1]);
             }
+            offset += triCount * 3;
         }
         ib.position(0);
         indexBuffer = ib;
+        Log.d(TAG, "Index count = " + indexCount);
 
-        // 3) Programa (vertex + fragment) para cubo amarillo permanente
-        program = ShaderUtils.createProgramFromAssets(
-                ctx,
-                "shaders/cube_vertex.glsl",
-                "shaders/cube_fragment.glsl"
-        );
-        aPosLoc = GLES20.glGetAttribLocation(program, "a_Position");
-        uMVPLoc = GLES20.glGetUniformLocation(program, "u_MVP");
+        // localiza atributos / color
+        aPosLoc   = GLES20.glGetAttribLocation(programId, "a_Position");
+        uColorLoc = GLES20.glGetUniformLocation(programId, "u_Color");
+        Log.d(TAG, "Locations → aPos: " + aPosLoc +
+                " | uColor: " + uColorLoc);
 
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        Log.d(TAG, "=== BLENDER CUBE: END constructor ===");
+    }
+
+    private ObjLoader.Mesh createEmptyMesh() {
+        FloatBuffer vb = ByteBuffer.allocateDirect(0)
+                .order(ByteOrder.nativeOrder())
+                .asFloatBuffer();
+        return new ObjLoader.Mesh(vb, new float[0], Collections.emptyList(), vb, 0);
     }
 
     @Override
-    public void setCameraController(CameraController cam) {
-        this.camera = cam;
-        // Vista inicial
-        cam.setView(
-                0f, 2f, 4f,   // eye
-                0f, 0f, 0f,   // center
-                0f, 1f, 0f    // up
-        );
-        // Órbita en 12s y zoom en bucle en 20s hasta radio=10
-        cam.startOrbit(12f);
-        cam.startZoomLoop(20f, 10f);
+    public void setCameraController(CameraController camera) {
+        this.camera = camera;
     }
 
     @Override
     public void update(float dt) {
-        // Actualiza la cámara cada frame
-        camera.update(dt);
+        lastDeltaTime = dt;
+        rotationAngle = (rotationAngle + 30f * dt) % 360f;
     }
 
     @Override
     public void draw() {
-        GLES20.glUseProgram(program);
+        if (camera == null) {
+            Log.e(TAG, "CameraController no inyectado, draw abortado.");
+            return;
+        }
 
-        // Modelo sin rotación
+        useProgram();
+
+        // 1) calcula modelo + MVP
+        float[] model = new float[16];
         Matrix.setIdentityM(model, 0);
-
-        // Calcula MVP con la cámara
+        Matrix.rotateM(model, 0, rotationAngle, 0f, 1f, 0f);
+        float[] mvp = new float[16];
         camera.computeMvp(model, mvp);
-        GLES20.glUniformMatrix4fv(uMVPLoc, 1, false, mvp, 0);
 
-        // Dibujar cubo
-        mesh.vertexBuffer.position(0);
+        // 2) envía uniforms comunes (time, MVP, resolución)
+        setCommonUniforms(
+                lastDeltaTime,
+                mvp,
+                SceneRenderer.screenWidth,
+                SceneRenderer.screenHeight
+        );
+
+        // 3) habilita vértices
+        vertexBuffer.position(0);
         GLES20.glEnableVertexAttribArray(aPosLoc);
         GLES20.glVertexAttribPointer(
-                aPosLoc, 3, GLES20.GL_FLOAT,
-                false, 3 * Float.BYTES, mesh.vertexBuffer
+                aPosLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer
         );
-        GLES20.glDrawElements(
-                GLES20.GL_TRIANGLES,
-                indexCount,
-                GLES20.GL_UNSIGNED_SHORT,
-                indexBuffer
-        );
+
+        // 4) bucket de tiempo para cambio cada 0.5s
+        int bucket = (int)((System.nanoTime() / 1_000_000_000f) / 0.5f);
+
+        // 5) dibuja cara a cara con color pseudo-aleatorio
+        for (int i = 0; i < faceCount; i++) {
+            Random rnd = new Random(bucket * 31 + i);
+            float r = rnd.nextFloat();
+            float g = rnd.nextFloat();
+            float b = rnd.nextFloat();
+            GLES20.glUniform4f(uColorLoc, r, g, b, 1f);
+
+            indexBuffer.position(faceIndexOffsets[i]);
+            int tris = faceTriangleCounts[i];
+            GLES20.glDrawElements(
+                    GLES20.GL_TRIANGLES,
+                    tris * 3,
+                    GLES20.GL_UNSIGNED_SHORT,
+                    indexBuffer
+            );
+        }
+
         GLES20.glDisableVertexAttribArray(aPosLoc);
     }
 }
