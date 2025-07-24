@@ -30,6 +30,9 @@ public class CameraController {
     private float zoomDuration  = 20f; // segundos para ir de min→max
     private float zoomTime      = 0f;  // va de 0 → zoomDuration
 
+    // ** NUEVO: control para habilitar/deshabilitar zoom **
+    private boolean zoomLoopEnabled = true;
+
     /**
      * Inicializa la cámara: ojo, centro y “up”.
      * Aquí calculamos el minRadius automáticamente.
@@ -62,6 +65,17 @@ public class CameraController {
         this.zoomDuration = seconds;
         this.maxRadius    = targetMaxRadius;
         this.zoomTime     = 0f;
+        this.zoomLoopEnabled = true;      // al arrancar zoom, habilitamos
+    }
+
+    /** Deshabilita el bucle de zoom (mantiene distancia = minRadius). */
+    public void disableZoomLoop() {
+        this.zoomLoopEnabled = false;
+    }
+
+    /** Habilita el bucle de zoom si antes se había deshabilitado. */
+    public void enableZoomLoop() {
+        this.zoomLoopEnabled = true;
     }
 
     /**
@@ -75,7 +89,7 @@ public class CameraController {
 
     /**
      * Llamar en cada frame con dt:
-     * - Actualiza órbita y zoom.
+     * - Actualiza órbita y zoom (si está habilitado).
      * - Genera la matriz de vista (lookAt).
      */
     public void update(float dt) {
@@ -83,10 +97,15 @@ public class CameraController {
         orbitTime = (orbitTime + dt) % orbitDuration;
         float angle = (orbitTime / orbitDuration) * 2f * (float)Math.PI;
 
-        // —— Zoom en bucle ——
-        zoomTime = (zoomTime + dt) % zoomDuration;
-        float t      = zoomTime / zoomDuration; // [0,1)
-        float radius = minRadius + t * (maxRadius - minRadius);
+        // —— Zoom en bucle (o fijo) ——
+        float radius;
+        if (zoomLoopEnabled) {
+            zoomTime = (zoomTime + dt) % zoomDuration;
+            float t      = zoomTime / zoomDuration; // [0,1)
+            radius       = minRadius + t * (maxRadius - minRadius);
+        } else {
+            radius = minRadius;
+        }
 
         // Posición del ojo en plano XZ
         float eyeX = centerX + radius * (float)Math.cos(angle);
@@ -105,10 +124,8 @@ public class CameraController {
      * Añade un pequeño desplazamiento al ángulo de órbita.
      */
     public void addOrbitOffset(float deltaDegrees) {
-        // Convertimos grados a fracción de 2·PI y lo sumamos a orbitTime:
         float deltaRadians = (float)Math.toRadians(deltaDegrees);
         float orbitFraction = deltaRadians / (2f * (float)Math.PI);
-        // orbitDuration recoge cuánto tardamos en un giro completo, así que:
         orbitTime = (orbitTime + orbitFraction * orbitDuration) % orbitDuration;
     }
 

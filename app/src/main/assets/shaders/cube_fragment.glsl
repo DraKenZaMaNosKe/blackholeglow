@@ -18,5 +18,5 @@ void main() {
     float e = 1.0 - smoothstep(0.2,0.2,r);
     vec3 fin = vec3(e);
 
-    gl_FragColor = vec4(fin, 1.0);
+    gl_FragColor = u_Color;
 }

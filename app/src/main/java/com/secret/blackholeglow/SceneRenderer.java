@@ -4,7 +4,6 @@ import android.content.Context;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.util.Log;
-
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 import java.util.ArrayList;
@@ -56,16 +55,23 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
         GLES20.glViewport(0, 0, w, h);
         screenWidth  = w;
         screenHeight = h;
+
         // Proyección
         sharedCamera.updateProjection(w, h);
-        // Vista inicial + ciclos
+
+        // Vista inicial + órbita
         sharedCamera.setView(
                 0f, 0f, 6f,    // ojo X,Y,Z
                 0f, 0f, 0f,    // centro
                 0f, 1f, 0f     // up
         );
         sharedCamera.startOrbit(12f);
-        sharedCamera.startZoomLoop(20f, 10f);
+
+        // —— Aquí elegimos si queremos zoom o cámara fija ——
+//      // MODO ZOOM (comportamiento original):
+        //sharedCamera.startZoomLoop(20f, 10f);
+//      // MODO FIJO (misma distancia, sólo órbita):
+        sharedCamera.disableZoomLoop();
 
         textureManager.initialize();
         sceneObjects.clear();
