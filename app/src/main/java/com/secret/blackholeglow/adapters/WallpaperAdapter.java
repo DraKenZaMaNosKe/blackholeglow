@@ -1,7 +1,5 @@
 package com.secret.blackholeglow.adapters;
 
-import static android.content.Context.MODE_PRIVATE;
-
 import android.content.Context;
 import android.os.Vibrator;
 import android.util.Log;
@@ -22,7 +20,6 @@ import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.fragments.WallpaperInfoDialogFragment;
 import com.secret.blackholeglow.models.WallpaperItem;
 import com.secret.blackholeglow.opengl.AnimatedBorderTextureView;
-import com.secret.blackholeglow.opengl.NeonBorderTextureView;
 import com.secret.blackholeglow.activities.WallpaperPreviewActivity;
 
 import java.util.List;
@@ -103,31 +100,15 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         holder.itemView.setOnClickListener(showModal);
 
 
-        AnimatedBorderTextureView vista = holder.itemView.findViewById(R.id.neon_border_effect);
+        AnimatedBorderTextureView vista = holder.itemView.findViewById(R.id.border_effect);
 
-        // Ejemplo: alterna entre dos efectos
+
         if (position  == 0) {
-            vista.setShaderAssets(
-                    "shaders/neon_border_vertex.glsl",
-                    "shaders/neon_border_fragment.glsl"
-            );
-        } else if (position == 1){
-            vista.setShaderAssets(
-                    "shaders/test_border_vertex.glsl",
-                    "shaders/test_border_fragment.glsl"
-            );
-        }else if(position == 2){
-            vista.setShaderAssets(
-                    "shaders/sparkle_border_vertex.glsl",
-                    "shaders/sparkle_border_fragment.glsl"
-            );
-        }else if(position == 3) {
             vista.setShaderAssets(
                     "shaders/test_efecto_vertex.glsl",
                     "shaders/test_efecto_fragment.glsl"
             );
         }
-
 
         if (vista != null) vista.setOnClickListener(showModal);
 

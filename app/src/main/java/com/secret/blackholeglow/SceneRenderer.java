@@ -105,7 +105,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             Log.e(TAG, "No se pudo inicializar TextureManager");
             return;
         }
-        if ("CuboMesh".equals(item_seleccinado)) {
+        if ("Agujero Negro".equals(item_seleccinado)) {
             BlenderCubeBackground bg = new BlenderCubeBackground(context, textureManager);
             if (bg instanceof CameraAware) {
                 ((CameraAware) bg).setCameraController(sharedCamera);

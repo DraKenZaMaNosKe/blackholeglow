@@ -7,7 +7,7 @@
     android:background="@android:color/transparent">
 
     <com.secret.blackholeglow.opengl.AnimatedBorderTextureView
-        android:id="@+id/neon_border_effect"
+        android:id="@+id/border_effect"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_gravity="center"

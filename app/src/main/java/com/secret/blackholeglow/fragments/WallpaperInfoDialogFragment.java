@@ -42,7 +42,7 @@ public class WallpaperInfoDialogFragment extends DialogFragment {
         args.putInt(ARG_IMAGE, item.getResourceIdPreview());
         args.putString(ARG_TITLE, item.getNombre());
         args.putString(ARG_DESC, item.getDescripcion());
-        args.putString(ARG_AUTHOR, "Desarrollador: DraKenZaMaNosKe y Esmeralda");
+        args.putString(ARG_AUTHOR, "Es un clasico y no debe faltar en tu celular");
         frag.setArguments(args);
         return frag;
     }

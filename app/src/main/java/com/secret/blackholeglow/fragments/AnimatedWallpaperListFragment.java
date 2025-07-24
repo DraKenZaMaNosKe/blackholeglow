@@ -84,7 +84,7 @@ public class AnimatedWallpaperListFragment extends Fragment {
         // ┌───────────────────────────────────────────────────┐
         // │ 🌟 3) Cargar datos simulados                     │
         // └───────────────────────────────────────────────────┘
-        wallpaperItems = getSampleWallpapers();
+        wallpaperItems = getWallpapersList();
 
         // ┌───────────────────────────────────────────────────┐
         // │ 🔌 4) Crear y asignar adaptador                   │
@@ -106,57 +106,22 @@ public class AnimatedWallpaperListFragment extends Fragment {
     }
 
     // ╔════════════════════════════════════════════════════════╗
-    // ║ 🔍 getSampleWallpapers: Generar datos de prueba       ║
+    // ║ 🔍 getWallpapersList: Generar datos de prueba       ║
     // ╚════════════════════════════════════════════════════════╝
     /**
-     * getSampleWallpapers:
+     * getWallpapersList:
      *   • Crea una lista de WallpaperItem con ejemplos de fondos animados.
      *   • Cada ítem incluye un drawable, un título y una breve descripción.
      *
      * @return Lista mutable de objetos WallpaperItem.
      */
-    private List<WallpaperItem> getSampleWallpapers() {
+    private List<WallpaperItem> getWallpapersList() {
         List<WallpaperItem> list = new ArrayList<>();
 
-        // • Ejemplo 1: Aurora Boreal
-        list.add(new WallpaperItem(
-                R.drawable.aurora_boreal,
-                "FondoCubo",
-                "Luces del norte en movimiento cósmico."
-        ));
-
-        // • Ejemplo 2: Estrellas
-        list.add(new WallpaperItem(
-                R.drawable.star_glow,
-                "MeshMano",
-                "Cielo lleno de partículas brillantes."
-        ));
-
-        // • Ejemplo 3: Estrellas Fugaces
-        list.add(new WallpaperItem(
-                R.drawable.estrellas_fugaces,
-                "CuboDeformable",
-                "Estrellas fugaces cruzando el cielo."
-        ));
-
-        // • Ejemplo 4: Estrellas Fugaces
-        list.add(new WallpaperItem(
-                R.drawable.estrellas_fugaces,
-                "CuboDeformable",
-                "Estrellas fugaces cruzando el cielo."
-        ));
-
-        // • Ejemplo 5: Rayo Test
         list.add(new WallpaperItem(
                 R.drawable.estrellas_fugaces,    // o cualquier ícono
-                "RayoMesh",
-                "Rayo animado desde Blender"
-        ));
-
-        list.add(new WallpaperItem(
-                R.drawable.estrellas_fugaces,    // o cualquier ícono
-                "CuboMesh",
-                "Rayo animado desde Blender"
+                "Agujero Negro",
+                "observa un magestuoso agujero negro"
         ));
 
         return list;
