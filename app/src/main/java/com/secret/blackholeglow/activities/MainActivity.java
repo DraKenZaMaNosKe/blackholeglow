@@ -110,7 +110,7 @@ public class MainActivity extends AppCompatActivity
         //    └────────────────────────────────────────────────────────────────┘
         if (savedInstanceState == null) {
             // Marcar el ítem “nav_animated” como seleccionado en el NavigationView
-            navigationView.setCheckedItem(R.id.nav_animated);
+            navigationView.setCheckedItem(R.id.nav_home);
 
             // Reemplazar el fragment_container con AnimatedWallpaperListFragment
             getSupportFragmentManager().beginTransaction()
@@ -141,7 +141,7 @@ public class MainActivity extends AppCompatActivity
                     )
                     .commit();
 
-        } else if (id == R.id.nav_animated) {
+        } else if (id == R.id.nav_micuenta) {
             // Fragmento para la sección Animated (lista de wallpapers animados)
             getSupportFragmentManager().beginTransaction()
                     .replace(
@@ -150,23 +150,6 @@ public class MainActivity extends AppCompatActivity
                     )
                     .commit();
 
-        } else if (id == R.id.nav_favorites) {
-            // Fragmento para la sección Favorites (por ahora, reutilizamos Animated como placeholder)
-            getSupportFragmentManager().beginTransaction()
-                    .replace(
-                            R.id.fragment_container,
-                            new AnimatedWallpaperListFragment()  // temporal
-                    )
-                    .commit();
-
-        } else if (id == R.id.nav_settings) {
-            // Fragmento para la sección Settings (temporal)
-            getSupportFragmentManager().beginTransaction()
-                    .replace(
-                            R.id.fragment_container,
-                            new AnimatedWallpaperListFragment()  // temporal
-                    )
-                    .commit();
         }
 
         // Cerrar el Drawer después de seleccionar un ítem

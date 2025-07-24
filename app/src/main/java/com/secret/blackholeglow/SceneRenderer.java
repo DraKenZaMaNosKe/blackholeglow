@@ -113,6 +113,8 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             }
             sceneObjects.add(bg);
             Log.d(TAG, "BlenderCubeBackground agregado a la escena");
+        }else if ("Universo".equals(item_seleccinado)) {
+            sceneObjects.add(new UniverseBackground(context, textureManager));
         }
         // ... otros casos ...
     }

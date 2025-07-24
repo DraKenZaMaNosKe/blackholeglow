@@ -119,8 +119,13 @@ public class AnimatedWallpaperListFragment extends Fragment {
         List<WallpaperItem> list = new ArrayList<>();
 
         list.add(new WallpaperItem(
-                R.drawable.estrellas_fugaces,    // o cualquier ícono
+                R.drawable.agujero_negro,    // o cualquier ícono
                 "Agujero Negro",
+                "observa un magestuoso agujero negro"
+        ));
+        list.add(new WallpaperItem(
+                R.drawable.agujero_negro,    // o cualquier ícono
+                "Universo",
                 "observa un magestuoso agujero negro"
         ));
 
