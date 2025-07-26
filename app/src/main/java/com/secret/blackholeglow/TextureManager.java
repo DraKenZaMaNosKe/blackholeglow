@@ -1,3 +1,4 @@
+// TextureManager.java
 package com.secret.blackholeglow;
 
 import android.content.Context;
@@ -7,6 +8,10 @@ import android.util.Log;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Gestor de texturas que permite cargar cualquier recurso
+ * bajo demanda y cachearlo para reutilización posterior.
+ */
 public class TextureManager implements TextureLoader {
 
     private final Context context;
@@ -14,31 +19,48 @@ public class TextureManager implements TextureLoader {
     private boolean initialized = false;
 
     public TextureManager(Context ctx) {
+        // Usamos el contexto de aplicación para evitar fugas
         this.context = ctx.getApplicationContext();
     }
 
+    /**
+     * Inicializa el gestor. Ya no carga ninguna textura
+     * en concreto: solo marca que puede usarse.
+     */
     public boolean initialize() {
         if (initialized) return true;
-        try {
-            int texId = ShaderUtils.loadTexture(context,
-                    R.drawable.textura_universo_estrellado);
-            textureCache.put(R.drawable.textura_universo_estrellado, texId);
-            initialized = true;
-            Log.d("TextureManager","Textures init: "+textureCache);
-            return true;
-        } catch (RuntimeException e) {
-            Log.e("TextureManager","Error loading textures",e);
-            return false;
-        }
+        initialized = true;
+        Log.d("TextureManager", "Inicializado sin texturas precargadas.");
+        return true;
     }
 
+    /**
+     * Devuelve el ID de OpenGL de la textura para resourceId.
+     * Si no estaba en caché, la carga ahora y la cachea.
+     */
     @Override
     public int getTexture(int resourceId) {
         if (!initialized) initialize();
-        Integer id = textureCache.get(resourceId);
-        return id!=null ? id : 0;
+
+        Integer texId = textureCache.get(resourceId);
+        if (texId == null) {
+            // Carga bajo demanda
+            try {
+                texId = ShaderUtils.loadTexture(context, resourceId);
+                textureCache.put(resourceId, texId);
+                Log.d("TextureManager", "Textura cargada y cacheada: resId="
+                        + resourceId + " → texId=" + texId);
+            } catch (RuntimeException e) {
+                Log.e("TextureManager", "Error cargando textura resId=" + resourceId, e);
+                return 0;
+            }
+        }
+        return texId;
     }
 
+    /**
+     * Conveniencia para texturitas de “estrella”
+     */
     @Override
     public int getStarTexture() {
         return getTexture(R.drawable.star_glow);

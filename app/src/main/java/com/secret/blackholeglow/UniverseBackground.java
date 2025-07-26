@@ -79,7 +79,7 @@ public class UniverseBackground
                 "  u_Texture=" + uTexLoc);
 
         // 4) Cargar textura
-        textureId = texMgr.getTexture(R.drawable.textura_universo_estrellado);
+        textureId = texMgr.getTexture(R.drawable.fondo_universo_cosmico);
     }
 
     @Override

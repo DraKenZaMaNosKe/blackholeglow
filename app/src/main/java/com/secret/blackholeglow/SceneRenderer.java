@@ -116,10 +116,21 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
         }
 
         if ("Universo".equals(item_seleccinado)) {
-            // 1) Fondo primero
+            // Fondo
             sceneObjects.add(new UniverseBackground(context, textureManager));
-            // 2) Luego planeta
-            sceneObjects.add(new Planeta(context));
+
+            sceneObjects.add(new Planeta(
+                    context, textureManager,
+                    0f, 0f,        // sin órbita
+                    0f,            // orbitSpeed
+                    0f,            // scaleAmplitude
+                    8.3f,          // instanceScale
+                    15f            // spinSpeed: 15°/s en este caso
+            ));
+            sceneObjects.add(new Planeta(
+                    context, textureManager,
+                    0.2f, 0.1f, 2.0f, 0.2f, 1.0f, 30f  // spinSpeed=30°/s
+            ));
         }
         else if ("Agujero Negro".equals(item_seleccinado)) {
             BlenderCubeBackground bg = new BlenderCubeBackground(context, textureManager);
