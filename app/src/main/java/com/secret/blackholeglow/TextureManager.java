@@ -7,60 +7,40 @@ import android.util.Log;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Clase que gestiona la carga de texturas para toda la aplicación.
- * Implementa la interfaz TextureLoader para unificar la lógica.
- */
 public class TextureManager implements TextureLoader {
 
     private final Context context;
-    private final Map<Integer, Integer> textureCache = new HashMap<>();
+    private final Map<Integer,Integer> textureCache = new HashMap<>();
     private boolean initialized = false;
 
-    public TextureManager(Context context) {
-        this.context = context.getApplicationContext();
+    public TextureManager(Context ctx) {
+        this.context = ctx.getApplicationContext();
     }
 
-    /**
-     * Inicializa todas las texturas necesarias si OpenGL está listo.
-     * Este método se debe llamar desde onSurfaceCreated.
-     */
     public boolean initialize() {
-        if (initialized) return true;  // Ya está inicializado, no repetir
-
+        if (initialized) return true;
         try {
-            textureCache.put(R.drawable.star_glow,
-                    ShaderUtils.loadTexture(context, R.drawable.star_glow));
-
-            // Aquí podrías cargar más texturas si deseas
+            int texId = ShaderUtils.loadTexture(context,
+                    R.drawable.textura_universo_estrellado);
+            textureCache.put(R.drawable.textura_universo_estrellado, texId);
             initialized = true;
+            Log.d("TextureManager","Textures init: "+textureCache);
             return true;
         } catch (RuntimeException e) {
-            Log.d("TextureManager", "❌ Error al inicializar texturas", e);
+            Log.e("TextureManager","Error loading textures",e);
             return false;
         }
     }
 
-    /**
-     * Método para obtener la textura. Si no está lista o no se pudo cargar, retorna 0.
-     */
     @Override
     public int getTexture(int resourceId) {
-        if (!initialized) return 0;
-        Integer tex = textureCache.get(resourceId);
-        Log.d("TextureManager", "🌀 Iniciando carga de textura star_glow...");
-        Log.d("TextureManager", "✅ Textura cargada con ID=" + tex);
-        return tex != null ? tex : 0;
-    }
-
-    public boolean isInitialized() {
-        return initialized;
+        if (!initialized) initialize();
+        Integer id = textureCache.get(resourceId);
+        return id!=null ? id : 0;
     }
 
     @Override
     public int getStarTexture() {
         return getTexture(R.drawable.star_glow);
     }
-
-
 }

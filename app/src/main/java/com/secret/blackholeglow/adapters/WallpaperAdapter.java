@@ -108,6 +108,9 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
                     "shaders/test_efecto_vertex.glsl",
                     "shaders/test_efecto_fragment.glsl"
             );
+        }else if(position == 1){
+            vista.setShaderAssets("shaders/test_efecto_vertex.glsl",
+                    "shaders/test_efecto_fragment.glsl");
         }
 
         if (vista != null) vista.setOnClickListener(showModal);

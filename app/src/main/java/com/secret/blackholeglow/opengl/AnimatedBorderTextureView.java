@@ -25,9 +25,9 @@ public class AnimatedBorderTextureView extends TextureView
         implements TextureView.SurfaceTextureListener {
 
     // Ruta al shader de vértices (assets)
-    private String vertexShaderAsset   = "shaders/neon_border_vertex.glsl";
+    private String vertexShaderAsset   = "shaders/test_border_vertex.glsl";
     // Ruta al shader de fragmentos (assets)
-    private String fragmentShaderAsset = "shaders/neon_border_fragment.glsl";
+    private String fragmentShaderAsset = "shaders/test_border_fragment.glsl";
 
     private AnimatedBorderRendererThread rendererThread;
 
