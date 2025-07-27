@@ -131,9 +131,7 @@ public class BlenderCubeBackground
         camera.computeMvp(model, mvp);
 
         // 2) envía uniforms comunes (time, MVP, resolución)
-        setCommonUniforms(
-                lastDeltaTime,
-                mvp,
+        setMvpAndResolution(mvp,
                 SceneRenderer.screenWidth,
                 SceneRenderer.screenHeight
         );
