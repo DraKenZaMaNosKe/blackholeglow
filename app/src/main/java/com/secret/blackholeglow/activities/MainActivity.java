@@ -67,6 +67,7 @@ public class MainActivity extends AppCompatActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+
         // 1️⃣ Configurar Toolbar como ActionBar
         //    ┌───────────────────────────────────────────┐
         //    │ el Toolbar está definido en activity_main.xml │

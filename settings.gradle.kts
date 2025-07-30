@@ -16,8 +16,9 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-    }
-}
 
-rootProject.name = "blackholeglow"
-include(":app")
+    }
+
+    rootProject.name = "blackholeglow"
+    include(":app")
+}
