@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Cuando el ítem NO está seleccionado (estado por defecto) -->
+    <item
+        android:color="@color/nav_item_text_default"
+        android:state_checked="false"
+        android:state_enabled="true" />
+
+    <!-- Cuando el ítem SÍ está seleccionado(en estado “checked”) -->
+    <item
+        android:color="@color/nav_item_text_selected"
+        android:state_checked="true" />
+</selector>

@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@android:color/transparent"
+    android:padding="16dp">
+
+    <!-- Fondo OSCURO SUAVE (modifica el color para cambiar la opacidad) -->
+    <View
+        android:id="@+id/dialog_dark_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#B3000000"
+        android:layout_gravity="center" />
+
+    <!-- Glow EXTERIOR animado -->
+    <View
+        android:id="@+id/dialog_outer_glow"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/dialog_outer_glow_anim"
+        android:alpha="0.7"
+        android:layout_gravity="center" />
+
+    <!-- Fondo con gradiente animado y esquinas redondeadas -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/dialog_gradient_bg"
+        android:elevation="12dp"
+        android:padding="0dp"
+        android:clipToOutline="true">
+
+        <!-- Imagen grande centrada, con sombra y borde -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="220dp"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="10dp"
+            android:layout_gravity="center">
+
+            <!-- Glow animado sobre la imagen -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/glow_anim"
+                android:alpha="0.4"/>
+
+            <ImageView
+                android:id="@+id/dialog_image_preview"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:layout_margin="16dp"
+                android:background="@drawable/card_background"
+                android:clipToOutline="true"
+                android:elevation="6dp"
+                android:contentDescription="@string/preview_image_desc"/>
+        </FrameLayout>
+
+        <!-- Título -->
+        <TextView
+            android:id="@+id/dialog_text_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/wallpaper_title"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:textSize="22sp"
+            android:gravity="center"
+            android:paddingTop="8dp"
+            android:paddingBottom="0dp"/>
+
+        <!-- Descripción -->
+        <TextView
+            android:id="@+id/dialog_text_description"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/wallpaper_description"
+            android:textColor="#DDDDDD"
+            android:textSize="15sp"
+            android:gravity="center"
+            android:paddingTop="2dp"
+            android:paddingBottom="8dp"
+            android:paddingLeft="18dp"
+            android:paddingRight="18dp" />
+
+        <!-- Autor -->
+        <TextView
+            android:id="@+id/dialog_text_author"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Autor"
+            android:textColor="#B583FF"
+            android:textSize="13sp"
+            android:gravity="center"
+            android:paddingBottom="6dp" />
+
+        <!-- Botón grande para aplicar -->
+        <Button
+            android:id="@+id/dialog_button_apply"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="18dp"
+            android:text="@string/apply"
+            android:backgroundTint="@color/purple_500"
+            android:textColor="@android:color/white"
+            android:elevation="6dp"
+            android:textSize="17sp"/>
+    </LinearLayout>
+</FrameLayout>
