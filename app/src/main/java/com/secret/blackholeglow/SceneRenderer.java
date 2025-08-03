@@ -1,6 +1,3 @@
-// ============================================================
-// SceneRenderer.java
-// ============================================================
 package com.secret.blackholeglow;
 
 import android.content.Context;
@@ -15,74 +12,29 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 /**
- * ============================================================================
+ * ====================================================================
  * SceneRenderer
- * ============================================================================
+ * ====================================================================
  * Renderer principal que gestiona:
  *  1. El bucle de renderizado (callbacks GLSurfaceView.Renderer).
  *  2. Configuración de cámara y viewport.
  *  3. Carga y actualización de objetos de escena.
  *  4. Control de pausa/reanudación.
- *
- * Variables globales:
- *  - screenWidth  : Ancho del viewport GL en píxeles. Rango mínimo: 1.
- *  - screenHeight : Alto del viewport GL en píxeles. Rango mínimo: 1.
- *
- * Uso típico:
- *  SceneRenderer renderer = new SceneRenderer(context, "Universo");
- *  glSurfaceView.setRenderer(renderer);
  */
 public class SceneRenderer implements GLSurfaceView.Renderer {
 
-    /** Tag para logs de depuración */
     private static final String TAG = "SceneRenderer";
-
-    /** Ancho actual del viewport OpenGL (en píxeles). Inicializado en 1 para evitar división por cero. */
     public static int screenWidth  = 1;
-    /** Alto actual del viewport OpenGL (en píxeles). Inicializado en 1 para evitar división por cero. */
     public static int screenHeight = 1;
 
-    /**
-     * Contexto de Android para cargar recursos (texturas, etc.). No debe ser nulo.
-     */
     private final Context context;
-    /**
-     * Ítem de la escena a renderizar (por ejemplo, "Universo" o "Agujero Negro").
-     */
     private String selectedItem;
-    /**
-     * Indica si el bucle de render está pausado.
-     * true = pausa render (onDrawFrame no hace nada).
-     */
     private boolean paused = false;
-
-    /**
-     * Lista de objetos de la escena que implementan SceneObject.
-     * Se itera en onDrawFrame para update() y draw().
-     */
     private final List<SceneObject> sceneObjects = new ArrayList<>();
-
-    /**
-     * Tiempo del último frame en nanosegundos (System.nanoTime()).
-     * Se usa para calcular delta time (dt).
-     */
     private long lastTime = System.nanoTime();
-
-    /**
-     * Controlador de cámara compartido entre objetos (posicion, proyección).
-     */
     private CameraController sharedCamera;
-    /**
-     * Gestor de texturas para cargar y almacenar texturas OpenGL.
-     */
     private TextureManager textureManager;
 
-    /**
-     * Constructor.
-     *
-     * @param ctx         Contexto de Android (no nulo).
-     * @param initialItem Nombre del ítem inicial a renderizar ("Universo", etc.).
-     */
     public SceneRenderer(Context ctx, String initialItem) {
         this.context      = ctx;
         this.selectedItem = initialItem;
@@ -92,8 +44,12 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
     public void onSurfaceCreated(GL10 gl, EGLConfig cfg) {
         // Habilitar Z-buffer
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-        // Configurar blending alpha
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        // Habilitar blending para transparencias
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(
+                GLES20.GL_SRC_ALPHA,
+                GLES20.GL_ONE_MINUS_SRC_ALPHA
+        );
         // Color de fondo: negro opaco
         GLES20.glClearColor(0f, 0f, 0f, 1f);
 
@@ -108,19 +64,16 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
 
     @Override
     public void onSurfaceChanged(GL10 gl, int w, int h) {
-        // Ajustar viewport
         GLES20.glViewport(0, 0, w, h);
         screenWidth  = w;
         screenHeight = h;
 
-        // Actualizar proyección y vista de la cámara
         sharedCamera.updateProjection(w, h);
         sharedCamera.setView(
-                0f, 0f, 6f,   // eye: x,y,z
-                0f, 0f, 0f,   // center: x,y,z
-                0f, 1f, 0f    // up vector
+                0f,0f,6f,   // eye
+                0f,0f,0f,   // center
+                0f,1f,0f    // up
         );
-        // Iniciar zoom automático: rango [10..20]
         sharedCamera.startZoomLoop(20f, 10f);
 
         Log.d(TAG, "Viewport cambiado a " + w + "x" + h);
@@ -130,29 +83,22 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
     public void onDrawFrame(GL10 gl) {
         if (paused) return;
 
-        // Limpiar buffers
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
-
-        // Calcular delta time (dt) en segundos
+        GLES20.glClear(
+                GLES20.GL_COLOR_BUFFER_BIT |
+                        GLES20.GL_DEPTH_BUFFER_BIT
+        );
         long now = System.nanoTime();
-        float dt = (now - lastTime) / 1_000_000_000f; // típico [0.001..0.033]
+        float dt = (now - lastTime) / 1_000_000_000f;
         lastTime = now;
 
-        // Actualizar cámara
         sharedCamera.update(dt);
 
-        // Recorrer todos los objetos: update() y draw()
         for (SceneObject obj : sceneObjects) {
             obj.update(dt);
             obj.draw();
         }
     }
 
-    /**
-     * Inicializa Textures y crea los objetos de escena según selectedItem.
-     * ``Universo``: UniverseBackground + varios Planeta.
-     * ``Agujero Negro``: DeformableCubeBackground.
-     */
     private void prepareScene() {
         if (!textureManager.initialize()) {
             Log.e(TAG, "No se pudo inicializar TextureManager");
@@ -163,50 +109,77 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
         if ("Universo".equals(selectedItem)) {
             sceneObjects.add(new UniverseBackground(context, textureManager));
 
-            // Planeta con textura, sin oscilación de escala (scaleOscPercent=null)
+            // Ejemplo: un planeta texturizado
             sceneObjects.add(new Planeta(
                     context,
                     textureManager,
-                    0f, 0f,     // orbitRadiusX, orbitRadiusZ
+                    "shaders/planeta_texture_vertex.glsl",
+                    "shaders/planeta_texture_fragment.glsl",
+                    R.drawable.textura_sol,
+                    0f,0f,      // orbitRadiusX, orbitRadiusZ
                     0f,         // orbitSpeed
                     0f,         // scaleAmplitude
-                    15.3f,      // instanceScale (base) [0.1..5]
-                    10f,        // spinSpeed en °/s [0..360]
+                    8.0f,      // instanceScale
+                    9f,        // spinSpeed
                     false,      // useSolidColor
-                    null,       // solidColor (RGBA) o null para blanco
-                    1.0f,       // alpha [0..1]
-                    null        // scaleOscPercent [0..1) o null
+                    null,       // solidColor
+                    1.0f,       // alpha
+                    null,       // scaleOscPercent
+                    8.0f        // uvScale
             ));
             sceneObjects.add(new Planeta(
                     context,
                     textureManager,
-                    0f, 0f,     // orbitRadiusX, orbitRadiusZ
-                    0f,         // orbitSpeed
+                    "shaders/planeta_vertex.glsl",
+                    "shaders/planeta_fragment.glsl",
+                    R.drawable.textura_sol,
+                    0f,0f,      // orbitRadiusX, orbitRadiusZ
+                    3f,         // orbitSpeed
                     0f,         // scaleAmplitude
-                    20.3f,      // instanceScale (base) [0.1..5]
-                    10f,        // spinSpeed en °/s [0..360]
+                    11.0f,      // instanceScale
+                    1.5f,        // spinSpeed
                     true,      // useSolidColor
-                    new float[]{1.0f, 0.25f, 0.08f, 0f},       // solidColor (RGBA) o null para blanco
-                    0.0f,       // alpha [0..1]
-                    1.05f        // scaleOscPercent [0..1) o null
+                    new float[]{0.3f,0.0f,0.0f,0.8f},       // solidColor
+                    0.3f,       // alpha
+                    0.8f,       // scaleOscPercent
+                    8.0f        // uvScale
             ));
+
             sceneObjects.add(new Planeta(
                     context,
                     textureManager,
-                    0.3f, 0.3f,     // orbitRadiusX, orbitRadiusZ
-                    0.77f,         // orbitSpeed
-                    0f,         // scaleAmplitude
-                    4f,      // instanceScale (base) [0.1..5]
-                    50f,        // spinSpeed en °/s [0..360]
-                    false,      // useSolidColor
-                    null,       // solidColor (RGBA) o null para blanco
-                    1.0f,       // alpha [0..1]
-                    null        // scaleOscPercent [0..1) o null
+                    "shaders/planeta_vertex.glsl",
+                    "shaders/planeta_fragment.glsl",
+                    R.drawable.textura_roninplaneta,
+                    /* orbitRadiusX */ 0.18f,    // eje X de la elipse [0..20]
+                    /* orbitRadiusZ */ 0.15f,    // eje Z de la elipse [0..20]
+                    /* orbitSpeed   */ 0.25f,    // velocidad rad/s [0..6.28]
+                    /* scaleAmplitude */ 0.3f,  // pulsos de escala
+                    /* instanceScale  */ 2.0f,    // escala base
+                    /* spinSpeed      */ 25.0f,   // giro propio
+                    false,                       // useSolidColor
+                    null,                        // solidColor
+                    1.0f,                        // alpha
+                    null,                       // scaleOscPercent
+                    /* uvScale        */ 1.0f   // tiling de UV
             ));
-            // ... agregar más planetas según necesidad ...
+            sceneObjects.add(new Asteroide(
+                    context,
+                    textureManager,
+                    "shaders/asteroide_vertex.glsl",
+                    "shaders/asteroide_fragment.glsl",
+                    R.drawable.textura_asteroide, // textura
+                    0.7f,                          // instanceScale (tamaño base)
+                    false,                         // useSolidColor
+                    null,                          // solidColor (se ignora si useSolidColor=false)
+                    1.0f,                          // alpha
+                    2.0f                           // uvScale (tiling UV)
+            ));
+
         }
         else if ("Agujero Negro".equals(selectedItem)) {
-            DeformableCubeBackground bg = new DeformableCubeBackground(context, textureManager);
+            DeformableCubeBackground bg =
+                    new DeformableCubeBackground(context, textureManager);
             if (bg instanceof CameraAware) {
                 ((CameraAware) bg).setCameraController(sharedCamera);
             }
@@ -214,21 +187,12 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
         }
     }
 
-    /** Pausa el render loop. */
-    public void pause() { paused = true; }
-    /** Reanuda el render loop y reinicia el temporizador. */
+    public void pause()  { paused = true; }
     public void resume() { paused = false; lastTime = System.nanoTime(); }
-
-    /** Ajusta yaw de cámara en grados. */
     public void adjustYaw(float delta) {
         if (sharedCamera != null) sharedCamera.addOrbitOffset(delta);
     }
-
-    /** Cambia el ítem seleccionado y (opc.) recarga escena. */
     public void setSelectedItem(String item) {
         this.selectedItem = item;
-        // Para recarga en caliente:
-        // sceneObjects.clear();
-        // prepareScene();
     }
 }
