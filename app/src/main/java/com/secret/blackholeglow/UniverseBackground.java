@@ -3,6 +3,7 @@ package com.secret.blackholeglow;
 import android.content.Context;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
+import android.os.SystemClock;
 import android.util.Log;
 
 import com.secret.blackholeglow.util.ObjLoader;
@@ -16,12 +17,8 @@ import java.util.List;
 
 /**
  * UniverseBackground:
- * Dibuja un plano con la textura de fondo cósmico.
- * -------------------------------------------------------------------
- * #BACKGROUND_OFFSET_Y#
- * Controla la distancia "Z" real del plano DESPUÉS de rotar 90° en X.
- * Rango válido (según tu glOrtho): -0.1f … -100f
- * Valores más negativos lo alejan más (hasta que lo clips tu far plane).
+ *   Dibuja un plano frontal usando el pair (vertexShader, fragmentShader)
+ *   que se le pase; opcionalmente muestrea una textura con alpha.
  */
 public class UniverseBackground
         extends BaseShaderProgram
@@ -29,47 +26,52 @@ public class UniverseBackground
 
     private static final String TAG = "UniverseBackground";
 
-    // Buffers de vértices, UVs e índices
-    private final FloatBuffer vertexBuffer;
-    private final FloatBuffer texCoordBuffer;
-    private final ShortBuffer indexBuffer;
-    private final int         indexCount;
+    // Buffers
+    private final FloatBuffer  vertexBuffer, texCoordBuffer;
+    private final ShortBuffer  indexBuffer;
+    private final int          indexCount;
 
-    // Locations GLSL
-    private final int aPosLoc;
-    private final int aTexLoc;
-    private final int uTexLoc;
+    // GLSL locations
+    private final int aPosLoc, aTexLoc;
+    private final int uMvpLoc, uAlphaLoc, uTimeLoc, uTexLoc;
 
-    // Textura
-    private final int textureId;
+    // Configuración
+    private final boolean hasTexture;
+    private final int     textureId;
+    private final float   alpha;
 
-    // Para animaciones si las hubiera
-    private float lastDeltaTime;
-
-    // ---------------------------------------------------
-    // #BACKGROUND_OFFSET_Y#
-    // ESTE ES TU ÚNICO PARÁMETRO DE DISTANCIA:
-    // Tras la rotación en X, este valor (negativo) se convierte
-    // en Z desplazado hacia atrás.
-    // Ajusta entre -0.1f (casi al origen) y -100f (cercano a far plane).
+    // Offset tras rotar en X
     private static final float BACKGROUND_OFFSET_Y = -0.1f;
-    // ---------------------------------------------------
 
-    public UniverseBackground(Context ctx, TextureManager texMgr) {
-        super(ctx,
-                "shaders/universe_vertex.glsl",
-                "shaders/universe_fragment.glsl");
+    // Para tiempo relativo
+    private final float timeOffset;
 
-        // Depth test + backface cull
+    public UniverseBackground(
+            Context ctx,
+            TextureManager texMgr,
+            String vertShaderAsset,
+            String fragShaderAsset,
+            Integer textureResId,
+            float alpha
+    ) {
+        super(ctx, vertShaderAsset, fragShaderAsset);
+        Log.d(TAG, "Constructor: vert=" + vertShaderAsset +
+                " frag=" + fragShaderAsset +
+                " tex=" + textureResId +
+                " alpha=" + alpha);
+        this.alpha = alpha;
+        // arrancamos el contador en el instante de creación
+        this.timeOffset = SystemClock.uptimeMillis() * 0.001f;
+
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
         GLES20.glEnable(GLES20.GL_CULL_FACE);
 
-        // 1) Carga del mesh plano.obj con UVs
+        // 1) Carga mesh plano.obj
         ObjLoader.Mesh mesh;
         try {
             mesh = ObjLoader.loadObj(ctx, "plano.obj");
             Log.d(TAG, "Mesh loaded: verts=" + mesh.vertexCount +
-                    ", faces=" + mesh.faces.size());
+                    " faces=" + mesh.faces.size());
         } catch (IOException e) {
             Log.e(TAG, "Error loading plano.obj", e);
             throw new RuntimeException(e);
@@ -77,12 +79,11 @@ public class UniverseBackground
         vertexBuffer   = mesh.vertexBuffer;
         texCoordBuffer = mesh.uvBuffer;
 
-        // 2) Triangulación de las caras
+        // 2) Índices
         List<short[]> faces = mesh.faces;
-        int triCount = 0;
-        for (short[] f : faces) triCount += f.length - 2;
-        indexCount = triCount * 3;
-
+        int tris = 0;
+        for (short[] f : faces) tris += f.length - 2;
+        indexCount = tris * 3;
         ShortBuffer ib = ByteBuffer
                 .allocateDirect(indexCount * Short.BYTES)
                 .order(ByteOrder.nativeOrder())
@@ -96,92 +97,92 @@ public class UniverseBackground
         ib.position(0);
         indexBuffer = ib;
 
-        // 3) Locations de atributos y uniform
-        aPosLoc = GLES20.glGetAttribLocation(programId,  "a_Position");
-        aTexLoc = GLES20.glGetAttribLocation(programId,  "a_TexCoord");
-        uTexLoc = GLES20.glGetUniformLocation(programId, "u_Texture");
-        Log.d(TAG, "a_Position=" + aPosLoc +
-                "  a_TexCoord=" + aTexLoc +
-                "  u_Texture=" + uTexLoc);
+        // 3) GLSL locations (ahora buscando u_Time)
+        aPosLoc   = GLES20.glGetAttribLocation(programId, "a_Position");
+        aTexLoc   = GLES20.glGetAttribLocation(programId, "a_TexCoord");
+        uMvpLoc   = GLES20.glGetUniformLocation(programId, "u_MVP");
+        uAlphaLoc = GLES20.glGetUniformLocation(programId, "u_Alpha");
+        uTimeLoc  = GLES20.glGetUniformLocation(programId, "u_Time");
+        uTexLoc   = GLES20.glGetUniformLocation(programId, "u_Texture");
+        Log.d(TAG, "locs: aPos=" + aPosLoc +
+                " aTex=" + aTexLoc +
+                " uMVP=" + uMvpLoc +
+                " uAlpha=" + uAlphaLoc +
+                " uTime=" + uTimeLoc +   // ahora coincide
+                " uTex=" + uTexLoc);
 
-        // 4) Carga de la textura cósmica
-        textureId = texMgr.getTexture(R.drawable.fondo_universo_cosmico);
+        // 4) Textura opcional
+        if (textureResId != null) {
+            hasTexture = true;
+            textureId  = texMgr.getTexture(textureResId);
+            Log.d(TAG, "Loaded texture res=" + textureResId +
+                    " texId=" + textureId);
+        } else {
+            hasTexture = false;
+            textureId  = -1;
+        }
     }
 
     @Override
     public void update(float dt) {
-        lastDeltaTime = dt;
+        // no-op
     }
 
     @Override
     public void draw() {
+        Log.d(TAG, "draw(): hasTex=" + hasTexture +
+                " uTimeLoc=" + uTimeLoc +
+                " alpha=" + alpha);
         useProgram();
 
-        // 1) Desactivar depth test y escritura en Z
+        // 1) Depth off
         GLES20.glDisable(GLES20.GL_DEPTH_TEST);
         GLES20.glDepthMask(false);
 
-        // 2) Proyección ortográfica (near=0.1, far=100)
+        // 2) Ortho / view / model / MVP
         float aspect = (float)SceneRenderer.screenWidth / SceneRenderer.screenHeight;
         float h = 1f, w = h * aspect;
-        float[] proj = new float[16];
-        Matrix.orthoM(proj, 0, -w, w, -h, h, 0.1f, 100f);
+        float[] proj = new float[16], view = new float[16], model = new float[16];
+        Matrix.orthoM(proj,0,-w,w,-h,h,0.1f,100f);
+        Matrix.setLookAtM(view,0,0f,0f,3f,0f,0f,0f,0f,1f,0f);
+        Matrix.setIdentityM(model,0);
+        Matrix.translateM(model,0,0f,BACKGROUND_OFFSET_Y,0f);
+        Matrix.rotateM(model,0,90f,1f,0f,0f);
+        float[] mv  = new float[16], mvp = new float[16];
+        Matrix.multiplyMM(mv,0,view,0,model,0);
+        Matrix.multiplyMM(mvp,0,proj,0,mv,0);
+        GLES20.glUniformMatrix4fv(uMvpLoc,1,false,mvp,0);
 
-        // 3) Vista de cámara
-        float[] view = new float[16];
-        Matrix.setLookAtM(view, 0,
-                0f, 0f, 3f,    // eye
-                0f, 0f, 0f,    // center
-                0f, 1f, 0f);   // up
+        // 3) Alpha
+        GLES20.glUniform1f(uAlphaLoc, alpha);
 
-        // 4) Modelo:
-        //    a)Translation en Y (se convertirá en Z tras la rotación)
-        //    b)Rotación 90° en X para dejar el plano frontal
-        float[] model = new float[16];
-        Matrix.setIdentityM(model, 0);
-        Matrix.translateM(
-                model, 0,
-                /* x */ 0f,
-                /* y */ BACKGROUND_OFFSET_Y,
-                /* z */ 0f
-        );
-        Matrix.rotateM(model, 0, 90f, 1f, 0f, 0f);
+        // 4) Tiempo RELATIVO
+        float t = SystemClock.uptimeMillis() * 0.001f - timeOffset;
+        GLES20.glUniform1f(uTimeLoc, t);
+        Log.d(TAG, "  -> local u_Time = " + t);
 
-        // 5) MVP = proj * view * model
-        float[] mv  = new float[16];
-        float[] mvp = new float[16];
-        Matrix.multiplyMM(mv,  0, view,  0, model, 0);
-        Matrix.multiplyMM(mvp, 0, proj,  0, mv,    0);
+        // 5) Textura
+        if (hasTexture) {
+            GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
+            GLES20.glUniform1i(uTexLoc, 0);
+        }
 
-        // 6) Uniformes comunes (time, MVP, resolución)
-        setMvpAndResolution(mvp,
-                SceneRenderer.screenWidth,
-                SceneRenderer.screenHeight
-        );
-
-        // 7) Atributos + Textura
+        // 6) Atributos + dibujado
         vertexBuffer.position(0);
         GLES20.glEnableVertexAttribArray(aPosLoc);
-        GLES20.glVertexAttribPointer(aPosLoc,
-                3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
-
-        texCoordBuffer.position(0);
-        GLES20.glEnableVertexAttribArray(aTexLoc);
-        GLES20.glVertexAttribPointer(aTexLoc,
-                2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
-
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-        GLES20.glUniform1i(uTexLoc, 0);
-
-        // 8) Dibujar plano
+        GLES20.glVertexAttribPointer(aPosLoc,3,GLES20.GL_FLOAT,false,0,vertexBuffer);
+        if (aTexLoc>=0) {
+            texCoordBuffer.position(0);
+            GLES20.glEnableVertexAttribArray(aTexLoc);
+            GLES20.glVertexAttribPointer(aTexLoc,2,GLES20.GL_FLOAT,false,0,texCoordBuffer);
+        }
         indexBuffer.position(0);
-        GLES20.glDrawElements(GLES20.GL_TRIANGLES,
-                indexCount,
-                GLES20.GL_UNSIGNED_SHORT,
-                indexBuffer);
+        GLES20.glDrawElements(GLES20.GL_TRIANGLES,indexCount,GLES20.GL_UNSIGNED_SHORT,indexBuffer);
 
-        // 9) Restaurar depth test y escritura en Z
+        // 7) Restore
+        GLES20.glDisableVertexAttribArray(aPosLoc);
+        if (aTexLoc>=0) GLES20.glDisableVertexAttribArray(aTexLoc);
         GLES20.glDepthMask(true);
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
     }
