@@ -1,8 +1,12 @@
-// Simple vertex shader para un quad que llena todo el NDC.
-// Recibe la posición del plano (en [-1,1]) y la proyecta con MVP.
+// black_vertex.glsl
 attribute vec4 a_Position;
-uniform mat4 u_MVP;
+attribute vec2 a_TexCoord;
+varying   vec2 v_TexCoord;
+uniform   mat4 u_MVP;
 
 void main() {
+    // Pasamos la coordenada de textura (aunque no la usemos)
+    v_TexCoord = a_TexCoord;
+    // Posición final
     gl_Position = u_MVP * a_Position;
 }

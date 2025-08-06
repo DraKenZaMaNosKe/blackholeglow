@@ -1,54 +1,108 @@
-// shaders/stars_fragment.glsl
+// black_fragment.glsl
+// Fragment shader para UniverseBackground: pinta todo de azul
 precision mediump float;
 
-// Alpha global desde Java
-uniform float u_Alpha;
-// Tiempo en segundos para animar el parpadeo
-uniform float u_Time;
+// Recibimos UV aunque no las usemos
+varying vec2 v_TexCoord;
 
-// Generador pseudo‐aleatorio a partir de vec2
-float rand(vec2 co){
-    return fract(sin(dot(co,vec2(12.9898,78.233)))*43758.5453);
+// Declaramos sampler y uniforms para mantener compatibilidad
+uniform sampler2D u_Texture;
+uniform float     u_Alpha;
+uniform float     u_Time;
+
+// Número de puntos que queremos dibujar
+const int POINT_COUNT   = 60;
+// Radio de cada punto (ajusta para hacerlo más grande/pequeño)
+const float POINT_RADIUS = 0.008;
+
+float rand(vec2 co) {
+    return fract(sin(dot(co, vec2(12.9898,78.233))) * 43758.5453123);
 }
 
-void main(){
-    // Coordenadas de fragmento normalizadas a [0..1]
-    vec2 uv = gl_FragCoord.xy / vec2(800.0, 600.0);
-    // ↑ Ajusta 800×600 a tu resolución real (ó pásala con otro uniform)
+void main() {
+    vec2 uv = v_TexCoord;
+    // RGBA: azul puro con la transparencia que le pases desde Java (u_Alpha)
+    vec3 outColor = vec3(0.7,0.2,1.0); // fondo negro
 
-    // Definimos un tamaño de “celda” para agrupar posibles estrellas
-    float cellSize = 0.05;        // cada 5% de pantalla
-    vec2  cell    = floor(uv / cellSize);
-    vec2  f       = fract(uv / cellSize);
+    // Iteramos sobre cada “punto” procedural
+    for(int i = 0; i < POINT_COUNT; i++) {
+        float fi = float(i);
 
-    // Probabilidad de que en esta celda haya estrella (~2%)
-    if (rand(cell) > 0.02) {
-        discard;
+        // Semilla única por punto
+        vec2 seed = vec2(fi, fi * 1.618);
+
+        // Posición aleatoria en pantalla
+        vec2 pos = vec2(
+        rand(seed + 0.123),
+        rand(seed + 4.321)
+        );
+
+        // Distancia del fragmento a ese punto
+        float d = distance(uv, pos);
+
+        if(d < POINT_RADIUS) {
+            // Generamos un color RGB aleatorio para este punto
+            float r = rand(seed + 2.0);
+            float g = rand(seed + 5.0);
+            float b = rand(seed + 9.0);
+            outColor = vec3(0.0, 0.1, 0.9);
+            break; // salimos al primer punto que encontremos
+
+        }else{
+            outColor = vec3(0.0, 0.1, 0.9);
+        }
+
     }
 
-    // Posición aleatoria dentro de la celda
-    vec2  starPos = vec2(rand(cell+1.0), rand(cell+2.0));
+    gl_FragColor = vec4(outColor, u_Alpha);
 
-    // Tamaño aleatorio (simula distancia)
-    float starSize = mix(0.01, 0.03, rand(cell+3.0));
-
-    // Distancia desde este pixel hasta el centro de estrella
-    float d = distance(f, starPos);
-
-    // Parpadeo con fase y velocidad distintas
-    float speed = 0.5 + rand(cell+4.0)*1.5;
-    float phase = rand(cell+5.0) * 6.2831;
-    float blink = sin(u_Time * speed + phase) * 0.5 + 0.5;
-
-    // Si estamos dentro del radio de la estrella, la dibujamos
-    if (d < starSize) {
-        // Color según “temperatura”
-        vec3 cold  = vec3(0.7, 0.8, 1.0);
-        vec3 warm  = vec3(1.0, 0.8, 0.6);
-        float tcol = rand(cell+6.0);
-        vec3  col  = mix(cold, warm, tcol);
-        gl_FragColor = vec4(col * blink, u_Alpha);
-    } else {
-        discard;
-    }
 }
+
+
+
+/*
+// Número de puntos que queremos dibujar
+const int POINT_COUNT   = 60;
+// Radio de cada punto (ajusta para hacerlo más grande/pequeño)
+const float POINT_RADIUS = 0.008;
+
+// Función pseudo-aleatoria reproducible
+float rand(vec2 co) {
+    return fract(sin(dot(co, vec2(12.9898,78.233))) * 43758.5453123);
+}
+
+void main() {
+    vec2 uv = v_TexCoord;
+    vec3 outColor = vec3(0.0); // fondo negro
+
+    // Iteramos sobre cada “punto” procedural
+    for(int i = 0; i < POINT_COUNT; i++) {
+        float fi = float(i);
+
+        // Semilla única por punto
+        vec2 seed = vec2(fi, fi * 1.618);
+
+        // Posición aleatoria en pantalla
+        vec2 pos = vec2(
+        rand(seed + 0.123),
+        rand(seed + 4.321)
+        );
+
+        // Distancia del fragmento a ese punto
+        float d = distance(uv, pos);
+
+        // Si estamos dentro del radio, asignamos color
+        if(d < POINT_RADIUS) {
+            // Generamos un color RGB aleatorio para este punto
+            float r = rand(seed + 2.0);
+            float g = rand(seed + 5.0);
+            float b = rand(seed + 9.0);
+            outColor = vec3(r, g, b);
+            break; // salimos al primer punto que encontremos
+        }
+    }
+
+    // Salida final (fondo negro + puntos de color) con alpha desde Java
+    gl_FragColor = vec4(outColor, u_Alpha);
+}
+*/

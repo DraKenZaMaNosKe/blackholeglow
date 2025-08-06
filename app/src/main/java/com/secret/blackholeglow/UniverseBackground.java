@@ -137,6 +137,7 @@ public class UniverseBackground
 
         // 1) Depth off
         GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES20.glDisable(GLES20.GL_CULL_FACE);
         GLES20.glDepthMask(false);
 
         // 2) Ortho / view / model / MVP

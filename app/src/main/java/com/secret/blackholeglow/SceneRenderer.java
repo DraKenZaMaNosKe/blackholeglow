@@ -111,7 +111,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
 
         if ("Universo".equals(selectedItem)) {
             // 1) Fondo del universo
-           /* sceneObjects.add(new UniverseBackground(
+          /* sceneObjects.add(new UniverseBackground(
                     context, textureManager,
                     "shaders/universe_vertex.glsl",
                     "shaders/universe_fragment.glsl",

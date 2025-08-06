@@ -10,4 +10,5 @@ uniform sampler2D u_Texture;
 void main() {
     // 3) Muestra el color de la textura en la coordenada UV
     gl_FragColor = texture2D(u_Texture, v_TexCoord);
+
 }
