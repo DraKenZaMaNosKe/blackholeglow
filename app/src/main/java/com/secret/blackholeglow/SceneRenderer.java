@@ -213,6 +213,5 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
 
     public void pause()  { paused = true; }
     public void resume() { paused = false; lastTime = System.nanoTime(); }
-    public void adjustYaw(float delta) { sharedCamera.addOrbitOffset(delta); }
     public void setSelectedItem(String item) { this.selectedItem = item; }
 }

@@ -45,7 +45,7 @@ public class LiveWallpaperService extends WallpaperService {
                     float dx = event.getX() - previousX;
                     previousX = event.getX();
                     glSurfaceView.queueEvent(() -> {
-                        //sceneRenderer.adjustYaw(dx * 0.5f);
+
                     });
                     break;
             }
