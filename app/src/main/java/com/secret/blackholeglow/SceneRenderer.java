@@ -106,19 +106,20 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
         sceneObjects.clear();
 
         if ("Universo".equals(selectedItem)) {
-            UniverseBackground bc = new UniverseBackground(
+
+           UniverseBackground fondo_transparente = new UniverseBackground(
                     context, textureManager,
-                    "shaders/universe_vertex.glsl",
-                    "shaders/universe_fragment.glsl",
-                    R.drawable.fondo_universo_cosmico,
-                    0.0f
+                    "shaders/black_vertex.glsl",
+                    "shaders/black_fragment.glsl",
+                    null,
+                    1.0f
             );
 
-            if (bc instanceof CameraAware) {
-                ((CameraAware) bc).setCameraController(sharedCamera);
-                sceneObjects.add(bc);
+            if (fondo_transparente instanceof CameraAware) {
+                ((CameraAware) fondo_transparente).setCameraController(sharedCamera);
+                sceneObjects.add(fondo_transparente);
             }
-
+                        /*
             // 2) Agregar un planeta
             //    Parámetros:
             //      - vertex shader: "shaders/planeta-vertex.glsl"
@@ -205,6 +206,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
                     R.drawable.textura_asteroide,
                     0.1f, false, null, 1.0f, 2.0f
             ));
+            */
 
         }
     }

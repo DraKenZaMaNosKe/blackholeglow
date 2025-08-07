@@ -58,11 +58,5 @@ public class TextureManager implements TextureLoader {
         return texId;
     }
 
-    /**
-     * Conveniencia para texturitas de “estrella”
-     */
-    @Override
-    public int getStarTexture() {
-        return getTexture(R.drawable.star_glow);
-    }
+
 }
