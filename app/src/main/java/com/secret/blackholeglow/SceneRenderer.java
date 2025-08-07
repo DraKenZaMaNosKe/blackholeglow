@@ -68,12 +68,8 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
         // Proyección de cámara
         sharedCamera.updateProjection(w, h);
         // Vista fija: ojo en (0,0,6), mirando al origen
-        sharedCamera.setView(
-                0f, 0f, 6f,
-                0f, 0f, 0f,
-                0f, 1f, 0f
-        );
-        // Nota: startZoomLoop ha sido eliminado intencionadamente
+
+
 
         Log.d(TAG, String.format("Viewport changed to %dx%d", w, h));
     }
@@ -110,6 +106,19 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
         sceneObjects.clear();
 
         if ("Universo".equals(selectedItem)) {
+            UniverseBackground bc = new UniverseBackground(
+                    context, textureManager,
+                    "shaders/universe_vertex.glsl",
+                    "shaders/universe_fragment.glsl",
+                    R.drawable.fondo_universo_cosmico,
+                    0.0f
+            );
+
+            if (bc instanceof CameraAware) {
+                ((CameraAware) bc).setCameraController(sharedCamera);
+                sceneObjects.add(bc);
+            }
+
             // 1) Fondo del universo
           /* sceneObjects.add(new UniverseBackground(
                     context, textureManager,
@@ -118,7 +127,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
                     R.drawable.fondo_universo_cosmico,
                     0.0f
             ));*/
-
+/*
             sceneObjects.add(new UniverseBackground(
                     context, textureManager,
                     "shaders/black_vertex.glsl",
@@ -212,7 +221,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
                     "shaders/asteroide_fragment.glsl",
                     R.drawable.textura_asteroide,
                     0.1f, false, null, 1.0f, 2.0f
-            ));
+            ));*/
 
         }
     }
