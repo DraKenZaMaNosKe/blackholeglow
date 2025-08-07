@@ -119,23 +119,6 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
                 sceneObjects.add(bc);
             }
 
-            // 1) Fondo del universo
-          /* sceneObjects.add(new UniverseBackground(
-                    context, textureManager,
-                    "shaders/universe_vertex.glsl",
-                    "shaders/universe_fragment.glsl",
-                    R.drawable.fondo_universo_cosmico,
-                    0.0f
-            ));*/
-/*
-            sceneObjects.add(new UniverseBackground(
-                    context, textureManager,
-                    "shaders/black_vertex.glsl",
-                    "shaders/black_fragment.glsl",
-                    null,      // sin textura
-                    1.0f
-            ));
-
             // 2) Agregar un planeta
             //    Parámetros:
             //      - vertex shader: "shaders/planeta-vertex.glsl"
@@ -221,7 +204,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
                     "shaders/asteroide_fragment.glsl",
                     R.drawable.textura_asteroide,
                     0.1f, false, null, 1.0f, 2.0f
-            ));*/
+            ));
 
         }
     }
