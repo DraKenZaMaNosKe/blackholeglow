@@ -17,10 +17,10 @@ import javax.microedition.khronos.opengles.GL10;
  * SceneRenderer
  * ====================================================================
  * Este Renderer controla:
- *  1. El bucle de renderizado (onDrawFrame).
- *  2. La cámara (sin zoom loop, con head-sway).
- *  3. El viewport/proyección al cambiar tamaño.
- *  4. Carga y dibujado de los SceneObject (planeta, asteroide, fondo).
+ * 1. El bucle de renderizado (onDrawFrame).
+ * 2. La cámara (sin zoom loop, con head-sway).
+ * 3. El viewport/proyección al cambiar tamaño.
+ * 4. Carga y dibujado de los SceneObject (planeta, asteroide, fondo).
  */
 public class SceneRenderer implements GLSurfaceView.Renderer {
     private static final String TAG = "SceneRenderer";
@@ -37,7 +37,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
     // Parámetros para head-sway (meneo de cabeza)
     private float headTime = 0f;
     private static final float SWAY_AMPLITUDE = 5f;    // grados máximos de yaw
-    private static final float SWAY_SPEED     = 1.0f;  // ciclos por segundo
+    private static final float SWAY_SPEED = 1.0f;  // ciclos por segundo
 
     public SceneRenderer(Context ctx, String initialItem) {
         this.context = ctx;
@@ -69,8 +69,6 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
         sharedCamera.updateProjection(w, h);
         // Vista fija: ojo en (0,0,6), mirando al origen
 
-
-
         Log.d(TAG, String.format("Viewport changed to %dx%d", w, h));
     }
 
@@ -83,11 +81,6 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
         long now = System.nanoTime();
         float dt = (now - lastTime) / 1e9f;
         lastTime = now;
-
-        // Head-sway: oscilación de yaw
-        headTime += dt * SWAY_SPEED;
-        float sway = (float)Math.sin(headTime * 2 * Math.PI) * SWAY_AMPLITUDE;
-        sharedCamera.addOrbitOffset(sway);
 
         sharedCamera.update(dt);
 
@@ -107,7 +100,20 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
 
         if ("Universo".equals(selectedItem)) {
 
-           UniverseBackground fondo_transparente = new UniverseBackground(
+            /*UniverseBackground universofondo = new UniverseBackground(
+                    context, textureManager,
+                    "shaders/universe_vertex.glsl",
+                    "shaders/universe_fragment.glsl",
+                    R.drawable.fondo_universo_cosmico,
+                    1.0f
+            );
+
+            if (universofondo instanceof CameraAware) {
+                ((CameraAware) universofondo).setCameraController(sharedCamera);
+                sceneObjects.add(universofondo);
+            }*/
+
+            UniverseBackground fondo_transparente = new UniverseBackground(
                     context, textureManager,
                     "shaders/black_vertex.glsl",
                     "shaders/black_fragment.glsl",
@@ -211,7 +217,18 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
         }
     }
 
-    public void pause()  { paused = true; }
-    public void resume() { paused = false; lastTime = System.nanoTime(); }
-    public void setSelectedItem(String item) { this.selectedItem = item; }
+    public void pause() {
+        paused = true;
+    }
+
+    public void resume() {
+        paused = false;
+        lastTime = System.nanoTime();
+    }
+
+    public void setSelectedItem(String item) {
+        this.selectedItem = item;
+    }
 }
+
+
