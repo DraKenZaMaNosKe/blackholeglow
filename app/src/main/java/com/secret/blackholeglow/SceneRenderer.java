@@ -22,7 +22,7 @@ import javax.microedition.khronos.opengles.GL10;
  * 3. El viewport/proyección al cambiar tamaño.
  * 4. Carga y dibujado de los SceneObject (planeta, asteroide, fondo).
  */
-public class SceneRenderer implements GLSurfaceView.Renderer {
+public class    SceneRenderer implements GLSurfaceView.Renderer {
     private static final String TAG = "SceneRenderer";
     public static int screenWidth = 1, screenHeight = 1;
 
@@ -33,11 +33,6 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
     private long lastTime = System.nanoTime();
     private CameraController sharedCamera;
     private TextureManager textureManager;
-
-    // Parámetros para head-sway (meneo de cabeza)
-    private float headTime = 0f;
-    private static final float SWAY_AMPLITUDE = 5f;    // grados máximos de yaw
-    private static final float SWAY_SPEED = 1.0f;  // ciclos por segundo
 
     public SceneRenderer(Context ctx, String initialItem) {
         this.context = ctx;
@@ -224,6 +219,17 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
     public void resume() {
         paused = false;
         lastTime = System.nanoTime();
+        Log.d(TAG, "Render resumed → tiempo reiniciado");
+    }
+
+    // En SceneRenderer.java
+    public void release() {
+        for (SceneObject obj : sceneObjects) {
+            if (obj instanceof UniverseBackground) {
+                ((UniverseBackground) obj).release();
+            }
+            // Si tienes otros objetos con release(), agrégalos aquí
+        }
     }
 
     public void setSelectedItem(String item) {

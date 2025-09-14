@@ -63,10 +63,11 @@ public class AnimatedBorderRendererThread extends Thread {
      */
     public void requestExitAndWait() {
         running = false;
+        interrupt(); // por si esta bloqueado
         try {
             join();
         } catch (InterruptedException e) {
-            Log.d("AnimatedBorderRendererThread", "Interrupted during join()", e);
+            Log.e("RendererThread", "Error al cerrar hilo", e);
         }
     }
 

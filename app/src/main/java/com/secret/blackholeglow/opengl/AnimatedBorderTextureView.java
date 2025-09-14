@@ -83,6 +83,7 @@ public class AnimatedBorderTextureView extends TextureView
             rendererThread.requestExitAndWait();
             rendererThread = null;
         }
+        Log.d("AnimatedBorderTextureView", "Liberando recursos de OpenGL");
         return true;
     }
 

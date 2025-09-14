@@ -72,6 +72,8 @@ public class UniverseBackground
         this.alpha      = alpha;
         this.timeOffset = SystemClock.uptimeMillis() * 0.001f;
 
+        float t = (SystemClock.uptimeMillis() * 0.001f - timeOffset) % 60.0f;
+
         // Habilita test de profundidad y culling
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
         GLES20.glEnable(GLES20.GL_CULL_FACE);
@@ -140,6 +142,14 @@ public class UniverseBackground
         // Sin animaciones de modelo aquí
     }
 
+    public void release() {
+        if (hasTexture && textureId > 0) {
+            int[] textures = { textureId };
+            GLES20.glDeleteTextures(1, textures, 0);
+            Log.d(TAG, "Textura liberada: " + textureId);
+        }
+    }
+
     @Override
     public void draw() {
         if (camera == null) {
@@ -172,6 +182,7 @@ public class UniverseBackground
         GLES20.glUniform2f(uResolutionLoc,
                 (float)SceneRenderer.screenWidth,
                 (float)SceneRenderer.screenHeight);
+        Log.d(TAG, "u_Resolution sent: " + SceneRenderer.screenWidth + "x" + SceneRenderer.screenHeight);
 
         // Textura si aplica
         if (hasTexture) {

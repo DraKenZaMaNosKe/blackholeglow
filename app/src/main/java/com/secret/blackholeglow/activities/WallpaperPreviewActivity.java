@@ -44,6 +44,8 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
     // (opcional) Vista de imagen para preview estático:
     // private ImageView imageViewPreview;
 
+    private SceneRenderer sceneRenderer;
+
     // ╔════════════════════════════════════╗
     // ║ 🎬 onCreate(): Ritual de Invocación ║
     // ╚════════════════════════════════════╝
@@ -63,9 +65,10 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         layout.setOrientation(LinearLayout.VERTICAL);
 
         // 3️⃣ Forjar la GLSurfaceView del cosmos OpenGL
+        sceneRenderer = new SceneRenderer(this, nombre_wallpaper);
         glSurfaceView = new GLSurfaceView(this);
         glSurfaceView.setEGLContextClientVersion(2); // OpenGL ES 2.0
-        glSurfaceView.setRenderer(new SceneRenderer(this, nombre_wallpaper));
+        glSurfaceView.setRenderer(sceneRenderer);
         // (opcional) Vista estática si no quieres renderizar 3D
         // imageViewPreview = new ImageView(this);
         // imageViewPreview.setImageResource(previewId);
@@ -119,6 +122,9 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         super.onPause();
         // Detener renderizado OpenGL hasta retomar
         glSurfaceView.onPause();
+        if (sceneRenderer != null) {
+            sceneRenderer.release();
+        }
     }
 
     // ╔════════════════════════════════════╗
@@ -129,5 +135,10 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         super.onResume();
         // Reiniciar renderizado OpenGL
         glSurfaceView.onResume();
+
+        // Recuperar el renderer actual y reiniciar tiempo
+        if (sceneRenderer != null) {
+            sceneRenderer.resume();
+        }
     }
 }
