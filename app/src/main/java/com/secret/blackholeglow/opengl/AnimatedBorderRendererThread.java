@@ -1,13 +1,7 @@
-// ╔══════════════════════════════════════════════════════════════════════╗
-// ║ 🔥 AnimatedBorderRendererThread.java – Artífice de Efectos Dinámicos ║
-// ║                                                                      ║
-// ║  🎭 Este hilo inicializa EGL y compila shaders dinámicos para aplicar  ║
-// ║     distintos marcos animados en cada ítem de la lista.             ║
-// ╚══════════════════════════════════════════════════════════════════════╝
-
 package com.secret.blackholeglow.opengl;
 
 import android.content.Context;
+import android.graphics.PixelFormat;
 import android.opengl.GLES20;
 import android.util.Log;
 import android.view.Surface;
@@ -23,8 +17,9 @@ import javax.microedition.khronos.egl.EGLDisplay;
 import javax.microedition.khronos.egl.EGLSurface;
 
 /**
- * AnimatedBorderRendererThread maneja todo el ciclo de EGL y renderizado
- * OpenGL ES 2.0 usando un par de shaders definidos dinámicamente.
+ * AnimatedBorderRendererThread
+ * Maneja ciclo EGL y dibuja un quad fullscreen usando shaders dinámicos.
+ * Ahora soporta ALPHA real gracias a blending habilitado y surface translúcido.
  */
 public class AnimatedBorderRendererThread extends Thread {
     private final Surface surface;
@@ -35,14 +30,6 @@ public class AnimatedBorderRendererThread extends Thread {
     private final String fragmentAsset;
     private volatile boolean running = true;
 
-    /**
-     * @param surface        Superficie EGL donde se dibuja
-     * @param width          Ancho del viewport
-     * @param height         Alto del viewport
-     * @param context        Contexto Android para cargar assets
-     * @param vertexAsset    Ruta al shader de vértices en assets
-     * @param fragmentAsset  Ruta al shader de fragmentos en assets
-     */
     public AnimatedBorderRendererThread(
             Surface surface,
             int width,
@@ -58,12 +45,9 @@ public class AnimatedBorderRendererThread extends Thread {
         this.fragmentAsset = fragmentAsset;
     }
 
-    /**
-     * Solicita el fin del bucle de dibujo y espera la limpieza EGL.
-     */
     public void requestExitAndWait() {
         running = false;
-        interrupt(); // por si esta bloqueado
+        interrupt();
         try {
             join();
         } catch (InterruptedException e) {
@@ -73,19 +57,17 @@ public class AnimatedBorderRendererThread extends Thread {
 
     @Override
     public void run() {
-        // 1️⃣ Inicializar EGL
         EGL10 egl = (EGL10) EGLContext.getEGL();
         EGLDisplay display = egl.eglGetDisplay(EGL10.EGL_DEFAULT_DISPLAY);
         egl.eglInitialize(display, null);
 
-
-        // 2️⃣ Elegir configuración RGBA8888
+        // 🔑 IMPORTANTE: Configuración RGBA8888 con alpha
         int[] configSpec = {
                 EGL10.EGL_RENDERABLE_TYPE, 4,
                 EGL10.EGL_RED_SIZE,        8,
                 EGL10.EGL_GREEN_SIZE,      8,
                 EGL10.EGL_BLUE_SIZE,       8,
-                EGL10.EGL_ALPHA_SIZE,      8,
+                EGL10.EGL_ALPHA_SIZE,      8,  // aseguramos canal alpha
                 EGL10.EGL_DEPTH_SIZE,      0,
                 EGL10.EGL_NONE
         };
@@ -94,55 +76,51 @@ public class AnimatedBorderRendererThread extends Thread {
         egl.eglChooseConfig(display, configSpec, configs, 1, numConfig);
         EGLConfig config = configs[0];
 
-        // 3️⃣ Contexto OpenGL ES 2.0
         int[] attribs = {0x3098, 2, EGL10.EGL_NONE};
         EGLContext eglContext = egl.eglCreateContext(
                 display, config, EGL10.EGL_NO_CONTEXT, attribs);
 
-        // 4️⃣ Crear superficie y hacerla current
         EGLSurface eglSurface = egl.eglCreateWindowSurface(
                 display, config, surface, null);
         egl.eglMakeCurrent(display, eglSurface, eglSurface, eglContext);
 
-        // 5️⃣ Compilar shaders dinámicos
-        int program = ShaderUtils.createProgram(
-                context, vertexAsset, fragmentAsset);
+        // 🔥 ACTIVAMOS BLENDING para usar el canal alpha del fragment shader
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+
+        // Compilación de shaders
+        int program = ShaderUtils.createProgram(context, vertexAsset, fragmentAsset);
         GLES20.glUseProgram(program);
 
-        // 6️⃣ Localizar atributos y uniforms básicos
         int aPosition = GLES20.glGetAttribLocation(program, "a_Position");
         int uTime     = GLES20.glGetUniformLocation(program, "u_Time");
         int uRes      = GLES20.glGetUniformLocation(program, "u_Resolution");
 
-
-        // 7️⃣ Crear buffer de un quad fullscreen
         float[] quad = {-1f, -1f, 1f, -1f, -1f, 1f, 1f, 1f};
-        FloatBuffer vb = ByteBuffer
-                .allocateDirect(quad.length * 4)
+        FloatBuffer vb = ByteBuffer.allocateDirect(quad.length * 4)
                 .order(ByteOrder.nativeOrder())
                 .asFloatBuffer()
                 .put(quad);
         vb.position(0);
 
         long startTime = System.nanoTime();
-        float t;
+        final double LOOP_DURATION = 60.0;
 
-        // ╔══════════════════════════════════╗
-        // ║ 🔁 Bucle de dibujado infinito      ║
-        // ╚══════════════════════════════════╝
         while (running) {
-            t = (System.nanoTime() - startTime) / 1_000_000_000f;
-            if (t > Float.MAX_VALUE) startTime = System.nanoTime();
+            double elapsed = (System.nanoTime() - startTime) / 1_000_000_000.0;
+            float phase = (float)((elapsed % LOOP_DURATION) / LOOP_DURATION);
 
+            // Limpieza: usamos clear con alpha=0 para que el fondo quede TRANSPARENTE
             GLES20.glClearColor(0f, 0f, 0f, 0f);
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
 
             GLES20.glUseProgram(program);
             GLES20.glEnableVertexAttribArray(aPosition);
-            GLES20.glVertexAttribPointer(aPosition, 2, GLES20.GL_FLOAT,
-                    false, 0, vb);
-            GLES20.glUniform1f(uTime, t);
+            GLES20.glVertexAttribPointer(aPosition, 2, GLES20.GL_FLOAT, false, 0, vb);
+
+            GLES20.glUniform1f(uTime, phase);
             GLES20.glUniform2f(uRes, width, height);
+
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
             GLES20.glDisableVertexAttribArray(aPosition);
 
@@ -150,15 +128,11 @@ public class AnimatedBorderRendererThread extends Thread {
             try { Thread.sleep(16); } catch (InterruptedException ignored) {}
         }
 
-        // 8️⃣ Limpieza EGL
         egl.eglMakeCurrent(display, EGL10.EGL_NO_SURFACE,
                 EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_CONTEXT);
-        // 4.1️⃣ Asegurarnos de que el viewport cubre todo el TextureView
-        GLES20.glViewport(0, 0, width, height);
         egl.eglDestroySurface(display, eglSurface);
         egl.eglDestroyContext(display, eglContext);
         egl.eglTerminate(display);
-
         surface.release();
     }
 }

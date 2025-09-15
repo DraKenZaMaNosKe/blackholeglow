@@ -177,7 +177,8 @@ public class UniverseBackground
 
         // Envía uniforms adicionales
         GLES20.glUniform1f(uAlphaLoc, alpha);
-        float t = SystemClock.uptimeMillis() * 0.001f - timeOffset;
+        float t = (SystemClock.uptimeMillis() * 0.001f - timeOffset) % 60.0f;
+
         GLES20.glUniform1f(uTimeLoc, t);
         GLES20.glUniform2f(uResolutionLoc,
                 (float)SceneRenderer.screenWidth,

@@ -74,8 +74,12 @@ public class    SceneRenderer implements GLSurfaceView.Renderer {
 
         // Tiempo delta
         long now = System.nanoTime();
-        float dt = (now - lastTime) / 1e9f;
+
+
+        // 🔧 Calculamos delta time pero limitamos dt máximo (por ejemplo, 0.1s)
+        float dt = Math.min((now - lastTime) / 1e9f, 0.1f);
         lastTime = now;
+
 
         sharedCamera.update(dt);
 
