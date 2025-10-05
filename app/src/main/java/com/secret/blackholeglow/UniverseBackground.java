@@ -159,40 +159,71 @@ public class UniverseBackground
 
         useProgram();
 
-        // Desactiva depth y culling para fondo
         GLES20.glDisable(GLES20.GL_DEPTH_TEST);
         GLES20.glDisable(GLES20.GL_CULL_FACE);
         GLES20.glDepthMask(false);
 
-        // Prepara matriz modelo (identidad + offset + rotación X)
+        float screenAspect = (float) SceneRenderer.screenWidth /
+                (float) SceneRenderer.screenHeight;
+
+        Log.d(TAG, "Screen: " + SceneRenderer.screenWidth + "x" +
+                SceneRenderer.screenHeight + " aspect=" + screenAspect);
+
         float[] model = new float[16];
         Matrix.setIdentityM(model, 0);
-        Matrix.translateM(model, 0, 0f, BACKGROUND_OFFSET_Y, 0f);
-        Matrix.rotateM(model, 0, 0f, 1f, 0f, 0f);
 
-        // Calcula MVP vía CameraController
+        // ===== AJUSTE: Desplazar en Y también =====
+        float distancia = -50f;
+        float offsetY = -20f;  // ← NUEVO: desplaza hacia abajo
+
+        // Prueba con diferentes valores:
+        // offsetY = -3f;  // Poco desplazamiento
+        // offsetY = -5f;  // Medio
+        // offsetY = -8f;  // Mucho desplazamiento
+
+        Matrix.translateM(model, 0, 0f, offsetY, distancia);
+        //                           ↑ añadido el offsetY
+
+        // Calcula escala adaptativa
+        float fovDegrees = camera.getFOV();
+        float fovRad = (float) Math.toRadians(fovDegrees);
+
+        Log.d(TAG, "FOV de cámara: " + fovDegrees + "°");
+
+        float alturaVisible = 2.0f * (float) Math.tan(fovRad / 2.0f) * Math.abs(distancia);
+        float anchoVisible = alturaVisible * screenAspect;
+
+        float factorSeguridad = 1.3f;
+        float escalaX = anchoVisible * factorSeguridad;
+        float escalaY = alturaVisible *  factorSeguridad;
+
+        Log.d(TAG, "Visible - Ancho: " + anchoVisible + " Alto: " + alturaVisible);
+        Log.d(TAG, "Escalas - X: " + escalaX + " Y: " + escalaY + " OffsetY: " + offsetY);
+
+        Matrix.scaleM(model, 0, escalaX, escalaY, 1f);
+        Matrix.rotateM(model, 0, 90f, 1f, 0f, 0f);
+
+        // Calcula MVP
         float[] mvp = new float[16];
         camera.computeMvp(model, mvp);
         GLES20.glUniformMatrix4fv(uMvpLoc, 1, false, mvp, 0);
 
-        // Envía uniforms adicionales
+        // Envía uniforms
         GLES20.glUniform1f(uAlphaLoc, alpha);
         float t = (SystemClock.uptimeMillis() * 0.001f - timeOffset) % 60.0f;
-
         GLES20.glUniform1f(uTimeLoc, t);
         GLES20.glUniform2f(uResolutionLoc,
                 (float)SceneRenderer.screenWidth,
                 (float)SceneRenderer.screenHeight);
-        Log.d(TAG, "u_Resolution sent: " + SceneRenderer.screenWidth + "x" + SceneRenderer.screenHeight);
 
-        // Textura si aplica
+        // Textura
         if (hasTexture) {
             GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
             GLES20.glUniform1i(uTexLoc, 0);
         }
 
-        // Atributos y dibujado del mesh
+        // Dibuja
         vertexBuffer.position(0);
         GLES20.glEnableVertexAttribArray(aPosLoc);
         GLES20.glVertexAttribPointer(aPosLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);

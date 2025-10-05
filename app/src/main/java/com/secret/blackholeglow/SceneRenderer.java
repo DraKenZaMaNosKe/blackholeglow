@@ -1,4 +1,4 @@
-// SceneRenderer.java
+// SceneRenderer.java - VERSIÓN ESTABLE
 package com.secret.blackholeglow;
 
 import android.content.Context;
@@ -13,16 +13,9 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 /**
- * ====================================================================
- * SceneRenderer
- * ====================================================================
- * Este Renderer controla:
- * 1. El bucle de renderizado (onDrawFrame).
- * 2. La cámara (sin zoom loop, con head-sway).
- * 3. El viewport/proyección al cambiar tamaño.
- * 4. Carga y dibujado de los SceneObject (planeta, asteroide, fondo).
+ * SceneRenderer con cámara fija en posición óptima
  */
-public class    SceneRenderer implements GLSurfaceView.Renderer {
+public class SceneRenderer implements GLSurfaceView.Renderer {
     private static final String TAG = "SceneRenderer";
     public static int screenWidth = 1, screenHeight = 1;
 
@@ -34,24 +27,39 @@ public class    SceneRenderer implements GLSurfaceView.Renderer {
     private CameraController sharedCamera;
     private TextureManager textureManager;
 
+    // FPS counter para debug
+    private int frameCount = 0;
+    private float fpsTimer = 0f;
+
     public SceneRenderer(Context ctx, String initialItem) {
         this.context = ctx;
         this.selectedItem = initialItem;
+        Log.d(TAG, "SceneRenderer creado con item: " + initialItem);
     }
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig cfg) {
-        // Depth + blending
+        Log.d(TAG, "onSurfaceCreated - Iniciando");
+
+        // Configuración OpenGL
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
         GLES20.glEnable(GLES20.GL_BLEND);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
-        GLES20.glClearColor(0f, 0f, 0f, 1f);
+        GLES20.glClearColor(0.02f, 0.02f, 0.05f, 1f); // Fondo espacial oscuro
 
+        // Crear controladores
         sharedCamera = new CameraController();
         textureManager = new TextureManager(context);
 
+        // CONFIGURAR CÁMARA EN POSICIÓN ÓPTIMA
+        // Vista 3/4 estilo isométrico pero con perspectiva
+        sharedCamera.setMode(CameraController.CameraMode.THIRD_PERSON);
+        sharedCamera.setPosition(4f, 3f, 6f);  // Posición elevada y atrás
+        sharedCamera.setTarget(0f, 0f, 0f);    // Mirando al centro
+
+        // Preparar escena
         prepareScene();
-        Log.d(TAG, "Surface created → scene ready");
+        Log.d(TAG, "Surface created exitosamente con " + sceneObjects.size() + " objetos");
     }
 
     @Override
@@ -60,30 +68,36 @@ public class    SceneRenderer implements GLSurfaceView.Renderer {
         screenWidth = w;
         screenHeight = h;
 
-        // Proyección de cámara
         sharedCamera.updateProjection(w, h);
-        // Vista fija: ojo en (0,0,6), mirando al origen
-
-        Log.d(TAG, String.format("Viewport changed to %dx%d", w, h));
+        Log.d(TAG, "Viewport: " + w + "x" + h);
     }
 
     @Override
     public void onDrawFrame(GL10 gl) {
         if (paused) return;
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
 
-        // Tiempo delta
+        // Delta time
         long now = System.nanoTime();
-
-
-        // 🔧 Calculamos delta time pero limitamos dt máximo (por ejemplo, 0.1s)
         float dt = Math.min((now - lastTime) / 1e9f, 0.1f);
         lastTime = now;
 
+        // FPS debug (cada segundo)
+        frameCount++;
+        fpsTimer += dt;
+        if (fpsTimer >= 1.0f) {
+            Log.v(TAG, "FPS: " + frameCount);
+            frameCount = 0;
+            fpsTimer = 0f;
+        }
 
-        sharedCamera.update(dt);
+        // Limpiar buffers
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
 
-        // Actualiza y dibuja cada objeto de la escena
+        // La cámara NO se actualiza (está fija)
+        // Solo actualizamos si queremos una rotación muy lenta
+        // sharedCamera.update(dt); // COMENTADO - cámara estática
+
+        // Dibujar objetos
         for (SceneObject obj : sceneObjects) {
             obj.update(dt);
             obj.draw();
@@ -91,154 +105,185 @@ public class    SceneRenderer implements GLSurfaceView.Renderer {
     }
 
     private void prepareScene() {
+        Log.d(TAG, "Preparando escena: " + selectedItem);
+
         if (!textureManager.initialize()) {
-            Log.e(TAG, "Failed to init textures");
+            Log.e(TAG, "ERROR: TextureManager no se pudo inicializar");
             return;
         }
+
         sceneObjects.clear();
 
         if ("Universo".equals(selectedItem)) {
+            setupUniverseScene();
+        } else if ("Agujero Negro".equals(selectedItem)) {
+            setupBlackHoleScene();
+        } else {
+            // Por defecto usar Universo
+            setupUniverseScene();
+        }
 
-            /*UniverseBackground universofondo = new UniverseBackground(
+        Log.d(TAG, "Escena preparada con " + sceneObjects.size() + " objetos");
+    }
+
+    private void setupUniverseScene() {
+        Log.d(TAG, "Configurando escena UNIVERSO");
+
+        // FONDO - Solo si tienes la textura
+        try {
+            UniverseBackground fondo = new UniverseBackground(
                     context, textureManager,
                     "shaders/universe_vertex.glsl",
                     "shaders/universe_fragment.glsl",
                     R.drawable.fondo_universo_cosmico,
                     1.0f
             );
+            if (fondo instanceof CameraAware) {
+                ((CameraAware) fondo).setCameraController(sharedCamera);
+            }
+            sceneObjects.add(fondo);
+            Log.d(TAG, "Fondo agregado");
+        } catch (Exception e) {
+            Log.e(TAG, "Error creando fondo: " + e.getMessage());
+        }
 
-            if (universofondo instanceof CameraAware) {
-                ((CameraAware) universofondo).setCameraController(sharedCamera);
-                sceneObjects.add(universofondo);
-            }*/
+        // SOL CENTRAL - Más pequeño y centrado
+        Planeta sol = new Planeta(
+                context, textureManager,
+                "shaders/planeta_vertex.glsl",
+                "shaders/planeta_fragment.glsl",
+                R.drawable.textura_sol,
+                0.0f, 0.0f, 0.0f,  // Sin órbita
+                0.0f,              // Sin variación
+                0.5f,              // Escala mediana
+                2.0f,             // Rotación lenta
+                false, null, 1.0f,
+                null,
+                1.0f
+        );
+        if (sol instanceof CameraAware) {
+            ((CameraAware) sol).setCameraController(sharedCamera);
+        }
+        sceneObjects.add(sol);
+        Log.d(TAG, "Sol agregado");
 
-            UniverseBackground fondo_transparente = new UniverseBackground(
+        //glow sobre el sol
+        Planeta planeta_glow_del_sol = new Planeta(
+                context, textureManager,
+                "shaders/planeta_vertex.glsl",
+                "shaders/planeta_fragment.glsl",
+                R.drawable.textura_sol,
+                0.0f, 0.0f, 0.0f,  // Sin órbita
+                5f,              // Sin variación
+                0.7f,              // Escala mediana
+                10.0f,             // Rotación lenta
+                true, new float[]{0.526f,0.221f,0.111f,0.5f}, 1.0f,
+                1.5f,
+                0.5f
+        );
+        if (planeta_glow_del_sol instanceof CameraAware) {
+            ((CameraAware) planeta_glow_del_sol).setCameraController(sharedCamera);
+        }
+        sceneObjects.add(planeta_glow_del_sol);
+        Log.d(TAG, "Glow del sol agregado");
+
+        // PLANETA ORBITANTE
+        Planeta planeta1 = new Planeta(
+                context, textureManager,
+                "shaders/planeta_vertex.glsl",
+                "shaders/planeta_fragment.glsl",
+                R.drawable.textura_roninplaneta,
+                2.5f, 2.0f, 0.3f,  // Órbita mediana
+                0.1f,              // Poca variación
+                0.2f,              // Tamaño pequeño
+                10.0f,             // Rotación media
+                false, null, 1.0f,
+                null,
+                1.0f
+        );
+        if (planeta1 instanceof CameraAware) {
+            ((CameraAware) planeta1).setCameraController(sharedCamera);
+        }
+        sceneObjects.add(planeta1);
+        Log.d(TAG, "Planeta orbitante agregado");
+    }
+
+    private void setupBlackHoleScene() {
+        Log.d(TAG, "Configurando escena AGUJERO NEGRO");
+
+        // Centro negro
+       Planeta blackHole = new Planeta(
+                context, textureManager,
+                "shaders/planeta_vertex.glsl",
+                "shaders/planeta_fragment.glsl",
+                R.drawable.fondo_transparente,
+                0.0f, 0.0f, 0.0f,
+                0.05f,
+                2.0f,
+                0.0f,
+                true,
+                new float[]{0.0f, 0.0f, 0.0f, 1.0f},
+                1.0f,
+                0.98f,
+                1.0f
+        );
+        if (blackHole instanceof CameraAware) {
+            ((CameraAware) blackHole).setCameraController(sharedCamera);
+        }
+        sceneObjects.add(blackHole);
+/*
+        // Disco de acreción simple
+        for (int i = 0; i < 3; i++) {
+            float radius = 2.0f + i * 0.8f;
+            Planeta particle = new Planeta(
                     context, textureManager,
-                    "shaders/black_vertex.glsl",
-                    "shaders/black_fragment.glsl",
+                    "shaders/planeta_vertex.glsl",
+                    "shaders/planeta_fragment.glsl",
+                    R.drawable.textura_asteroide,
+                    radius, radius * 0.8f, 0.5f / (i + 1),
+                    0.1f,
+                    0.3f,
+                    50.0f,
+                    true,
+                    new float[]{1.0f, 0.5f, 0.2f, 0.7f},
+                    0.8f,
                     null,
                     1.0f
             );
-
-            if (fondo_transparente instanceof CameraAware) {
-                ((CameraAware) fondo_transparente).setCameraController(sharedCamera);
-                sceneObjects.add(fondo_transparente);
+            if (particle instanceof CameraAware) {
+                ((CameraAware) particle).setCameraController(sharedCamera);
             }
-                        /*
-            // 2) Agregar un planeta
-            //    Parámetros:
-            //      - vertex shader: "shaders/planeta-vertex.glsl"
-            //      - fragment shader: "shaders/planeta-fragment.glsl"
-            //      - textura: R.drawable.textura_mi_planeta
-            //      - orbitRadiusX, orbitRadiusZ, orbitSpeed en rad/s
-            //      - scaleAmplitude, instanceScale, spinSpeed en grados/s
-            //      - useSolidColor, solidColor[], alpha (transparencia)
-            //      - scaleOscPercent (puede ser null), uvScale
-            sceneObjects.add(new Planeta(
-                    context,
-                    textureManager,
-                    "shaders/planeta_vertex.glsl",    // vertex shader
-                    "shaders/planeta_fragment.glsl",  // fragment shader
-                    R.drawable.textura_sol,           // textura
-                    0.0f,  // orbitRadiusX (m)
-                    0.0f,  // orbitRadiusZ (m)
-                    0.0f,  // orbitSpeed (rad/s)
-                    0.0f,  // scaleAmplitude (coef)
-                    7.0f,  // instanceScale (escala base)
-                    4.0f,  // spinSpeed (deg/s), si quieres girar
-                    false, // useSolidColor
-                    null,  // solidColor
-                    1.0f,  // alpha
-                    null,  // scaleOscPercent → null desactiva oscilación
-                    8.0f   // uvScale
-            ));
+            sceneObjects.add(particle);
+        }*/
 
-            // 3) Planeta GLOW (misma posición que el central)
-            //
-            // - orbitRadiusX/Z = 0 → fija
-            // - scaleAmplitude > 0 → controla cuánto varia el brillo
-            // - scaleOscPercent != null → porcentaje del pulso de escala
-            sceneObjects.add(new Planeta(
-                    context,
-                    textureManager,
-                    "shaders/planeta_vertex.glsl",
-                    "shaders/planeta_fragment.glsl",
-                    R.drawable.textura_sol,
-                    0.0f,
-                    0.0f,
-                    0.0f,
-                    0.2f,     // pulso suave
-                    8.5f,     // ligeramente mayor que el central
-                    30.0f,
-                    true,
-                    new float[]{1f, 0.2f, 0.1f, 0.3f}, // tono glow
-                    0.3f,
-                    1.1f,     // 30% de oscilación
-                    1.0f
-            ));
-
-            // 4) Planeta en órbita elíptica
-            //
-            // - orbitRadiusX/Z > 0 → órbita
-            // - orbitSpeed   > 0 → velocidad angular
-            // - scaleAmplitude > 0 → escala varía con la posición orbital (dinámico)
-            // - scaleOscPercent = null → sin pulso adicional
-            sceneObjects.add(new Planeta(
-                    context,
-                    textureManager,
-                    "shaders/planeta_vertex.glsl",
-                    "shaders/planeta_fragment.glsl",
-                    R.drawable.textura_roninplaneta,
-                    0.18f,  // orbitRadiusX
-                    0.15f,  // orbitRadiusZ
-                    0.3f,   // orbitSpeed
-                    0.3f,   // scaleAmplitude dinámico
-                    2.0f,   // instanceScale
-                    25f,    // spinSpeed
-                    false,
-                    null,
-                    1.0f,
-                    null,   // no pulso extra
-                    1.0f
-            ));
-
-            // 5) Asteroide (igual que antes)
-            sceneObjects.add(new Asteroide(
-                    context,
-                    textureManager,
-                    "shaders/asteroide_vertex.glsl",
-                    "shaders/asteroide_fragment.glsl",
-                    R.drawable.textura_asteroide,
-                    0.1f, false, null, 1.0f, 2.0f
-            ));
-            */
-
-        }
+        Log.d(TAG, "Agujero negro configurado");
     }
 
     public void pause() {
         paused = true;
+        Log.d(TAG, "Renderer pausado");
     }
 
     public void resume() {
         paused = false;
         lastTime = System.nanoTime();
-        Log.d(TAG, "Render resumed → tiempo reiniciado");
+        Log.d(TAG, "Renderer resumido");
     }
 
-    // En SceneRenderer.java
     public void release() {
+        Log.d(TAG, "Liberando recursos...");
         for (SceneObject obj : sceneObjects) {
             if (obj instanceof UniverseBackground) {
                 ((UniverseBackground) obj).release();
             }
-            // Si tienes otros objetos con release(), agrégalos aquí
         }
     }
 
     public void setSelectedItem(String item) {
-        this.selectedItem = item;
+        if (item != null && !item.equals(selectedItem)) {
+            Log.d(TAG, "Cambiando escena a: " + item);
+            this.selectedItem = item;
+            prepareScene();
+        }
     }
 }
-
-

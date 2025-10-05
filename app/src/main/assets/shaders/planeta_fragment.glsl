@@ -1,103 +1,104 @@
-precision highp float;
+// ============================================
+// archivo: planeta_fragment.glsl
+// Shader del planeta con efectos de glow mejorados usando HSB (SIN TEXTURA)
+// ============================================
 
-uniform float u_Time;           // Tiempo en segundos (incrementa continuamente)
-varying vec2 v_TexCoord;        // Coordenadas de textura
-uniform sampler2D u_Texture;    // Textura base
+#ifdef GL_ES
+precision mediump float;
+#endif
 
-uniform int   u_UseSolidColor;  // 1 = uso color sólido, 0 = uso textura
-uniform vec4  u_SolidColor;     // Color sólido RGBA
-uniform float u_Alpha;          // Alpha global
+uniform float u_Time;
+varying vec2 v_TexCoord;
+varying vec3 v_WorldPos;
+uniform vec4 u_SolidColor;
+uniform float u_Alpha;
 
-// Parámetros fijos para el glow solar
-const float GLOW_RADIUS    = 0.001;
-const float NOISE_SCALE    = 8.5;
-const float NOISE_SPEED    = 0.23;
-const float FLARE_FREQ     = 5.7;
-const float FLARE_MAG      = 0.049;
-const float COLOR_FREQ     = 3.2;
-const float GLOW_ALPHA     = 0.1;
+// Parámetros de glow
+const float GLOW_RADIUS = 0.45;
+const float CORE_RADIUS = 0.2;
 
-// Parámetros de animación para CORE_RADIUS y OUTER_FADE
-const float CORE_RADIUS_MAX    = 0.01;   // Valor máximo de CORE_RADIUS
-const float OUTER_FADE_MAX     = 0.77;  // Valor máximo de OUTER_FADE
-const float CORE_OSC_FREQ      = 0.0;   // Frecuencia (ciclos por segundo) para CORE_RADIUS
-const float OUTER_OSC_FREQ     = 0.005;   // Frecuencia para OUTER_FADE
+// ============================================
+// Funciones de conversión RGB ↔ HSB
+// De The Book of Shaders / Iñigo Quilez
+// ============================================
 
-// Función swirl existente para distorsionar UV
-float swirl(vec2 uv, float t) {
-    float a = atan(uv.y - 0.5, uv.x - 0.5);
-    float d = length(uv - vec2(0.5));
-    float s = 0.24 * sin(a * NOISE_SCALE + d * 7.3 - t * NOISE_SPEED * 0.72);
-    s += 0.11 * cos(a * (NOISE_SCALE * 0.85) + t * 0.61 + d * 5.2);
-    s += 0.07 * sin(a * 3.2 + t * 0.45);
-    return s;
+vec3 rgb2hsb(in vec3 c) {
+    vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+    vec4 p = mix(vec4(c.bg, K.wz),
+                 vec4(c.gb, K.xy),
+                 step(c.b, c.g));
+    vec4 q = mix(vec4(p.xyw, c.r),
+                 vec4(c.r, p.yzx),
+                 step(p.x, c.r));
+    float d = q.x - min(q.w, q.y);
+    float e = 1.0e-10;
+    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)),
+    d / (q.x + e),
+    q.x);
+}
+
+vec3 hsb2rgb(in vec3 c) {
+    vec3 rgb = clamp(abs(mod(c.x * 6.0 + vec3(0.0, 4.0, 2.0),
+                             6.0) - 3.0) - 1.0,
+                     0.0,
+                     1.0);
+    rgb = rgb * rgb * (3.0 - 2.0 * rgb);
+    return c.z * mix(vec3(1.0), rgb, c.y);
 }
 
 void main() {
-    // 1) Carga base de color/textura y aplica alpha global
-    vec4 base  = texture2D(u_Texture, v_TexCoord);
-    vec4 color = (u_UseSolidColor == 1) ? u_SolidColor : base;
-    color.a   *= u_Alpha;
+    // Usar solo color sólido (sin textura)
+    vec4 color = u_SolidColor;
+    color.a *= u_Alpha;
 
-    // 2) Calcula valores animados usando seno para oscilar entre 0.0 y el máximo
-    //    Mapeo: sin() ∈ [-1,1] -> (sin*0.5+0.5) ∈ [0,1] -> *MAX → ∈ [0,MAX]
-    float coreRadius  = CORE_RADIUS_MAX * (0.5 + 0.5 * sin(u_Time * CORE_OSC_FREQ * 2.0 * 3.14159));
-    float outerFade   = OUTER_FADE_MAX  * (0.5 + 0.5 * sin(u_Time * OUTER_OSC_FREQ * 2.0 * 3.14159));
+    vec2 center = vec2(0.5, 0.5);
+    float dist = length(v_TexCoord - center);
 
-    if (u_UseSolidColor == 1) {
-        vec2 uv = v_TexCoord;
-        float d = length(uv - vec2(0.5));
-        float pulse = 0.94 + 0.09 * sin(u_Time * 0.87 + d * 7.5);
+    // Convertir color base a HSB para manipulación más natural
+    vec3 hsb = rgb2hsb(color.rgb);
 
-        // Núcleo súper brillante, ahora variable en tamaño
-        if (d < coreRadius) {
-            vec3 coreColor = mix(
-            vec3(1.0, 0.62, 0.15),
-            vec3(1.19, 0.38, 0.12),
-            smoothstep(0.0, coreRadius, d)
-            );
-            color.rgb = mix(color.rgb, coreColor, 0.97);
-            color.a   = 1.0;
-        }
-        // Glow intermedio
-        else if (d < GLOW_RADIUS) {
-            float t        = u_Time * 0.6;
-            float swirlFx  = swirl(uv, t) * 0.27;
-            float flare    = FLARE_MAG * sin(
-            FLARE_FREQ * atan(uv.y - 0.5, uv.x - 0.5)
-            + t * 0.8 + d * 9.3
-            );
-            float border   = GLOW_RADIUS + swirlFx + flare - d;
-            float glow     = smoothstep(0.07, 0.18, border) * pulse;
+    // Núcleo brillante solar
+    if (dist < CORE_RADIUS) {
+        float intensity = 1.0 - (dist / CORE_RADIUS);
 
-            float cMix     = smoothstep(coreRadius, GLOW_RADIUS, d)
-            + 0.08 * sin(d * COLOR_FREQ - t * 0.34);
+        // Aumentar brillo (brightness) en el núcleo
+        hsb.z = min(hsb.z + intensity * 0.5, 1.0);
 
-            vec3 auraColor = mix(
-            vec3(1.0, 0.34, 0.13),
-            vec3(0.75, 0.11, 0.11),
-            cMix
-            );
-            auraColor = mix(auraColor, vec3(0.42, 0.14, 0.32),
-            smoothstep(0.76, 1.05, cMix));
+        // Reducir saturación en el centro para efecto "blanco caliente"
+        hsb.y = hsb.y * (1.0 - intensity * 0.4);
 
-            color.rgb += auraColor * glow * 1.07;
-            color.a   += glow * GLOW_ALPHA * (0.86 + 0.14 * sin(t * 0.85 + d * 11.0));
-        }
-        // Fade externo, ahora variable
-        else if (d < outerFade) {
-            float fading   = 1.0 - smoothstep(GLOW_RADIUS, outerFade, d);
-            vec3 fadeColor = mix(
-            vec3(0.82, 0.12, 0.12),
-            vec3(0.22, 0.05, 0.18),
-            fading
-            );
-            color.rgb += fadeColor * fading * 0.22;
-            color.a   += fading * 0.22;
-        }
+        // Añadir tinte dorado variando el hue
+        hsb.x = hsb.x + intensity * 0.05; // Shift hacia amarillo/dorado
+
+        color.rgb = hsb2rgb(hsb);
+        color.a = 1.0;
+    }
+    // Halo exterior con gradiente suave
+    else if (dist < GLOW_RADIUS) {
+        float fade = 1.0 - ((dist - CORE_RADIUS) / (GLOW_RADIUS - CORE_RADIUS));
+
+        // Pulsación animada
+        float pulse = sin(u_Time * 3.0 + dist * 10.0) * 0.1 + 0.9;
+
+        // Efecto de "swirl" rotacional en el halo
+        float angle = atan(v_TexCoord.y - center.y, v_TexCoord.x - center.x);
+        float swirl = sin(angle * 3.0 + u_Time * 2.0) * 0.5 + 0.5;
+
+        // Modular hue para crear variaciones de color en el halo
+        hsb.x = hsb.x + swirl * 0.1;
+
+        // Aumentar saturación en el halo para colores más vivos
+        hsb.y = min(hsb.y * (1.0 + fade * 0.3), 1.0);
+
+        // Brightness con fade
+        hsb.z = hsb.z * pulse * fade;
+
+        color.rgb = hsb2rgb(hsb);
+        color.a *= fade;
+    }
+    else {
+        discard; // No dibujar fuera del glow
     }
 
-    // Descarta fragmentos casi transparentes para limpieza
-    if (color.a < 0.01) discard;
     gl_FragColor = color;
 }

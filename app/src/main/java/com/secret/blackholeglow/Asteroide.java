@@ -1,4 +1,4 @@
-// Asteroide.java
+// Asteroide.java - VERSIÓN CORREGIDA
 package com.secret.blackholeglow;
 
 import android.content.Context;
@@ -7,7 +7,6 @@ import android.opengl.Matrix;
 import android.util.Log;
 
 import com.secret.blackholeglow.util.ObjLoader;
-import com.secret.blackholeglow.util.ObjLoader.Mesh;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -18,205 +17,226 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * ====================================================================
- * Asteroide
- * ====================================================================
- *  • Aparece cada [SPAWN_MIN..SPAWN_MAX]s
- *  • Viaja en Z de Z_START→Z_END a Z_SPEED m/s
- *  • Escala easing de SCALE_MIN→SCALE_MAX
- *  • Sale al lado izquierdo o derecho garantizado
- *  • Nunca desaparece hasta el próximo spawn
+ * Asteroide CORREGIDO - Ahora usa CameraController y es visible
  */
-public class Asteroide extends BaseShaderProgram implements SceneObject {
+public class Asteroide extends BaseShaderProgram implements SceneObject, CameraAware {
     private static final String TAG = "Asteroide";
 
-    // --- CONFIGURABLES ---
-    private static final float Z_START     = -50f;   // Z inicial (m)
-    private static final float Z_END       =  50f;   // Z final (m)
-    private static final float Z_SPEED     =   12f;   // velocidad Z (m/s)
+    // Configuración de movimiento
+    private static final float Z_START = -10f;    // Más cerca
+    private static final float Z_END = 10f;       // Más cerca
+    private static final float Z_SPEED = 3f;      // Más lento
+    private static final float SCALE = 0.5f;      // Escala visible
+    private static final float SPAWN_MIN = 5f;
+    private static final float SPAWN_MAX = 10f;
 
-    private static final float SCALE_MIN   = 0.01f;  // escala mínima (m)
-    private static final float SCALE_MAX   = 1.5f;   // escala máxima (m)
-
-    private static final float SPAWN_MIN   =  6f;    // intervalo spawn mínimo (s)
-    private static final float SPAWN_MAX   =  8f;    // intervalo spawn máximo (s)
-
-    private static final float DRIFT_AMP   = 0.2f;   // deriva lateral adimensional
-    private static final float EXIT_FACTOR = 1.5f;   // factor para garantizar salida lateral
-
-    // --- LÓGICA INTERNA ---
+    // Parámetros
     private final float instanceScale;
     private final boolean useSolidColor;
     private final float[] solidColor;
-    private final float alpha, uvScale;
-
+    private final float alpha;
+    private final float uvScale;
     private final int textureId;
+
+    // Buffers
     private final FloatBuffer vertexBuffer, texCoordBuffer;
     private final ShortBuffer indexBuffer;
     private final int indexCount;
+
+    // Uniform locations
     private final int aPosLoc, aTexLoc;
-    private final int uMvpLoc, uTexLoc, uUseSolidColorLoc,
-            uSolidColorLoc, uAlphaLoc, uUvScaleLoc;
+    private final int uTexLoc, uUseSolidColorLoc, uSolidColorLoc, uAlphaLoc, uUvScaleLoc;
 
+    // Estado
     private final Random rand = new Random();
-    private float timer     = 0f;    // s desde último spawn
-    private float nextSpawn = 0f;    // s para próximo spawn
-    private boolean active  = false; // si está volando
-    private float zPos      = Z_START;
-    private float baseX, baseY;      // punto objetivo lateral (±1)
+    private float timer = 0f;
+    private float nextSpawn = 0f;
+    private boolean active = false;
+    private float zPos = Z_START;
+    private float xPos = 0f;
+    private float yPos = 0f;
+    private float rotation = 0f;
+    private float rotSpeed;
 
-    // Matrices de trabajo
-    private final float[] model = new float[16],
-            view  = new float[16],
-            proj  = new float[16],
-            mv    = new float[16],
-            mvp   = new float[16];
+    // Matrices
+    private final float[] model = new float[16];
+    private final float[] mvp = new float[16];
+
+    // Camera
+    private CameraController camera;
 
     public Asteroide(Context ctx,
                      TextureManager texMgr,
-                     String vertAsset,
-                     String fragAsset,
+                     String vertexShaderPath,
+                     String fragmentShaderPath,
                      int textureResId,
                      float instanceScale,
                      boolean useSolidColor,
                      float[] solidColor,
                      float alpha,
                      float uvScale) {
-        super(ctx, vertAsset, fragAsset);
+        super(ctx, vertexShaderPath, fragmentShaderPath);
+
         this.instanceScale = instanceScale;
         this.useSolidColor = useSolidColor;
-        this.solidColor    = solidColor!=null?solidColor:new float[]{1f,1f,1f,1f};
-        this.alpha         = alpha;
-        this.uvScale       = uvScale;
+        this.solidColor = (solidColor != null) ? solidColor : new float[]{1f,1f,1f,1f};
+        this.alpha = alpha;
+        this.uvScale = uvScale;
 
-        // textura
+        Log.d(TAG, "Creando asteroide con escala: " + instanceScale);
+
+        // Cargar textura
         textureId = texMgr.getTexture(textureResId);
 
-        // malla
-        Mesh mesh;
+        // Cargar malla
+        ObjLoader.Mesh mesh;
         try {
-            mesh = ObjLoader.loadObj(ctx,"asteroide.obj");
-        } catch(IOException e){
-            throw new RuntimeException("Error cargando asteroide.obj",e);
+            mesh = ObjLoader.loadObj(ctx, "asteroide.obj");
+            Log.d(TAG, "Malla de asteroide cargada: " + mesh.vertexCount + " vértices");
+        } catch (IOException e) {
+            throw new RuntimeException("Error cargando asteroide.obj", e);
         }
-        vertexBuffer   = mesh.vertexBuffer;
+
+        vertexBuffer = mesh.vertexBuffer;
         texCoordBuffer = mesh.uvBuffer;
 
-        // índices
+        // Construir índices
         List<short[]> faces = mesh.faces;
-        int triCount=0;
-        for(short[] f:faces) triCount+=f.length-2;
-        indexCount = triCount*3;
+        int triCount = 0;
+        for (short[] f : faces) triCount += f.length - 2;
+        indexCount = triCount * 3;
+
         ShortBuffer ib = ByteBuffer
-                .allocateDirect(indexCount*Short.BYTES)
+                .allocateDirect(indexCount * Short.BYTES)
                 .order(ByteOrder.nativeOrder())
                 .asShortBuffer();
-        for(short[] f:faces){
-            short v0=f[0];
-            for(int i=1;i<f.length-1;i++){
-                ib.put(v0).put(f[i]).put(f[i+1]);
+        for (short[] f : faces) {
+            short v0 = f[0];
+            for (int i = 1; i < f.length - 1; i++) {
+                ib.put(v0).put(f[i]).put(f[i + 1]);
             }
         }
         ib.position(0);
         indexBuffer = ib;
 
-        // locations
-        aPosLoc           = GLES20.glGetAttribLocation(programId, "a_Position");
-        aTexLoc           = GLES20.glGetAttribLocation(programId, "a_TexCoord");
-        uMvpLoc           = GLES20.glGetUniformLocation(programId,"u_MVP");
-        uTexLoc           = GLES20.glGetUniformLocation(programId,"u_Texture");
-        uUseSolidColorLoc = GLES20.glGetUniformLocation(programId,"u_UseSolidColor");
-        uSolidColorLoc    = GLES20.glGetUniformLocation(programId,"u_SolidColor");
-        uAlphaLoc         = GLES20.glGetUniformLocation(programId,"u_Alpha");
-        uUvScaleLoc       = GLES20.glGetUniformLocation(programId,"u_UvScale");
+        // Obtener uniform locations
+        aPosLoc = GLES20.glGetAttribLocation(programId, "a_Position");
+        aTexLoc = GLES20.glGetAttribLocation(programId, "a_TexCoord");
+        uTexLoc = GLES20.glGetUniformLocation(programId, "u_Texture");
+        uUseSolidColorLoc = GLES20.glGetUniformLocation(programId, "u_UseSolidColor");
+        uSolidColorLoc = GLES20.glGetUniformLocation(programId, "u_SolidColor");
+        uAlphaLoc = GLES20.glGetUniformLocation(programId, "u_Alpha");
+        uUvScaleLoc = GLES20.glGetUniformLocation(programId, "u_UvScale");
 
-        scheduleNextSpawn();
-    }
+        // Configurar próximo spawn
+        nextSpawn = SPAWN_MIN + rand.nextFloat() * (SPAWN_MAX - SPAWN_MIN);
 
-    private void scheduleNextSpawn(){
-        active    = false;
-        timer     = 0f;
-        zPos      = Z_START;
-        nextSpawn = SPAWN_MIN + rand.nextFloat()*(SPAWN_MAX-SPAWN_MIN);
-        // Elige dirección lateral fuera del centro (|baseX|>0.3)
-        do {
-            baseX = rand.nextFloat()*2f-1f;
-            baseY = rand.nextFloat()*2f-1f;
-        } while(Math.abs(baseX)<0.3f);
-        Log.d(TAG,String.format(
-                "Próximo spawn en %.2f s hacia X=%.2f", nextSpawn, baseX));
+        Log.d(TAG, "Asteroide inicializado. Próximo spawn en: " + nextSpawn + "s");
     }
 
     @Override
-    public void update(float dt){
+    public void setCameraController(CameraController camera) {
+        this.camera = camera;
+        Log.d(TAG, "CameraController asignado al asteroide");
+    }
+
+    @Override
+    public void update(float dt) {
         timer += dt;
-        if(!active){
-            if(timer>=nextSpawn){
-                active = true;
-                timer  = 0f;
-                Log.d(TAG,"Asteroide spawned");
-            } else return;
+
+        // Spawn nuevo asteroide
+        if (!active && timer >= nextSpawn) {
+            spawn();
         }
-        // Avanza Z
-        zPos += Z_SPEED*dt;
-        // Sólo reinicia con el siguiente spawn
-        if(timer>=nextSpawn){
-            scheduleNextSpawn();
+
+        // Actualizar posición si está activo
+        if (active) {
+            zPos += Z_SPEED * dt;
+            rotation += rotSpeed * dt;
+
+            // Pequeño movimiento lateral
+            xPos += Math.sin(timer * 2f) * 0.01f;
+            yPos += Math.cos(timer * 3f) * 0.01f;
+
+            // Verificar si salió de la vista
+            if (zPos >= Z_END) {
+                active = false;
+                timer = 0f;
+                nextSpawn = SPAWN_MIN + rand.nextFloat() * (SPAWN_MAX - SPAWN_MIN);
+                Log.d(TAG, "Asteroide desactivado. Próximo en: " + nextSpawn + "s");
+            }
         }
     }
 
+    private void spawn() {
+        active = true;
+        zPos = Z_START;
+
+        // Posición inicial aleatoria
+        xPos = (rand.nextFloat() - 0.5f) * 4f;
+        yPos = (rand.nextFloat() - 0.5f) * 2f;
+
+        // Rotación aleatoria
+        rotation = rand.nextFloat() * 360f;
+        rotSpeed = 30f + rand.nextFloat() * 60f;
+
+        Log.d(TAG, "Asteroide spawneado en: x=" + xPos + " y=" + yPos);
+    }
+
     @Override
-    public void draw(){
-        if(!active) return;
+    public void draw() {
+        if (!active) return;
+
+        if (camera == null) {
+            Log.e(TAG, "ERROR: CameraController no asignado al asteroide!");
+            return;
+        }
+
         useProgram();
 
-        // progreso p [0..1]
-        float p = (zPos-Z_START)/(Z_END-Z_START);
-        p = Math.max(0f,Math.min(1f,p));
-        // easing
-        float e = p<0.5f?4*p*p*p:1f-(float)Math.pow(-2f*p+2f,3)/2f;
-        // escala
-        float frac = SCALE_MIN + e*(SCALE_MAX-SCALE_MIN);
-        float finalScale = Math.min(frac*instanceScale,SCALE_MAX);
+        // Tiempo para animación
+        setTime(timer);
 
-        // cámara ortho fija
-        float aspect=(float)SceneRenderer.screenWidth/SceneRenderer.screenHeight;
-        Matrix.orthoM(proj,0,-aspect,aspect,-1f,1f,0.1f,100f);
-        Matrix.setLookAtM(view,0,0f,0f,30f,0f,0f,0f,0f,1f,0f);
+        // Construir matriz modelo
+        Matrix.setIdentityM(model, 0);
+        Matrix.translateM(model, 0, xPos, yPos, zPos);
+        Matrix.scaleM(model, 0, SCALE * instanceScale, SCALE * instanceScale, SCALE * instanceScale);
+        Matrix.rotateM(model, 0, rotation, 0.5f, 1f, 0.3f);
 
-        // deriva + salida lateral:
-        float dx = DRIFT_AMP*(float)Math.sin(e*2f*Math.PI)*(1f-p);
-        float actualX = baseX*(p*EXIT_FACTOR) + dx;
-        float actualY = baseY*(1f-p);
+        // Usar CameraController para MVP
+        camera.computeMvp(model, mvp);
+        setMvpAndResolution(mvp, SceneRenderer.screenWidth, SceneRenderer.screenHeight);
 
-        // modelo
-        Matrix.setIdentityM(model,0);
-        Matrix.translateM(model,0,actualX,actualY,zPos);
-        Matrix.scaleM(model,0,finalScale,finalScale,finalScale);
-        Matrix.multiplyMM(mv,0,view,0,model,0);
-        Matrix.multiplyMM(mvp,0,proj,0,mv,0);
-        GLES20.glUniformMatrix4fv(uMvpLoc,1,false,mvp,0);
-
-        // uniforms color/alpha/uvScale
-        GLES20.glUniform1i(uUseSolidColorLoc,useSolidColor?1:0);
-        GLES20.glUniform4fv(uSolidColorLoc,1,solidColor,0);
-        GLES20.glUniform1f(uAlphaLoc,alpha);
-        GLES20.glUniform1f(uUvScaleLoc,uvScale);
-
-        // bind + draw
+        // Configurar textura
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,textureId);
-        GLES20.glUniform1i(uTexLoc,0);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
+        GLES20.glUniform1i(uTexLoc, 0);
 
+        // Configurar uniforms
+        GLES20.glUniform1f(uUvScaleLoc, uvScale);
+        GLES20.glUniform1i(uUseSolidColorLoc, useSolidColor ? 1 : 0);
+        GLES20.glUniform4fv(uSolidColorLoc, 1, solidColor, 0);
+        GLES20.glUniform1f(uAlphaLoc, alpha);
+
+        // Configurar atributos
         vertexBuffer.position(0);
         GLES20.glEnableVertexAttribArray(aPosLoc);
-        GLES20.glVertexAttribPointer(aPosLoc,3,GLES20.GL_FLOAT,false,0,vertexBuffer);
-        texCoordBuffer.position(0);
-        GLES20.glEnableVertexAttribArray(aTexLoc);
-        GLES20.glVertexAttribPointer(aTexLoc,2,GLES20.GL_FLOAT,false,0,texCoordBuffer);
+        GLES20.glVertexAttribPointer(aPosLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+
+        if (aTexLoc >= 0) {
+            texCoordBuffer.position(0);
+            GLES20.glEnableVertexAttribArray(aTexLoc);
+            GLES20.glVertexAttribPointer(aTexLoc, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
+        }
+
+        // Dibujar
         indexBuffer.position(0);
-        GLES20.glDrawElements(GLES20.GL_TRIANGLES,indexCount,GLES20.GL_UNSIGNED_SHORT,indexBuffer);
+        GLES20.glDrawElements(GLES20.GL_TRIANGLES, indexCount, GLES20.GL_UNSIGNED_SHORT, indexBuffer);
+
+        // Limpiar
         GLES20.glDisableVertexAttribArray(aPosLoc);
-        GLES20.glDisableVertexAttribArray(aTexLoc);
+        if (aTexLoc >= 0) {
+            GLES20.glDisableVertexAttribArray(aTexLoc);
+        }
     }
 }

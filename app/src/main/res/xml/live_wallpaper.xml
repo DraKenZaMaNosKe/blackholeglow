@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <wallpaper xmlns:android="http://schemas.android.com/apk/res/android"
-    android:allowBackup="false">
+    android:allowBackup="false"
+    android:thumbnail="@drawable/agujero_negro"
+    android:description="@string/wallpaper_description"
+    android:settingsActivity="com.secret.blackholeglow.activities.MainActivity" >
 </wallpaper>
