@@ -135,7 +135,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
                     context, textureManager,
                     "shaders/universe_vertex.glsl",
                     "shaders/universe_fragment.glsl",
-                    R.drawable.fondo_universo_cosmico,
+                    R.drawable.universo03,
                     1.0f
             );
             if (fondo instanceof CameraAware) {
@@ -158,8 +158,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
                 0.5f,              // Escala mediana
                 2.0f,             // Rotación lenta
                 false, null, 1.0f,
-                null,
-                1.0f
+                null, 1.0f
         );
         if (sol instanceof CameraAware) {
             ((CameraAware) sol).setCameraController(sharedCamera);
@@ -172,12 +171,12 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
                 context, textureManager,
                 "shaders/planeta_vertex.glsl",
                 "shaders/planeta_fragment.glsl",
-                R.drawable.textura_sol,
+                R.drawable.colorrojo,
                 0.0f, 0.0f, 0.0f,  // Sin órbita
                 5f,              // Sin variación
                 0.7f,              // Escala mediana
                 10.0f,             // Rotación lenta
-                true, new float[]{0.526f,0.221f,0.111f,0.5f}, 1.0f,
+                true, new float[]{0.526f,0.221f,0.111f,0.5f}, 0.5f,
                 1.5f,
                 0.5f
         );
