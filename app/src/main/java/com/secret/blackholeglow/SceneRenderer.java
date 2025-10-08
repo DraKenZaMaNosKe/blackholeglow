@@ -231,7 +231,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             ((CameraAware) blackHole).setCameraController(sharedCamera);
         }
         sceneObjects.add(blackHole);
-/*
+
         // Disco de acreción simple
         for (int i = 0; i < 3; i++) {
             float radius = 2.0f + i * 0.8f;
@@ -254,7 +254,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
                 ((CameraAware) particle).setCameraController(sharedCamera);
             }
             sceneObjects.add(particle);
-        }*/
+        }
 
         Log.d(TAG, "Agujero negro configurado");
     }
