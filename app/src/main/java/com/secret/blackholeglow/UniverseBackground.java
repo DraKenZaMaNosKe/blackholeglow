@@ -16,10 +16,10 @@ import java.nio.ShortBuffer;
 import java.util.List;
 
 /**
- * UniverseBackground:
- *   Dibuja un plano frontal usando el pair (vertexShader, fragmentShader)
- *   que se le pase; opcionalmente muestrea una textura con alpha.
- *   Ahora implementa CameraAware para calcular MVP vía CameraController.
+ * UniverseBackground MEJORADO:
+ * - Adaptación perfecta al aspect ratio del dispositivo
+ * - Detección automática de orientación (portrait/landscape)
+ * - Sin cortes ni espacios vacíos
  */
 public class UniverseBackground
         extends BaseShaderProgram
@@ -41,12 +41,15 @@ public class UniverseBackground
     private final int     textureId;
     private final float   alpha;
 
-    // Para animaciones y offest
-    private static final float BACKGROUND_OFFSET_Y = -0.1f;
+    // Para animaciones
     private final float timeOffset;
 
     // Control de cámara
     private CameraController camera;
+
+    // Métricas para debug
+    private long frameCount = 0;
+    private long lastLogTime = System.currentTimeMillis();
 
     /**
      * Inyecta el CameraController para usar perspectiva y vista.
@@ -65,14 +68,16 @@ public class UniverseBackground
             float alpha
     ) {
         super(ctx, vertShaderAsset, fragShaderAsset);
-        Log.d(TAG, "Constructor: vert=" + vertShaderAsset +
-                " frag=" + fragShaderAsset +
-                " tex=" + textureResId +
-                " alpha=" + alpha);
+        Log.d(TAG, "========================================");
+        Log.d(TAG, "Constructor UniverseBackground");
+        Log.d(TAG, "  Vertex Shader: " + vertShaderAsset);
+        Log.d(TAG, "  Fragment Shader: " + fragShaderAsset);
+        Log.d(TAG, "  Texture Resource: " + textureResId);
+        Log.d(TAG, "  Alpha: " + alpha);
+        Log.d(TAG, "========================================");
+
         this.alpha      = alpha;
         this.timeOffset = SystemClock.uptimeMillis() * 0.001f;
-
-        float t = (SystemClock.uptimeMillis() * 0.001f - timeOffset) % 60.0f;
 
         // Habilita test de profundidad y culling
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
@@ -82,10 +87,10 @@ public class UniverseBackground
         ObjLoader.Mesh mesh;
         try {
             mesh = ObjLoader.loadObj(ctx, "plano.obj");
-            Log.d(TAG, "Mesh loaded: verts=" + mesh.vertexCount +
-                    " faces=" + mesh.faces.size());
+            Log.d(TAG, "✓ Mesh loaded: vertices=" + mesh.vertexCount +
+                    ", faces=" + mesh.faces.size());
         } catch (IOException e) {
-            Log.e(TAG, "Error loading plano.obj", e);
+            Log.e(TAG, "✗ Error loading plano.obj", e);
             throw new RuntimeException(e);
         }
         vertexBuffer   = mesh.vertexBuffer;
@@ -117,23 +122,26 @@ public class UniverseBackground
         uTimeLoc        = GLES20.glGetUniformLocation(programId, "u_Time");
         uTexLoc         = GLES20.glGetUniformLocation(programId, "u_Texture");
         uResolutionLoc  = GLES20.glGetUniformLocation(programId, "u_Resolution");
-        Log.d(TAG, "locs: aPos=" + aPosLoc +
-                " aTex=" + aTexLoc +
-                " uMVP=" + uMvpLoc +
-                " uAlpha=" + uAlphaLoc +
-                " uTime=" + uTimeLoc +
-                " uTex=" + uTexLoc +
-                " uRes=" + uResolutionLoc);
+
+        Log.d(TAG, "Shader Locations:");
+        Log.d(TAG, "  a_Position: " + aPosLoc);
+        Log.d(TAG, "  a_TexCoord: " + aTexLoc);
+        Log.d(TAG, "  u_MVP: " + uMvpLoc);
+        Log.d(TAG, "  u_Alpha: " + uAlphaLoc);
+        Log.d(TAG, "  u_Time: " + uTimeLoc);
+        Log.d(TAG, "  u_Texture: " + uTexLoc);
+        Log.d(TAG, "  u_Resolution: " + uResolutionLoc);
 
         // Textura opcional
         if (textureResId != null) {
             hasTexture = true;
             textureId  = texMgr.getTexture(textureResId);
-            Log.d(TAG, "Loaded texture res=" + textureResId +
-                    " texId=" + textureId);
+            Log.d(TAG, "✓ Texture loaded: resourceId=" + textureResId +
+                    ", textureId=" + textureId);
         } else {
             hasTexture = false;
             textureId  = -1;
+            Log.d(TAG, "ℹ No texture specified");
         }
     }
 
@@ -146,59 +154,88 @@ public class UniverseBackground
         if (hasTexture && textureId > 0) {
             int[] textures = { textureId };
             GLES20.glDeleteTextures(1, textures, 0);
-            Log.d(TAG, "Textura liberada: " + textureId);
+            Log.d(TAG, "✓ Texture released: " + textureId);
         }
     }
 
     @Override
     public void draw() {
+        frameCount++;
+
         if (camera == null) {
-            Log.e(TAG, "CameraController no inyectado, draw abortado.");
+            Log.e(TAG, "✗ CameraController not injected, draw aborted.");
             return;
         }
 
         useProgram();
 
+        // Desactivar depth test para que el fondo siempre esté atrás
         GLES20.glDisable(GLES20.GL_DEPTH_TEST);
         GLES20.glDisable(GLES20.GL_CULL_FACE);
         GLES20.glDepthMask(false);
 
-        float screenAspect = (float) SceneRenderer.screenWidth /
-                (float) SceneRenderer.screenHeight;
+        float screenWidth = SceneRenderer.screenWidth;
+        float screenHeight = SceneRenderer.screenHeight;
+        float screenAspect = screenWidth / screenHeight;
+        boolean isPortrait = screenHeight > screenWidth;
 
-        Log.d(TAG, "Screen: " + SceneRenderer.screenWidth + "x" +
-                SceneRenderer.screenHeight + " aspect=" + screenAspect);
+        // Log detallado cada segundo
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastLogTime > 1000) {
+            Log.d(TAG, "╔══════════════════════════════════════╗");
+            Log.d(TAG, "║     UNIVERSE BACKGROUND METRICS      ║");
+            Log.d(TAG, "╠══════════════════════════════════════╣");
+            Log.d(TAG, "║ Screen Resolution: " +
+                  String.format("%-18s", (int)screenWidth + "x" + (int)screenHeight) + "║");
+            Log.d(TAG, "║ Aspect Ratio: " +
+                  String.format("%-23.2f", screenAspect) + "║");
+            Log.d(TAG, "║ Orientation: " +
+                  String.format("%-24s", isPortrait ? "PORTRAIT" : "LANDSCAPE") + "║");
+            Log.d(TAG, "║ Frame Count: " +
+                  String.format("%-24d", frameCount) + "║");
+            Log.d(TAG, "╚══════════════════════════════════════╝");
+            lastLogTime = currentTime;
+        }
 
         float[] model = new float[16];
         Matrix.setIdentityM(model, 0);
 
-        // ===== AJUSTE: Desplazar en Y también =====
-        float distancia = -50f;
-        float offsetY = -20f;  // ← NUEVO: desplaza hacia abajo
+        // NUEVA LÓGICA DE POSICIONAMIENTO ADAPTATIVO
+        float distancia = -30f;  // Más cerca para mejor control
+        float offsetY = 0f;      // Sin offset vertical por defecto
 
-        // Prueba con diferentes valores:
-        // offsetY = -3f;  // Poco desplazamiento
-        // offsetY = -5f;  // Medio
-        // offsetY = -8f;  // Mucho desplazamiento
+        // Ajuste dinámico basado en orientación
+        if (isPortrait) {
+            distancia = -25f;    // Más cerca en portrait
+            offsetY = 0f;        // Centrado
+        } else {
+            distancia = -35f;    // Más lejos en landscape
+            offsetY = 0f;        // Centrado
+        }
 
         Matrix.translateM(model, 0, 0f, offsetY, distancia);
-        //                           ↑ añadido el offsetY
 
-        // Calcula escala adaptativa
+        // Calcula escala adaptativa MEJORADA
         float fovDegrees = camera.getFOV();
         float fovRad = (float) Math.toRadians(fovDegrees);
 
-        Log.d(TAG, "FOV de cámara: " + fovDegrees + "°");
-
+        // Cálculo preciso del área visible
         float alturaVisible = 2.0f * (float) Math.tan(fovRad / 2.0f) * Math.abs(distancia);
         float anchoVisible = alturaVisible * screenAspect;
 
-        float factorSeguridad = 1.3f;
-        float escalaX = anchoVisible * factorSeguridad;
-        float escalaY = alturaVisible *  factorSeguridad;
+        // Factor de seguridad adaptativo según orientación
+        float factorSeguridad = isPortrait ? 2.2f : 1.8f;
 
-        Log.d(TAG, "Visible - Ancho: " + anchoVisible + " Alto: " + alturaVisible);
-        Log.d(TAG, "Escalas - X: " + escalaX + " Y: " + escalaY + " OffsetY: " + offsetY);
+        // Aplicar factor de escala adicional para garantizar cobertura completa
+        float escalaX = anchoVisible * factorSeguridad;
+        float escalaY = alturaVisible * factorSeguridad;
+
+        // Ajuste adicional para mantener proporción de la imagen
+        if (isPortrait) {
+            escalaX *= 1.2f;  // Expandir más en X para portrait
+        } else {
+            escalaY *= 1.2f;  // Expandir más en Y para landscape
+        }
 
         Matrix.scaleM(model, 0, escalaX, escalaY, 1f);
         Matrix.rotateM(model, 0, 90f, 1f, 0f, 0f);
@@ -212,9 +249,7 @@ public class UniverseBackground
         GLES20.glUniform1f(uAlphaLoc, alpha);
         float t = (SystemClock.uptimeMillis() * 0.001f - timeOffset) % 60.0f;
         GLES20.glUniform1f(uTimeLoc, t);
-        GLES20.glUniform2f(uResolutionLoc,
-                (float)SceneRenderer.screenWidth,
-                (float)SceneRenderer.screenHeight);
+        GLES20.glUniform2f(uResolutionLoc, screenWidth, screenHeight);
 
         // Textura
         if (hasTexture) {

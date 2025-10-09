@@ -1,0 +1,176 @@
+// ============================================
+// archivo: sol_lava_fragment.glsl
+// Shader de lava estilizado para el sol
+// Efecto de videojuego con superficie fluida de lava
+// ============================================
+
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+// ------- Uniforms -------
+uniform float u_Time;
+uniform sampler2D u_Texture;
+uniform int u_UseSolidColor;
+uniform vec4 u_SolidColor;
+uniform float u_Alpha;
+uniform vec2 u_Resolution;
+
+// ------- Varyings -------
+varying vec2 v_TexCoord;
+varying vec3 v_WorldPos;
+
+// ============================================
+// Funciones de ruido para efectos procedurales
+// ============================================
+
+// Ruido 2D simple
+float noise2D(vec2 p) {
+    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+// Ruido suavizado
+float smoothNoise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+
+    float a = noise2D(i);
+    float b = noise2D(i + vec2(1.0, 0.0));
+    float c = noise2D(i + vec2(0.0, 1.0));
+    float d = noise2D(i + vec2(1.0, 1.0));
+
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+// Ruido fractal (FBM)
+float fbm(vec2 p) {
+    float value = 0.0;
+    float amplitude = 0.5;
+    float frequency = 2.0;
+
+    for(int i = 0; i < 4; i++) {
+        value += amplitude * smoothNoise(p * frequency);
+        amplitude *= 0.5;
+        frequency *= 2.0;
+    }
+
+    return value;
+}
+
+// ============================================
+// Función principal de efecto de lava
+// ============================================
+
+vec3 getLavaColor(vec2 uv, float time) {
+    // Coordenadas polares para efectos radiales
+    vec2 center = vec2(0.5, 0.5);
+    vec2 toCenter = uv - center;
+    float dist = length(toCenter);
+    float angle = atan(toCenter.y, toCenter.x);
+
+    // Animación de flujo de lava
+    float flowSpeed = 0.3;
+    vec2 flowOffset = vec2(
+        sin(time * flowSpeed) * 0.1,
+        cos(time * flowSpeed * 0.7) * 0.1
+    );
+
+    // Distorsión UV para simular flujo
+    vec2 distortedUV = uv + flowOffset;
+
+    // Múltiples capas de ruido para complejidad
+    float noise1 = fbm(distortedUV * 3.0 + time * 0.2);
+    float noise2 = fbm(distortedUV * 5.0 - time * 0.15);
+    float noise3 = smoothNoise(distortedUV * 10.0 + time * 0.5);
+
+    // Combinar ruidos con diferentes pesos
+    float lavaPattern = noise1 * 0.5 + noise2 * 0.3 + noise3 * 0.2;
+
+    // Añadir burbujas de lava
+    float bubbles = 0.0;
+    for(int i = 0; i < 3; i++) {
+        float offset = float(i) * 1.618;
+        vec2 bubblePos = vec2(
+            sin(time * 0.8 + offset) * 0.3,
+            cos(time * 0.6 + offset) * 0.3
+        );
+        bubblePos += center;
+        float bubbleDist = length(uv - bubblePos);
+        float bubble = smoothstep(0.1, 0.0, bubbleDist) *
+                      sin(time * 3.0 + offset) * 0.5 + 0.5;
+        bubbles = max(bubbles, bubble);
+    }
+
+    lavaPattern += bubbles * 0.3;
+
+    // Crear anillos de calor
+    float rings = sin(dist * 20.0 - time * 2.0) * 0.5 + 0.5;
+    rings = pow(rings, 3.0);
+    lavaPattern += rings * 0.1 * (1.0 - dist);
+
+    // Gradiente radial para el núcleo más caliente
+    float coreIntensity = 1.0 - smoothstep(0.0, 0.5, dist);
+    lavaPattern = mix(lavaPattern, 1.0, coreIntensity * 0.5);
+
+    // Paleta de colores de lava estilizada
+    vec3 coolLava = vec3(0.5, 0.1, 0.0);     // Rojo oscuro
+    vec3 midLava = vec3(1.0, 0.3, 0.0);      // Naranja
+    vec3 hotLava = vec3(1.0, 0.8, 0.0);      // Amarillo
+    vec3 superHotLava = vec3(1.0, 1.0, 0.6); // Blanco amarillento
+
+    // Mapear el patrón a la paleta de colores
+    vec3 color;
+    if(lavaPattern < 0.25) {
+        color = mix(coolLava, midLava, lavaPattern * 4.0);
+    } else if(lavaPattern < 0.5) {
+        color = mix(midLava, hotLava, (lavaPattern - 0.25) * 4.0);
+    } else if(lavaPattern < 0.75) {
+        color = mix(hotLava, superHotLava, (lavaPattern - 0.5) * 4.0);
+    } else {
+        color = superHotLava;
+    }
+
+    // Añadir emisión/glow
+    float glow = pow(lavaPattern, 2.0) * 0.5;
+    color += vec3(glow * 0.5, glow * 0.3, glow * 0.1);
+
+    // Pulsación sutil
+    float pulse = sin(time * 4.0) * 0.05 + 0.95;
+    color *= pulse;
+
+    return color;
+}
+
+// ============================================
+// Main
+// ============================================
+
+void main() {
+    vec2 uv = v_TexCoord;
+
+    // Efecto de lava procedural
+    vec3 lavaColor = getLavaColor(uv, u_Time);
+
+    // Si hay textura, mezclarla sutilmente
+    if(u_UseSolidColor == 0) {
+        vec4 texColor = texture2D(u_Texture, uv);
+        // Usar la textura como máscara de intensidad
+        float texIntensity = (texColor.r + texColor.g + texColor.b) / 3.0;
+        lavaColor *= 0.7 + texIntensity * 0.3;
+    }
+
+    // Oscurecer los bordes para efecto esférico
+    vec2 center = vec2(0.5, 0.5);
+    float edgeDist = length(uv - center);
+    float edgeFactor = 1.0 - smoothstep(0.3, 0.5, edgeDist);
+    lavaColor *= edgeFactor;
+
+    // Alpha y salida final
+    float finalAlpha = u_Alpha;
+
+    // Añadir un poco de transparencia en los bordes
+    finalAlpha *= edgeFactor;
+
+    gl_FragColor = vec4(lavaColor, finalAlpha);
+}
