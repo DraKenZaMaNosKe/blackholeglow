@@ -166,11 +166,14 @@ void main() {
     float edgeFactor = 1.0 - smoothstep(0.3, 0.5, edgeDist);
     lavaColor *= edgeFactor;
 
-    // Alpha y salida final
-    float finalAlpha = u_Alpha;
+    // Alpha y salida final - SOL COMPLETAMENTE SÓLIDO
+    float finalAlpha = 1.0;  // SIEMPRE OPACO
 
-    // Añadir un poco de transparencia en los bordes
-    finalAlpha *= edgeFactor;
+    // NO hacer transparente en ningún caso para cubrir toda la esfera
+    // El modelo 3D ya define la forma esférica
+
+    // Asegurar que el color nunca sea negro (evitar agujeros)
+    lavaColor = max(lavaColor, vec3(0.1, 0.05, 0.0));  // Mínimo color lava oscuro
 
     gl_FragColor = vec4(lavaColor, finalAlpha);
 }

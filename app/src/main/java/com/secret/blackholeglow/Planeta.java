@@ -91,9 +91,9 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
         Log.d(TAG, String.format("Creando planeta: orbit(%.2f,%.2f) scale:%.2f spin:%.1f",
                 orbitRadiusX, orbitRadiusZ, instanceScale, spinSpeed));
 
-        // Habilitar depth test y culling
+        // Habilitar depth test pero NO culling para evitar agujeros
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-        GLES20.glEnable(GLES20.GL_CULL_FACE);
+        // NO habilitar GL_CULL_FACE para ver todas las caras de la esfera
 
         // Cargar textura
         textureId = texMgr.getTexture(textureResId);
@@ -171,6 +171,17 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
         }
 
         useProgram();
+
+        // IMPORTANTE: Desactivar culling para evitar agujeros en la esfera
+        GLES20.glDisable(GLES20.GL_CULL_FACE);
+
+        // Asegurar que depth test esté activo
+        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES20.glDepthFunc(GLES20.GL_LEQUAL);
+
+        // Habilitar blending para transparencia
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
 
         // Fase de animación
         float phase = (accumulatedTime % 0.5f) * 2f * (float)Math.PI / 0.5f;

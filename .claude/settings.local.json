@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(gradlew.bat assembleDebug:*)",
-      "Read(//c/imagenes/**)"
+      "Read(//c/imagenes/**)",
+      "Bash(dir c:imagenes)"
     ],
     "deny": [],
     "ask": []

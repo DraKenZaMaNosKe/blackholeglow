@@ -217,7 +217,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             Log.e(TAG, "  ✗ Error creating background: " + e.getMessage());
         }
 
-        // SOL CENTRAL CON NUEVO SHADER DE LAVA
+        // SOL CENTRAL CON NUEVO SHADER DE LAVA (OPACO)
         try {
             Planeta sol = new Planeta(
                     context, textureManager,
@@ -227,7 +227,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
                     0.0f, 0.0f, 0.0f,  // Sin órbita
                     0.0f,              // Sin variación
                     0.6f,              // Escala un poco mayor
-                    1.0f,              // Rotación muy lenta para lava
+                    3.0f,              // Rotación muy lenta para lava
                     false, null, 1.0f,
                     null, 1.0f
             );
@@ -235,46 +235,22 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
                 ((CameraAware) sol).setCameraController(sharedCamera);
             }
             sceneObjects.add(sol);
-            Log.d(TAG, "  ✓ Sun added with lava shader");
+            Log.d(TAG, "  ✓ Sun added with lava shader (opaque)");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creating sun: " + e.getMessage());
         }
 
-        // GLOW EXTERIOR DEL SOL (más sutil)
-        try {
-            Planeta sunGlow = new Planeta(
-                    context, textureManager,
-                    "shaders/planeta_vertex.glsl",
-                    "shaders/planeta_fragment.glsl",
-                    R.drawable.colorrojo,
-                    0.0f, 0.0f, 0.0f,  // Sin órbita
-                    0.0f,              // Sin variación
-                    0.9f,              // Más grande que el sol
-                    5.0f,              // Rotación media
-                    true, new float[]{1.0f, 0.5f, 0.1f, 0.3f}, 0.3f,  // Naranja transparente
-                    1.1f,              // Pulsación sutil
-                    0.5f
-            );
-            if (sunGlow instanceof CameraAware) {
-                ((CameraAware) sunGlow).setCameraController(sharedCamera);
-            }
-            sceneObjects.add(sunGlow);
-            Log.d(TAG, "  ✓ Sun glow added");
-        } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creating sun glow: " + e.getMessage());
-        }
-
-        // PLANETA ORBITANTE
+        // PLANETA ORBITANTE - AÑADIDO ANTES DEL GLOW PARA ORDEN CORRECTO
         try {
             Planeta planeta1 = new Planeta(
                     context, textureManager,
                     "shaders/planeta_vertex.glsl",
-                    "shaders/planeta_fragment.glsl",
+                    "shaders/planeta_iluminado_fragment.glsl",  // SHADER CON ILUMINACIÓN
                     R.drawable.textura_roninplaneta,
                     2.5f, 2.0f, 0.3f,  // Órbita mediana
                     0.1f,              // Poca variación
-                    0.2f,              // Tamaño pequeño
-                    10.0f,             // Rotación media
+                    0.25f,             // Tamaño un poco mayor
+                    30.0f,             // Rotación media
                     false, null, 1.0f,
                     null,
                     1.0f
@@ -283,9 +259,33 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
                 ((CameraAware) planeta1).setCameraController(sharedCamera);
             }
             sceneObjects.add(planeta1);
-            Log.d(TAG, "  ✓ Orbiting planet added");
+            Log.d(TAG, "  ✓ Orbiting planet added with illumination");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creating planet: " + e.getMessage());
+        }
+
+        // GLOW EXTERIOR DEL SOL - AL FINAL PARA QUE SE DIBUJE ENCIMA
+        try {
+            Planeta sunGlow = new Planeta(
+                    context, textureManager,
+                    "shaders/planeta_vertex.glsl",
+                    "shaders/planeta_fragment.glsl",
+                    R.drawable.colorrojo,
+                    0.0f, 0.0f, 0.0f,  // Sin órbita
+                    0.0f,              // Sin variación
+                    0.8f,              // Más grande que el sol
+                    5.0f,              // Rotación media
+                    true, new float[]{1.0f, 0.5f, 0.1f, 0.2f}, 0.55f,  // Naranja MÁS transparente
+                    1.1f,              // Pulsación sutil
+                    0.5f
+            );
+            if (sunGlow instanceof CameraAware) {
+                ((CameraAware) sunGlow).setCameraController(sharedCamera);
+            }
+            sceneObjects.add(sunGlow);
+            Log.d(TAG, "  ✓ Sun glow added (transparent overlay)");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating sun glow: " + e.getMessage());
         }
 
         Log.d(TAG, "✓ Universe scene setup complete");
