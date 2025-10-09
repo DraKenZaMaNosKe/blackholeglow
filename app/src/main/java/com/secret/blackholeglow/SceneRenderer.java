@@ -52,10 +52,8 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
         textureManager = new TextureManager(context);
 
         // CONFIGURAR CÁMARA EN POSICIÓN ÓPTIMA
-        // Vista 3/4 estilo isométrico pero con perspectiva
-        sharedCamera.setMode(CameraController.CameraMode.THIRD_PERSON);
-        sharedCamera.setPosition(4f, 3f, 6f);  // Posición elevada y atrás
-        sharedCamera.setTarget(0f, 0f, 0f);    // Mirando al centro
+        // Vista 3/4 estilo isométrico con perspectiva
+        sharedCamera.setMode(CameraController.CameraMode.PERSPECTIVE_3_4);
 
         // Preparar escena
         prepareScene();
@@ -95,7 +93,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
 
         // La cámara NO se actualiza (está fija)
         // Solo actualizamos si queremos una rotación muy lenta
-        // sharedCamera.update(dt); // COMENTADO - cámara estática
+        //sharedCamera.update(dt); // COMENTADO - cámara estática
 
         // Dibujar objetos
         for (SceneObject obj : sceneObjects) {

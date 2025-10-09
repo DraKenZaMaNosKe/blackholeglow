@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
+import android.util.Log;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -15,9 +16,12 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
 /**
- * Utilerías para shaders y texturas.
+ * Utilerías unificadas para shaders y texturas.
+ * Combina la funcionalidad de ambas clases ShaderUtils.
  */
 public class ShaderUtils {
+
+    private static final String TAG = "ShaderUtils";
 
     /** Crea un FloatBuffer a partir de un array de floats. */
     public static FloatBuffer createFloatBuffer(float[] data) {
@@ -34,25 +38,53 @@ public class ShaderUtils {
         int shader = GLES20.glCreateShader(type);
         GLES20.glShaderSource(shader, source);
         GLES20.glCompileShader(shader);
+
+        // Verificar compilación
+        final int[] compileStatus = new int[1];
+        GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compileStatus, 0);
+        if (compileStatus[0] == 0) {
+            Log.e(TAG, "Error compiling shader: " + GLES20.glGetShaderInfoLog(shader));
+            GLES20.glDeleteShader(shader);
+            return 0;
+        }
+
         return shader;
     }
 
     /**
      * Crea un programa enlazando los dos shaders dados como cadenas.
-     * Necesario para clases que usan shaders inline (p.ej. DeformableCubeBackground).
+     * Necesario para clases que usan shaders inline.
      */
     public static int createProgram(String vertexSource, String fragmentSource) {
-        int vs = loadShader(GLES20.GL_VERTEX_SHADER,   vertexSource);
+        int vs = loadShader(GLES20.GL_VERTEX_SHADER, vertexSource);
         int fs = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentSource);
+
+        if (vs == 0 || fs == 0) {
+            Log.e(TAG, "Failed to compile shaders");
+            return 0;
+        }
+
         int prog = GLES20.glCreateProgram();
         GLES20.glAttachShader(prog, vs);
         GLES20.glAttachShader(prog, fs);
         GLES20.glLinkProgram(prog);
+
+        // Verificar enlace
+        final int[] linkStatus = new int[1];
+        GLES20.glGetProgramiv(prog, GLES20.GL_LINK_STATUS, linkStatus, 0);
+        if (linkStatus[0] == 0) {
+            Log.e(TAG, "Error linking program: " + GLES20.glGetProgramInfoLog(prog));
+            GLES20.glDeleteProgram(prog);
+            return 0;
+        }
+
+        Log.d(TAG, "Shader program created successfully");
         return prog;
     }
 
     /**
      * Crea un programa OpenGL ES a partir de archivos .glsl en assets.
+     * Este método es el principal, usado por la mayoría del código.
      */
     public static int createProgramFromAssets(
             Context ctx,
@@ -60,7 +92,21 @@ public class ShaderUtils {
             String fragmentAssetPath) {
         String vSrc = loadAssetAsString(ctx, vertexAssetPath);
         String fSrc = loadAssetAsString(ctx, fragmentAssetPath);
+
+        if (vSrc == null || fSrc == null) {
+            Log.e(TAG, "Shader source is null. Check asset paths.");
+            return 0;
+        }
+
         return createProgram(vSrc, fSrc);
+    }
+
+    /**
+     * Método alternativo con el mismo nombre que la versión de opengl.ShaderUtils
+     * para mantener compatibilidad con AnimatedBorderRendererThread
+     */
+    public static int createProgram(Context context, String vertexAssetPath, String fragmentAssetPath) {
+        return createProgramFromAssets(context, vertexAssetPath, fragmentAssetPath);
     }
 
     /**
@@ -72,7 +118,8 @@ public class ShaderUtils {
         final int[] handle = new int[1];
         GLES20.glGenTextures(1, handle, 0);
         if (handle[0] == 0) {
-            throw new RuntimeException("❌ Error al generar ID de textura");
+            Log.e(TAG, "Error al generar ID de textura");
+            throw new RuntimeException("Error al generar ID de textura");
         }
 
         // Decodificar bitmap sin escalado
@@ -82,8 +129,9 @@ public class ShaderUtils {
                 context.getResources(), resourceId, opts
         );
         if (bmp == null) {
+            Log.e(TAG, "No se pudo decodificar recurso: " + resourceId);
             throw new RuntimeException(
-                    "❌ No se pudo decodificar recurso: " + resourceId);
+                    "No se pudo decodificar recurso: " + resourceId);
         }
 
         // Bind y subir a GPU
@@ -121,28 +169,27 @@ public class ShaderUtils {
         // Verificar errores
         int err = GLES20.glGetError();
         if (err != GLES20.GL_NO_ERROR) {
+            Log.e(TAG, "Error configurando textura. GL error: " + err);
             throw new RuntimeException(
-                    "❌ Error configurando textura. GL error: " + err);
+                    "Error configurando textura. GL error: " + err);
         }
 
         return handle[0];
     }
 
     /** Lee un archivo de texto en assets y lo devuelve como String. */
-    public static String loadAssetAsString(
-            Context ctx, String assetPath) {
+    public static String loadAssetAsString(Context ctx, String assetPath) {
+        StringBuilder sb = new StringBuilder();
         try (InputStream is = ctx.getAssets().open(assetPath);
-             BufferedReader br = new BufferedReader(
-                     new InputStreamReader(is))) {
-            StringBuilder sb = new StringBuilder();
+             BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
             String line;
             while ((line = br.readLine()) != null) {
                 sb.append(line).append('\n');
             }
             return sb.toString();
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "Error leyendo asset: " + assetPath, e);
+            Log.e(TAG, "Error leyendo asset: " + assetPath, e);
+            return null;
         }
     }
 }

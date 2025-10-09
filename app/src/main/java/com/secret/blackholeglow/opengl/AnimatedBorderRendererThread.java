@@ -6,6 +6,8 @@ import android.opengl.GLES20;
 import android.util.Log;
 import android.view.Surface;
 
+import com.secret.blackholeglow.ShaderUtils;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
