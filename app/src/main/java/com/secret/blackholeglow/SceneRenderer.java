@@ -40,7 +40,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
     private MusicVisualizer musicVisualizer;
     private boolean musicReactiveEnabled = true;  // Activado por defecto
     private MusicIndicator musicIndicator;  // Indicador visual de música
-    private EstrelaBailarina estrellaBailarina;  // Referencia para actualizar con música
+    private List<EstrelaBailarina> estrellasBailarinas = new ArrayList<>();  // 3 estrella bailarina
     private HPBar musicStatusBar;  // Barra de prueba para indicador de música
 
     // Métricas de rendimiento
@@ -323,20 +323,48 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             Log.e(TAG, "  ✗ Error creating sun: " + e.getMessage());
         }
 
-        // ✨ ESTRELLA BAILARINA - PARTÍCULA MÁGICA CON ESTELA ✨
-        // Casi invisible, solo se ve la estela arcoíris
+        // ✨ 3 ESTRELLAS BAILARINAS - PARTÍCULAS MÁGICAS CON ESTELA ✨
+        // Casi invisibles, solo se ve la estela arcoíris de cada una
         try {
-            estrellaBailarina = new EstrelaBailarina(
+            // Limpiar lista anterior por si acaso
+            estrellasBailarinas.clear();
+
+            // Estrella 1 - Posición superior derecha
+            EstrelaBailarina estrella1 = new EstrelaBailarina(
                     context, textureManager,
-                    1.5f, 0.5f, 0.0f,   // Posición inicial
+                    1.8f, 0.8f, 0.5f,   // Posición inicial: arriba-derecha
                     0.02f,              // Escala: MINÚSCULA (casi invisible, solo estela)
                     45.0f               // Rotación: rápida
             );
-            estrellaBailarina.setCameraController(sharedCamera);
-            sceneObjects.add(estrellaBailarina);
-            Log.d(TAG, "  ✨ ESTRELLA BAILARINA agregada (minúscula - solo estela visible) ✨");
+            estrella1.setCameraController(sharedCamera);
+            sceneObjects.add(estrella1);
+            estrellasBailarinas.add(estrella1);
+
+            // Estrella 2 - Posición izquierda
+            EstrelaBailarina estrella2 = new EstrelaBailarina(
+                    context, textureManager,
+                    -1.5f, 0.3f, -0.8f,  // Posición inicial: izquierda-atrás
+                    0.02f,               // Escala: MINÚSCULA
+                    38.0f                // Rotación: ligeramente diferente
+            );
+            estrella2.setCameraController(sharedCamera);
+            sceneObjects.add(estrella2);
+            estrellasBailarinas.add(estrella2);
+
+            // Estrella 3 - Posición abajo
+            EstrelaBailarina estrella3 = new EstrelaBailarina(
+                    context, textureManager,
+                    0.5f, -0.6f, 1.2f,   // Posición inicial: abajo-adelante
+                    0.02f,               // Escala: MINÚSCULA
+                    52.0f                // Rotación: más rápida
+            );
+            estrella3.setCameraController(sharedCamera);
+            sceneObjects.add(estrella3);
+            estrellasBailarinas.add(estrella3);
+
+            Log.d(TAG, "  ✨✨✨ 3 ESTRELLAS BAILARINAS agregadas (épico!) ✨✨✨");
         } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creando estrella bailarina: " + e.getMessage());
+            Log.e(TAG, "  ✗ Error creando estrellas bailarinas: " + e.getMessage());
         }
 
         // PLANETA ORBITANTE (REDUCIDO Y ALEJADO)
@@ -490,6 +518,39 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             Log.d(TAG, "[SceneRenderer] ✓ Sistema de meteoritos agregado (con campo de fuerza)");
         } catch (Exception e) {
             Log.e(TAG, "[SceneRenderer] ✗ Error creando sistema de meteoritos: " + e.getMessage());
+        }
+
+        // ✨ AVATAR DEL USUARIO - ESFERA 3D FLOTANTE ✨
+        // Carga la foto de perfil del usuario y la muestra orbitando el sol
+        try {
+            Log.d(TAG, "╔════════════════════════════════════════╗");
+            Log.d(TAG, "║   CARGANDO AVATAR DEL USUARIO        ║");
+            Log.d(TAG, "╚════════════════════════════════════════╝");
+
+            // Crear AvatarSphere (se creará sin textura primero)
+            final AvatarSphere avatarSphere = new AvatarSphere(context, textureManager, null);
+            avatarSphere.setCameraController(sharedCamera);
+            sceneObjects.add(avatarSphere);
+
+            // Cargar avatar del usuario de forma asíncrona
+            AvatarLoader.loadCurrentUserAvatar(context, new AvatarLoader.AvatarLoadListener() {
+                @Override
+                public void onAvatarLoaded(android.graphics.Bitmap bitmap) {
+                    // Avatar cargado exitosamente
+                    avatarSphere.updateAvatar(bitmap);
+                    Log.d(TAG, "  ✨✓ AVATAR DEL USUARIO CARGADO EN 3D ✨");
+                }
+
+                @Override
+                public void onAvatarLoadFailed() {
+                    Log.w(TAG, "  ⚠️ No se pudo cargar el avatar del usuario");
+                }
+            });
+
+            Log.d(TAG, "  ✓ AvatarSphere agregado (cargando textura...)");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creando avatar sphere: " + e.getMessage());
+            e.printStackTrace();
         }
 
         Log.d(TAG, "✓ Universe scene setup complete");

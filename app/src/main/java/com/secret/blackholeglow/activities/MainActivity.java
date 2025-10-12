@@ -1,15 +1,29 @@
 package com.secret.blackholeglow.activities;
 
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.ImageView;
+import android.widget.TextView;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.resource.bitmap.CircleCrop;
 import com.google.android.material.navigation.NavigationView;
+import com.secret.blackholeglow.MusicPermissionActivity;
 import com.secret.blackholeglow.R;
+import com.secret.blackholeglow.UserManager;
 import com.secret.blackholeglow.fragments.AnimatedWallpaperListFragment;
 
 /*
@@ -85,7 +99,10 @@ public class MainActivity extends AppCompatActivity
         // 2a. Asociar el NavigationView al listener de selección
         NavigationView navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
-        // ❤️ Bebé, “this” Activity implementa OnNavigationItemSelectedListener
+        // ❤️ Bebé, "this" Activity implementa OnNavigationItemSelectedListener
+
+        // 2b. Cargar avatar del usuario en el header del NavigationDrawer
+        loadUserAvatar(navigationView);
 
         // 3️⃣ Configurar el botón “hamburguesa” que abre/cierra el Drawer
         //    ┌───────────────────────────────────────────────────┐
@@ -110,7 +127,7 @@ public class MainActivity extends AppCompatActivity
         //    │ instance es null.                                            │
         //    └────────────────────────────────────────────────────────────────┘
         if (savedInstanceState == null) {
-            // Marcar el ítem “nav_animated” como seleccionado en el NavigationView
+            // Marcar el ítem "nav_animated" como seleccionado en el NavigationView
             navigationView.setCheckedItem(R.id.nav_home);
 
             // Reemplazar el fragment_container con AnimatedWallpaperListFragment
@@ -121,6 +138,26 @@ public class MainActivity extends AppCompatActivity
                     )
                     .commit();
             // ❤️ Bebé, aquí mostramos por primera vez la lista de fondos animados
+        }
+
+        // 5️⃣ Verificar permisos de audio para music visualizer
+        //    ┌────────────────────────────────────────────────────────────────┐
+        //    │ Si no tiene permiso RECORD_AUDIO, lanzar MusicPermissionActivity │
+        //    └────────────────────────────────────────────────────────────────┘
+        checkAudioPermission();
+    }
+
+    /**
+     * Verifica si tiene permiso de audio, y si no, lanza MusicPermissionActivity
+     */
+    private void checkAudioPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                    != PackageManager.PERMISSION_GRANTED) {
+                // No tiene permiso, lanzar MusicPermissionActivity
+                Intent intent = new Intent(this, MusicPermissionActivity.class);
+                startActivity(intent);
+            }
         }
     }
 
@@ -167,8 +204,47 @@ public class MainActivity extends AppCompatActivity
             // Si el Drawer está abierto, cerrarlo en lugar de salir de la Activity
             drawerLayout.closeDrawer(GravityCompat.START);
         } else {
-            // Si no está abierto, realizar el comportamiento por defecto (“ir atrás”)
+            // Si no está abierto, realizar el comportamiento por defecto ("ir atrás")
             super.onBackPressed();
+        }
+    }
+
+    /**
+     * Carga el avatar del usuario en el header del NavigationDrawer
+     */
+    private void loadUserAvatar(NavigationView navigationView) {
+        // Obtener UserManager
+        UserManager userManager = UserManager.getInstance(this);
+
+        // Verificar si el usuario está logueado
+        if (!userManager.isLoggedIn()) {
+            return; // No hay usuario logueado
+        }
+
+        // Obtener el header del NavigationView
+        View headerView = navigationView.getHeaderView(0);
+
+        // Referencias a las vistas del header
+        ImageView ivAvatar = headerView.findViewById(R.id.iv_user_avatar);
+        TextView tvName = headerView.findViewById(R.id.tv_user_name);
+        TextView tvEmail = headerView.findViewById(R.id.tv_user_email);
+
+        // Obtener datos del usuario
+        String userName = userManager.getUserName();
+        String userEmail = userManager.getUserEmail();
+        String photoUrl = userManager.getUserPhotoUrl();
+
+        // Actualizar textos
+        tvName.setText(userName);
+        tvEmail.setText(userEmail);
+
+        // Cargar avatar con Glide
+        if (photoUrl != null && !photoUrl.isEmpty()) {
+            Glide.with(this)
+                    .load(photoUrl)
+                    .placeholder(R.drawable.ic_launcher_foreground)
+                    .error(R.drawable.ic_launcher_foreground)
+                    .into(ivAvatar);
         }
     }
 }
