@@ -3,7 +3,11 @@
     "allow": [
       "Bash(gradlew.bat assembleDebug:*)",
       "Read(//c/imagenes/**)",
-      "Bash(dir c:imagenes)"
+      "Bash(dir c:imagenes)",
+      "Read(//c/piton/img/**)",
+      "Bash(dir:*)",
+      "Bash(adb logcat:*)",
+      "Bash(./gradlew:*)"
     ],
     "deny": [],
     "ask": []

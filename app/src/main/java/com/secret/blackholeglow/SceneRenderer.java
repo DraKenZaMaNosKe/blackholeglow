@@ -217,6 +217,16 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             Log.e(TAG, "  ✗ Error creating background: " + e.getMessage());
         }
 
+        // CAMPO DE ESTRELLAS BRILLANTES
+        try {
+            StarField starField = new StarField(context);
+            starField.setCameraController(sharedCamera);
+            sceneObjects.add(starField);
+            Log.d(TAG, "  ✓ Star field added with twinkling stars");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating star field: " + e.getMessage());
+        }
+
         // SOL CENTRAL CON NUEVO SHADER DE LAVA (OPACO)
         try {
             Planeta sol = new Planeta(
@@ -262,6 +272,41 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             Log.d(TAG, "  ✓ Orbiting planet added with illumination");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creating planet: " + e.getMessage());
+        }
+
+        // BARRA DE PODER DE BATERÍA - UI ELEMENT
+        BatteryPowerBar powerBar = null;
+        try {
+            powerBar = new BatteryPowerBar(context);
+            sceneObjects.add(powerBar);
+            Log.d(TAG, "  ✓ Battery power bar added");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating power bar: " + e.getMessage());
+        }
+
+        // SISTEMA DE LLUVIA DE METEORITOS - AÑADIDO DESPUÉS DE LOS PLANETAS
+        MeteorShower meteorShower = null;
+        try {
+            meteorShower = new MeteorShower(context, textureManager);
+            meteorShower.setCameraController(sharedCamera);
+
+            // Conectar con la barra de poder
+            if (powerBar != null) {
+                meteorShower.setPowerBar(powerBar);
+            }
+
+            // Registrar el sol y el planeta para colisiones
+            // Nota: Necesitamos referencias a los objetos creados arriba
+            for (SceneObject obj : sceneObjects) {
+                if (obj instanceof Planeta) {
+                    meteorShower.registrarObjetoColisionable(obj);
+                }
+            }
+
+            sceneObjects.add(meteorShower);
+            Log.d(TAG, "  ✓ Meteor shower system added with collision detection");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating meteor shower: " + e.getMessage());
         }
 
         // GLOW EXTERIOR DEL SOL - AL FINAL PARA QUE SE DIBUJE ENCIMA

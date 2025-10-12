@@ -1,0 +1,319 @@
+package com.secret.blackholeglow;
+
+import android.content.Context;
+import android.util.Log;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Sistema de Lluvia de Meteoritos
+ * Gestiona múltiples meteoritos, colisiones y efectos especiales
+ */
+public class MeteorShower implements SceneObject, CameraAware {
+    private static final String TAG = "MeteorShower";
+
+    // Configuración de la lluvia
+    private static final int MAX_METEORITOS = 15;  // Pool máximo
+    private static final int METEORITOS_ACTIVOS_MAX = 5;  // Simultáneos
+    private static final float SPAWN_INTERVAL = 1.5f;  // Segundos entre spawns
+    private static final float SPAWN_DISTANCE = 12.0f;  // Distancia de spawn
+
+    // Pool de meteoritos
+    private final List<Meteorito> poolMeteorites = new ArrayList<>();
+    private final List<Meteorito> meteoritosActivos = new ArrayList<>();
+
+    // Control de spawn
+    private float tiempoDesdeUltimoSpawn = 0;
+    private float intensidad = 1.0f;  // Multiplicador de frecuencia
+    private boolean activo = true;
+
+    // Referencias para colisiones
+    private Planeta sol = null;
+    private Planeta planetaOrbitante = null;
+    private List<SceneObject> objetosColisionables = new ArrayList<>();
+
+    // Efectos de impacto
+    private List<ImpactEffect> efectosImpacto = new ArrayList<>();
+
+    // Referencias
+    private final Context context;
+    private final TextureManager textureManager;
+    private CameraController camera;
+    private BatteryPowerBar powerBar;  // Para efectos basados en batería
+
+    // Estadísticas
+    private int totalMeteoritosLanzados = 0;
+    private int totalImpactos = 0;
+
+    public MeteorShower(Context context, TextureManager textureManager) {
+        this.context = context;
+        this.textureManager = textureManager;
+
+        // Inicializar pool
+        for (int i = 0; i < MAX_METEORITOS; i++) {
+            Meteorito m = new Meteorito(context, textureManager);
+            poolMeteorites.add(m);
+        }
+
+        // Inicializar efectos de impacto
+        for (int i = 0; i < 5; i++) {
+            efectosImpacto.add(new ImpactEffect());
+        }
+
+        Log.d(TAG, "MeteorShower inicializado con pool de " + MAX_METEORITOS);
+    }
+
+    /**
+     * Establece la referencia a la barra de poder
+     */
+    public void setPowerBar(BatteryPowerBar powerBar) {
+        this.powerBar = powerBar;
+    }
+
+    /**
+     * Registra objetos para detectar colisiones
+     */
+    public void registrarObjetoColisionable(SceneObject objeto) {
+        if (objeto instanceof Planeta) {
+            Planeta p = (Planeta) objeto;
+            // Detectar si es el sol o un planeta por su tamaño/posición
+            // Por ahora asumimos el primero es el sol
+            if (sol == null) {
+                sol = p;
+                Log.d(TAG, "Sol registrado para colisiones");
+            } else if (planetaOrbitante == null) {
+                planetaOrbitante = p;
+                Log.d(TAG, "Planeta orbitante registrado para colisiones");
+            }
+        }
+        objetosColisionables.add(objeto);
+    }
+
+    @Override
+    public void setCameraController(CameraController camera) {
+        this.camera = camera;
+        // Asignar cámara a todos los meteoritos
+        for (Meteorito m : poolMeteorites) {
+            m.setCameraController(camera);
+        }
+    }
+
+    @Override
+    public void update(float deltaTime) {
+        if (!activo) return;
+
+        // Actualizar tiempo de spawn
+        tiempoDesdeUltimoSpawn += deltaTime;
+
+        // Spawn de nuevos meteoritos
+        if (tiempoDesdeUltimoSpawn > SPAWN_INTERVAL / intensidad &&
+            meteoritosActivos.size() < METEORITOS_ACTIVOS_MAX) {
+
+            spawnMeteorito();
+            tiempoDesdeUltimoSpawn = 0;
+        }
+
+        // Actualizar meteoritos activos
+        List<Meteorito> paraRemover = new ArrayList<>();
+
+        for (Meteorito m : meteoritosActivos) {
+            m.update(deltaTime);
+
+            // Verificar colisiones solo si está cayendo
+            if (m.getEstado() == Meteorito.Estado.CAYENDO) {
+                verificarColisiones(m);
+            }
+
+            // Si está inactivo, devolverlo al pool
+            if (!m.estaActivo()) {
+                paraRemover.add(m);
+            }
+        }
+
+        // Devolver al pool
+        for (Meteorito m : paraRemover) {
+            meteoritosActivos.remove(m);
+            poolMeteorites.add(m);
+        }
+
+        // Actualizar efectos de impacto
+        for (ImpactEffect efecto : efectosImpacto) {
+            efecto.update(deltaTime);
+        }
+
+        // Log de estadísticas cada 10 segundos
+        if ((int)(tiempoDesdeUltimoSpawn * 10) % 100 == 0) {
+            Log.v(TAG, "Meteoritos activos: " + meteoritosActivos.size() +
+                      " | Total lanzados: " + totalMeteoritosLanzados +
+                      " | Impactos: " + totalImpactos);
+        }
+    }
+
+    /**
+     * Genera un nuevo meteorito
+     */
+    private void spawnMeteorito() {
+        if (poolMeteorites.isEmpty()) return;
+
+        Meteorito m = poolMeteorites.remove(0);
+
+        // Posición aleatoria en esfera alrededor de la escena
+        float angulo1 = (float) (Math.random() * Math.PI * 2);
+        float angulo2 = (float) (Math.random() * Math.PI);
+
+        float x = SPAWN_DISTANCE * (float) (Math.sin(angulo2) * Math.cos(angulo1));
+        float y = SPAWN_DISTANCE * (float) (Math.sin(angulo2) * Math.sin(angulo1));
+        float z = SPAWN_DISTANCE * (float) Math.cos(angulo2);
+
+        // Velocidad hacia el centro con algo de variación
+        // Más velocidad si hay más batería
+        float powerBoost = powerBar != null ? powerBar.getPowerMultiplier() : 1.0f;
+        float velocidadBase = (2.0f + (float) Math.random() * 3.0f) * powerBoost;
+        float targetX = (float) (Math.random() * 2 - 1);  // Punto cerca del centro
+        float targetY = (float) (Math.random() * 2 - 1);
+        float targetZ = (float) (Math.random() * 2 - 1);
+
+        float dx = targetX - x;
+        float dy = targetY - y;
+        float dz = targetZ - z;
+        float dist = (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+        float vx = (dx / dist) * velocidadBase;
+        float vy = (dy / dist) * velocidadBase;
+        float vz = (dz / dist) * velocidadBase;
+
+        // Tamaño aleatorio (más grandes con más batería)
+        float tamaño = (0.05f + (float) Math.random() * 0.1f) * (0.8f + powerBoost * 0.4f);
+
+        m.activar(x, y, z, vx, vy, vz, tamaño);
+        meteoritosActivos.add(m);
+
+        totalMeteoritosLanzados++;
+        Log.v(TAG, "Meteorito #" + totalMeteoritosLanzados + " lanzado");
+    }
+
+    /**
+     * Verifica colisiones con objetos de la escena
+     */
+    private void verificarColisiones(Meteorito m) {
+        float[] posMeteorito = m.getPosicion();
+        float radioMeteorito = m.getTamaño();
+
+        // Colisión con el sol (si existe)
+        if (sol != null) {
+            float[] posSol = {0, 0, 0};  // El sol está en el centro
+            float radioSol = 0.6f;  // Tamaño aproximado del sol
+
+            float distancia = calcularDistancia(posMeteorito, posSol);
+
+            if (distancia < (radioMeteorito + radioSol)) {
+                // ¡IMPACTO CON EL SOL!
+                m.impactar();
+                crearEfectoImpacto(posMeteorito[0], posMeteorito[1], posMeteorito[2], true);
+                totalImpactos++;
+                Log.d(TAG, "¡¡IMPACTO EN EL SOL!! Total impactos: " + totalImpactos);
+            }
+        }
+
+        // Colisión con planeta orbitante
+        if (planetaOrbitante != null) {
+            // Aquí necesitaríamos obtener la posición actual del planeta
+            // Por ahora simplificamos
+            float distanciaPlaneta = calcularDistancia(posMeteorito, new float[]{2.5f, 0, 0});
+            if (distanciaPlaneta < (radioMeteorito + 0.25f)) {
+                m.impactar();
+                crearEfectoImpacto(posMeteorito[0], posMeteorito[1], posMeteorito[2], false);
+                Log.d(TAG, "¡Impacto en planeta!");
+            }
+        }
+    }
+
+    /**
+     * Calcula distancia entre dos puntos 3D
+     */
+    private float calcularDistancia(float[] p1, float[] p2) {
+        float dx = p1[0] - p2[0];
+        float dy = p1[1] - p2[1];
+        float dz = p1[2] - p2[2];
+        return (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
+    }
+
+    /**
+     * Crea efecto visual de impacto
+     */
+    private void crearEfectoImpacto(float x, float y, float z, boolean enSol) {
+        for (ImpactEffect efecto : efectosImpacto) {
+            if (!efecto.activo) {
+                efecto.activar(x, y, z, enSol);
+                break;
+            }
+        }
+    }
+
+    @Override
+    public void draw() {
+        // Dibujar todos los meteoritos activos
+        for (Meteorito m : meteoritosActivos) {
+            m.draw();
+        }
+
+        // Dibujar efectos de impacto
+        for (ImpactEffect efecto : efectosImpacto) {
+            efecto.draw(camera);
+        }
+    }
+
+    /**
+     * Controla la intensidad de la lluvia
+     */
+    public void setIntensidad(float intensidad) {
+        this.intensidad = Math.max(0.1f, Math.min(5.0f, intensidad));
+    }
+
+    public void activar() { activo = true; }
+    public void desactivar() { activo = false; }
+
+    /**
+     * Clase interna para efectos de impacto
+     */
+    private class ImpactEffect {
+        boolean activo = false;
+        float x, y, z;
+        float tiempo = 0;
+        float tamaño = 0;
+        boolean enSol = false;
+        float opacidad = 1;
+
+        void activar(float x, float y, float z, boolean enSol) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.enSol = enSol;
+            this.activo = true;
+            this.tiempo = 0;
+            this.tamaño = 0.1f;
+            this.opacidad = 1;
+        }
+
+        void update(float dt) {
+            if (!activo) return;
+
+            tiempo += dt;
+            tamaño += dt * 3.0f;  // Expansión rápida
+            opacidad = 1.0f - (tiempo / 1.0f);  // Desvanecer en 1 segundo
+
+            if (tiempo > 1.0f) {
+                activo = false;
+            }
+        }
+
+        void draw(CameraController camera) {
+            if (!activo || camera == null) return;
+
+            // Aquí dibujaríamos el efecto de onda expansiva
+            // Por ahora es un placeholder
+            // Podríamos usar un shader especial para esto
+        }
+    }
+}

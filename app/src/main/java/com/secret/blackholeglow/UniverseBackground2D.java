@@ -79,9 +79,9 @@ public class UniverseBackground2D implements SceneObject {
             "    \n" +
             "    uv += center;\n" +
             "    \n" +
-            "    // Animación sutil opcional\n" +
-            "    uv.x += sin(u_Time * 0.05) * 0.01;\n" +
-            "    uv.y += cos(u_Time * 0.03) * 0.01;\n" +
+            "    // Animación desactivada (opcional para después)\n" +
+            "    // uv.x += sin(u_Time * 0.05) * 0.01;\n" +
+            "    // uv.y += cos(u_Time * 0.03) * 0.01;\n" +
             "    \n" +
             "    // Clamp para evitar bordes\n" +
             "    uv = clamp(uv, 0.0, 1.0);\n" +
