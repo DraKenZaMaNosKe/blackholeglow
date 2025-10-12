@@ -11,7 +11,13 @@
       "Read(//c/piton/**)",
       "Bash(cmd:*)",
       "Bash(./gradlew.bat:*)",
-      "Bash(where java)"
+      "Bash(where java)",
+      "Bash(set \"JAVA_HOME=C:\\Program Files\\Android\\Android Studio\\jbr\")",
+      "Bash(set \"PATH=%JAVA_HOME%\\bin;%PATH%\")",
+      "Bash(export JAVA_HOME=\"/c/Program Files/Android/Android Studio/jbr\")",
+      "Bash(export PATH=\"$JAVA_HOME/bin:$PATH\")",
+      "Bash(cat:*)",
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "ask": []

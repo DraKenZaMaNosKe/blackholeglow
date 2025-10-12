@@ -9,14 +9,15 @@ import java.util.List;
 /**
  * Sistema de Lluvia de Meteoritos
  * Gestiona múltiples meteoritos, colisiones y efectos especiales
+ * Reacciona a la música aumentando la intensidad con el volumen
  */
-public class MeteorShower implements SceneObject, CameraAware {
+public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     private static final String TAG = "depurar";
 
-    // Configuración de la lluvia OPTIMIZADA para wallpaper
-    private static final int MAX_METEORITOS = 6;  // REDUCIDO de 15 a 6
-    private static final int METEORITOS_ACTIVOS_MAX = 3;  // REDUCIDO de 5 a 3
-    private static final float SPAWN_INTERVAL = 2.0f;  // AUMENTADO de 1.5 a 2.0
+    // Configuración OPTIMIZADA para máximo rendimiento
+    private static final int MAX_METEORITOS = 3;  // Pool de 3 meteoritos (performance)
+    private static final int METEORITOS_ACTIVOS_MAX = 2;  // Máximo 2 activos simultáneos
+    private static final float SPAWN_INTERVAL = 2.5f;  // Spawn cada 2.5 segundos
     private static final float SPAWN_DISTANCE = 12.0f;  // Distancia de spawn
 
     // Pool de meteoritos
@@ -50,6 +51,10 @@ public class MeteorShower implements SceneObject, CameraAware {
     // Estadísticas
     private int totalMeteoritosLanzados = 0;
     private int totalImpactos = 0;
+
+    // ===== SISTEMA DE REACTIVIDAD MUSICAL =====
+    private boolean musicReactive = true;
+    private float musicIntensityBoost = 0f;  // Boost de intensidad por música
 
     public MeteorShower(Context context, TextureManager textureManager) {
         this.context = context;
@@ -125,8 +130,13 @@ public class MeteorShower implements SceneObject, CameraAware {
         // Actualizar tiempo de spawn
         tiempoDesdeUltimoSpawn += deltaTime;
 
-        // Spawn de nuevos meteoritos
-        if (tiempoDesdeUltimoSpawn > SPAWN_INTERVAL / intensidad &&
+        // Spawn de nuevos meteoritos con boost musical
+        float effectiveIntensity = intensidad;
+        if (musicReactive && musicIntensityBoost > 0) {
+            effectiveIntensity *= (1.0f + musicIntensityBoost);
+        }
+
+        if (tiempoDesdeUltimoSpawn > SPAWN_INTERVAL / effectiveIntensity &&
             meteoritosActivos.size() < METEORITOS_ACTIVOS_MAX) {
 
             spawnMeteorito();
@@ -366,5 +376,40 @@ public class MeteorShower implements SceneObject, CameraAware {
             // Por ahora es un placeholder
             // Podríamos usar un shader especial para esto
         }
+    }
+
+    // ===== IMPLEMENTACIÓN DE MUSICREACTIVE =====
+
+    @Override
+    public void onMusicData(float bassLevel, float midLevel, float trebleLevel,
+                            float volumeLevel, float beatIntensity, boolean isBeat) {
+        if (!musicReactive) return;
+
+        // VOLUMEN GENERAL → Aumenta intensidad de la lluvia
+        // Más música = más meteoritos
+        musicIntensityBoost = volumeLevel * 1.5f;  // Hasta 150% más meteoritos
+
+        // BEATS → Spawn instantáneo de meteoritos extra
+        if (isBeat && beatIntensity > 0.7f && poolMeteorites.size() > 0) {
+            // En beats fuertes, lanzar meteorito extra
+            if (meteoritosActivos.size() < METEORITOS_ACTIVOS_MAX + 1) {  // Permitir uno extra
+                spawnMeteorito();
+                Log.v(TAG, "[MeteorShower] 🎵 BEAT SPAWN! Meteorito extra lanzado");
+            }
+        }
+    }
+
+    @Override
+    public void setMusicReactive(boolean enabled) {
+        this.musicReactive = enabled;
+        if (!enabled) {
+            musicIntensityBoost = 0f;
+        }
+        Log.d(TAG, "[MeteorShower] Reactividad musical " + (enabled ? "ACTIVADA" : "DESACTIVADA"));
+    }
+
+    @Override
+    public boolean isMusicReactive() {
+        return musicReactive;
     }
 }

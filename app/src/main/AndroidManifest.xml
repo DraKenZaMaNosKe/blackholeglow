@@ -12,6 +12,29 @@
     <uses-permission android:name="android.permission.VIBRATE"/>
 
     <!--
+      ╔═══════════════════════════════════════════════╗
+      ║    🌐 PERMISOS PARA INTERNET Y RED 🌐         ║
+      ╚═══════════════════════════════════════════════╝
+      📡 INTERNET: Necesario para Google Sign-In y cargar avatar
+      🔗 ACCESS_NETWORK_STATE: Verificar estado de la conexión
+    -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
+    <!--
+      ╔═══════════════════════════════════════════════╗
+      ║    🎵 PERMISOS PARA VISUALIZACIÓN MUSICAL 🎵  ║
+      ╚═══════════════════════════════════════════════╝
+      🎼 RECORD_AUDIO: Permite capturar datos de audio para visualización
+      🔊 MODIFY_AUDIO_SETTINGS: Permite acceder al Visualizer API
+
+      ⚠️ IMPORTANTE: NO graba ni almacena audio, solo lee datos en tiempo real
+      para crear efectos visuales sincronizados con la música.
+    -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+
+    <!--
       ╔══════════════════════════════════════════════╗
       ║     🪄 OPENGL ES 2.0 – MAGIA ACTIVADA 🪄    ║
       ╚══════════════════════════════════════════════╝
@@ -57,18 +80,30 @@
 
         <!--
           ╔════════════════════════════════════════════════════════╗
+          ║   🔐 ACTIVITY: LOGIN CON GOOGLE 🔐                    ║
+          ╚════════════════════════════════════════════════════════╝
+          Pantalla de inicio de sesión con Google Sign-In
+          Punto de entrada principal de la aplicación
+        -->
+        <activity
+            android:name=".LoginActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Blackholeglow">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+          ╔════════════════════════════════════════════════════════╗
           ║   🎆 ACTIVITY: SPLASH – LLAMADA INICIAL 🎆           ║
           ╚════════════════════════════════════════════════════════╝
           Ruta: app/src/main/java/com/secret/blackholeglow/activities/SplashActivity.java
         -->
         <activity
             android:name=".activities.SplashActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:exported="true" />
 
         <!--
           ╔══════════════════════════════════╗
@@ -89,6 +124,19 @@
         <activity
             android:name=".activities.MainActivity"
             android:exported="true" />
+
+        <!--
+          ╔═══════════════════════════════════════════╗
+          ║   🎵 ACTIVITY: PERMISOS DE AUDIO 🎵       ║
+          ╚═══════════════════════════════════════════╝
+          Solicita el permiso RECORD_AUDIO en runtime
+          Necesario para Android 6.0+ (API 23+)
+        -->
+        <activity
+            android:name=".MusicPermissionActivity"
+            android:exported="true"
+            android:label="Permiso de Audio Musical"
+            android:theme="@android:style/Theme.Material.Light.Dialog" />
 
     </application>
 </manifest>

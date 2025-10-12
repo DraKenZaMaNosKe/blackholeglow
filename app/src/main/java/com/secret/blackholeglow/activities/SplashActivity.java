@@ -1,9 +1,14 @@
 package com.secret.blackholeglow.activities;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
+import com.secret.blackholeglow.MusicPermissionActivity;
 import com.secret.blackholeglow.R;
 
 /*
@@ -32,6 +37,21 @@ public class SplashActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         // 🎨 Inflar layout: activity_splash.xml que contiene el logo y fondo animado
         setContentView(R.layout.activity_splash);
+
+        // ╔════════════════════════════════════════════════════════════════════╗
+        // ║    🎵 VERIFICAR PERMISO DE AUDIO INMEDIATAMENTE AL INICIO        ║
+        // ║    • Se solicita ANTES del delay para tener permiso cuanto antes ║
+        // ╚════════════════════════════════════════════════════════════════════╝
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            boolean hasAudioPermission = ContextCompat.checkSelfPermission(this,
+                    Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+
+            if (!hasAudioPermission) {
+                // ➤ No tiene permiso, mostrar pantalla de solicitud INMEDIATAMENTE
+                Intent permIntent = new Intent(SplashActivity.this, MusicPermissionActivity.class);
+                startActivity(permIntent);
+            }
+        }
 
         // ╔════════════════════════════════════════════════════════════════════╗
         // ║    ⏳ Handler con Retardo de 2.5 segundos                          ║

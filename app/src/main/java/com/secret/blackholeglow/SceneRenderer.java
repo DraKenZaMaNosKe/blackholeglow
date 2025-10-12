@@ -36,6 +36,13 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
     private MeteorShower meteorShower;
     private boolean solWasDead = false;  // Para detectar cuando respawnea
 
+    // Sistema de visualización musical
+    private MusicVisualizer musicVisualizer;
+    private boolean musicReactiveEnabled = true;  // Activado por defecto
+    private MusicIndicator musicIndicator;  // Indicador visual de música
+    private EstrelaBailarina estrellaBailarina;  // Referencia para actualizar con música
+    private HPBar musicStatusBar;  // Barra de prueba para indicador de música
+
     // Métricas de rendimiento
     private int frameCount = 0;
     private float fpsTimer = 0f;
@@ -99,6 +106,20 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
         sharedCamera.setMode(CameraController.CameraMode.PERSPECTIVE_3_4);
         Log.d(TAG, "✓ Camera mode set to PERSPECTIVE_3_4");
 
+        // INICIALIZAR VISUALIZADOR MUSICAL
+        musicVisualizer = new MusicVisualizer();
+        if (musicVisualizer.initialize()) {
+            musicReactiveEnabled = true;
+            Log.d(TAG, "╔════════════════════════════════════════╗");
+            Log.d(TAG, "║   🎵 MUSIC VISUALIZER ACTIVATED 🎵    ║");
+            Log.d(TAG, "║   Wallpaper reacts to your music!     ║");
+            Log.d(TAG, "╚════════════════════════════════════════╝");
+        } else {
+            Log.w(TAG, "⚠️ Music visualizer could not be initialized (missing permissions?)");
+            Log.w(TAG, "⚠️ Will retry initialization automatically...");
+            musicReactiveEnabled = false;
+        }
+
         // Preparar escena
         prepareScene();
 
@@ -140,8 +161,8 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
         totalFrames++;
         fpsTimer += dt;
 
-        // Calcular FPS actual - LOG SOLO CADA 5 SEGUNDOS para reducir overhead
-        if (fpsTimer >= 5.0f) {  // CAMBIADO de 1.0f a 5.0f
+        // Calcular FPS cada 10 segundos para MÍNIMO overhead
+        if (fpsTimer >= 10.0f) {
             currentFPS = frameCount / fpsTimer;
             minFPS = Math.min(minFPS, currentFPS);
             maxFPS = Math.max(maxFPS, currentFPS);
@@ -152,15 +173,10 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
                 averageFPS = totalFrames / (float) elapsedSeconds;
             }
 
-            // Obtener memoria
-            Runtime runtime = Runtime.getRuntime();
-            totalMemory = runtime.totalMemory() / (1024 * 1024); // MB
-            long freeMemory = runtime.freeMemory() / (1024 * 1024);
-            long usedMemory = totalMemory - freeMemory;
-
-            // Log simplificado de rendimiento (solo 1 línea)
-            Log.d(TAG, String.format("[SceneRenderer] FPS: %.1f (avg: %.1f, min/max: %.1f/%.1f) | Frames: %d | Objs: %d | Mem: %dMB",
-                currentFPS, averageFPS, minFPS, maxFPS, totalFrames, sceneObjects.size(), usedMemory));
+            // Log muy simplificado (solo si FPS bajo)
+            if (currentFPS < 50) {
+                Log.d(TAG, String.format("[Renderer] FPS: %.1f (avg:%.1f)", currentFPS, averageFPS));
+            }
 
             frameCount = 0;
             fpsTimer = 0f;
@@ -174,6 +190,66 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
 
         // Coordinar respawn de Sol y Campo de Fuerza
         coordinarRespawn();
+
+        // ╔═══════════════════════════════════════════════════════════════╗
+        // ║  REINTENTO AUTOMÁTICO DE INICIALIZACIÓN SI NO TIENE PERMISOS ║
+        // ╚═══════════════════════════════════════════════════════════════╝
+        // Si el visualizer no está habilitado, reintentar cada 60 frames (1 seg aprox)
+        if (!musicReactiveEnabled && musicVisualizer != null && frameCount % 60 == 0) {
+            if (musicVisualizer.initialize()) {
+                musicReactiveEnabled = true;
+                Log.d(TAG, "╔════════════════════════════════════════╗");
+                Log.d(TAG, "║  ✓✓✓ AUDIO PERMISSIONS GRANTED! ✓✓✓  ║");
+                Log.d(TAG, "║  Music visualizer NOW ACTIVE!         ║");
+                Log.d(TAG, "╚════════════════════════════════════════╝");
+            }
+        }
+
+        // ╔═══════════════════════════════════════════════════════════════╗
+        // ║  RECONEXIÓN AUTOMÁTICA SI PERDIÓ AUDIO O SOLO HAY SILENCIO  ║
+        // ╚═══════════════════════════════════════════════════════════════╝
+        // Verificar cada 2 segundos (120 frames) si está recibiendo audio REAL
+        if (musicReactiveEnabled && musicVisualizer != null && frameCount % 120 == 0) {
+            if (!musicVisualizer.isReceivingAudio()) {
+                // Log reducido - solo cada 10 segundos
+                if (frameCount % 600 == 0) {
+                    Log.w(TAG, "⚠️ No audio - reconnecting...");
+                }
+
+                if (musicVisualizer.reconnect()) {
+                    // Log solo en primera reconexión exitosa
+                } else {
+                    musicReactiveEnabled = false;  // Forzar re-inicialización completa
+                }
+            }
+        }
+
+        // Actualizar barra de estado musical (verde si recibiendo audio, rojo si no)
+        if (musicStatusBar != null) {
+            // Verde solo si está habilitado Y recibiendo datos de audio REAL
+            boolean isReceivingAudio = musicReactiveEnabled
+                                    && musicVisualizer != null
+                                    && musicVisualizer.isEnabled()
+                                    && musicVisualizer.isReceivingAudio();
+
+            if (isReceivingAudio) {
+                // Verde = tiene permisos y está recibiendo audio REAL
+                musicStatusBar.setHealth(100);
+            } else {
+                // Rojo = no tiene permisos, no está recibiendo audio, o solo silencio
+                musicStatusBar.setHealth(0);
+            }
+
+            // Log muy reducido - solo cada 20 segundos
+            if (frameCount % 1200 == 0) {
+                Log.d(TAG, String.format("🎵 Audio: %s", isReceivingAudio ? "✓" : "✗"));
+            }
+        }
+
+        // Distribuir datos musicales a objetos reactivos
+        if (musicReactiveEnabled && musicVisualizer != null && musicVisualizer.isEnabled()) {
+            distribuirDatosMusicales();
+        }
 
         // Dibujar objetos
         for (SceneObject obj : sceneObjects) {
@@ -221,11 +297,6 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
         }
 
 
-
-
-
-
-
         // SOL CENTRAL CON NUEVO SHADER DE LAVA (CENTRADO EN 0,0,0)
         try {
             sol = new Planeta(
@@ -250,6 +321,22 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             Log.d(TAG, "  ✓ Sun added with lava shader (opaque) - HP: 30");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creating sun: " + e.getMessage());
+        }
+
+        // ✨ ESTRELLA BAILARINA - PARTÍCULA MÁGICA CON ESTELA ✨
+        // Casi invisible, solo se ve la estela arcoíris
+        try {
+            estrellaBailarina = new EstrelaBailarina(
+                    context, textureManager,
+                    1.5f, 0.5f, 0.0f,   // Posición inicial
+                    0.02f,              // Escala: MINÚSCULA (casi invisible, solo estela)
+                    45.0f               // Rotación: rápida
+            );
+            estrellaBailarina.setCameraController(sharedCamera);
+            sceneObjects.add(estrellaBailarina);
+            Log.d(TAG, "  ✨ ESTRELLA BAILARINA agregada (minúscula - solo estela visible) ✨");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creando estrella bailarina: " + e.getMessage());
         }
 
         // PLANETA ORBITANTE (REDUCIDO Y ALEJADO)
@@ -334,6 +421,46 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             Log.d(TAG, "[SceneRenderer] ✓ Barras HP agregadas (Sol y Escudo)");
         } catch (Exception e) {
             Log.e(TAG, "[SceneRenderer] ✗ Error creando barras HP: " + e.getMessage());
+        }
+
+        // 🎵 INDICADOR DE ESTADO MUSICAL 🎵
+        // OCULTO VISUALMENTE - Solo se usa internamente para monitoreo
+        try {
+            musicStatusBar = new HPBar(
+                    context,
+                    "♪ AUDIO",
+                    0.05f, 0.82f,
+                    0.25f, 0.035f,
+                    100,
+                    new float[]{0.1f, 0.9f, 0.3f, 1.0f},
+                    new float[]{0.8f, 0.15f, 0.15f, 0.8f}
+            );
+            musicStatusBar.setHealth(0);
+            // NO agregarlo a sceneObjects para que no se dibuje
+            // sceneObjects.add(musicStatusBar);  // ← COMENTADO
+            Log.d(TAG, "  🎵✓ Indicador de audio creado (oculto)");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ ERROR creando indicador de audio: " + e.getMessage());
+        }
+
+        // 🎵 INDICADOR VISUAL DE MÚSICA 🎵
+        // Muestra 3 barras (BASS, MID, TREBLE) CENTRADAS, ARRIBA DEL SOL
+        try {
+            Log.d(TAG, "╔════════════════════════════════════════╗");
+            Log.d(TAG, "║   CREANDO INDICADOR DE MÚSICA         ║");
+            Log.d(TAG, "╚════════════════════════════════════════╝");
+
+            musicIndicator = new MusicIndicator(
+                    context,
+                    -0.15f, 0.65f, // Posición: CENTRADO HORIZONTALMENTE, ARRIBA del sol
+                    0.09f,         // Ancho de cada barra (más grande: 0.06 → 0.09)
+                    0.25f          // Altura máxima de las barras (más grande: 0.08 → 0.25)
+            );
+            sceneObjects.add(musicIndicator);
+            Log.d(TAG, "  🎵✓ INDICADOR DE MÚSICA agregado - CENTRADO, ARRIBA del sol");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗✗✗ ERROR CRÍTICO creando indicador de música: " + e.getMessage());
+            e.printStackTrace();
         }
 
         // SISTEMA DE LLUVIA DE METEORITOS - AÑADIDO DESPUÉS DE LOS PLANETAS
@@ -431,17 +558,30 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
 
     public void pause() {
         paused = true;
+        if (musicVisualizer != null) {
+            musicVisualizer.pause();
+        }
         Log.d(TAG, "Renderer PAUSED");
     }
 
     public void resume() {
         paused = false;
         lastTime = System.nanoTime();
+        if (musicVisualizer != null) {
+            musicVisualizer.resume();
+        }
         Log.d(TAG, "Renderer RESUMED");
     }
 
     public void release() {
         Log.d(TAG, "Releasing resources...");
+
+        // Liberar visualizador musical
+        if (musicVisualizer != null) {
+            musicVisualizer.release();
+            musicVisualizer = null;
+        }
+
         for (SceneObject obj : sceneObjects) {
             if (obj instanceof UniverseBackground) {
                 ((UniverseBackground) obj).release();
@@ -449,6 +589,38 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             // La nueva clase 2D no necesita release especial
         }
         Log.d(TAG, "✓ Resources released");
+    }
+
+    /**
+     * Distribuye datos musicales a todos los objetos reactivos
+     */
+    private void distribuirDatosMusicales() {
+        float bass = musicVisualizer.getBassLevel();
+        float mid = musicVisualizer.getMidLevel();
+        float treble = musicVisualizer.getTrebleLevel();
+        float volume = musicVisualizer.getVolumeLevel();
+        float beatIntensity = musicVisualizer.getBeatIntensity();
+        boolean isBeat = musicVisualizer.isBeat();
+
+        // Log desactivado para performance - solo debug crítico
+        // Si necesitas debug, descomenta la siguiente línea:
+        // if (frameCount % 600 == 0) Log.d(TAG, String.format("🎵 B:%.2f M:%.2f T:%.2f", bass, mid, treble));
+
+        // Actualizar indicador visual de música
+        if (musicIndicator != null) {
+            musicIndicator.updateMusicLevels(bass, mid, treble);
+        } else {
+            if (frameCount % 120 == 0) {
+                Log.e(TAG, "[SceneRenderer] ✗ musicIndicator es NULL! No se puede actualizar");
+            }
+        }
+
+        // Enviar datos a todos los objetos que implementen MusicReactive
+        for (SceneObject obj : sceneObjects) {
+            if (obj instanceof MusicReactive) {
+                ((MusicReactive) obj).onMusicData(bass, mid, treble, volume, beatIntensity, isBeat);
+            }
+        }
     }
 
     /**

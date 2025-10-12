@@ -17,8 +17,9 @@ import java.util.List;
 
 /**
  * Planeta CORREGIDO - Ahora usa CameraController correctamente
+ * Implementa MusicReactive para reaccionar a la música en tiempo real
  */
-public class Planeta extends BaseShaderProgram implements SceneObject, CameraAware {
+public class Planeta extends BaseShaderProgram implements SceneObject, CameraAware, MusicReactive {
     private static final String TAG = "Planeta";
 
     // Parámetros de configuración
@@ -59,9 +60,19 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
     private static final float RESPAWN_DELAY = 3.0f;  // 3 segundos para respawn
     private float deathAnimationTime = 0f;
 
+    // ===== SISTEMA DE REACTIVIDAD MUSICAL =====
+    private boolean musicReactive = true;  // Activado por defecto
+    private float musicBassBoost = 0f;     // Boost de escala por bajos
+    private float musicSpeedBoost = 0f;    // Boost de velocidad orbital
+    private float musicBeatPulse = 0f;     // Pulso por beats
+    private long lastMusicLogTime = 0;     // Para logs periódicos
+
     // Constantes mejoradas
     private static final float BASE_SCALE = 1.0f; // Escala base más grande
     private static final float SCALE_OSC_FREQ = 0.2f;
+    private static final float MUSIC_SCALE_FACTOR = 0.3f;    // Factor de escala musical (30% máx)
+    private static final float MUSIC_SPEED_FACTOR = 2.0f;    // Factor de velocidad (2x máx)
+    private static final float MUSIC_BEAT_FACTOR = 0.2f;     // Factor de pulso por beat (20%)
 
     /**
      * Constructor
@@ -164,12 +175,20 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
         updateRespawn(dt);
 
         if (!isDead) {
-            // Rotación propia
-            rotation = (rotation + dt * spinSpeed) % 360f;
+            // Velocidad de rotación reactiva a la música
+            float currentSpinSpeed = spinSpeed;
+            if (musicReactive && musicSpeedBoost > 0) {
+                currentSpinSpeed *= (1.0f + musicSpeedBoost);
+            }
+            rotation = (rotation + dt * currentSpinSpeed) % 360f;
 
-            // Órbita
+            // Órbita con velocidad reactiva a la música
             if (orbitRadiusX > 0 && orbitRadiusZ > 0 && orbitSpeed > 0) {
-                orbitAngle = (orbitAngle + dt * orbitSpeed) % (2f * (float)Math.PI);
+                float currentOrbitSpeed = orbitSpeed;
+                if (musicReactive && musicSpeedBoost > 0) {
+                    currentOrbitSpeed *= (1.0f + musicSpeedBoost);
+                }
+                orbitAngle = (orbitAngle + dt * currentOrbitSpeed) % (2f * (float)Math.PI);
             }
 
             accumulatedTime += dt;
@@ -228,6 +247,12 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
             float s = 0.5f + 0.5f * (float)Math.sin(accumulatedTime * SCALE_OSC_FREQ * 2f * Math.PI);
             float osc = scaleOscPercent + (1f - scaleOscPercent) * s;
             finalScale *= osc;
+        }
+
+        // REACTIVIDAD MUSICAL → Añadir boost de escala por bajos y beats
+        if (musicReactive) {
+            float musicScaleBoost = 1.0f + musicBassBoost + musicBeatPulse;
+            finalScale *= musicScaleBoost;
         }
 
         // 3. Aplicar escala
@@ -328,5 +353,53 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
         if (respawnTimer >= RESPAWN_DELAY) {
             respawn();
         }
+    }
+
+    // ===== IMPLEMENTACIÓN DE MUSICREACTIVE =====
+
+    @Override
+    public void onMusicData(float bassLevel, float midLevel, float trebleLevel,
+                            float volumeLevel, float beatIntensity, boolean isBeat) {
+        if (!musicReactive || isDead) return;
+
+        // BAJOS → Aumentan la escala del planeta (efecto de pulso)
+        musicBassBoost = bassLevel * MUSIC_SCALE_FACTOR;
+
+        // MEDIOS → Aumentan la velocidad orbital (planetas bailan más rápido)
+        musicSpeedBoost = midLevel * MUSIC_SPEED_FACTOR;
+
+        // BEATS → Pulso repentino adicional
+        if (isBeat && beatIntensity > 0.5f) {
+            musicBeatPulse = beatIntensity * MUSIC_BEAT_FACTOR;
+            Log.v(TAG, "🎵 PLANETA BEAT! Intensidad: " + String.format("%.2f", beatIntensity));
+        } else {
+            // Decay suave del pulso
+            musicBeatPulse *= 0.9f;
+        }
+
+        // Log periódico de reactividad (cada 4 segundos)
+        long now = System.currentTimeMillis();
+        if (now - lastMusicLogTime > 4000 && (bassLevel > 0.1f || midLevel > 0.1f)) {
+            Log.d(TAG, String.format("🎵 [Planeta Reactivo] Bass:%.2f→Scale+%.0f%% Mid:%.2f→Speed+%.0f%%",
+                    bassLevel, musicBassBoost * 100, midLevel, musicSpeedBoost * 100));
+            lastMusicLogTime = now;
+        }
+    }
+
+    @Override
+    public void setMusicReactive(boolean enabled) {
+        this.musicReactive = enabled;
+        if (!enabled) {
+            // Resetear valores cuando se desactiva
+            musicBassBoost = 0f;
+            musicSpeedBoost = 0f;
+            musicBeatPulse = 0f;
+        }
+        Log.d(TAG, "Reactividad musical " + (enabled ? "ACTIVADA" : "DESACTIVADA"));
+    }
+
+    @Override
+    public boolean isMusicReactive() {
+        return musicReactive;
     }
 }
