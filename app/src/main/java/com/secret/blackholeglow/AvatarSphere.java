@@ -63,7 +63,7 @@ public class AvatarSphere implements SceneObject, CameraAware {
     private float rotationY = 0f;
 
     // Tamaño
-    private float scale = 0.2f;  // Tamaño del avatar
+    private float scale = 0.12f;  // Tamaño del avatar (reducido: más pequeño)
 
     // Referencias
     private final Context context;
@@ -258,7 +258,7 @@ public class AvatarSphere implements SceneObject, CameraAware {
         // Calcular posición en órbita
         float x = (float)(Math.cos(orbitAngle) * orbitRadius);
         float z = (float)(Math.sin(orbitAngle) * orbitRadius);
-        float y = 0.3f + (float)(Math.sin(time * 0.5) * 0.1);  // Flotar un poco
+        float y = 0.65f + (float)(Math.sin(time * 0.5) * 0.08);  // Más arriba, debajo de las barras HP
 
         // Rotación de la esfera sobre sí misma
         rotationY += deltaTime * 20f;  // 20 grados por segundo
