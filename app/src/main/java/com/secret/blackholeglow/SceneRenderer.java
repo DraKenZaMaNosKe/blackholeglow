@@ -196,30 +196,26 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
     private void setupUniverseScene() {
         Log.d(TAG, "Setting up UNIVERSE scene...");
 
-        // FONDO 2D - Cobertura completa
+        // FONDO CON TEXTURA + ESTRELLAS PROCEDURALES (TODO EN UNO)
         try {
-            UniverseBackground2D fondo = new UniverseBackground2D(
+            StarryBackground starryBg = new StarryBackground(
                     context,
                     textureManager,
                     R.drawable.universo03
             );
-            sceneObjects.add(fondo);
-            Log.d(TAG, "[SceneRenderer] ✓ Fondo 2D agregado");
+            sceneObjects.add(starryBg);
+            Log.d(TAG, "[SceneRenderer] ✓ Fondo con textura + estrellas agregado");
         } catch (Exception e) {
             Log.e(TAG, "[SceneRenderer] ✗ Error creando fondo: " + e.getMessage());
         }
 
-        // CAMPO DE ESTRELLAS BRILLANTES
-        try {
-            StarField starField = new StarField(context);
-            starField.setCameraController(sharedCamera);
-            sceneObjects.add(starField);
-            Log.d(TAG, "[SceneRenderer] ✓ Campo de estrellas agregado");
-        } catch (Exception e) {
-            Log.e(TAG, "[SceneRenderer] ✗ Error creando campo de estrellas: " + e.getMessage());
-        }
 
-        // SOL CENTRAL CON NUEVO SHADER DE LAVA (OPACO)
+
+
+
+
+
+        // SOL CENTRAL CON NUEVO SHADER DE LAVA (REDUCIDO)
         try {
             Planeta sol = new Planeta(
                     context, textureManager,
@@ -228,7 +224,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
                     R.drawable.textura_sol,
                     0.0f, 0.0f, 0.0f,  // Sin órbita
                     0.0f,              // Sin variación
-                    0.6f,              // Escala un poco mayor
+                    0.4f,              // REDUCIDO de 0.6 a 0.4 (33% más pequeño)
                     3.0f,              // Rotación muy lenta para lava
                     false, null, 1.0f,
                     null, 1.0f
@@ -242,7 +238,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             Log.e(TAG, "  ✗ Error creating sun: " + e.getMessage());
         }
 
-        // PLANETA ORBITANTE - AÑADIDO ANTES DEL GLOW PARA ORDEN CORRECTO
+        // PLANETA ORBITANTE (REDUCIDO)
         try {
             Planeta planeta1 = new Planeta(
                     context, textureManager,
@@ -251,7 +247,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
                     R.drawable.textura_roninplaneta,
                     2.5f, 2.0f, 0.3f,  // Órbita mediana
                     0.1f,              // Poca variación
-                    0.25f,             // Tamaño un poco mayor
+                    0.18f,             // REDUCIDO de 0.25 a 0.18 (28% más pequeño)
                     30.0f,             // Rotación media
                     false, null, 1.0f,
                     null,
@@ -301,7 +297,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             Log.e(TAG, "[SceneRenderer] ✗ Error creando sistema de meteoritos: " + e.getMessage());
         }
 
-        // GLOW EXTERIOR DEL SOL - AL FINAL PARA QUE SE DIBUJE ENCIMA
+        // GLOW EXTERIOR DEL SOL (REDUCIDO)
         try {
             Planeta sunGlow = new Planeta(
                     context, textureManager,
@@ -310,7 +306,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
                     R.drawable.colorrojo,
                     0.0f, 0.0f, 0.0f,  // Sin órbita
                     0.0f,              // Sin variación
-                    0.8f,              // Más grande que el sol
+                    0.55f,             // REDUCIDO de 0.8 a 0.55 (31% más pequeño)
                     5.0f,              // Rotación media
                     true, new float[]{1.0f, 0.5f, 0.1f, 0.2f}, 0.55f,  // Naranja MÁS transparente
                     1.1f,              // Pulsación sutil
