@@ -87,25 +87,25 @@ vec3 getLavaColor(vec2 uv, float time) {
     // Combinar ruidos con diferentes pesos
     float lavaPattern = noise1 * 0.5 + noise2 * 0.3 + noise3 * 0.2;
 
-    // Añadir burbujas de lava
+    // Añadir burbujas de lava (movimiento más lento y suave)
     float bubbles = 0.0;
     for(int i = 0; i < 3; i++) {
         float offset = float(i) * 1.618;
         vec2 bubblePos = vec2(
-            sin(time * 0.8 + offset) * 0.3,
-            cos(time * 0.6 + offset) * 0.3
+            sin(time * 0.4 + offset) * 0.3,  // Reducido de 0.8 a 0.4
+            cos(time * 0.3 + offset) * 0.3   // Reducido de 0.6 a 0.3
         );
         bubblePos += center;
         float bubbleDist = length(uv - bubblePos);
         float bubble = smoothstep(0.1, 0.0, bubbleDist) *
-                      sin(time * 3.0 + offset) * 0.5 + 0.5;
+                      sin(time * 1.2 + offset) * 0.5 + 0.5;  // Reducido de 3.0 a 1.2
         bubbles = max(bubbles, bubble);
     }
 
     lavaPattern += bubbles * 0.3;
 
-    // Crear anillos de calor
-    float rings = sin(dist * 20.0 - time * 2.0) * 0.5 + 0.5;
+    // Crear anillos de calor (más lentos y sutiles)
+    float rings = sin(dist * 20.0 - time * 0.8) * 0.5 + 0.5;  // Reducido de 2.0 a 0.8
     rings = pow(rings, 3.0);
     lavaPattern += rings * 0.1 * (1.0 - dist);
 
@@ -135,8 +135,9 @@ vec3 getLavaColor(vec2 uv, float time) {
     float glow = pow(lavaPattern, 2.0) * 0.5;
     color += vec3(glow * 0.5, glow * 0.3, glow * 0.1);
 
-    // Pulsación sutil
-    float pulse = sin(time * 4.0) * 0.05 + 0.95;
+    // Pulsación MUY sutil y lenta (respiración suave del sol)
+    float pulse = sin(time * 0.6) * 0.03 + 0.97;  // Reducido de 4.0 a 0.6 (6.6x más lento)
+                                                     // Variación reducida de 5% a 3%
     color *= pulse;
 
     return color;

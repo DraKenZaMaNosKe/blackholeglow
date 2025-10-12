@@ -9,7 +9,9 @@
       "Bash(adb logcat:*)",
       "Bash(./gradlew:*)",
       "Read(//c/piton/**)",
-      "Bash(cmd:*)"
+      "Bash(cmd:*)",
+      "Bash(./gradlew.bat:*)",
+      "Bash(where java)"
     ],
     "deny": [],
     "ask": []

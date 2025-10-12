@@ -31,7 +31,12 @@ public class MeteorShower implements SceneObject, CameraAware {
     // Referencias para colisiones
     private Planeta sol = null;
     private Planeta planetaOrbitante = null;
+    private ForceField campoFuerza = null;  // Campo de fuerza del sol
     private List<SceneObject> objetosColisionables = new ArrayList<>();
+
+    // Referencias para sistema de HP
+    private HPBar hpBarSun = null;
+    private HPBar hpBarForceField = null;
 
     // Efectos de impacto
     private List<ImpactEffect> efectosImpacto = new ArrayList<>();
@@ -72,6 +77,17 @@ public class MeteorShower implements SceneObject, CameraAware {
     }
 
     /**
+     * Conecta el sistema de HP (Sol, Campo de Fuerza y sus barras)
+     */
+    public void setHPSystem(Planeta sol, ForceField forceField, HPBar hpBarSun, HPBar hpBarForceField) {
+        this.sol = sol;
+        this.campoFuerza = forceField;
+        this.hpBarSun = hpBarSun;
+        this.hpBarForceField = hpBarForceField;
+        Log.d(TAG, "[MeteorShower] ✓ Sistema HP conectado");
+    }
+
+    /**
      * Registra objetos para detectar colisiones
      */
     public void registrarObjetoColisionable(SceneObject objeto) {
@@ -86,6 +102,9 @@ public class MeteorShower implements SceneObject, CameraAware {
                 planetaOrbitante = p;
                 Log.d(TAG, "[MeteorShower] Planeta orbitante registrado para colisiones");
             }
+        } else if (objeto instanceof ForceField) {
+            campoFuerza = (ForceField) objeto;
+            Log.d(TAG, "[MeteorShower] Campo de fuerza registrado para colisiones");
         }
         objetosColisionables.add(objeto);
     }
@@ -201,10 +220,30 @@ public class MeteorShower implements SceneObject, CameraAware {
         float[] posMeteorito = m.getPosicion();
         float radioMeteorito = m.getTamaño();
 
-        // Colisión con el sol (si existe)
-        if (sol != null) {
-            float[] posSol = {0, 0, 0};  // El sol está en el centro
-            float radioSol = 0.6f;  // Tamaño aproximado del sol
+        // PRIORIDAD 1: Colisión con campo de fuerza (si existe y no está destruido)
+        if (campoFuerza != null && !campoFuerza.isDestroyed()) {
+            if (campoFuerza.containsPoint(posMeteorito[0], posMeteorito[1], posMeteorito[2])) {
+                // ¡IMPACTO EN CAMPO DE FUERZA!
+                m.impactar();
+                campoFuerza.registerImpact(posMeteorito[0], posMeteorito[1], posMeteorito[2]);
+                crearEfectoImpacto(posMeteorito[0], posMeteorito[1], posMeteorito[2], true);
+
+                // ACTUALIZAR HP BAR del escudo
+                if (hpBarForceField != null) {
+                    hpBarForceField.setHealth(campoFuerza.getCurrentHealth());
+                }
+
+                totalImpactos++;
+                Log.d(TAG, "[MeteorShower] ¡¡IMPACTO EN CAMPO DE FUERZA!! HP: " +
+                           campoFuerza.getCurrentHealth() + "/" + campoFuerza.getMaxHealth());
+                return;  // No verificar más colisiones
+            }
+        }
+
+        // PRIORIDAD 2: Colisión con el sol (si existe y no está muerto)
+        if (sol != null && !sol.isDead()) {
+            float[] posSol = {0, 0, 0};  // El sol está CENTRADO en el origen
+            float radioSol = 0.4f;       // Tamaño reducido del sol
 
             float distancia = calcularDistancia(posMeteorito, posSol);
 
@@ -212,17 +251,28 @@ public class MeteorShower implements SceneObject, CameraAware {
                 // ¡IMPACTO CON EL SOL!
                 m.impactar();
                 crearEfectoImpacto(posMeteorito[0], posMeteorito[1], posMeteorito[2], true);
+
+                // CAUSAR DAÑO AL SOL
+                sol.damage(1);  // 1 punto de daño por meteorito
+
+                // ACTUALIZAR HP BAR del sol
+                if (hpBarSun != null) {
+                    hpBarSun.setHealth(sol.getCurrentHealth());
+                }
+
                 totalImpactos++;
-                Log.d(TAG, "[MeteorShower] ¡¡IMPACTO EN EL SOL!! Total impactos: " + totalImpactos);
+                Log.d(TAG, "[MeteorShower] ¡¡IMPACTO EN EL SOL!! HP: " +
+                           sol.getCurrentHealth() + "/" + sol.getMaxHealth());
+                return;
             }
         }
 
-        // Colisión con planeta orbitante
+        // PRIORIDAD 3: Colisión con planeta orbitante
         if (planetaOrbitante != null) {
             // Aquí necesitaríamos obtener la posición actual del planeta
-            // Por ahora simplificamos
-            float distanciaPlaneta = calcularDistancia(posMeteorito, new float[]{2.5f, 0, 0});
-            if (distanciaPlaneta < (radioMeteorito + 0.25f)) {
+            // Por ahora simplificamos con órbita ampliada
+            float distanciaPlaneta = calcularDistancia(posMeteorito, new float[]{3.2f, 0, 0});
+            if (distanciaPlaneta < (radioMeteorito + 0.18f)) {
                 m.impactar();
                 crearEfectoImpacto(posMeteorito[0], posMeteorito[1], posMeteorito[2], false);
                 Log.d(TAG, "[MeteorShower] ¡Impacto en planeta!");

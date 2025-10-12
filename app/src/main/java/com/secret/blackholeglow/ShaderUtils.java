@@ -52,6 +52,14 @@ public class ShaderUtils {
     }
 
     /**
+     * Alias de loadShader() para compatibilidad con código existente.
+     * Algunas clases usan compileShader() en lugar de loadShader().
+     */
+    public static int compileShader(int type, String source) {
+        return loadShader(type, source);
+    }
+
+    /**
      * Crea un programa enlazando los dos shaders dados como cadenas.
      * Necesario para clases que usan shaders inline.
      */

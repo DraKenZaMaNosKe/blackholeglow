@@ -51,6 +51,14 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
     // ===== CAMERA CONTROLLER =====
     private CameraController camera;
 
+    // ===== SISTEMA DE VIDA Y RESPAWN =====
+    private int maxHealth = 0;
+    private int currentHealth = 0;
+    private boolean isDead = false;
+    private float respawnTimer = 0f;
+    private static final float RESPAWN_DELAY = 3.0f;  // 3 segundos para respawn
+    private float deathAnimationTime = 0f;
+
     // Constantes mejoradas
     private static final float BASE_SCALE = 1.0f; // Escala base más grande
     private static final float SCALE_OSC_FREQ = 0.2f;
@@ -152,19 +160,27 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
 
     @Override
     public void update(float dt) {
-        // Rotación propia
-        rotation = (rotation + dt * spinSpeed) % 360f;
+        // Manejar respawn si está muerto
+        updateRespawn(dt);
 
-        // Órbita
-        if (orbitRadiusX > 0 && orbitRadiusZ > 0 && orbitSpeed > 0) {
-            orbitAngle = (orbitAngle + dt * orbitSpeed) % (2f * (float)Math.PI);
+        if (!isDead) {
+            // Rotación propia
+            rotation = (rotation + dt * spinSpeed) % 360f;
+
+            // Órbita
+            if (orbitRadiusX > 0 && orbitRadiusZ > 0 && orbitSpeed > 0) {
+                orbitAngle = (orbitAngle + dt * orbitSpeed) % (2f * (float)Math.PI);
+            }
+
+            accumulatedTime += dt;
         }
-
-        accumulatedTime += dt;
     }
 
     @Override
     public void draw() {
+        // No dibujar si está muerto
+        if (isDead) return;
+
         if (camera == null) {
             Log.e(TAG, "ERROR: CameraController no asignado!");
             return;
@@ -255,6 +271,62 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
         GLES20.glDisableVertexAttribArray(aPosLoc);
         if (aTexLoc >= 0) {
             GLES20.glDisableVertexAttribArray(aTexLoc);
+        }
+    }
+
+    // ===== SISTEMA DE VIDA Y RESPAWN =====
+
+    public void setMaxHealth(int maxHealth) {
+        this.maxHealth = maxHealth;
+        this.currentHealth = maxHealth;
+        Log.d(TAG, "Salud máxima establecida: " + maxHealth);
+    }
+
+    public void damage(int amount) {
+        if (isDead) return;
+
+        currentHealth = Math.max(0, currentHealth - amount);
+        Log.d(TAG, "Planeta dañado: " + currentHealth + "/" + maxHealth);
+
+        if (currentHealth <= 0) {
+            die();
+        }
+    }
+
+    private void die() {
+        isDead = true;
+        deathAnimationTime = 0f;
+        Log.d(TAG, "¡¡PLANETA DESTRUIDO!!");
+    }
+
+    public void respawn() {
+        isDead = false;
+        currentHealth = maxHealth;
+        respawnTimer = 0f;
+        deathAnimationTime = 0f;
+        Log.d(TAG, "Planeta RESPAWN - HP: " + maxHealth);
+    }
+
+    public boolean isDead() {
+        return isDead;
+    }
+
+    public int getCurrentHealth() {
+        return currentHealth;
+    }
+
+    public int getMaxHealth() {
+        return maxHealth;
+    }
+
+    public void updateRespawn(float dt) {
+        if (!isDead) return;
+
+        respawnTimer += dt;
+        deathAnimationTime += dt;
+
+        if (respawnTimer >= RESPAWN_DELAY) {
+            respawn();
         }
     }
 }

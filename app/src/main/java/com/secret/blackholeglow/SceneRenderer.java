@@ -28,6 +28,14 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
     private CameraController sharedCamera;
     private TextureManager textureManager;
 
+    // Referencias para el sistema de HP y respawn
+    private Planeta sol;
+    private ForceField forceField;
+    private HPBar hpBarSun;
+    private HPBar hpBarForceField;
+    private MeteorShower meteorShower;
+    private boolean solWasDead = false;  // Para detectar cuando respawnea
+
     // Métricas de rendimiento
     private int frameCount = 0;
     private float fpsTimer = 0f;
@@ -164,6 +172,9 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
         // La cámara NO se actualiza (está fija)
         //sharedCamera.update(dt); // COMENTADO - cámara estática
 
+        // Coordinar respawn de Sol y Campo de Fuerza
+        coordinarRespawn();
+
         // Dibujar objetos
         for (SceneObject obj : sceneObjects) {
             obj.update(dt);
@@ -215,37 +226,40 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
 
 
 
-        // SOL CENTRAL CON NUEVO SHADER DE LAVA (REDUCIDO)
+        // SOL CENTRAL CON NUEVO SHADER DE LAVA (CENTRADO EN 0,0,0)
         try {
-            Planeta sol = new Planeta(
+            sol = new Planeta(
                     context, textureManager,
                     "shaders/planeta_vertex.glsl",
                     "shaders/sol_lava_fragment.glsl",  // NUEVO SHADER DE LAVA
                     R.drawable.textura_sol,
-                    0.0f, 0.0f, 0.0f,  // Sin órbita
-                    0.0f,              // Sin variación
-                    0.4f,              // REDUCIDO de 0.6 a 0.4 (33% más pequeño)
-                    3.0f,              // Rotación muy lenta para lava
+                    0.0f,              // orbitRadiusX = 0 (centro)
+                    0.0f,              // orbitRadiusZ = 0 (centro)
+                    0.0f,              // orbitSpeed = 0 (sin órbita)
+                    0.0f,              // scaleAmplitude = sin variación
+                    0.4f,              // instanceScale = tamaño del sol
+                    3.0f,              // spinSpeed = rotación muy lenta para lava
                     false, null, 1.0f,
                     null, 1.0f
             );
             if (sol instanceof CameraAware) {
                 ((CameraAware) sol).setCameraController(sharedCamera);
             }
+            sol.setMaxHealth(30);  // Sol tiene 30 HP
             sceneObjects.add(sol);
-            Log.d(TAG, "  ✓ Sun added with lava shader (opaque)");
+            Log.d(TAG, "  ✓ Sun added with lava shader (opaque) - HP: 30");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creating sun: " + e.getMessage());
         }
 
-        // PLANETA ORBITANTE (REDUCIDO)
+        // PLANETA ORBITANTE (REDUCIDO Y ALEJADO)
         try {
             Planeta planeta1 = new Planeta(
                     context, textureManager,
                     "shaders/planeta_vertex.glsl",
                     "shaders/planeta_iluminado_fragment.glsl",  // SHADER CON ILUMINACIÓN
                     R.drawable.textura_roninplaneta,
-                    2.5f, 2.0f, 0.3f,  // Órbita mediana
+                    3.2f, 2.8f, 0.3f,  // Órbita más amplia (alejada)
                     0.1f,              // Poca variación
                     0.18f,             // REDUCIDO de 0.25 a 0.18 (28% más pequeño)
                     30.0f,             // Rotación media
@@ -272,8 +286,57 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             Log.e(TAG, "  ✗ Error creating power bar: " + e.getMessage());
         }
 
+        // CAMPO DE FUERZA INTERACTIVO DEL SOL - AZUL ELÉCTRICO (CENTRADO CON EL SOL)
+        try {
+            forceField = new ForceField(
+                    context, textureManager,
+                    0.0f, 0.0f, 0.0f,   // CENTRADO con el sol en (0, 0, 0)
+                    0.55f,              // Radio más pequeño y contenido
+                    R.drawable.fondo_transparente,  // Textura transparente para efectos puros
+                    new float[]{0.2f, 0.6f, 1.0f},  // Color azul eléctrico brillante
+                    0.45f,              // Alpha más visible
+                    0.06f,              // Pulsación MUY sutil (6% de variación)
+                    0.4f                // Pulsación LENTA (menos de la mitad de velocidad)
+            );
+            forceField.setCameraController(sharedCamera);
+            sceneObjects.add(forceField);
+            Log.d(TAG, "[SceneRenderer] ✓ Campo de fuerza interactivo agregado");
+        } catch (Exception e) {
+            Log.e(TAG, "[SceneRenderer] ✗ Error creando campo de fuerza: " + e.getMessage());
+        }
+
+        // BARRAS HP para Sol y Campo de Fuerza
+        try {
+            // Barra HP del Sol (amarilla cuando llena, roja cuando vacía)
+            hpBarSun = new HPBar(
+                    context,
+                    "SOL",
+                    0.05f, 0.92f,  // Posición: arriba izquierda
+                    0.25f, 0.03f,  // Tamaño: ancho y alto
+                    30,  // Max HP = 30
+                    new float[]{1.0f, 0.8f, 0.0f, 1.0f},  // Amarillo lleno
+                    new float[]{1.0f, 0.0f, 0.0f, 1.0f}   // Rojo vacío
+            );
+            sceneObjects.add(hpBarSun);
+
+            // Barra HP del Campo de Fuerza (azul cuando llena, roja cuando vacía)
+            hpBarForceField = new HPBar(
+                    context,
+                    "ESCUDO",
+                    0.05f, 0.87f,  // Posición: debajo de la barra del sol
+                    0.25f, 0.03f,  // Tamaño
+                    20,  // Max HP = 20
+                    new float[]{0.2f, 0.6f, 1.0f, 1.0f},  // Azul lleno
+                    new float[]{1.0f, 0.0f, 0.0f, 1.0f}   // Rojo vacío
+            );
+            sceneObjects.add(hpBarForceField);
+
+            Log.d(TAG, "[SceneRenderer] ✓ Barras HP agregadas (Sol y Escudo)");
+        } catch (Exception e) {
+            Log.e(TAG, "[SceneRenderer] ✗ Error creando barras HP: " + e.getMessage());
+        }
+
         // SISTEMA DE LLUVIA DE METEORITOS - AÑADIDO DESPUÉS DE LOS PLANETAS
-        MeteorShower meteorShower = null;
         try {
             meteorShower = new MeteorShower(context, textureManager);
             meteorShower.setCameraController(sharedCamera);
@@ -283,42 +346,23 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
                 meteorShower.setPowerBar(powerBar);
             }
 
-            // Registrar el sol y el planeta para colisiones
-            // Nota: Necesitamos referencias a los objetos creados arriba
+            // Conectar con el sistema de HP
+            if (sol != null && forceField != null && hpBarSun != null && hpBarForceField != null) {
+                meteorShower.setHPSystem(sol, forceField, hpBarSun, hpBarForceField);
+                Log.d(TAG, "[SceneRenderer] ✓ Sistema HP conectado con MeteorShower");
+            }
+
+            // Registrar el sol, planeta Y campo de fuerza para colisiones
             for (SceneObject obj : sceneObjects) {
-                if (obj instanceof Planeta) {
+                if (obj instanceof Planeta || obj instanceof ForceField) {
                     meteorShower.registrarObjetoColisionable(obj);
                 }
             }
 
             sceneObjects.add(meteorShower);
-            Log.d(TAG, "[SceneRenderer] ✓ Sistema de meteoritos agregado");
+            Log.d(TAG, "[SceneRenderer] ✓ Sistema de meteoritos agregado (con campo de fuerza)");
         } catch (Exception e) {
             Log.e(TAG, "[SceneRenderer] ✗ Error creando sistema de meteoritos: " + e.getMessage());
-        }
-
-        // GLOW EXTERIOR DEL SOL (REDUCIDO)
-        try {
-            Planeta sunGlow = new Planeta(
-                    context, textureManager,
-                    "shaders/planeta_vertex.glsl",
-                    "shaders/planeta_fragment.glsl",
-                    R.drawable.colorrojo,
-                    0.0f, 0.0f, 0.0f,  // Sin órbita
-                    0.0f,              // Sin variación
-                    0.55f,             // REDUCIDO de 0.8 a 0.55 (31% más pequeño)
-                    5.0f,              // Rotación media
-                    true, new float[]{1.0f, 0.5f, 0.1f, 0.2f}, 0.55f,  // Naranja MÁS transparente
-                    1.1f,              // Pulsación sutil
-                    0.5f
-            );
-            if (sunGlow instanceof CameraAware) {
-                ((CameraAware) sunGlow).setCameraController(sharedCamera);
-            }
-            sceneObjects.add(sunGlow);
-            Log.d(TAG, "  ✓ Sun glow added (transparent overlay)");
-        } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creating sun glow: " + e.getMessage());
         }
 
         Log.d(TAG, "✓ Universe scene setup complete");
@@ -405,6 +449,46 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             // La nueva clase 2D no necesita release especial
         }
         Log.d(TAG, "✓ Resources released");
+    }
+
+    /**
+     * Coordina el respawn del Sol y Campo de Fuerza juntos
+     */
+    private void coordinarRespawn() {
+        if (sol == null || forceField == null) return;
+
+        boolean solIsDead = sol.isDead();
+
+        // Detectar cuando el sol acaba de morir
+        if (solIsDead && !solWasDead) {
+            Log.d(TAG, "╔════════════════════════════════════════╗");
+            Log.d(TAG, "║   ¡¡¡ SOL DESTRUIDO !!!               ║");
+            Log.d(TAG, "║   Campo de Fuerza caído...            ║");
+            Log.d(TAG, "║   Respawn en 3 segundos...            ║");
+            Log.d(TAG, "╚════════════════════════════════════════╝");
+        }
+
+        // Detectar cuando el sol acaba de respawnear
+        if (!solIsDead && solWasDead) {
+            // RESPAWN COORDINADO: Resetear campo de fuerza y HP bars juntos
+            if (forceField != null) {
+                forceField.reset();
+            }
+            if (hpBarSun != null) {
+                hpBarSun.reset();
+            }
+            if (hpBarForceField != null) {
+                hpBarForceField.reset();
+            }
+
+            Log.d(TAG, "╔════════════════════════════════════════╗");
+            Log.d(TAG, "║   ✨ RESPAWN COMPLETO ✨              ║");
+            Log.d(TAG, "║   Sol: HP restaurado                  ║");
+            Log.d(TAG, "║   Campo de Fuerza: ACTIVO             ║");
+            Log.d(TAG, "╚════════════════════════════════════════╝");
+        }
+
+        solWasDead = solIsDead;
     }
 
     public void setSelectedItem(String item) {
