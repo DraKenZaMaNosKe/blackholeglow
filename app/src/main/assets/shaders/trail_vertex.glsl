@@ -1,4 +1,8 @@
 // Vertex shader para estelas de meteoritos con efectos dinámicos
+#ifdef GL_ES
+precision mediump float;
+#endif
+
 uniform mat4 u_MVP;
 uniform float u_Time;
 uniform float u_TrailLength;

@@ -1,5 +1,7 @@
 // Fragment shader para estrellas hermosas y relajantes
+#ifdef GL_ES
 precision mediump float;
+#endif
 
 uniform vec4 u_Color;
 uniform float u_Time;

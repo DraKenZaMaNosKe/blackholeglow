@@ -16,12 +16,12 @@ import java.util.Random;
  * Sin usar GL_PROGRAM_POINT_SIZE para máxima compatibilidad
  */
 public class StarField implements SceneObject, CameraAware {
-    private static final String TAG = "StarField";
+    private static final String TAG = "depurar";
 
-    // Configuración
-    private static final int NUM_STARS = 200;  // Más estrellas para mejor efecto
-    private static final float FIELD_SIZE = 20.0f;  // Campo más concentrado
-    private static final float FIELD_DEPTH = 15.0f;  // Profundidad variada
+    // Configuración OPTIMIZADA para wallpaper
+    private static final int NUM_STARS = 100;  // Reducido para mejor rendimiento
+    private static final float FIELD_SIZE = 15.0f;  // Campo más pequeño
+    private static final float FIELD_DEPTH = 8.0f;  // Menos profundidad
 
     // Arrays para cada estrella
     private Star[] stars;
@@ -66,20 +66,20 @@ public class StarField implements SceneObject, CameraAware {
             x = (rand.nextFloat() - 0.5f) * FIELD_SIZE;
             y = (rand.nextFloat() - 0.5f) * FIELD_SIZE;
 
-            // Profundidad variada: algunas estrellas cerca, otras lejos
+            // Profundidad variada OPTIMIZADA: más cerca, más visibles
             float depthLayer = rand.nextFloat();
-            if (depthLayer < 0.3f) {
-                // 30% estrellas cercanas (más grandes y brillantes)
-                z = -2.0f - rand.nextFloat() * 3.0f;
-                size = 0.15f + rand.nextFloat() * 0.2f;
-            } else if (depthLayer < 0.7f) {
+            if (depthLayer < 0.4f) {
+                // 40% estrellas cercanas (muy visibles)
+                z = -1.5f - rand.nextFloat() * 1.5f;  // z: -1.5 a -3.0
+                size = 0.15f + rand.nextFloat() * 0.20f;  // MÁS GRANDES
+            } else if (depthLayer < 0.8f) {
                 // 40% estrellas medias
-                z = -5.0f - rand.nextFloat() * 5.0f;
-                size = 0.08f + rand.nextFloat() * 0.12f;
+                z = -3.0f - rand.nextFloat() * 2.0f;  // z: -3.0 a -5.0
+                size = 0.10f + rand.nextFloat() * 0.12f;  // MÁS GRANDES
             } else {
-                // 30% estrellas lejanas (más pequeñas y tenues)
-                z = -10.0f - rand.nextFloat() * FIELD_DEPTH;
-                size = 0.04f + rand.nextFloat() * 0.06f;
+                // 20% estrellas lejanas
+                z = -5.0f - rand.nextFloat() * FIELD_DEPTH;  // z: -5.0 a -13.0
+                size = 0.06f + rand.nextFloat() * 0.08f;  // MÁS GRANDES
             }
 
             // Color de estrella
@@ -101,13 +101,13 @@ public class StarField implements SceneObject, CameraAware {
                 color[2] = 0.5f + rand.nextFloat() * 0.3f;
             }
 
-            // Brillo basado en profundidad
+            // Brillo basado en profundidad - MÁS BRILLANTES
             if (z > -5.0f) {
-                brightness = 0.8f + rand.nextFloat() * 0.2f;  // Estrellas cercanas más brillantes
+                brightness = 0.9f + rand.nextFloat() * 0.1f;  // Estrellas cercanas MUY brillantes
             } else if (z > -10.0f) {
-                brightness = 0.5f + rand.nextFloat() * 0.3f;  // Estrellas medias
+                brightness = 0.7f + rand.nextFloat() * 0.3f;  // Estrellas medias más brillantes
             } else {
-                brightness = 0.3f + rand.nextFloat() * 0.2f;  // Estrellas lejanas más tenues
+                brightness = 0.5f + rand.nextFloat() * 0.3f;  // Estrellas lejanas más visibles
             }
             color[3] = brightness;
 
@@ -164,24 +164,40 @@ public class StarField implements SceneObject, CameraAware {
     }
 
     public StarField(Context context) {
-        Log.d(TAG, "Creando campo de estrellas mejorado");
+        Log.d(TAG, "[StarField] ========================================");
+        Log.d(TAG, "[StarField] INICIANDO CREACIÓN DE CAMPO DE ESTRELLAS");
+        Log.d(TAG, "[StarField] ========================================");
         this.context = context;
 
         // Crear geometría del quad si no existe
         if (quadVertexBuffer == null) {
+            Log.d(TAG, "[StarField] Creando geometría de quad...");
             createQuadMesh();
+            Log.d(TAG, "[StarField] ✓ Quad mesh creado");
+        } else {
+            Log.d(TAG, "[StarField] Quad mesh ya existía (compartido)");
         }
 
         // Crear estrellas
+        Log.d(TAG, "[StarField] Creando " + NUM_STARS + " estrellas...");
         stars = new Star[NUM_STARS];
         for (int i = 0; i < NUM_STARS; i++) {
             stars[i] = new Star(i);
         }
+        Log.d(TAG, "[StarField] ✓ " + NUM_STARS + " estrellas creadas");
 
         // Crear shader program desde archivos
+        Log.d(TAG, "[StarField] Cargando shaders...");
         programId = ShaderUtils.createProgramFromAssets(context,
             "shaders/star_vertex.glsl",
             "shaders/star_fragment.glsl");
+
+        if (programId <= 0) {
+            Log.e(TAG, "[StarField] ✗✗✗ ERROR CRÍTICO: Shader NO se creó! programId=" + programId);
+            return;
+        }
+
+        Log.d(TAG, "[StarField] ✓ Shader creado exitosamente, programId=" + programId);
 
         // Obtener locations
         aPositionLoc = GLES20.glGetAttribLocation(programId, "a_Position");
@@ -191,7 +207,16 @@ public class StarField implements SceneObject, CameraAware {
         uStarIdLoc = GLES20.glGetUniformLocation(programId, "u_StarId");
         uPulseLoc = GLES20.glGetUniformLocation(programId, "u_Pulse");
 
-        Log.d(TAG, "StarField inicializado con " + NUM_STARS + " estrellas animadas");
+        Log.d(TAG, "[StarField] Shader locations - Pos:" + aPositionLoc + " MVP:" + uMvpLoc +
+                   " Color:" + uColorLoc + " Time:" + uTimeLoc + " StarId:" + uStarIdLoc + " Pulse:" + uPulseLoc);
+
+        if (aPositionLoc == -1 || uMvpLoc == -1) {
+            Log.e(TAG, "[StarField] ✗✗✗ ERROR: Locations críticas inválidas!");
+        }
+
+        Log.d(TAG, "[StarField] ========================================");
+        Log.d(TAG, "[StarField] ✓✓✓ CAMPO DE ESTRELLAS INICIALIZADO");
+        Log.d(TAG, "[StarField] ========================================");
     }
 
     private static void createQuadMesh() {
@@ -237,18 +262,56 @@ public class StarField implements SceneObject, CameraAware {
         }
     }
 
+    // Contador para logs periódicos
+    private static int drawCallCount = 0;
+
     @Override
     public void draw() {
-        if (camera == null) return;
+        drawCallCount++;
+
+        // Log inicial cada 300 frames
+        if (drawCallCount % 300 == 0) {
+            Log.d(TAG, "[StarField] ========================================");
+            Log.d(TAG, "[StarField] draw() llamado, frame #" + drawCallCount);
+            Log.d(TAG, "[StarField] programId=" + programId + ", time=" + time);
+            Log.d(TAG, "[StarField] camera=" + (camera != null ? "válida" : "NULL"));
+        }
+
+        if (camera == null) {
+            if (drawCallCount % 60 == 0) {  // Log cada segundo
+                Log.w(TAG, "[StarField] ✗ draw() - camera es null! No se puede dibujar");
+            }
+            return;
+        }
+
+        if (programId <= 0) {
+            if (drawCallCount % 60 == 0) {
+                Log.e(TAG, "[StarField] ✗ draw() - programId inválido: " + programId);
+            }
+            return;
+        }
+
+        // Verificar si el shader es válido
+        if (!GLES20.glIsProgram(programId)) {
+            if (drawCallCount % 60 == 0) {
+                Log.e(TAG, "[StarField] ✗ draw() - programId no es un programa GL válido!");
+            }
+            return;
+        }
 
         GLES20.glUseProgram(programId);
 
+        // Log detallado cada 300 frames
+        if (drawCallCount % 300 == 0) {
+            Log.d(TAG, "[StarField] ✓ Shader activo, dibujando " + stars.length + " estrellas");
+            Log.d(TAG, "[StarField] aPositionLoc=" + aPositionLoc + ", uMvpLoc=" + uMvpLoc);
+        }
+
         // Configurar estado de renderizado
-        // IMPORTANTE: Las estrellas deben escribir en el depth buffer
-        // pero renderizarse después del fondo
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-        GLES20.glDepthFunc(GLES20.GL_LEQUAL);  // Permitir dibujar a la misma profundidad
-        GLES20.glDepthMask(false);  // No escribir al depth buffer para no bloquear otros objetos
+        // IMPORTANTE: Las estrellas se dibujan SIN depth test como el fondo
+        // para evitar conflictos con el depth buffer
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST);  // SIN depth test
+        GLES20.glDepthMask(false);  // No escribir al depth buffer
 
         GLES20.glEnable(GLES20.GL_BLEND);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);  // Aditivo para brillo
@@ -256,6 +319,12 @@ public class StarField implements SceneObject, CameraAware {
         // Configurar atributos de vértices
         GLES20.glEnableVertexAttribArray(aPositionLoc);
         GLES20.glVertexAttribPointer(aPositionLoc, 3, GLES20.GL_FLOAT, false, 0, quadVertexBuffer);
+
+        // Verificar errores GL
+        int error = GLES20.glGetError();
+        if (error != GLES20.GL_NO_ERROR && drawCallCount % 300 == 0) {
+            Log.e(TAG, "[StarField] ✗ Error GL después de configurar atributos: " + error);
+        }
 
         // Dibujar cada estrella
         for (Star star : stars) {
@@ -265,9 +334,15 @@ public class StarField implements SceneObject, CameraAware {
         // Limpiar
         GLES20.glDisableVertexAttribArray(aPositionLoc);
 
-        // Restaurar estados
+        // Restaurar estados para que los objetos 3D puedan usar depth test
         GLES20.glDepthMask(true);  // Restaurar escritura al depth buffer
-        GLES20.glDepthFunc(GLES20.GL_LESS);  // Restaurar función de depth
+        GLES20.glEnable(GLES20.GL_DEPTH_TEST);  // Restaurar depth test
+        GLES20.glDepthFunc(GLES20.GL_LESS);  // Restaurar función de depth normal
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+
+        if (drawCallCount % 300 == 0) {
+            Log.d(TAG, "[StarField] ✓ Frame completado exitosamente");
+            Log.d(TAG, "[StarField] ========================================");
+        }
     }
 }

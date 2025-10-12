@@ -11,12 +11,12 @@ import java.util.List;
  * Gestiona múltiples meteoritos, colisiones y efectos especiales
  */
 public class MeteorShower implements SceneObject, CameraAware {
-    private static final String TAG = "MeteorShower";
+    private static final String TAG = "depurar";
 
-    // Configuración de la lluvia
-    private static final int MAX_METEORITOS = 15;  // Pool máximo
-    private static final int METEORITOS_ACTIVOS_MAX = 5;  // Simultáneos
-    private static final float SPAWN_INTERVAL = 1.5f;  // Segundos entre spawns
+    // Configuración de la lluvia OPTIMIZADA para wallpaper
+    private static final int MAX_METEORITOS = 6;  // REDUCIDO de 15 a 6
+    private static final int METEORITOS_ACTIVOS_MAX = 3;  // REDUCIDO de 5 a 3
+    private static final float SPAWN_INTERVAL = 2.0f;  // AUMENTADO de 1.5 a 2.0
     private static final float SPAWN_DISTANCE = 12.0f;  // Distancia de spawn
 
     // Pool de meteoritos
@@ -61,7 +61,7 @@ public class MeteorShower implements SceneObject, CameraAware {
             efectosImpacto.add(new ImpactEffect());
         }
 
-        Log.d(TAG, "MeteorShower inicializado con pool de " + MAX_METEORITOS);
+        Log.d(TAG, "[MeteorShower] Inicializado con pool de " + MAX_METEORITOS + " meteoritos");
     }
 
     /**
@@ -81,10 +81,10 @@ public class MeteorShower implements SceneObject, CameraAware {
             // Por ahora asumimos el primero es el sol
             if (sol == null) {
                 sol = p;
-                Log.d(TAG, "Sol registrado para colisiones");
+                Log.d(TAG, "[MeteorShower] Sol registrado para colisiones");
             } else if (planetaOrbitante == null) {
                 planetaOrbitante = p;
-                Log.d(TAG, "Planeta orbitante registrado para colisiones");
+                Log.d(TAG, "[MeteorShower] Planeta orbitante registrado para colisiones");
             }
         }
         objetosColisionables.add(objeto);
@@ -142,11 +142,11 @@ public class MeteorShower implements SceneObject, CameraAware {
             efecto.update(deltaTime);
         }
 
-        // Log de estadísticas cada 10 segundos
-        if ((int)(tiempoDesdeUltimoSpawn * 10) % 100 == 0) {
-            Log.v(TAG, "Meteoritos activos: " + meteoritosActivos.size() +
-                      " | Total lanzados: " + totalMeteoritosLanzados +
-                      " | Impactos: " + totalImpactos);
+        // Log de estadísticas cada 5 segundos (simplificado)
+        if ((int)(tiempoDesdeUltimoSpawn * 2) % 10 == 0 && tiempoDesdeUltimoSpawn > 0.1f) {
+            Log.d(TAG, "[MeteorShower] Activos:" + meteoritosActivos.size() +
+                      " | Lanzados:" + totalMeteoritosLanzados +
+                      " | Impactos:" + totalImpactos);
         }
     }
 
@@ -190,7 +190,8 @@ public class MeteorShower implements SceneObject, CameraAware {
         meteoritosActivos.add(m);
 
         totalMeteoritosLanzados++;
-        Log.v(TAG, "Meteorito #" + totalMeteoritosLanzados + " lanzado");
+        Log.d(TAG, "[MeteorShower] Meteorito #" + totalMeteoritosLanzados + " lanzado desde (" +
+                   String.format("%.1f,%.1f,%.1f", x, y, z) + ")");
     }
 
     /**
@@ -212,7 +213,7 @@ public class MeteorShower implements SceneObject, CameraAware {
                 m.impactar();
                 crearEfectoImpacto(posMeteorito[0], posMeteorito[1], posMeteorito[2], true);
                 totalImpactos++;
-                Log.d(TAG, "¡¡IMPACTO EN EL SOL!! Total impactos: " + totalImpactos);
+                Log.d(TAG, "[MeteorShower] ¡¡IMPACTO EN EL SOL!! Total impactos: " + totalImpactos);
             }
         }
 
@@ -224,7 +225,7 @@ public class MeteorShower implements SceneObject, CameraAware {
             if (distanciaPlaneta < (radioMeteorito + 0.25f)) {
                 m.impactar();
                 crearEfectoImpacto(posMeteorito[0], posMeteorito[1], posMeteorito[2], false);
-                Log.d(TAG, "¡Impacto en planeta!");
+                Log.d(TAG, "[MeteorShower] ¡Impacto en planeta!");
             }
         }
     }

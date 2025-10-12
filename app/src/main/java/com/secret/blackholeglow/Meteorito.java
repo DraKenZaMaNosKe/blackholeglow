@@ -12,7 +12,7 @@ import java.nio.FloatBuffer;
  * Parte del sistema de lluvia de meteoritos
  */
 public class Meteorito implements SceneObject, CameraAware {
-    private static final String TAG = "Meteorito";
+    private static final String TAG = "depurar";
 
     // Estado del meteorito
     public enum Estado {
@@ -89,7 +89,9 @@ public class Meteorito implements SceneObject, CameraAware {
             "shaders/meteorito_fragment.glsl");
 
         if (programId == 0) {
-            Log.e(TAG, "Error creando shader program para Meteorito!");
+            Log.e(TAG, "[Meteorito] Error creando shader program!");
+        } else {
+            Log.d(TAG, "[Meteorito] Shader creado exitosamente, programId=" + programId);
         }
 
         // Obtener locations
@@ -109,8 +111,11 @@ public class Meteorito implements SceneObject, CameraAware {
         trail = new MeteorTrail(trailType);
         trail.setContext(context);
 
-        Log.d(TAG, "Meteorito creado con estela tipo: " + trailType);
-        Log.d(TAG, "Shader locations - Pos:" + aPositionLoc + " Tex:" + aTexCoordLoc +
+        // Asegurar que el shader se inicialice correctamente
+        trail.invalidateShader();
+
+        Log.d(TAG, "[Meteorito] Creado con estela tipo: " + trailType);
+        Log.d(TAG, "[Meteorito] Shader locations - Pos:" + aPositionLoc + " Tex:" + aTexCoordLoc +
                    " MVP:" + uMvpLoc + " Color:" + uColorLoc + " Opacity:" + uOpacityLoc);
     }
 
@@ -151,7 +156,7 @@ public class Meteorito implements SceneObject, CameraAware {
         // Limpiar la estela anterior
         trail.clear();
 
-        Log.v(TAG, "Meteorito activado en " + x + "," + y + "," + z);
+        Log.d(TAG, "[Meteorito] Activado en pos(" + x + "," + y + "," + z + "), vel(" + vx + "," + vy + "," + vz + ")");
     }
 
     /**
@@ -169,7 +174,7 @@ public class Meteorito implements SceneObject, CameraAware {
         if (estado == Estado.CAYENDO) {
             estado = Estado.IMPACTANDO;
             tiempoImpacto = 0;
-            Log.d(TAG, "¡Meteorito impactó!");
+            Log.d(TAG, "[Meteorito] ¡IMPACTO!");
         }
     }
 

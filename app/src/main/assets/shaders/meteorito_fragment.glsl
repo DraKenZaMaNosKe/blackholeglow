@@ -1,5 +1,7 @@
 // Fragment shader para meteoritos con efectos de fuego y plasma
+#ifdef GL_ES
 precision mediump float;
+#endif
 
 uniform vec4 u_Color;
 uniform float u_Opacity;

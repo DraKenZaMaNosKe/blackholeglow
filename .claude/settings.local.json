@@ -7,7 +7,9 @@
       "Read(//c/piton/img/**)",
       "Bash(dir:*)",
       "Bash(adb logcat:*)",
-      "Bash(./gradlew:*)"
+      "Bash(./gradlew:*)",
+      "Read(//c/piton/**)",
+      "Bash(cmd:*)"
     ],
     "deny": [],
     "ask": []

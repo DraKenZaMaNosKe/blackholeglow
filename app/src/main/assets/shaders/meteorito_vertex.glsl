@@ -1,4 +1,8 @@
 // Vertex shader simple y funcional para meteoritos
+#ifdef GL_ES
+precision mediump float;
+#endif
+
 uniform mat4 u_MVP;
 
 attribute vec3 a_Position;

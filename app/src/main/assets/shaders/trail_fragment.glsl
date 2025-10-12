@@ -1,5 +1,7 @@
 // Fragment shader para estelas hermosas de plasma y fuego
+#ifdef GL_ES
 precision mediump float;
+#endif
 
 uniform float u_Time;
 uniform float u_TrailType;  // 0 = fuego, 0.5 = plasma, 1 = arcoíris

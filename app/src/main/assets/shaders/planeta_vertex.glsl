@@ -1,6 +1,10 @@
 // ============================================
 // archivo: planeta_vertex.glsl
 // ============================================
+#ifdef GL_ES
+precision mediump float;
+#endif
+
 attribute vec4 a_Position;
 attribute vec2 a_TexCoord;
 uniform mat4 u_MVP;

@@ -17,7 +17,7 @@ import javax.microedition.khronos.opengles.GL10;
  * SceneRenderer con sistema de logging detallado para desarrollo
  */
 public class SceneRenderer implements GLSurfaceView.Renderer {
-    private static final String TAG = "SceneRenderer";
+    private static final String TAG = "depurar";
     public static int screenWidth = 1, screenHeight = 1;
 
     private final Context context;
@@ -132,8 +132,8 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
         totalFrames++;
         fpsTimer += dt;
 
-        // Calcular FPS actual
-        if (fpsTimer >= 1.0f) {
+        // Calcular FPS actual - LOG SOLO CADA 5 SEGUNDOS para reducir overhead
+        if (fpsTimer >= 5.0f) {  // CAMBIADO de 1.0f a 5.0f
             currentFPS = frameCount / fpsTimer;
             minFPS = Math.min(minFPS, currentFPS);
             maxFPS = Math.max(maxFPS, currentFPS);
@@ -150,17 +150,9 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             long freeMemory = runtime.freeMemory() / (1024 * 1024);
             long usedMemory = totalMemory - freeMemory;
 
-            // Log detallado de rendimiento
-            Log.d(TAG, "╔══════════════════════════════════════════════╗");
-            Log.d(TAG, "║         PERFORMANCE METRICS                 ║");
-            Log.d(TAG, "╠══════════════════════════════════════════════╣");
-            Log.d(TAG, "║ FPS Current: " + String.format("%-32.1f", currentFPS) + "║");
-            Log.d(TAG, "║ FPS Average: " + String.format("%-32.1f", averageFPS) + "║");
-            Log.d(TAG, "║ FPS Min/Max: " + String.format("%-32s", String.format("%.1f / %.1f", minFPS, maxFPS)) + "║");
-            Log.d(TAG, "║ Frame Count: " + String.format("%-32d", totalFrames) + "║");
-            Log.d(TAG, "║ Scene Objects: " + String.format("%-30d", sceneObjects.size()) + "║");
-            Log.d(TAG, "║ Memory Used: " + String.format("%-32s", usedMemory + " MB / " + totalMemory + " MB") + "║");
-            Log.d(TAG, "╚══════════════════════════════════════════════╝");
+            // Log simplificado de rendimiento (solo 1 línea)
+            Log.d(TAG, String.format("[SceneRenderer] FPS: %.1f (avg: %.1f, min/max: %.1f/%.1f) | Frames: %d | Objs: %d | Mem: %dMB",
+                currentFPS, averageFPS, minFPS, maxFPS, totalFrames, sceneObjects.size(), usedMemory));
 
             frameCount = 0;
             fpsTimer = 0f;
@@ -204,7 +196,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
     private void setupUniverseScene() {
         Log.d(TAG, "Setting up UNIVERSE scene...");
 
-        // FONDO 2D - Sin perspectiva, cobertura completa
+        // FONDO 2D - Cobertura completa
         try {
             UniverseBackground2D fondo = new UniverseBackground2D(
                     context,
@@ -212,9 +204,9 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
                     R.drawable.universo03
             );
             sceneObjects.add(fondo);
-            Log.d(TAG, "  ✓ 2D Background added (full coverage)");
+            Log.d(TAG, "[SceneRenderer] ✓ Fondo 2D agregado");
         } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creating background: " + e.getMessage());
+            Log.e(TAG, "[SceneRenderer] ✗ Error creando fondo: " + e.getMessage());
         }
 
         // CAMPO DE ESTRELLAS BRILLANTES
@@ -222,9 +214,9 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             StarField starField = new StarField(context);
             starField.setCameraController(sharedCamera);
             sceneObjects.add(starField);
-            Log.d(TAG, "  ✓ Star field added with twinkling stars");
+            Log.d(TAG, "[SceneRenderer] ✓ Campo de estrellas agregado");
         } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creating star field: " + e.getMessage());
+            Log.e(TAG, "[SceneRenderer] ✗ Error creando campo de estrellas: " + e.getMessage());
         }
 
         // SOL CENTRAL CON NUEVO SHADER DE LAVA (OPACO)
@@ -304,9 +296,9 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             }
 
             sceneObjects.add(meteorShower);
-            Log.d(TAG, "  ✓ Meteor shower system added with collision detection");
+            Log.d(TAG, "[SceneRenderer] ✓ Sistema de meteoritos agregado");
         } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creating meteor shower: " + e.getMessage());
+            Log.e(TAG, "[SceneRenderer] ✗ Error creando sistema de meteoritos: " + e.getMessage());
         }
 
         // GLOW EXTERIOR DEL SOL - AL FINAL PARA QUE SE DIBUJE ENCIMA

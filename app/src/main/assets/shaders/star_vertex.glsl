@@ -1,4 +1,8 @@
 // Vertex shader para estrellas animadas
+#ifdef GL_ES
+precision mediump float;
+#endif
+
 uniform mat4 u_MVP;
 attribute vec3 a_Position;
 varying vec3 v_Position;

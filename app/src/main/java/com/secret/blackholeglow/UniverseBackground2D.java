@@ -37,79 +37,23 @@ public class UniverseBackground2D implements SceneObject {
     // Texture
     private final int textureId;
     private final float timeOffset;
-
-    // Vertex shader - espacio de pantalla (-1 a 1)
-    private static final String VERTEX_SHADER =
-            "attribute vec2 a_Position;\n" +
-            "attribute vec2 a_TexCoord;\n" +
-            "varying vec2 v_TexCoord;\n" +
-            "void main() {\n" +
-            "    gl_Position = vec4(a_Position, 0.0, 1.0);\n" +
-            "    v_TexCoord = a_TexCoord;\n" +
-            "}\n";
-
-    // Fragment shader con ajuste de aspect ratio
-    private static final String FRAGMENT_SHADER =
-            "precision mediump float;\n" +
-            "uniform sampler2D u_Texture;\n" +
-            "uniform float u_Time;\n" +
-            "uniform vec2 u_Resolution;\n" +
-            "uniform float u_AspectRatio;\n" +
-            "varying vec2 v_TexCoord;\n" +
-            "\n" +
-            "void main() {\n" +
-            "    // Ajustar UV para mantener proporción y cubrir toda la pantalla\n" +
-            "    vec2 uv = v_TexCoord;\n" +
-            "    \n" +
-            "    // Centrar y escalar para cubrir (cover mode)\n" +
-            "    vec2 center = vec2(0.5, 0.5);\n" +
-            "    uv = (uv - center);\n" +
-            "    \n" +
-            "    // Ajuste de aspecto para modo cover\n" +
-            "    float screenAspect = u_Resolution.x / u_Resolution.y;\n" +
-            "    float textureAspect = 1.77777; // Asumiendo imagen 16:9\n" +
-            "    \n" +
-            "    if (screenAspect > textureAspect) {\n" +
-            "        // Pantalla más ancha - escalar en Y\n" +
-            "        uv.y *= textureAspect / screenAspect;\n" +
-            "    } else {\n" +
-            "        // Pantalla más alta - escalar en X\n" +
-            "        uv.x *= screenAspect / textureAspect;\n" +
-            "    }\n" +
-            "    \n" +
-            "    uv += center;\n" +
-            "    \n" +
-            "    // Animación desactivada (opcional para después)\n" +
-            "    // uv.x += sin(u_Time * 0.05) * 0.01;\n" +
-            "    // uv.y += cos(u_Time * 0.03) * 0.01;\n" +
-            "    \n" +
-            "    // Clamp para evitar bordes\n" +
-            "    uv = clamp(uv, 0.0, 1.0);\n" +
-            "    \n" +
-            "    gl_FragColor = texture2D(u_Texture, uv);\n" +
-            "}\n";
+    private final Context context;
 
     public UniverseBackground2D(Context context, TextureManager textureManager, int textureResourceId) {
         Log.d(TAG, "Creating 2D Background");
 
+        this.context = context;
         this.timeOffset = SystemClock.uptimeMillis() * 0.001f;
         this.textureId = textureManager.getTexture(textureResourceId);
 
-        // Crear shader program
-        int vertexShader = compileShader(GLES20.GL_VERTEX_SHADER, VERTEX_SHADER);
-        int fragmentShader = compileShader(GLES20.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
+        // Crear shader program desde archivos
+        programId = ShaderUtils.createProgramFromAssets(context,
+            "shaders/universe_background_vertex.glsl",
+            "shaders/universe_background_fragment.glsl");
 
-        programId = GLES20.glCreateProgram();
-        GLES20.glAttachShader(programId, vertexShader);
-        GLES20.glAttachShader(programId, fragmentShader);
-        GLES20.glLinkProgram(programId);
-
-        // Verificar enlace
-        int[] linkStatus = new int[1];
-        GLES20.glGetProgramiv(programId, GLES20.GL_LINK_STATUS, linkStatus, 0);
-        if (linkStatus[0] == 0) {
-            Log.e(TAG, "Error linking shader program: " + GLES20.glGetProgramInfoLog(programId));
-            throw new RuntimeException("Error linking shader program");
+        if (programId == 0) {
+            Log.e(TAG, "Error creating shader program for UniverseBackground2D");
+            throw new RuntimeException("Error creating shader program");
         }
 
         // Obtener locations
@@ -141,22 +85,6 @@ public class UniverseBackground2D implements SceneObject {
         texCoordBuffer = createFloatBuffer(texCoords);
 
         Log.d(TAG, "2D Background initialized successfully");
-    }
-
-    private int compileShader(int type, String source) {
-        int shader = GLES20.glCreateShader(type);
-        GLES20.glShaderSource(shader, source);
-        GLES20.glCompileShader(shader);
-
-        int[] compileStatus = new int[1];
-        GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compileStatus, 0);
-        if (compileStatus[0] == 0) {
-            Log.e(TAG, "Error compiling shader: " + GLES20.glGetShaderInfoLog(shader));
-            GLES20.glDeleteShader(shader);
-            return 0;
-        }
-
-        return shader;
     }
 
     private FloatBuffer createFloatBuffer(float[] data) {

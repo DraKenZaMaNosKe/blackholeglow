@@ -51,59 +51,6 @@ public class BatteryPowerBar implements SceneObject {
     private final Context context;
     private BatteryReceiver batteryReceiver;
 
-    // Vertex shader para la barra
-    private static final String VERTEX_SHADER =
-        "attribute vec2 a_Position;\n" +
-        "attribute vec4 a_Color;\n" +
-        "varying vec4 v_Color;\n" +
-        "void main() {\n" +
-        "    gl_Position = vec4(a_Position, 0.0, 1.0);\n" +
-        "    v_Color = a_Color;\n" +
-        "}\n";
-
-    // Fragment shader con efectos de poder y carga
-    private static final String FRAGMENT_SHADER =
-        "precision mediump float;\n" +
-        "uniform float u_Time;\n" +
-        "uniform float u_ChargingGlow;\n" +
-        "uniform float u_BatteryLevel;\n" +
-        "varying vec4 v_Color;\n" +
-        "void main() {\n" +
-        "    vec3 finalColor = v_Color.rgb;\n" +
-        "    \n" +
-        "    // Efecto de carga - ondas de energía\n" +
-        "    if (u_ChargingGlow > 0.0) {\n" +
-        "        // Onda de energía que recorre la barra\n" +
-        "        float wave = sin(u_Time * 5.0 - gl_FragCoord.x * 0.02) * 0.5 + 0.5;\n" +
-        "        wave *= u_ChargingGlow;\n" +
-        "        \n" +
-        "        // Brillo pulsante\n" +
-        "        float pulse = sin(u_Time * 8.0) * 0.3 + 0.7;\n" +
-        "        \n" +
-        "        // Color de carga (dorado/blanco brillante)\n" +
-        "        vec3 chargeColor = vec3(1.0, 0.9, 0.5) * wave * pulse;\n" +
-        "        finalColor += chargeColor * u_ChargingGlow;\n" +
-        "        \n" +
-        "        // Destellos ocasionales\n" +
-        "        float sparkle = sin(u_Time * 30.0 + gl_FragCoord.x) * sin(u_Time * 20.0 + gl_FragCoord.y);\n" +
-        "        if (sparkle > 0.8) {\n" +
-        "            finalColor += vec3(1.0, 1.0, 0.8) * u_ChargingGlow;\n" +
-        "        }\n" +
-        "    }\n" +
-        "    \n" +
-        "    // Pulsación cuando está lleno\n" +
-        "    if (u_BatteryLevel > 0.95) {\n" +
-        "        float fullPulse = sin(u_Time * 4.0) * 0.2 + 0.8;\n" +
-        "        finalColor *= fullPulse;\n" +
-        "    }\n" +
-        "    \n" +
-        "    // Efecto de energía sutil\n" +
-        "    float energy = sin(u_Time * 10.0 + gl_FragCoord.x * 0.1) * 0.05;\n" +
-        "    finalColor += vec3(energy) * v_Color.a;\n" +
-        "    \n" +
-        "    gl_FragColor = vec4(finalColor, v_Color.a);\n" +
-        "}\n";
-
     // BroadcastReceiver para monitorear la batería
     private class BatteryReceiver extends BroadcastReceiver {
         @Override
@@ -154,8 +101,10 @@ public class BatteryPowerBar implements SceneObject {
             batteryReceiver.onReceive(context, batteryStatus);
         }
 
-        // Crear shader program
-        programId = ShaderUtils.createProgram(VERTEX_SHADER, FRAGMENT_SHADER);
+        // Crear shader program desde archivos
+        programId = ShaderUtils.createProgramFromAssets(context,
+            "shaders/battery_vertex.glsl",
+            "shaders/battery_fragment.glsl");
         aPositionLoc = GLES20.glGetAttribLocation(programId, "a_Position");
         aColorLoc = GLES20.glGetAttribLocation(programId, "a_Color");
         uTimeLoc = GLES20.glGetUniformLocation(programId, "u_Time");

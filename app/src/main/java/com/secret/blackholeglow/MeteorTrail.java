@@ -16,11 +16,11 @@ import java.util.List;
  * Inspirado en los efectos de Street Fighter - deja un rastro de fuego/plasma
  */
 public class MeteorTrail {
-    private static final String TAG = "MeteorTrail";
+    private static final String TAG = "depurar";
 
-    // Configuración de la estela
-    private static final int MAX_TRAIL_POINTS = 20;  // Puntos en la estela
-    private static final float TRAIL_SEGMENT_TIME = 0.02f;  // Tiempo entre segmentos
+    // Configuración de la estela OPTIMIZADA
+    private static final int MAX_TRAIL_POINTS = 8;  // REDUCIDO de 20 a 8 para rendimiento
+    private static final float TRAIL_SEGMENT_TIME = 0.04f;  // DUPLICADO para menos puntos
 
     // Posiciones de la estela
     private List<TrailPoint> trailPoints = new ArrayList<>();
@@ -39,18 +39,19 @@ public class MeteorTrail {
     private FloatBuffer colorBuffer;
     private boolean needsUpdate = true;
 
-    // Shader program (compartido)
-    private static int programId = -1;
-    private static int aPositionLoc;
-    private static int aColorLoc;
-    private static int aAgeLoc;
-    private static int uMvpLoc;
-    private static int uTimeLoc;
-    private static int uTrailTypeLoc;
-    private static int uTrailLengthLoc;
+    // Shader program (NO estático para evitar problemas de contexto GL)
+    private int programId = -1;
+    private int aPositionLoc;
+    private int aColorLoc;
+    private int aAgeLoc;
+    private int uMvpLoc;
+    private int uTimeLoc;
+    private int uTrailTypeLoc;
+    private int uTrailLengthLoc;
 
     // Referencias
     private Context context;
+    private boolean shaderInitialized = false;
 
     // Clase interna para puntos de la estela
     private class TrailPoint {
@@ -113,28 +114,54 @@ public class MeteorTrail {
         this.type = type;
     }
 
-    // Inicialización diferida del shader (cuando tengamos contexto)
+    // Inicialización del shader (forzar recreación si es necesario)
     private void initShader(Context context) {
-        if (programId == -1 && context != null) {
+        if (context == null) {
+            Log.e(TAG, "[MeteorTrail] initShader - context es null!");
+            return;
+        }
+
+        // SIEMPRE recrear el shader si no está inicializado o programId es inválido
+        if (!shaderInitialized || programId <= 0 || !GLES20.glIsProgram(programId)) {
+            Log.d(TAG, "[MeteorTrail] Creando/Recreando shader (programId anterior: " + programId + ")");
+
             programId = ShaderUtils.createProgramFromAssets(context,
                 "shaders/trail_vertex.glsl",
                 "shaders/trail_fragment.glsl");
 
-            aPositionLoc = GLES20.glGetAttribLocation(programId, "a_Position");
-            aColorLoc = GLES20.glGetAttribLocation(programId, "a_Color");
-            aAgeLoc = GLES20.glGetAttribLocation(programId, "a_Age");
-            uMvpLoc = GLES20.glGetUniformLocation(programId, "u_MVP");
-            uTimeLoc = GLES20.glGetUniformLocation(programId, "u_Time");
-            uTrailTypeLoc = GLES20.glGetUniformLocation(programId, "u_TrailType");
-            uTrailLengthLoc = GLES20.glGetUniformLocation(programId, "u_TrailLength");
+            if (programId > 0) {
+                aPositionLoc = GLES20.glGetAttribLocation(programId, "a_Position");
+                aColorLoc = GLES20.glGetAttribLocation(programId, "a_Color");
+                aAgeLoc = GLES20.glGetAttribLocation(programId, "a_Age");
+                uMvpLoc = GLES20.glGetUniformLocation(programId, "u_MVP");
+                uTimeLoc = GLES20.glGetUniformLocation(programId, "u_Time");
+                uTrailTypeLoc = GLES20.glGetUniformLocation(programId, "u_TrailType");
+                uTrailLengthLoc = GLES20.glGetUniformLocation(programId, "u_TrailLength");
 
-            Log.d(TAG, "Trail shader mejorado inicializado");
+                shaderInitialized = true;
+
+                Log.d(TAG, "[MeteorTrail] ✓ Shader inicializado - programId:" + programId);
+                Log.d(TAG, "[MeteorTrail] Shader locations - Pos:" + aPositionLoc + " Color:" + aColorLoc +
+                           " Age:" + aAgeLoc + " MVP:" + uMvpLoc);
+            } else {
+                Log.e(TAG, "[MeteorTrail] ✗ ERROR: Shader NO se pudo crear!");
+                shaderInitialized = false;
+            }
         }
     }
 
     public void setContext(Context context) {
         this.context = context;
         initShader(context);
+    }
+
+    /**
+     * Invalida el shader para forzar recreación (útil cuando se pierde contexto GL)
+     */
+    public void invalidateShader() {
+        Log.d(TAG, "[MeteorTrail] invalidateShader() llamado");
+        shaderInitialized = false;
+        programId = -1;
     }
 
     /**
@@ -286,18 +313,46 @@ public class MeteorTrail {
         needsUpdate = false;
     }
 
+    // Contador para logs periódicos
+    private static int drawCallCount = 0;
+
     /**
      * Dibuja la estela con shaders animados
      */
     public void draw(CameraController camera) {
-        if (trailPoints.size() < 2 || camera == null) return;
+        drawCallCount++;
 
-        // Inicializar shader si es necesario
-        if (programId == -1 && context != null) {
+        if (trailPoints.size() < 2) {
+            if (drawCallCount % 300 == 0) {
+                Log.d(TAG, "[MeteorTrail] draw() - No hay suficientes puntos: " + trailPoints.size());
+            }
+            return;
+        }
+
+        if (camera == null) {
+            Log.w(TAG, "[MeteorTrail] draw() - camera es null!");
+            return;
+        }
+
+        // Verificar si el shader es válido (puede perder contexto en wallpaper)
+        if (context != null && (!GLES20.glIsProgram(programId) || !shaderInitialized)) {
+            Log.w(TAG, "[MeteorTrail] Shader inválido, recreando... (programId: " + programId + ")");
+            shaderInitialized = false;  // Forzar recreación
             initShader(context);
         }
 
-        if (programId == -1) return;  // No podemos dibujar sin shader
+        if (programId <= 0 || !shaderInitialized) {
+            if (drawCallCount % 60 == 0) {  // Log cada segundo
+                Log.e(TAG, "[MeteorTrail] draw() - Shader no disponible! programId:" + programId +
+                           " initialized:" + shaderInitialized);
+            }
+            return;
+        }
+
+        // Log periódico cada 5 segundos
+        if (drawCallCount % 300 == 0) {
+            Log.d(TAG, "[MeteorTrail] Dibujando estela con " + trailPoints.size() + " puntos, programId=" + programId);
+        }
 
         if (needsUpdate) {
             buildBuffers();
