@@ -212,3 +212,236 @@ Based on recent commits, the project is focused on:
 - Touch interaction is intentionally disabled in the wallpaper service for stability
 - All matrix math uses OpenGL conventions (column-major)
 - The camera system is feature-rich but currently used in a static configuration
+
+---
+
+## 🚀 Play Store Release Configuration (October 2024)
+
+### Release Keystore Information
+
+**⚠️ CRITICAL - KEEP THIS INFORMATION SAFE**
+
+The app is configured for Google Play Store release with a signing keystore:
+
+- **Keystore File**: `blackholeglow-release-key.jks`
+- **Location**: Project root directory (`C:\Users\eduar\AndroidStudioProjects\blackholeglow\`)
+- **Store Password**: `blackholeglow2025`
+- **Key Alias**: `blackholeglow`
+- **Key Password**: `blackholeglow2025`
+- **Validity**: 10,000 days (~27 years)
+- **Algorithm**: RSA 2048-bit
+
+**⚠️ WARNING**: If this keystore is lost, the app can NEVER be updated on Play Store. Back it up in multiple secure locations (Google Drive, Dropbox, external drive, etc.)
+
+### Build Commands for Release
+
+```bash
+# Build release AAB for Play Store
+./gradlew bundleRelease
+
+# Build release APK (for manual distribution)
+./gradlew assembleRelease
+
+# Clean and rebuild
+./gradlew clean bundleRelease --no-daemon
+```
+
+### Release Artifacts Location
+
+After building, find the signed artifacts at:
+- **AAB (Play Store)**: `app/build/outputs/bundle/release/app-release.aab`
+- **APK (Manual)**: `app/build/outputs/apk/release/app-release.apk`
+
+### Signing Configuration
+
+The signing is configured in `app/build.gradle.kts`:
+
+```kotlin
+signingConfigs {
+    create("release") {
+        storeFile = file("${rootProject.projectDir}/blackholeglow-release-key.jks")
+        storePassword = "blackholeglow2025"
+        keyAlias = "blackholeglow"
+        keyPassword = "blackholeglow2025"
+    }
+}
+
+buildTypes {
+    release {
+        isMinifyEnabled = false
+        signingConfig = signingConfigs.getByName("release")
+    }
+}
+```
+
+---
+
+## 🎨 Wallpaper Catalog - 10 Themed Items
+
+The app features a catalog of 10 thematically distinct wallpapers, each with:
+- Unique gradient background drawable
+- Emoji icon
+- Captivating Spanish description
+- Animated border shader (in development)
+
+### Current Wallpaper List
+
+Defined in `AnimatedWallpaperListFragment.java`:
+
+1. **🌌 Viaje Espacial** (`preview_space.xml`)
+   - Dark blue gradient
+   - Shader: `frame_space_fragment.glsl` (stars effect - under development)
+
+2. **🌲 Bosque Encantado** (`preview_forest.xml`)
+   - Dark green/teal gradient
+   - Shader: `frame_forest_fragment.glsl` (fireflies effect - under development)
+
+3. **🏙️ Neo Tokyo 2099** (`preview_cyberpunk.xml`)
+   - Pink to cyan neon gradient
+   - Shader: `frame_cyberpunk_fragment.glsl` (neon effect - under development)
+
+4. **🏖️ Paraíso Dorado** (`preview_beach.xml`)
+   - Orange to gold sunset gradient
+   - Shader: `beam_fragment.glsl` (✅ WORKING - this one displays correctly)
+
+5. **🦁 Safari Salvaje** (`preview_safari.xml`)
+   - Orange to yellow savanna gradient
+   - Shader: `particula_fragment.glsl`
+
+6. **🌧️ Lluvia Mística** (`preview_rain.xml`)
+   - Gray stormy gradient
+   - Shader: `frame_rain_fragment.glsl` (rain effect - under development)
+
+7. **🎮 Pixel Quest** (`preview_retro.xml`)
+   - Vibrant pink/purple 8-bit gradient
+   - Shader: `battery_fragment.glsl`
+
+8. **🕳️ Portal Infinito** (`preview_blackhole.xml`)
+   - Black to purple radial gradient
+   - Shader: `forcefield_fragment.glsl`
+
+9. **🌸 Jardín Zen** (`preview_zen.xml`)
+   - Pink sakura to light blue gradient
+   - Shader: `test_border_fragment.glsl` (✅ WORKING - this one displays correctly)
+
+10. **⚡ Furia Celestial** (`preview_storm.xml`)
+    - Dark blue to electric yellow gradient
+    - Shader: `frame_storm_fragment.glsl` (lightning effect - under development)
+
+### Gradient Drawables
+
+Each wallpaper has a matching gradient drawable in `app/src/main/res/drawable/`:
+- Format: `preview_[theme].xml`
+- Type: `<shape>` with `<gradient>` using theme-specific colors
+- These are displayed in the RecyclerView as background for each CardView
+
+---
+
+## 🔧 Known Issues & Work in Progress
+
+### Animated Border Shaders (PENDING FIX)
+
+**Problem**: Items 3 and 9 display their animated borders correctly, but other items do not show their shader effects.
+
+**Affected Shaders**:
+- `frame_space_fragment.glsl` (Item 0)
+- `frame_forest_fragment.glsl` (Item 1)
+- `frame_cyberpunk_fragment.glsl` (Item 2)
+- `frame_rain_fragment.glsl` (Item 5)
+- `frame_storm_fragment.glsl` (Item 9)
+
+**Investigation Findings**:
+1. Layout structure is correct (`item_wallpaper_card_textureview.xml`)
+2. `AnimatedBorderTextureView` is properly configured with OpenGL ES 2.0
+3. `AnimatedBorderRendererThread` manages EGL surface and provides `u_Time`, `u_Resolution` uniforms
+4. The `beam_fragment.glsl` (Item 3) shader works correctly
+5. Some shaders may require additional uniforms (`u_Reveal`, `u_HaloWidth`) that are not being set
+6. Attempted fixes with border masking and solid colors did not resolve the issue
+
+**Next Steps** (for tomorrow):
+- Investigate why `beam_fragment.glsl` and `test_border_fragment.glsl` work but others don't
+- Check if certain shaders need different vertex shaders
+- Review shader compilation errors in LogCat
+- Consider simplifying shaders to match working examples
+
+### Layout Notes
+
+- **CardView margin changed**: `android:layout_margin="4dp"` (was 20dp, user adjusted)
+- `AnimatedBorderTextureView` has `match_parent` dimensions
+- Blending is enabled in renderer: `GL_SRC_ALPHA`, `GL_ONE_MINUS_SRC_ALPHA`
+- Clear color with alpha=0 for transparency
+
+---
+
+## 📱 Current Version Status
+
+- **Version**: 3.0.0
+- **Version Code**: 1
+- **Version Name**: "1.0"
+- **Branch**: `version-3.0.0`
+- **Status**: Ready for internal testing on Play Store
+- **Last Release Build**: October 14, 2024
+- **AAB Size**: ~39MB
+
+### Features Completed
+✅ OpenGL ES 2.0 live wallpaper rendering
+✅ 3D space scenes with planets and black holes
+✅ 10 themed wallpapers with unique gradients
+✅ Firebase authentication integration
+✅ Google Sign-In support
+✅ Material Design UI with navigation drawer
+✅ Wallpaper preview system
+✅ RecyclerView catalog with animated borders (partial)
+✅ Release build configuration with signing
+
+### Features In Progress
+🔄 Animated border shaders for all 10 wallpapers
+🔄 Shader effects optimization and debugging
+
+---
+
+## 🛠️ Development Environment
+
+- **IDE**: Android Studio (Ladybug 2024.2.1 or newer)
+- **JDK**: 11 (from Android Studio JBR)
+- **Gradle**: 8.13
+- **Build Tools**: AGP 8.12.3
+- **Testing Device**: Connected via ADB
+
+### Windows-Specific Commands
+
+```bash
+# Set JAVA_HOME for Gradle (Windows Git Bash)
+export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"
+export PATH="$JAVA_HOME/bin:$PATH"
+
+# Build commands
+./gradlew.bat assembleDebug
+./gradlew.bat bundleRelease
+
+# Install to device
+"C:/Users/eduar/AppData/Local/Android/Sdk/platform-tools/adb.exe" install -r "app/build/outputs/apk/debug/app-debug.apk"
+```
+
+---
+
+## 📝 Session Notes (October 14, 2024)
+
+### Work Completed
+1. Created 10 thematically distinct wallpapers with unique gradients and descriptions
+2. Attempted to implement animated border shaders for each theme
+3. Discovered shader rendering issues (only 2 out of 10 display correctly)
+4. Created release keystore for Play Store
+5. Successfully built signed AAB for Play Store upload
+6. Configured signing in build.gradle.kts
+
+### Deferred Work
+- Fix animated border shaders to work consistently across all items
+- Investigate shader compilation/uniform issues
+- Test release build on multiple devices via Play Store internal testing
+
+### Important Decisions
+- Reverted shader experiments to working baseline
+- Kept original shader assignments that were partially working
+- Prioritized Play Store release over completing shader animations
+- Documented all keystore information for future releases

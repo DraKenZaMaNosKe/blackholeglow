@@ -27,7 +27,10 @@
       "Bash(\"C:/Users/eduar/AppData/Local/Android/Sdk/platform-tools/adb.exe\" devices)",
       "Bash(\"C:/Users/eduar/AppData/Local/Android/Sdk/platform-tools/adb.exe\" install -r \"app/build/outputs/apk/debug/app-debug.apk\")",
       "Bash(\"C:/Users/eduar/AppData/Local/Android/Sdk/platform-tools/adb.exe\" logcat -d)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(keytool:*)",
+      "Bash(echo:*)",
+      "Bash(\"C:/Program Files/Android/Android Studio/jbr/bin/keytool.exe\" -genkeypair -v -keystore C:/Users/eduar/AndroidStudioProjects/blackholeglow/blackholeglow-release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias blackholeglow -storepass blackholeglow2025 -keypass blackholeglow2025 -dname \"CN=Black Hole Glow, OU=Development, O=Secret Apps, L=Ciudad, ST=Estado, C=MX\")"
     ],
     "deny": [],
     "ask": []
