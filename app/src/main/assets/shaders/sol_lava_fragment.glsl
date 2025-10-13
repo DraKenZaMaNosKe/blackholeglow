@@ -43,19 +43,10 @@ float smoothNoise(vec2 p) {
     return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
-// Ruido fractal OPTIMIZADO (2 octavas en lugar de 4)
+// Ruido fractal ULTRA-OPTIMIZADO (1 octava - máximo rendimiento)
 float fbm(vec2 p) {
-    float value = 0.0;
-    float amplitude = 0.5;
-    float frequency = 2.0;
-
-    for(int i = 0; i < 2; i++) {  // OPTIMIZADO: 4 → 2 iteraciones
-        value += amplitude * smoothNoise(p * frequency);
-        amplitude *= 0.5;
-        frequency *= 2.0;
-    }
-
-    return value;
+    // Solo 1 octava para rendimiento extremo
+    return smoothNoise(p * 2.0) * 0.5;
 }
 
 // ============================================
@@ -79,30 +70,18 @@ vec3 getLavaColor(vec2 uv, float time) {
     // Distorsión UV para simular flujo
     vec2 distortedUV = uv + flowOffset;
 
-    // Múltiples capas de ruido para complejidad
+    // OPTIMIZADO: Solo 2 capas de ruido (en lugar de 3)
     float noise1 = fbm(distortedUV * 3.0 + time * 0.2);
-    float noise2 = fbm(distortedUV * 5.0 - time * 0.15);
-    float noise3 = smoothNoise(distortedUV * 10.0 + time * 0.5);
+    float noise2 = smoothNoise(distortedUV * 6.0 - time * 0.15);
 
-    // Combinar ruidos con diferentes pesos
-    float lavaPattern = noise1 * 0.5 + noise2 * 0.3 + noise3 * 0.2;
+    // Combinar ruidos simplificado
+    float lavaPattern = noise1 * 0.6 + noise2 * 0.4;
 
-    // Burbujas OPTIMIZADAS (solo 1 burbuja en lugar de 3)
-    float bubbles = 0.0;
-    vec2 bubblePos = vec2(
-        sin(time * 0.4) * 0.3,
-        cos(time * 0.3) * 0.3
-    );
-    bubblePos += center;
-    float bubbleDist = length(uv - bubblePos);
-    bubbles = smoothstep(0.1, 0.0, bubbleDist) * (sin(time * 1.2) * 0.5 + 0.5);
+    // OPTIMIZADO: Burbujas ELIMINADAS (ahorro ~15 ops/pixel)
 
-    lavaPattern += bubbles * 0.2;
-
-    // Crear anillos de calor (más lentos y sutiles)
-    float rings = sin(dist * 20.0 - time * 0.8) * 0.5 + 0.5;  // Reducido de 2.0 a 0.8
-    rings = pow(rings, 3.0);
-    lavaPattern += rings * 0.1 * (1.0 - dist);
+    // OPTIMIZADO: Anillos simplificados (sin pow costoso)
+    float rings = sin(dist * 20.0 - time * 0.8) * 0.5 + 0.5;
+    lavaPattern += rings * 0.08 * (1.0 - dist);
 
     // Gradiente radial para el núcleo más caliente
     float coreIntensity = 1.0 - smoothstep(0.0, 0.5, dist);

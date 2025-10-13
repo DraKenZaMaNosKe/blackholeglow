@@ -14,6 +14,34 @@
         <!-- Customize your theme here. -->
     </style>
 
+    <!--
+      ╔════════════════════════════════════════════════════════════╗
+      ║  🎨 SPLASH THEME - Tema profesional para pantalla inicial ║
+      ║  Fondo negro con logo del gatito - SE VE INMEDIATAMENTE   ║
+      ╚════════════════════════════════════════════════════════════╝
+      Este tema se aplica ANTES de que la Activity cargue,
+      eliminando el fondo blanco feo que Android muestra por defecto.
+
+      🐱 Tu gatita estará orgullosa de este splash profesional 😺
+    -->
+    <style name="Theme.Blackholeglow.Splash" parent="Theme.AppCompat.NoActionBar">
+        <!-- Fondo negro con logo centrado (se ve INMEDIATAMENTE) -->
+        <item name="android:windowBackground">@drawable/splash_background</item>
+
+        <!-- Barra de estado negra (parte superior) -->
+        <item name="android:statusBarColor">@android:color/black</item>
+
+        <!-- Barra de navegación negra (parte inferior) -->
+        <item name="android:navigationBarColor" tools:targetApi="o">@android:color/black</item>
+
+        <!-- Sin action bar para pantalla completa -->
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+
+        <!-- Transición suave al cambiar de Activity -->
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+
     <!-- Estilo para imágenes circulares (avatar) -->
     <style name="CircleImageView">
         <item name="cornerFamily">rounded</item>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+╔══════════════════════════════════════════════════════════╗
+║  📝 TEXT FADE IN - Texto aparece después del logo       ║
+╚══════════════════════════════════════════════════════════╝
+-->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:fillAfter="true"
+    android:startOffset="800">
+
+    <!-- Fade in con retraso (aparece después del logo) -->
+    <alpha
+        android:fromAlpha="0.0"
+        android:toAlpha="1.0"
+        android:duration="1000"
+        android:interpolator="@android:anim/decelerate_interpolator" />
+
+    <!-- Sube desde abajo -->
+    <translate
+        android:fromYDelta="20%"
+        android:toYDelta="0%"
+        android:duration="1000"
+        android:interpolator="@android:anim/decelerate_interpolator" />
+
+</set>

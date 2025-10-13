@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 🦁 SAFARI - Safari Salvaje: Amarillo sabana con tonos tierra -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="135"
+        android:startColor="#E65C00"
+        android:centerColor="#F9A825"
+        android:endColor="#FFD54F" />
+    <corners android:radius="16dp" />
+</shape>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+╔═══════════════════════════════════════════════════════════╗
+║  ✨ LOGO FADE IN - Aparición mágica del logo del gatito  ║
+╚═══════════════════════════════════════════════════════════╝
+-->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:fillAfter="true"
+    android:duration="1500">
+
+    <!-- Fade in: de invisible a visible -->
+    <alpha
+        android:fromAlpha="0.0"
+        android:toAlpha="1.0"
+        android:duration="1500"
+        android:interpolator="@android:anim/decelerate_interpolator" />
+
+    <!-- Scale: crece desde pequeño -->
+    <scale
+        android:fromXScale="0.5"
+        android:fromYScale="0.5"
+        android:toXScale="1.0"
+        android:toYScale="1.0"
+        android:pivotX="50%"
+        android:pivotY="50%"
+        android:duration="1500"
+        android:interpolator="@android:anim/overshoot_interpolator" />
+
+</set>

@@ -158,9 +158,13 @@ public class StarryBackground implements SceneObject {
         // Usar nuestro programa
         GLES20.glUseProgram(programId);
 
-        // Desactivar depth test para fondo (se dibuja primero, detrás de todo)
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
-        GLES20.glDepthMask(false);
+        // ========== CONFIGURACIÓN PROFESIONAL DE SKYBOX ==========
+        // El fondo se renderiza con Z=0.9999 (infinitamente lejos)
+        // Activamos depth test pero NO escribimos en depth buffer
+        // Esto asegura que TODOS los objetos 3D se dibujen DELANTE del fondo
+        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES20.glDepthFunc(GLES20.GL_LEQUAL);  // <= permite dibujar en Z=0.9999
+        GLES20.glDepthMask(false);  // NO escribir profundidad (fondo no bloquea nada)
 
         // Configurar uniforms
         float time = (SystemClock.uptimeMillis() * 0.001f - timeOffset) % 100.0f;
@@ -202,9 +206,9 @@ public class StarryBackground implements SceneObject {
         GLES20.glDisableVertexAttribArray(aPositionLoc);
         GLES20.glDisableVertexAttribArray(aTexCoordLoc);
 
-        // Restaurar depth test para los objetos 3D
-        GLES20.glDepthMask(true);
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        // Restaurar configuración de depth para objetos 3D
+        GLES20.glDepthMask(true);  // Objetos 3D SÍ escriben profundidad
+        GLES20.glDepthFunc(GLES20.GL_LESS);  // Comparación normal para 3D
 
         if (drawCallCount % 300 == 0) {
             Log.d(TAG, "[StarryBackground] ✓ Frame completado");

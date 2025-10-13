@@ -1,32 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+╔══════════════════════════════════════════════════════════════════╗
+║  🌌 SPLASH SCREEN - Pantalla de inicio con logo del gatito      ║
+╚══════════════════════════════════════════════════════════════════╝
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:alpha="50"
     android:background="@android:color/black"
-    android:baselineAligned="false"
     android:gravity="center"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:padding="32dp">
 
+    <!-- ============== LOGO DEL GATITO ============== -->
     <ImageView
         android:id="@+id/logo"
-        android:layout_width="150dp"
-        android:layout_height="match_parent"
-        android:adjustViewBounds="true"
-        android:alpha="100"
-        android:background="@color/black"
-        android:backgroundTint="@color/black"
-        android:cropToPadding="true"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:src="@mipmap/ic_launcher"
         android:scaleType="fitCenter"
-        android:src="@mipmap/ic_launcher" />
+        android:contentDescription="App logo" />
 
+    <!-- ============== NOMBRE DE LA APP ============== -->
     <TextView
         android:id="@+id/app_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="24dp"
         android:text="@string/app_name"
         android:textColor="@android:color/white"
-        android:textSize="20sp" />
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:fontFamily="sans-serif-medium" />
+
+    <!-- ============== TAGLINE ============== -->
+    <TextView
+        android:id="@+id/tagline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="🌌 Explora el Cosmos Infinito"
+        android:textColor="#AAAAAA"
+        android:textSize="16sp"
+        android:fontFamily="sans-serif-light" />
+
+    <!-- ============== ESPACIADOR ============== -->
+    <View
+        android:layout_width="1dp"
+        android:layout_height="40dp" />
+
+    <!-- ============== INDICADOR DE CARGA ============== -->
+    <ProgressBar
+        android:id="@+id/loading_progress"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:indeterminateTint="#FFFFFF"
+        style="?android:attr/progressBarStyle" />
 
 </LinearLayout>

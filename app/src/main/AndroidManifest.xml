@@ -84,11 +84,16 @@
           ╚════════════════════════════════════════════════════════╝
           Pantalla de inicio de sesión con Google Sign-In
           Punto de entrada principal de la aplicación
+
+          🎨 USA SPLASH THEME PARA INICIO PROFESIONAL:
+          - Fondo negro con logo del gatito se ve INMEDIATAMENTE
+          - NO más fondo blanco feo al inicio
+          - 😺 Tu gatita estará orgullosa 😺
         -->
         <activity
             android:name=".LoginActivity"
             android:exported="true"
-            android:theme="@style/Theme.Blackholeglow">
+            android:theme="@style/Theme.Blackholeglow.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

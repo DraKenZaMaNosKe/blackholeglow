@@ -40,7 +40,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
     private MusicVisualizer musicVisualizer;
     private boolean musicReactiveEnabled = true;  // Activado por defecto
     private MusicIndicator musicIndicator;  // Indicador visual de música
-    private List<EstrelaBailarina> estrellasBailarinas = new ArrayList<>();  // 3 estrella bailarina
+    private List<EstrellaBailarina> estrellasBailarinas = new ArrayList<>();  // 3 estrella bailarina
     private HPBar musicStatusBar;  // Barra de prueba para indicador de música
 
     // Métricas de rendimiento
@@ -173,9 +173,29 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
                 averageFPS = totalFrames / (float) elapsedSeconds;
             }
 
-            // Log muy simplificado (solo si FPS bajo)
+            // ⚡ MEDIDOR DE RENDIMIENTO MEJORADO
+            // Logs más visibles cuando hay problemas de rendimiento
             if (currentFPS < 50) {
-                Log.d(TAG, String.format("[Renderer] FPS: %.1f (avg:%.1f)", currentFPS, averageFPS));
+                // FPS bajo - alerta CRÍTICA
+                Log.w(TAG, "╔════════════════════════════════════════╗");
+                Log.w(TAG, "║   ⚠️  RENDIMIENTO BAJO DETECTADO      ║");
+                Log.w(TAG, "╠════════════════════════════════════════╣");
+                Log.w(TAG, String.format("║ FPS Actual:   %.1f FPS (60 FPS objetivo)  ║", currentFPS));
+                Log.w(TAG, String.format("║ FPS Promedio: %.1f FPS                    ║", averageFPS));
+                Log.w(TAG, String.format("║ FPS Mínimo:   %.1f FPS                    ║", minFPS));
+                Log.w(TAG, String.format("║ FPS Máximo:   %.1f FPS                    ║", maxFPS));
+                Log.w(TAG, "║                                        ║");
+                Log.w(TAG, "║ Sugerencia: Reducir objetos o efectos ║");
+                Log.w(TAG, "╚════════════════════════════════════════╝");
+            } else if (currentFPS < 55) {
+                // FPS justo - advertencia
+                Log.i(TAG, String.format("[Renderer] ⚠️ FPS: %.1f (promedio: %.1f, min: %.1f)",
+                                        currentFPS, averageFPS, minFPS));
+            } else {
+                // FPS bueno - log minimal cada 30 segundos
+                if (elapsedSeconds % 30 == 0) {
+                    Log.d(TAG, String.format("[Renderer] ✓ FPS: %.1f (estable)", currentFPS));
+                }
             }
 
             frameCount = 0;
@@ -330,7 +350,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             estrellasBailarinas.clear();
 
             // Estrella 1 - Posición superior derecha
-            EstrelaBailarina estrella1 = new EstrelaBailarina(
+            EstrellaBailarina estrella1 = new EstrellaBailarina(
                     context, textureManager,
                     1.8f, 0.8f, 0.5f,   // Posición inicial: arriba-derecha
                     0.02f,              // Escala: MINÚSCULA (casi invisible, solo estela)
@@ -341,7 +361,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             estrellasBailarinas.add(estrella1);
 
             // Estrella 2 - Posición izquierda
-            EstrelaBailarina estrella2 = new EstrelaBailarina(
+            EstrellaBailarina estrella2 = new EstrellaBailarina(
                     context, textureManager,
                     -1.5f, 0.3f, -0.8f,  // Posición inicial: izquierda-atrás
                     0.02f,               // Escala: MINÚSCULA
@@ -352,7 +372,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             estrellasBailarinas.add(estrella2);
 
             // Estrella 3 - Posición abajo
-            EstrelaBailarina estrella3 = new EstrelaBailarina(
+            EstrellaBailarina estrella3 = new EstrellaBailarina(
                     context, textureManager,
                     0.5f, -0.6f, 1.2f,   // Posición inicial: abajo-adelante
                     0.02f,               // Escala: MINÚSCULA

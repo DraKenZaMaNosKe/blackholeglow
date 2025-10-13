@@ -21,7 +21,7 @@ import java.util.List;
  * - BEATS: Destellos explosivos
  * - ENERGÍA: Partículas y brillo
  */
-public class EstrelaBailarina extends BaseShaderProgram implements SceneObject, CameraAware, MusicReactive {
+public class EstrellaBailarina extends BaseShaderProgram implements SceneObject, CameraAware, MusicReactive {
     private static final String TAG = "depurar";  // Mismo TAG que SceneRenderer para debugging
 
     // Geometría
@@ -128,8 +128,8 @@ public class EstrelaBailarina extends BaseShaderProgram implements SceneObject, 
     // Offset aleatorio para que cada estrella explote en momentos diferentes
     private final float randomOffset;
 
-    public EstrelaBailarina(Context ctx, TextureManager texMgr,
-                           float x, float y, float z, float scale, float spinSpeed) {
+    public EstrellaBailarina(Context ctx, TextureManager texMgr,
+                             float x, float y, float z, float scale, float spinSpeed) {
         // IMPORTANTE: Usar shaders simples de planeta para empezar
         super(ctx, "shaders/planeta_vertex.glsl",
                    "shaders/planeta_fragment.glsl");

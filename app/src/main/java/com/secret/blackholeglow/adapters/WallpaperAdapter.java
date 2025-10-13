@@ -91,7 +91,25 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
 
         holder.textTitle.setText(item.getNombre());
         holder.textDescription.setText(item.getDescripcion());
-        holder.imagePreview.setImageResource(item.getResourceIdPreview());
+
+        // ╔═════════════════════════════════════════════════════════╗
+        // ║  🎨 ASIGNAR GRADIENTE ÚNICO POR TEMA                   ║
+        // ╚═════════════════════════════════════════════════════════╝
+        int gradientResource;
+        switch (position) {
+            case 0: gradientResource = R.drawable.preview_space; break;      // Espacio
+            case 1: gradientResource = R.drawable.preview_forest; break;     // Bosque
+            case 2: gradientResource = R.drawable.preview_cyberpunk; break;  // Cyberpunk
+            case 3: gradientResource = R.drawable.preview_beach; break;      // Playa
+            case 4: gradientResource = R.drawable.preview_safari; break;     // Safari
+            case 5: gradientResource = R.drawable.preview_rain; break;       // Lluvia
+            case 6: gradientResource = R.drawable.preview_retro; break;      // Retro
+            case 7: gradientResource = R.drawable.preview_blackhole; break;  // Agujero Negro
+            case 8: gradientResource = R.drawable.preview_zen; break;        // Zen
+            case 9: gradientResource = R.drawable.preview_storm; break;      // Tormenta
+            default: gradientResource = R.drawable.preview_space; break;     // Por defecto
+        }
+        holder.imagePreview.setImageResource(gradientResource);
 
 
         // listener común para mostrar diálogo de info
@@ -100,20 +118,100 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         holder.itemView.setOnClickListener(showModal);
 
 
+        // ╔═════════════════════════════════════════════════════════╗
+        // ║  🎨 ASIGNAR SHADERS ÚNICOS POR TEMA                    ║
+        // ║  Cada wallpaper tiene efectos OpenGL personalizados    ║
+        // ╚═════════════════════════════════════════════════════════╝
         AnimatedBorderTextureView vista = holder.itemView.findViewById(R.id.border_effect);
 
+        if (vista != null) {
+            // ╔═════════════════════════════════════════════════════════╗
+            // ║  ✨ MARCOS ANIMADOS CON u_Time - CADA UNO ES ÚNICO    ║
+            // ║  Cada item tiene "vida propia" con efectos en tiempo   ║
+            // ║  real que reflejan su tema                             ║
+            // ╚═════════════════════════════════════════════════════════╝
+            switch (position) {
+                case 0: // 🌌 Viaje Espacial - Estrellas pulsantes en los bordes
+                    vista.setShaderAssets(
+                            "shaders/frame_vertex.glsl",
+                            "shaders/frame_space_fragment.glsl"
+                    );
+                    break;
 
-        if (position  == 0) {
-            vista.setShaderAssets(
-                    "shaders/test_efecto_vertex.glsl",
-                    "shaders/test_efecto_fragment.glsl"
-            );
-        }else if(position == 1){
-            vista.setShaderAssets("shaders/test_efecto_vertex.glsl",
-                    "shaders/test_efecto_fragment.glsl");
+                case 1: // 🌲 Bosque Encantado - Luciérnagas flotando alrededor
+                    vista.setShaderAssets(
+                            "shaders/frame_vertex.glsl",
+                            "shaders/frame_forest_fragment.glsl"
+                    );
+                    break;
+
+                case 2: // 🏙️ Neo Tokyo 2099 - Neón corriendo por el marco
+                    vista.setShaderAssets(
+                            "shaders/frame_vertex.glsl",
+                            "shaders/frame_cyberpunk_fragment.glsl"
+                    );
+                    break;
+
+                case 3: // 🏖️ Paraíso Dorado - Rayos de luz (usar shader beam)
+                    vista.setShaderAssets(
+                            "shaders/beam_vertex.glsl",
+                            "shaders/beam_fragment.glsl"
+                    );
+                    break;
+
+                case 4: // 🦁 Safari Salvaje - Partículas de polvo
+                    vista.setShaderAssets(
+                            "shaders/particula_vertex.glsl",
+                            "shaders/particula_fragment.glsl"
+                    );
+                    break;
+
+                case 5: // 🌧️ Lluvia Mística - Gotas cayendo en los bordes
+                    vista.setShaderAssets(
+                            "shaders/frame_vertex.glsl",
+                            "shaders/frame_rain_fragment.glsl"
+                    );
+                    break;
+
+                case 6: // 🎮 Pixel Quest - Píxeles parpadeando (usar battery)
+                    vista.setShaderAssets(
+                            "shaders/battery_vertex.glsl",
+                            "shaders/battery_fragment.glsl"
+                    );
+                    break;
+
+                case 7: // 🕳️ Portal Infinito - Distorsión gravitacional
+                    vista.setShaderAssets(
+                            "shaders/forcefield_vertex.glsl",
+                            "shaders/forcefield_fragment.glsl"
+                    );
+                    break;
+
+                case 8: // 🌸 Jardín Zen - Ondas suaves (usar test_border)
+                    vista.setShaderAssets(
+                            "shaders/test_border_vertex.glsl",
+                            "shaders/test_border_fragment.glsl"
+                    );
+                    break;
+
+                case 9: // ⚡ Furia Celestial - Rayos eléctricos en los bordes
+                    vista.setShaderAssets(
+                            "shaders/frame_vertex.glsl",
+                            "shaders/frame_storm_fragment.glsl"
+                    );
+                    break;
+
+                default:
+                    // Shader por defecto
+                    vista.setShaderAssets(
+                            "shaders/frame_vertex.glsl",
+                            "shaders/frame_space_fragment.glsl"
+                    );
+                    break;
+            }
+
+            vista.setOnClickListener(showModal);
         }
-
-        if (vista != null) vista.setOnClickListener(showModal);
 
         // animación "bounce" + vibración + diálogo info
         holder.buttonApply.setOnClickListener(v -> {

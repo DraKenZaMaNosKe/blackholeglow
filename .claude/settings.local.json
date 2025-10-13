@@ -18,7 +18,16 @@
       "Bash(export PATH=\"$JAVA_HOME/bin:$PATH\")",
       "Bash(cat:*)",
       "Bash(timeout:*)",
-      "Bash(adb install:*)"
+      "Bash(adb install:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\n📚 Documentación: Solución de sincronización entre PCs\n\nAgrega documentos de ayuda para resolver problemas de compatibilidad\nentre la PC de casa y la oficina:\n\n- PLAN_SINCRONIZACION.md: Guía paso a paso para mañana en la oficina\n- COMPATIBILIDAD_RESPALDO.md: Versiones alternativas de Gradle/AGP\n- verificar-compatibilidad.bat: Script para verificar antes de push\n\nProblema: AGP 8.12.3 requiere Android Studio Ladybug 2024.2.1+\nSolución: Actualizar Android Studio o usar terminal con gradlew.bat\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(find:*)",
+      "Read(//c/Users/eduar/AppData/Local/Android/Sdk/platform-tools/**)",
+      "Bash(adb:*)",
+      "Bash(\"C:/Users/eduar/AppData/Local/Android/Sdk/platform-tools/adb.exe\" devices)",
+      "Bash(\"C:/Users/eduar/AppData/Local/Android/Sdk/platform-tools/adb.exe\" install -r \"app/build/outputs/apk/debug/app-debug.apk\")",
+      "Bash(\"C:/Users/eduar/AppData/Local/Android/Sdk/platform-tools/adb.exe\" logcat -d)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []

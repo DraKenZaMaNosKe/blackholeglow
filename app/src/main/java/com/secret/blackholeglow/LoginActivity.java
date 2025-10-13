@@ -46,6 +46,14 @@ public class LoginActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // ╔════════════════════════════════════════════════════════════╗
+        // ║  🎨 CAMBIAR DE SPLASH THEME A TEMA NORMAL                 ║
+        // ║  Esto permite que el contenido de la Activity se vea bien ║
+        // ╚════════════════════════════════════════════════════════════╝
+        // El splash con fondo negro y gatito ya se mostró (instantáneamente)
+        // Ahora cambiamos al tema normal para el contenido de la Activity
+        setTheme(R.style.Theme_Blackholeglow);
+
         super.onCreate(savedInstanceState);
 
         // Verificar si el usuario ya tiene sesión iniciada
