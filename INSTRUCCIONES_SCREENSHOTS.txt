@@ -1,0 +1,141 @@
+═══════════════════════════════════════════════════════════════════════════
+📸 INSTRUCCIONES PARA TOMAR SCREENSHOTS DE BLACK HOLE GLOW
+═══════════════════════════════════════════════════════════════════════════
+
+🎯 NECESITAS 4 CAPTURAS DE PANTALLA MÍNIMO (recomendado 6-8)
+
+─────────────────────────────────────────────────────────────────────────
+
+📱 CÓMO TOMAR SCREENSHOTS EN ANDROID:
+1. Mantén presionado: POWER + VOLUMEN ABAJO al mismo tiempo
+2. Escucharás un "click" y verás una animación
+3. La captura se guarda en la galería automáticamente
+
+─────────────────────────────────────────────────────────────────────────
+
+🖼️ CAPTURAS QUE NECESITAS (EN ORDEN):
+
+CAPTURA 1: PANTALLA PRINCIPAL - LISTA DE WALLPAPERS ⭐ OBLIGATORIA
+📍 Dónde: Pantalla principal de la app
+📷 Qué mostrar:
+   - Lista completa de los 10 wallpapers
+   - Menú lateral cerrado
+   - Vista limpia sin notificaciones
+💡 Tip: Asegúrate que se vean bien los nombres y thumbnails
+
+CAPTURA 2: WALLPAPER APLICADO - AGUJERO NEGRO ⭐ OBLIGATORIA
+📍 Dónde: Pantalla de inicio de Android con el wallpaper activo
+📷 Qué mostrar:
+   - Wallpaper del agujero negro en acción
+   - Pantalla de inicio (homescreen) de tu teléfono
+   - Se deben ver los íconos de apps sobre el wallpaper
+💡 Tip: Toma la captura cuando el wallpaper se vea más impresionante
+
+CAPTURA 3: WALLPAPER APLICADO - UNIVERSO/PLANETAS ⭐ OBLIGATORIA
+📍 Dónde: Pantalla de inicio con otro wallpaper
+📷 Qué mostrar:
+   - Wallpaper diferente al anterior (ej: universo o planetas)
+   - Muestra variedad de fondos disponibles
+💡 Tip: Elige el que se vea más colorido o impresionante
+
+CAPTURA 4: MENÚ LATERAL - PERFIL DE USUARIO ⭐ OBLIGATORIA
+📍 Dónde: Dentro de la app, menú lateral abierto
+📷 Qué mostrar:
+   - Menú lateral deslizado (abierto)
+   - Tu nombre y foto de perfil de Google visible
+   - Opciones del menú: Inicio, Mi Cuenta, Cerrar sesión, Eliminar cuenta
+💡 Tip: Muestra que la app tiene funciones sociales
+
+CAPTURA 5: PREVIEW DE WALLPAPER (OPCIONAL PERO RECOMENDADA)
+📍 Dónde: Pantalla de preview antes de aplicar
+📷 Qué mostrar:
+   - Un wallpaper en modo preview
+   - Botón "Aplicar" visible
+💡 Tip: Muestra que es fácil cambiar de wallpaper
+
+CAPTURA 6: VISUALIZADOR MUSICAL (OPCIONAL PERO IMPRESIONANTE)
+📍 Dónde: Wallpaper con música reproduciéndose
+📷 Qué mostrar:
+   - Efecto del visualizador musical funcionando
+   - Preferiblemente con colores vivos reaccionando al audio
+💡 Tip: Reproduce música mientras tomas la captura
+
+─────────────────────────────────────────────────────────────────────────
+
+📂 DÓNDE ENCONTRAR TUS SCREENSHOTS:
+1. Abre la app "Galería" o "Fotos"
+2. Busca el álbum "Screenshots" o "Capturas de pantalla"
+3. Ahí estarán todas las que tomaste
+
+─────────────────────────────────────────────────────────────────────────
+
+💾 TRANSFERIR A LA PC:
+
+OPCIÓN A (Cable USB):
+1. Conecta tu teléfono a la PC con cable USB
+2. En el teléfono, toca la notificación USB
+3. Selecciona "Transferir archivos" o "MTP"
+4. En la PC, abre "Este equipo" → tu teléfono → DCIM → Screenshots
+5. Copia las 4 capturas a: C:\Users\eduar\AndroidStudioProjects\blackholeglow\screenshots\
+
+OPCIÓN B (Google Drive):
+1. Abre Google Drive en el teléfono
+2. Toca "+" → Subir
+3. Selecciona las 4 capturas
+4. Espera a que suban
+5. En la PC, descárgalas desde drive.google.com
+
+OPCIÓN C (WhatsApp/Telegram):
+1. Envíate las capturas a ti mismo
+2. Ábrelas en la PC
+3. Descárgalas
+
+─────────────────────────────────────────────────────────────────────────
+
+✅ CHECKLIST ANTES DE SUBIR A PLAY CONSOLE:
+
+□ Las capturas están en formato PNG o JPEG
+□ Cada captura es menor a 8 MB
+□ Resolución mínima: 1080px en el lado más largo
+□ Tienes mínimo 4 capturas (recomendado 6-8)
+□ Las capturas se ven nítidas y claras
+□ No hay información personal visible (números de teléfono, etc.)
+□ Las capturas muestran la app funcionando correctamente
+
+─────────────────────────────────────────────────────────────────────────
+
+💡 TIPS PROFESIONALES:
+
+1. LIMPIA LA PANTALLA antes de tomar capturas:
+   - Cierra todas las notificaciones
+   - Pon el brillo al máximo
+   - Desactiva "No molestar"
+
+2. MUESTRA DIVERSIDAD:
+   - No tomes 4 capturas del mismo wallpaper
+   - Alterna entre pantallas de la app y wallpapers aplicados
+
+3. ORDEN IMPORTA:
+   - La primera captura es la más importante (aparece primero en Play Store)
+   - Pon tu mejor wallpaper o la vista más impresionante al inicio
+
+4. CONSIDERA AGREGAR TEXTO (OPCIONAL):
+   - Puedes editar las capturas después con apps como Canva
+   - Agrega textos tipo: "10 Fondos Únicos", "Renderizado 3D Real"
+   - Pero NO exageres, Play Store puede rechazarlas si hay mucho texto
+
+─────────────────────────────────────────────────────────────────────────
+
+🎯 CUANDO TERMINES:
+
+1. Guarda todas las capturas en una carpeta
+2. Nómbralas claramente:
+   - screenshot_1_lista.png
+   - screenshot_2_agujero_negro.png
+   - screenshot_3_universo.png
+   - screenshot_4_menu_perfil.png
+
+3. Verifica que cumplan los requisitos de Play Console
+4. ¡Listo para subir!
+
+═══════════════════════════════════════════════════════════════════════════

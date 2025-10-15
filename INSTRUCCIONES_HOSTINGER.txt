@@ -1,0 +1,77 @@
+═══════════════════════════════════════════════════════════════════════════
+📋 INSTRUCCIONES PARA SUBIR PÁGINA DE ELIMINACIÓN DE CUENTA A HOSTINGER
+═══════════════════════════════════════════════════════════════════════════
+
+🎯 OBJETIVO:
+Crear la página https://intrapcsolutions.com/eliminar-cuenta para cumplir
+con los requisitos de Google Play Store sobre eliminación de cuentas.
+
+─────────────────────────────────────────────────────────────────────────
+
+📍 PASO 1: ACCEDER AL FILE MANAGER DE HOSTINGER
+1. Ingresa a tu panel de control de Hostinger
+2. Busca la sección "File Manager" o "Administrador de Archivos"
+3. Haz clic para abrir el administrador de archivos web
+
+─────────────────────────────────────────────────────────────────────────
+
+📂 PASO 2: NAVEGAR A LA CARPETA CORRECTA
+1. En el File Manager, busca la carpeta "public_html"
+2. Esta es la carpeta raíz de tu dominio intrapcsolutions.com
+3. Abre esa carpeta
+
+─────────────────────────────────────────────────────────────────────────
+
+📁 PASO 3: CREAR LA CARPETA "eliminar-cuenta"
+1. Dentro de public_html, haz clic en "Nueva Carpeta" o "New Folder"
+2. Nombra la carpeta exactamente: eliminar-cuenta
+3. Entra a esa carpeta recién creada
+
+─────────────────────────────────────────────────────────────────────────
+
+📄 PASO 4: CREAR EL ARCHIVO HTML
+1. Dentro de la carpeta "eliminar-cuenta", crea un nuevo archivo
+2. Nómbralo exactamente: index.html
+3. Haz clic en "Editar" o "Edit" para abrir el editor
+
+─────────────────────────────────────────────────────────────────────────
+
+📝 PASO 5: COPIAR Y PEGAR EL CONTENIDO HTML
+Copia TODO el contenido HTML que está más abajo en este archivo
+(desde <!DOCTYPE html> hasta </html>) y pégalo en el archivo index.html
+
+─────────────────────────────────────────────────────────────────────────
+
+💾 PASO 6: GUARDAR Y VERIFICAR
+1. Guarda el archivo (botón "Guardar" o "Save")
+2. Abre tu navegador y visita: https://intrapcsolutions.com/eliminar-cuenta
+3. Deberías ver la página de eliminación de cuenta funcionando
+
+─────────────────────────────────────────────────────────────────────────
+
+✅ PASO 7: ACTUALIZAR PLAY CONSOLE
+1. Ve a Play Console
+2. En la sección de "Seguridad de Datos" o donde te pide el enlace
+3. Ingresa la URL: https://intrapcsolutions.com/eliminar-cuenta
+4. Guarda los cambios
+
+─────────────────────────────────────────────────────────────────────────
+
+⚠️ NOTAS IMPORTANTES:
+• El archivo DEBE llamarse "index.html" (no "eliminar-cuenta.html")
+• La carpeta DEBE llamarse "eliminar-cuenta" (con guion, sin espacios)
+• Verifica que el email privacy@intrapcsolutions.com esté activo
+• Si no tienes ese email, cámbialo en el HTML por tu email real
+
+─────────────────────────────────────────────────────────────────────────
+
+🔄 ALTERNATIVA CON FTP (Si prefieres usar cliente FTP):
+1. Descarga FileZilla o cualquier cliente FTP
+2. Conecta con las credenciales FTP de Hostinger
+3. Navega a /public_html/
+4. Crea carpeta "eliminar-cuenta"
+5. Sube el archivo como "index.html" dentro de esa carpeta
+
+═══════════════════════════════════════════════════════════════════════════
+📄 CONTENIDO HTML A COPIAR (COMIENZA DESPUÉS DE ESTA LÍNEA)
+═══════════════════════════════════════════════════════════════════════════

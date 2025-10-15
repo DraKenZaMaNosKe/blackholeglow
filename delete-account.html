@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eliminar Cuenta - Black Hole Glow</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.95;
+        }
+
+        .content {
+            padding: 40px 30px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 5px;
+        }
+
+        .warning-box h3 {
+            color: #856404;
+            margin-bottom: 10px;
+            font-size: 20px;
+        }
+
+        .warning-box p {
+            color: #856404;
+            margin: 5px 0;
+        }
+
+        .info-box {
+            background: #d1ecf1;
+            border-left: 5px solid #17a2b8;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 5px;
+        }
+
+        .info-box h3 {
+            color: #0c5460;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .info-box ul {
+            color: #0c5460;
+            padding-left: 20px;
+        }
+
+        .info-box li {
+            margin: 8px 0;
+        }
+
+        h2 {
+            color: #333;
+            margin: 30px 0 20px 0;
+            font-size: 24px;
+        }
+
+        .steps {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .step {
+            margin: 20px 0;
+            padding-left: 40px;
+            position: relative;
+        }
+
+        .step::before {
+            content: attr(data-step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .step h4 {
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 18px;
+        }
+
+        .step p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .button-container {
+            text-align: center;
+            margin: 40px 0;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: bold;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .retention-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .retention-table th,
+        .retention-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .retention-table th {
+            background-color: #667eea;
+            color: white;
+            font-weight: bold;
+        }
+
+        .retention-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            color: #666;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                margin: 20px auto;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .content {
+                padding: 25px 20px;
+            }
+
+            .btn {
+                padding: 12px 30px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗑️ Eliminar Cuenta</h1>
+            <p>Black Hole Glow - Intra PC Solutions</p>
+        </div>
+
+        <div class="content">
+            <div class="warning-box">
+                <h3>⚠️ Advertencia Importante</h3>
+                <p><strong>Esta acción es permanente e irreversible.</strong></p>
+                <p>Una vez eliminada tu cuenta, no podrás recuperar:</p>
+                <ul style="margin-top: 10px; padding-left: 20px;">
+                    <li>Tu perfil de usuario</li>
+                    <li>Tus fondos de pantalla favoritos guardados</li>
+                    <li>Tus preferencias y configuraciones personalizadas</li>
+                </ul>
+            </div>
+
+            <h2>📋 Pasos para Solicitar la Eliminación de tu Cuenta</h2>
+
+            <div class="steps">
+                <div class="step" data-step="1">
+                    <h4>Prepara tu información</h4>
+                    <p>Ten a mano la dirección de correo electrónico asociada a tu cuenta de Google con la que iniciaste sesión en Black Hole Glow.</p>
+                </div>
+
+                <div class="step" data-step="2">
+                    <h4>Envía tu solicitud</h4>
+                    <p>Haz clic en el botón "Solicitar Eliminación" a continuación para enviarnos un correo electrónico. Incluye tu email de Google y confirma que deseas eliminar tu cuenta.</p>
+                </div>
+
+                <div class="step" data-step="3">
+                    <h4>Confirma tu identidad</h4>
+                    <p>Responderemos a tu solicitud en un plazo de 48 horas para verificar tu identidad y confirmar la eliminación.</p>
+                </div>
+
+                <div class="step" data-step="4">
+                    <h4>Eliminación completada</h4>
+                    <p>Una vez confirmada, procederemos a eliminar tu cuenta y todos los datos asociados en un plazo de 7 días hábiles. Recibirás una confirmación por correo electrónico.</p>
+                </div>
+            </div>
+
+            <div class="button-container">
+                <a href="mailto:privacy@intrapcsolutions.com?subject=Solicitud%20de%20Eliminaci%C3%B3n%20de%20Cuenta%20-%20Black%20Hole%20Glow&body=Hola%20Intra%20PC%20Solutions%2C%0A%0ASolicito%20la%20eliminaci%C3%B3n%20de%20mi%20cuenta%20en%20Black%20Hole%20Glow.%0A%0AEmail%20de%20mi%20cuenta%20de%20Google%3A%20%5BEscribe%20tu%20email%20aqu%C3%AD%5D%0A%0AConfirmo%20que%20entiendo%20que%20esta%20acci%C3%B3n%20es%20permanente%20e%20irreversible.%0A%0AGracias."
+                   class="btn">
+                    📧 Solicitar Eliminación
+                </a>
+            </div>
+
+            <div class="info-box">
+                <h3>📊 Datos que se Eliminarán</h3>
+                <ul>
+                    <li><strong>Información de perfil:</strong> Nombre, email, foto de perfil</li>
+                    <li><strong>Datos de autenticación:</strong> Tokens de acceso, credenciales de Firebase</li>
+                    <li><strong>Preferencias:</strong> Fondos de pantalla favoritos, configuraciones guardadas</li>
+                    <li><strong>Historial de uso:</strong> Datos analíticos asociados a tu cuenta</li>
+                </ul>
+            </div>
+
+            <h2>🕐 Períodos de Retención</h2>
+
+            <table class="retention-table">
+                <thead>
+                    <tr>
+                        <th>Tipo de Dato</th>
+                        <th>Acción</th>
+                        <th>Período</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Información de perfil y autenticación</td>
+                        <td>Eliminado inmediatamente</td>
+                        <td>0-7 días</td>
+                    </tr>
+                    <tr>
+                        <td>Preferencias y configuraciones</td>
+                        <td>Eliminado inmediatamente</td>
+                        <td>0-7 días</td>
+                    </tr>
+                    <tr>
+                        <td>Datos analíticos agregados</td>
+                        <td>Anonimizado (no eliminado)</td>
+                        <td>Permanente*</td>
+                    </tr>
+                    <tr>
+                        <td>Copias de seguridad del sistema</td>
+                        <td>Eliminado automáticamente</td>
+                        <td>30-90 días</td>
+                    </tr>
+                    <tr>
+                        <td>Logs de solicitudes legales</td>
+                        <td>Conservado si es requerido por ley</td>
+                        <td>Según normativa</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p style="font-size: 14px; color: #666; margin-top: 10px;">
+                * Los datos analíticos agregados se anonimizan (se elimina cualquier referencia a tu identidad) pero se conservan para estadísticas generales de uso de la app. Estos datos NO pueden ser asociados contigo después de la anonimización.
+            </p>
+
+            <h2>❓ Eliminación Parcial de Datos</h2>
+            <p>Si solo deseas eliminar <strong>parte de tus datos</strong> sin cerrar tu cuenta (por ejemplo, solo tus fondos favoritos), contáctanos al mismo email especificando qué datos deseas eliminar. Evaluaremos tu solicitud y te responderemos con las opciones disponibles.</p>
+
+            <h2>📞 ¿Necesitas Ayuda?</h2>
+            <p>Si tienes dudas sobre el proceso de eliminación o necesitas asistencia, contáctanos:</p>
+            <ul style="margin: 15px 0; padding-left: 20px;">
+                <li><strong>Email:</strong> <a href="mailto:privacy@intrapcsolutions.com">privacy@intrapcsolutions.com</a></li>
+                <li><strong>Sitio web:</strong> <a href="https://intrapcsolutions.com" target="_blank">intrapcsolutions.com</a></li>
+                <li><strong>Política de Privacidad:</strong> <a href="https://intrapcsolutions.com/privacidad" target="_blank">Ver política completa</a></li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p>© 2024 Intra PC Solutions - Black Hole Glow</p>
+            <p style="margin-top: 10px;">
+                <a href="https://intrapcsolutions.com">Inicio</a> |
+                <a href="https://intrapcsolutions.com/privacidad">Privacidad</a> |
+                <a href="mailto:privacy@intrapcsolutions.com">Contacto</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

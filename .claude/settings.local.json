@@ -30,7 +30,16 @@
       "Bash(git checkout:*)",
       "Bash(keytool:*)",
       "Bash(echo:*)",
-      "Bash(\"C:/Program Files/Android/Android Studio/jbr/bin/keytool.exe\" -genkeypair -v -keystore C:/Users/eduar/AndroidStudioProjects/blackholeglow/blackholeglow-release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias blackholeglow -storepass blackholeglow2025 -keypass blackholeglow2025 -dname \"CN=Black Hole Glow, OU=Development, O=Secret Apps, L=Ciudad, ST=Estado, C=MX\")"
+      "Bash(\"C:/Program Files/Android/Android Studio/jbr/bin/keytool.exe\" -genkeypair -v -keystore C:/Users/eduar/AndroidStudioProjects/blackholeglow/blackholeglow-release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias blackholeglow -storepass blackholeglow2025 -keypass blackholeglow2025 -dname \"CN=Black Hole Glow, OU=Development, O=Secret Apps, L=Ciudad, ST=Estado, C=MX\")",
+      "Bash(python generate_playstore_assets.py:*)",
+      "Bash(python:*)",
+      "Bash(\"C:/Users/eduar/AppData/Local/Android/Sdk/platform-tools/adb.exe\" pull /sdcard/Pictures/Screenshots/ screenshots_temp/)",
+      "Bash(\"C:/Users/eduar/AppData/Local/Android/Sdk/platform-tools/adb.exe\" shell screencap /sdcard/screenshot_temp_1.png)",
+      "Bash(\"C:/Users/eduar/AppData/Local/Android/Sdk/platform-tools/adb.exe\" pull /sdcard/screenshot_temp_1.png /c/Users/eduar/AndroidStudioProjects/blackholeglow/screenshot_1_fixed.png)",
+      "Bash(\"C:/Users/eduar/AppData/Local/Android/Sdk/platform-tools/adb.exe\" shell rm /sdcard/screenshot_temp_1.png)",
+      "Bash(wmic:*)",
+      "Bash(robocopy:*)",
+      "Bash(xcopy:*)"
     ],
     "deny": [],
     "ask": []

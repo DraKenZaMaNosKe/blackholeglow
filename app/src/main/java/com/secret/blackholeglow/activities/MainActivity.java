@@ -5,13 +5,16 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.ContextCompat;
@@ -20,7 +23,16 @@ import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.bitmap.CircleCrop;
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.material.navigation.NavigationView;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GoogleAuthProvider;
+import com.secret.blackholeglow.LoginActivity;
 import com.secret.blackholeglow.MusicPermissionActivity;
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.UserManager;
@@ -73,6 +85,13 @@ public class MainActivity extends AppCompatActivity
     // ╚══════════════════════════════════════════════════════╝
     private DrawerLayout drawerLayout;
 
+    // ╔══════════════════════════════════════════════════════╗
+    // ║   🔐 Firebase Auth para gestionar autenticación      ║
+    // ╚══════════════════════════════════════════════════════╝
+    private FirebaseAuth mAuth;
+    private GoogleSignInClient mGoogleSignInClient;
+    private static final String TAG = "MainActivity";
+
     // ╔════════════════════════════════════════════════════════╗
     // ║ 🌟 Método onCreate: Inicialización de la Activity     ║
     // ╚════════════════════════════════════════════════════════╝
@@ -81,6 +100,13 @@ public class MainActivity extends AppCompatActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // 0️⃣ Inicializar Firebase Auth y Google Sign-In
+        mAuth = FirebaseAuth.getInstance();
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id))
+                .requestEmail()
+                .build();
+        mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
 
         // 1️⃣ Configurar Toolbar como ActionBar
         //    ┌───────────────────────────────────────────┐
@@ -188,6 +214,16 @@ public class MainActivity extends AppCompatActivity
                     )
                     .commit();
 
+        } else if (id == R.id.nav_logout) {
+            // Cerrar sesión
+            showLogoutDialog();
+            return true;
+
+        } else if (id == R.id.nav_delete_account) {
+            // Mostrar diálogo de confirmación para eliminar cuenta
+            showDeleteAccountDialog();
+            // No cerramos el drawer aquí, se cerrará después del diálogo
+            return true;
         }
 
         // Cerrar el Drawer después de seleccionar un ítem
@@ -246,5 +282,170 @@ public class MainActivity extends AppCompatActivity
                     .error(R.drawable.ic_launcher_foreground)
                     .into(ivAvatar);
         }
+    }
+
+    // ╔═════════════════════════════════════════════════════════════════════╗
+    // ║ 🗑️ Método showDeleteAccountDialog: Muestra diálogo de confirmación  ║
+    // ╚═════════════════════════════════════════════════════════════════════╝
+    /**
+     * Muestra un diálogo de confirmación antes de eliminar la cuenta del usuario.
+     * Si el usuario confirma, procede a eliminar la cuenta de Firebase y Google.
+     */
+    private void showDeleteAccountDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("⚠️ Eliminar mi cuenta")
+                .setMessage("Esta acción es PERMANENTE e IRREVERSIBLE.\n\n" +
+                        "Se eliminarán:\n" +
+                        "• Tu perfil de usuario\n" +
+                        "• Tus fondos favoritos guardados\n" +
+                        "• Todas tus preferencias\n\n" +
+                        "¿Estás seguro de que deseas continuar?")
+                .setPositiveButton("Sí, eliminar", (dialog, which) -> {
+                    // Cerrar drawer antes de proceder
+                    drawerLayout.closeDrawer(GravityCompat.START);
+                    // Proceder a eliminar la cuenta
+                    deleteAccount();
+                })
+                .setNegativeButton("Cancelar", (dialog, which) -> {
+                    // Cerrar drawer
+                    drawerLayout.closeDrawer(GravityCompat.START);
+                    dialog.dismiss();
+                })
+                .setCancelable(true)
+                .show();
+    }
+
+    // ╔═════════════════════════════════════════════════════════════════════╗
+    // ║ 🚪 Método showLogoutDialog: Muestra diálogo de cerrar sesión        ║
+    // ╚═════════════════════════════════════════════════════════════════════╝
+    /**
+     * Muestra un diálogo de confirmación antes de cerrar sesión.
+     */
+    private void showLogoutDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("Cerrar sesión")
+                .setMessage("¿Estás seguro de que deseas cerrar sesión?\n\nTendrás que iniciar sesión nuevamente la próxima vez que abras la app.")
+                .setPositiveButton("Sí, cerrar sesión", (dialog, which) -> {
+                    drawerLayout.closeDrawer(GravityCompat.START);
+                    performLogout();
+                })
+                .setNegativeButton("Cancelar", (dialog, which) -> {
+                    drawerLayout.closeDrawer(GravityCompat.START);
+                    dialog.dismiss();
+                })
+                .setCancelable(true)
+                .show();
+    }
+
+    // ╔═════════════════════════════════════════════════════════════════════╗
+    // ║ 🚪 Método performLogout: Cierra sesión del usuario                  ║
+    // ╚═════════════════════════════════════════════════════════════════════╝
+    /**
+     * Cierra la sesión de Firebase y Google, limpia datos locales y redirige al login.
+     */
+    private void performLogout() {
+        Toast.makeText(this, "Cerrando sesión...", Toast.LENGTH_SHORT).show();
+
+        // Cerrar sesión de Firebase
+        mAuth.signOut();
+
+        // Cerrar sesión de Google
+        mGoogleSignInClient.signOut().addOnCompleteListener(task -> {
+            // Limpiar datos del UserManager
+            UserManager.getInstance(MainActivity.this).logout();
+
+            Toast.makeText(MainActivity.this, "Sesión cerrada", Toast.LENGTH_SHORT).show();
+
+            // Redirigir a LoginActivity
+            Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            finish();
+        });
+    }
+
+    // ╔═════════════════════════════════════════════════════════════════════╗
+    // ║ 🔥 Método deleteAccount: Elimina la cuenta de Firebase              ║
+    // ╚═════════════════════════════════════════════════════════════════════╝
+    /**
+     * Elimina la cuenta del usuario de Firebase Authentication y cierra sesión de Google.
+     * Re-autentica automáticamente al usuario antes de eliminar para evitar errores.
+     * Después cierra la app completamente.
+     */
+    private void deleteAccount() {
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user == null) {
+            Toast.makeText(this, "No hay usuario autenticado", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Mostrar mensaje de progreso
+        Toast.makeText(this, "Eliminando cuenta...", Toast.LENGTH_SHORT).show();
+
+        // Primero, re-autenticar al usuario para evitar el error "requires recent authentication"
+        GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
+        if (account == null) {
+            Toast.makeText(this, "Error: no se pudo obtener la cuenta de Google", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String idToken = account.getIdToken();
+        if (idToken == null) {
+            Toast.makeText(this, "Error: no se pudo obtener el token de autenticación", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Crear credencial con el token de Google
+        AuthCredential credential = GoogleAuthProvider.getCredential(idToken, null);
+
+        // Re-autenticar al usuario
+        user.reauthenticate(credential)
+                .addOnCompleteListener(reauthTask -> {
+                    if (reauthTask.isSuccessful()) {
+                        Log.d(TAG, "Re-autenticación exitosa, procediendo a eliminar cuenta...");
+
+                        // Ahora eliminar la cuenta
+                        user.delete()
+                                .addOnCompleteListener(deleteTask -> {
+                                    if (deleteTask.isSuccessful()) {
+                                        Log.d(TAG, "Cuenta eliminada exitosamente de Firebase");
+
+                                        // Cerrar sesión de Google
+                                        mGoogleSignInClient.signOut().addOnCompleteListener(signOutTask -> {
+                                            Log.d(TAG, "Sesión de Google cerrada");
+
+                                            // Limpiar datos del UserManager
+                                            UserManager.getInstance(MainActivity.this).logout();
+
+                                            // Mostrar mensaje de éxito
+                                            Toast.makeText(MainActivity.this,
+                                                    "Cuenta eliminada exitosamente. Cerrando app...",
+                                                    Toast.LENGTH_LONG).show();
+
+                                            // Esperar un momento para que se vea el Toast y luego cerrar la app
+                                            new android.os.Handler().postDelayed(() -> {
+                                                // Cerrar la app completamente
+                                                finishAffinity(); // Cierra todas las activities
+                                                System.exit(0); // Termina el proceso
+                                            }, 2000); // 2 segundos de delay
+                                        });
+                                    } else {
+                                        // Error al eliminar cuenta
+                                        Log.e(TAG, "Error al eliminar cuenta", deleteTask.getException());
+                                        String errorMsg = "Error al eliminar la cuenta: ";
+                                        if (deleteTask.getException() != null) {
+                                            errorMsg += deleteTask.getException().getMessage();
+                                        }
+                                        Toast.makeText(MainActivity.this, errorMsg, Toast.LENGTH_LONG).show();
+                                    }
+                                });
+                    } else {
+                        // Error en la re-autenticación
+                        Log.e(TAG, "Error en re-autenticación", reauthTask.getException());
+                        Toast.makeText(MainActivity.this,
+                                "Error al verificar tu identidad. Por favor, cierra sesión e inicia sesión nuevamente antes de eliminar tu cuenta.",
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
     }
 }
