@@ -39,7 +39,8 @@
       "Bash(\"C:/Users/eduar/AppData/Local/Android/Sdk/platform-tools/adb.exe\" shell rm /sdcard/screenshot_temp_1.png)",
       "Bash(wmic:*)",
       "Bash(robocopy:*)",
-      "Bash(xcopy:*)"
+      "Bash(xcopy:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\n📸 Respaldo antes de limpieza de archivos no utilizados\n\nCommit de seguridad antes de eliminar:\n- 6 clases Java no referenciadas\n- 17 shaders GLSL no usados\n- 13 drawables no referenciados\n\nTotal: 36 archivos candidatos para eliminación\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []
