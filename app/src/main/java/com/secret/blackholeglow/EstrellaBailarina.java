@@ -95,6 +95,29 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
     private static final float MIN_EXPLOSION_INTERVAL = 0.5f;  // MUY FRECUENTE: 0.5 segundos
     private float timeSinceLastExplosion = 0f;
 
+    // ===== ✨ SISTEMA DE PARTÍCULAS DE LA ESTELA (NUEVO) ✨ =====
+    // Partículas pequeñas que se desprenden continuamente de la cola de la estela
+    private static class TrailParticle {
+        float x, y, z;           // Posición
+        float vx, vy, vz;        // Velocidad (muy pequeña, efecto de polvo flotante)
+        float life;              // Vida restante (1.0 = recién creada, 0.0 = muerta)
+        float maxLife;           // Vida máxima (para fade out suave)
+        float size;              // Tamaño (más pequeñas que explosiones)
+        float[] color;           // Color RGB (arcoíris como la estela)
+        boolean active;          // Está activa?
+        float rotationPhase;     // Fase de rotación para movimiento ondulante
+
+        TrailParticle() {
+            color = new float[3];
+            active = false;
+        }
+    }
+
+    private static final int MAX_TRAIL_PARTICLES = 24;  // Más partículas porque son pequeñas
+    private final TrailParticle[] trailParticles = new TrailParticle[MAX_TRAIL_PARTICLES];
+    private float trailParticleSpawnTimer = 0f;  // Temporizador para generar partículas
+    private static final float TRAIL_PARTICLE_SPAWN_INTERVAL = 0.08f;  // Cada 0.08s = ~12 partículas/segundo
+
     // Camera
     private CameraController camera;
 
@@ -196,9 +219,14 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
         trail = new MeteorTrail(MeteorTrail.TrailType.RAINBOW);
         trail.setContext(ctx);
 
-        // ===== INICIALIZAR SISTEMA DE PARTÍCULAS =====
+        // ===== INICIALIZAR SISTEMA DE PARTÍCULAS DE EXPLOSIÓN =====
         for (int i = 0; i < MAX_PARTICLES; i++) {
             particles[i] = new Particle();
+        }
+
+        // ===== ✨ INICIALIZAR SISTEMA DE PARTÍCULAS DE LA ESTELA ✨ =====
+        for (int i = 0; i < MAX_TRAIL_PARTICLES; i++) {
+            trailParticles[i] = new TrailParticle();
         }
 
         // ===== CREAR GEOMETRÍA SIMPLE PARA PARTÍCULAS (CUADRADO BILLBOARD) =====
@@ -208,8 +236,9 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
         Log.d(TAG, "   Program ID: " + programId);
         Log.d(TAG, "   Vertex count: " + indexCount);
         Log.d(TAG, "   Estela mágica: ACTIVADA (tipo RAINBOW)");
-        Log.d(TAG, "   Sistema de partículas: " + MAX_PARTICLES + " partículas listas 💥");
-        Log.d(TAG, "   🔥🔥🔥 VERSIÓN CON EXPLOSIONES v2.0 🔥🔥🔥");
+        Log.d(TAG, "   Sistema de partículas de explosión: " + MAX_PARTICLES + " partículas 💥");
+        Log.d(TAG, "   ✨ Sistema de partículas de estela: " + MAX_TRAIL_PARTICLES + " partículas ✨");
+        Log.d(TAG, "   🔥🔥🔥 VERSIÓN CON POLVO ESTELAR v3.0 🔥🔥🔥");
     }
 
     /**
@@ -283,8 +312,11 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
             trail.update(dt, position[0], position[1], position[2], baseScale, true);
         }
 
-        // ===== ACTUALIZAR SISTEMA DE PARTÍCULAS =====
+        // ===== ACTUALIZAR SISTEMA DE PARTÍCULAS DE EXPLOSIÓN =====
         updateParticles(dt);
+
+        // ===== ✨ ACTUALIZAR SISTEMA DE PARTÍCULAS DE LA ESTELA ✨ =====
+        updateTrailParticles(dt);
 
         // ===== COOLDOWN DE EXPLOSIÓN =====
         timeSinceLastExplosion += dt;
@@ -447,12 +479,15 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
         // ===== DIBUJAR PARTÍCULAS DE EXPLOSIÓN (encima de la estrella) =====
         drawParticles();
 
+        // ===== ✨ DIBUJAR PARTÍCULAS DE LA ESTELA (polvo estelar) ✨ =====
+        drawTrailParticles();
+
         // Incrementar contador de frames
         drawCallCount++;
     }
 
     /**
-     * Actualiza todas las partículas activas
+     * Actualiza todas las partículas activas (explosiones)
      */
     private void updateParticles(float dt) {
         for (Particle p : particles) {
@@ -479,6 +514,105 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
                 p.active = false;
             }
         }
+    }
+
+    /**
+     * ✨ Actualiza las partículas que se desprenden de la estela (NUEVO) ✨
+     * Estas son las partículas pequeñas que caen suavemente como polvo estelar
+     */
+    private void updateTrailParticles(float dt) {
+        // Actualizar temporizador para generar nuevas partículas
+        trailParticleSpawnTimer += dt;
+
+        // Generar nueva partícula si es momento
+        if (trailParticleSpawnTimer >= TRAIL_PARTICLE_SPAWN_INTERVAL) {
+            spawnTrailParticle();
+            trailParticleSpawnTimer = 0f;
+        }
+
+        // Actualizar todas las partículas activas
+        for (TrailParticle p : trailParticles) {
+            if (!p.active) continue;
+
+            // Actualizar fase de rotación para movimiento ondulante
+            p.rotationPhase += dt * 2.0f;
+
+            // Movimiento ondulante sutil (como polvo flotando en el aire)
+            float waveX = (float)Math.sin(p.rotationPhase) * 0.08f;
+            float waveZ = (float)Math.cos(p.rotationPhase * 0.7f) * 0.08f;
+
+            // Actualizar posición con velocidad + ondulación
+            p.x += (p.vx + waveX) * dt;
+            p.y += p.vy * dt;  // La gravedad ya está incluida en vy
+            p.z += (p.vz + waveZ) * dt;
+
+            // Aplicar gravedad suave (más realista que las explosiones)
+            p.vy -= 0.3f * dt;  // Gravedad más suave
+
+            // Fricción del aire muy sutil (para que floten más tiempo)
+            p.vx *= 0.98f;
+            p.vy *= 0.98f;
+            p.vz *= 0.98f;
+
+            // Reducir vida (desvanecimiento más lento que explosiones)
+            p.life -= dt;
+
+            // Desactivar si murió
+            if (p.life <= 0f) {
+                p.active = false;
+            }
+        }
+    }
+
+    /**
+     * ✨ Genera una nueva partícula que se desprende de la estela ✨
+     */
+    private void spawnTrailParticle() {
+        // Buscar una partícula inactiva
+        TrailParticle p = null;
+        for (TrailParticle tp : trailParticles) {
+            if (!tp.active) {
+                p = tp;
+                break;
+            }
+        }
+
+        if (p == null) return;  // No hay partículas disponibles
+
+        // Activar partícula
+        p.active = true;
+
+        // Posición: en la posición actual de la estrella (o ligeramente atrás para simular cola)
+        p.x = position[0];
+        p.y = position[1];
+        p.z = position[2];
+
+        // Velocidad pequeña y aleatoria (efecto de polvo flotante, no explosivo)
+        // Velocidad muy pequeña comparada con las explosiones
+        float speed = 0.15f + random.nextFloat() * 0.15f;  // 0.15 - 0.3 (vs 1.5-4.0 de explosiones)
+        float angle = random.nextFloat() * (float)Math.PI * 2f;
+        float elevation = (random.nextFloat() - 0.5f) * (float)Math.PI * 0.3f;  // Más concentrado hacia abajo
+
+        p.vx = (float)(Math.cos(angle) * Math.cos(elevation)) * speed;
+        p.vy = (float)(Math.sin(elevation)) * speed * 0.5f;  // Menos velocidad vertical inicial
+        p.vz = (float)(Math.sin(angle) * Math.cos(elevation)) * speed;
+
+        // Vida: más larga que las explosiones (2-3 segundos vs 0.8-1.2)
+        p.maxLife = 2.0f + random.nextFloat() * 1.0f;  // 2-3 segundos
+        p.life = p.maxLife;
+
+        // Tamaño: MUCHO más pequeño que las explosiones
+        p.size = 0.012f + random.nextFloat() * 0.015f;  // 0.012-0.027 (vs 0.03-0.07 de explosiones)
+
+        // Color arcoíris (similar a la estela)
+        // Usar el tiempo para variar el color
+        float hue = (System.currentTimeMillis() % 10000) / 10000.0f * (float)Math.PI * 6.0f;
+        p.color[0] = (float)Math.sin(hue) * 0.5f + 0.5f;
+        p.color[1] = (float)Math.sin(hue + 2.0f) * 0.5f + 0.5f;
+        p.color[2] = (float)Math.sin(hue + 4.0f) * 0.5f + 0.5f;
+
+        // Fase de rotación inicial aleatoria
+        p.rotationPhase = random.nextFloat() * (float)Math.PI * 2f;
     }
 
     /**
@@ -581,6 +715,90 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
 
             // Color con alpha basado en vida (fade out)
             float alpha = p.life * 0.9f;  // Fade out suave
+            int uUseSolidColorLoc = GLES20.glGetUniformLocation(programId, "u_UseSolidColor");
+            GLES20.glUniform1i(uUseSolidColorLoc, 1);  // Usar color sólido
+            GLES20.glUniform4f(uSolidColorLoc, p.color[0], p.color[1], p.color[2], alpha);
+            GLES20.glUniform1f(uAlphaLoc, alpha);
+
+            // Textura
+            GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
+            GLES20.glUniform1i(uTexLoc, 0);
+
+            // Atributos - USAR GEOMETRÍA SIMPLE DE CUADRADO
+            particleVertexBuffer.position(0);
+            GLES20.glEnableVertexAttribArray(aPosLoc);
+            GLES20.glVertexAttribPointer(aPosLoc, 3, GLES20.GL_FLOAT, false, 0, particleVertexBuffer);
+
+            if (aTexLoc >= 0) {
+                particleTexCoordBuffer.position(0);
+                GLES20.glEnableVertexAttribArray(aTexLoc);
+                GLES20.glVertexAttribPointer(aTexLoc, 2, GLES20.GL_FLOAT, false, 0, particleTexCoordBuffer);
+            }
+
+            // Dibujar partícula como cuadrado simple (6 vértices = 2 triángulos)
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6);
+        }
+
+        // Limpiar
+        GLES20.glDisableVertexAttribArray(aPosLoc);
+        if (aTexLoc >= 0) {
+            GLES20.glDisableVertexAttribArray(aTexLoc);
+        }
+
+        // Restaurar estados OpenGL
+        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+    }
+
+    /**
+     * ✨ Dibuja todas las partículas de la estela activas (polvo estelar) ✨
+     * Con fade out gradual y colores arcoíris
+     */
+    private void drawTrailParticles() {
+        if (camera == null) return;
+
+        // Contar partículas activas
+        int activeCount = 0;
+        for (TrailParticle p : trailParticles) {
+            if (p.active && p.life > 0) activeCount++;
+        }
+
+        // Log muy reducido (cada 60 frames)
+        if (activeCount > 0 && drawCallCount % 60 == 0) {
+            Log.d(TAG, "[drawTrailParticles] ✨ DIBUJANDO " + activeCount + " PARTÍCULAS DE ESTELA");
+        }
+
+        if (activeCount == 0) return;  // No hay nada que dibujar
+
+        // Configuración OpenGL para partículas con blending aditivo suave
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);  // Blending aditivo para brillo
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST);  // Sin depth test para transparencia correcta
+
+        useProgram();
+
+        for (TrailParticle p : trailParticles) {
+            if (!p.active || p.life <= 0) continue;
+
+            // Matriz de modelo para esta partícula
+            Matrix.setIdentityM(model, 0);
+            Matrix.translateM(model, 0, p.x, p.y, p.z);
+
+            // Billboard: rotar para que siempre mire a la cámara
+            Matrix.scaleM(model, 0, p.size, p.size, p.size);
+
+            // Calcular MVP
+            camera.computeMvp(model, mvp);
+            setMvpAndResolution(mvp, SceneRenderer.screenWidth, SceneRenderer.screenHeight);
+
+            // ✨ FADE OUT GRADUAL basado en vida restante ✨
+            // Cuando life = maxLife (recién creada), alpha = 1.0
+            // Cuando life = 0 (muerta), alpha = 0.0
+            float lifeFraction = p.life / p.maxLife;  // 1.0 → 0.0
+            float alpha = lifeFraction * 0.8f;  // Máximo 0.8 para que sea sutil
+
+            // Color con alpha basado en vida (fade out suave)
             int uUseSolidColorLoc = GLES20.glGetUniformLocation(programId, "u_UseSolidColor");
             GLES20.glUniform1i(uUseSolidColorLoc, 1);  // Usar color sólido
             GLES20.glUniform4f(uSolidColorLoc, p.color[0], p.color[1], p.color[2], alpha);
