@@ -60,6 +60,12 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
     private static final float RESPAWN_DELAY = 3.0f;  // 3 segundos para respawn
     private float deathAnimationTime = 0f;
 
+    // ===== 🔥 SISTEMA DE ADVERTENCIA Y EXPLOSIÓN ÉPICA 🔥 =====
+    private float criticalFlashTimer = 0f;           // Temporizador para parpadeo
+    private boolean isCritical = false;               // HP < 30%
+    private boolean hasExploded = false;              // Ya explotó?
+    private OnExplosionListener explosionListener;    // Callback para explosión
+
     // ===== SISTEMA DE REACTIVIDAD MUSICAL =====
     private boolean musicReactive = true;  // Activado por defecto
     private float musicBassBoost = 0f;     // Boost de escala por bajos
@@ -73,6 +79,15 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
     private static final float MUSIC_SCALE_FACTOR = 0.3f;    // Factor de escala musical (30% máx)
     private static final float MUSIC_SPEED_FACTOR = 2.0f;    // Factor de velocidad (2x máx)
     private static final float MUSIC_BEAT_FACTOR = 0.2f;     // Factor de pulso por beat (20%)
+
+    // ===== 🔥 INTERFACE PARA EXPLOSIÓN ÉPICA 🔥 =====
+    public interface OnExplosionListener {
+        void onExplosion(float x, float y, float z, float intensity);
+    }
+
+    public void setOnExplosionListener(OnExplosionListener listener) {
+        this.explosionListener = listener;
+    }
 
     /**
      * Constructor
@@ -175,6 +190,15 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
         updateRespawn(dt);
 
         if (!isDead) {
+            // 🔥 DETECTAR ESTADO CRÍTICO (HP < 30%)
+            float healthPercent = (float)currentHealth / maxHealth;
+            isCritical = healthPercent < 0.3f && maxHealth > 0;
+
+            // 🔥 ACTUALIZAR PARPADEO DE ADVERTENCIA
+            if (isCritical) {
+                criticalFlashTimer += dt * 8.0f;  // Parpadea rápido (8x velocidad)
+            }
+
             // Velocidad de rotación reactiva a la música
             float currentSpinSpeed = spinSpeed;
             if (musicReactive && musicSpeedBoost > 0) {
@@ -272,10 +296,27 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
         GLES20.glUniform1i(uTexLoc, 0);
 
-        // Configurar color
+        // 🔥 CONFIGURAR COLOR CON EFECTOS CRÍTICOS
+        float[] finalColor = solidColor.clone();
+        float finalAlpha = alpha;
+
+        if (isCritical) {
+            // Parpadeo de advertencia (oscila entre normal y rojo intenso)
+            float flashValue = (float)Math.sin(criticalFlashTimer) * 0.5f + 0.5f;  // 0.0 - 1.0
+
+            // Mezclar con rojo peligroso
+            float[] dangerColor = new float[]{1.0f, 0.2f, 0.0f, 1.0f};  // Rojo-naranja intenso
+            finalColor[0] = solidColor[0] * (1 - flashValue) + dangerColor[0] * flashValue;
+            finalColor[1] = solidColor[1] * (1 - flashValue) + dangerColor[1] * flashValue;
+            finalColor[2] = solidColor[2] * (1 - flashValue) + dangerColor[2] * flashValue;
+
+            // Alpha también parpadea (más visible cuando está crítico)
+            finalAlpha = alpha * (0.7f + flashValue * 0.3f);
+        }
+
         GLES20.glUniform1i(uUseSolidColorLoc, useSolidColor ? 1 : 0);
-        GLES20.glUniform4fv(uSolidColorLoc, 1, solidColor, 0);
-        GLES20.glUniform1f(uAlphaLoc, alpha);
+        GLES20.glUniform4fv(uSolidColorLoc, 1, finalColor, 0);
+        GLES20.glUniform1f(uAlphaLoc, finalAlpha);
 
         // Configurar atributos de vértices
         vertexBuffer.position(0);
@@ -321,6 +362,28 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
     private void die() {
         isDead = true;
         deathAnimationTime = 0f;
+
+        // 🔥🔥🔥 EXPLOSIÓN ÉPICA 🔥🔥🔥
+        if (!hasExploded && explosionListener != null) {
+            // Calcular posición de explosión (centro del planeta)
+            float explosionX = 0f;
+            float explosionY = 0f;
+            float explosionZ = 0f;
+
+            if (orbitRadiusX > 0 && orbitRadiusZ > 0) {
+                explosionX = orbitRadiusX * (float)Math.cos(orbitAngle);
+                explosionZ = orbitRadiusZ * (float)Math.sin(orbitAngle);
+            }
+
+            // Intensidad MÁXIMA para el sol
+            float intensity = 2.5f;  // Mucho más intenso que explosiones normales
+
+            explosionListener.onExplosion(explosionX, explosionY, explosionZ, intensity);
+            hasExploded = true;
+
+            Log.d(TAG, "🔥🔥🔥 ¡¡EXPLOSIÓN ÉPICA DEL SOL!! 🔥🔥🔥 Intensidad: " + intensity);
+        }
+
         Log.d(TAG, "¡¡PLANETA DESTRUIDO!!");
     }
 
@@ -329,6 +392,9 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
         currentHealth = maxHealth;
         respawnTimer = 0f;
         deathAnimationTime = 0f;
+        hasExploded = false;         // Resetear flag de explosión
+        isCritical = false;          // Ya no está crítico
+        criticalFlashTimer = 0f;    // Resetear parpadeo
         Log.d(TAG, "Planeta RESPAWN - HP: " + maxHealth);
     }
 

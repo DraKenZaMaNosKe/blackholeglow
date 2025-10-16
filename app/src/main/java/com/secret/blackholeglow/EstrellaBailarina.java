@@ -796,12 +796,18 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
             // Cuando life = maxLife (recién creada), alpha = 1.0
             // Cuando life = 0 (muerta), alpha = 0.0
             float lifeFraction = p.life / p.maxLife;  // 1.0 → 0.0
-            float alpha = lifeFraction * 0.8f;  // Máximo 0.8 para que sea sutil
+            float alpha = lifeFraction * 1.0f;  // Brillo completo para que llamen más atención
 
-            // Color con alpha basado en vida (fade out suave)
+            // 🔥 AUMENTAR BRILLO: Intensificar colores para más resplandor
+            float[] intensifiedColor = new float[3];
+            intensifiedColor[0] = Math.min(1.0f, p.color[0] * 1.3f);  // +30% brillo
+            intensifiedColor[1] = Math.min(1.0f, p.color[1] * 1.3f);
+            intensifiedColor[2] = Math.min(1.0f, p.color[2] * 1.3f);
+
+            // Color con alpha basado en vida (fade out suave) + BRILLO AUMENTADO
             int uUseSolidColorLoc = GLES20.glGetUniformLocation(programId, "u_UseSolidColor");
             GLES20.glUniform1i(uUseSolidColorLoc, 1);  // Usar color sólido
-            GLES20.glUniform4f(uSolidColorLoc, p.color[0], p.color[1], p.color[2], alpha);
+            GLES20.glUniform4f(uSolidColorLoc, intensifiedColor[0], intensifiedColor[1], intensifiedColor[2], alpha);
             GLES20.glUniform1f(uAlphaLoc, alpha);
 
             // Textura
