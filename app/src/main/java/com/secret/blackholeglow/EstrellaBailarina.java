@@ -74,6 +74,12 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
     private FloatBuffer particleVertexBuffer;
     private FloatBuffer particleTexCoordBuffer;
 
+    // ===== SHADER ESPECIAL PARA PARTÍCULAS REDONDAS =====
+    private int particleShaderProgramId = -1;
+    private int particleAPosLoc;
+    private int particleATexLoc;
+    private int particleUColorLoc;
+
     // ===== SISTEMA DE EXPLOSIÓN DE PARTÍCULAS =====
     private static class Particle {
         float x, y, z;           // Posición
@@ -106,10 +112,12 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
         float[] color;           // Color RGB (arcoíris como la estela)
         boolean active;          // Está activa?
         float rotationPhase;     // Fase de rotación para movimiento ondulante
+        boolean isSpecial;       // 🌟 Partícula especial (vive más y brilla dorado-rosa-morado al final)
 
         TrailParticle() {
             color = new float[3];
             active = false;
+            isSpecial = false;
         }
     }
 
@@ -232,6 +240,9 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
         // ===== CREAR GEOMETRÍA SIMPLE PARA PARTÍCULAS (CUADRADO BILLBOARD) =====
         createParticleGeometry();
 
+        // ===== CREAR SHADER ESPECIAL PARA PARTÍCULAS REDONDAS =====
+        createRoundParticleShader(ctx);
+
         Log.d(TAG, "✨ EstrelaBailarina INICIALIZADA CORRECTAMENTE ✨");
         Log.d(TAG, "   Program ID: " + programId);
         Log.d(TAG, "   Vertex count: " + indexCount);
@@ -239,6 +250,66 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
         Log.d(TAG, "   Sistema de partículas de explosión: " + MAX_PARTICLES + " partículas 💥");
         Log.d(TAG, "   ✨ Sistema de partículas de estela: " + MAX_TRAIL_PARTICLES + " partículas ✨");
         Log.d(TAG, "   🔥🔥🔥 VERSIÓN CON POLVO ESTELAR v3.0 🔥🔥🔥");
+    }
+
+    /**
+     * Crea shader especial para dibujar partículas circulares perfects
+     */
+    private void createRoundParticleShader(Context context) {
+        String vertexShader =
+            "uniform mat4 u_MVP;\n" +
+            "attribute vec3 a_Position;\n" +
+            "attribute vec2 a_TexCoord;\n" +
+            "varying vec2 v_TexCoord;\n" +
+            "void main() {\n" +
+            "    v_TexCoord = a_TexCoord;\n" +
+            "    gl_Position = u_MVP * vec4(a_Position, 1.0);\n" +
+            "}\n";
+
+        String fragmentShader =
+            "#ifdef GL_ES\n" +
+            "precision mediump float;\n" +
+            "#endif\n" +
+            "varying vec2 v_TexCoord;\n" +
+            "uniform vec4 u_Color;\n" +
+            "\n" +
+            "void main() {\n" +
+            "    // Calcular distancia desde el centro (0.5, 0.5)\n" +
+            "    vec2 center = vec2(0.5, 0.5);\n" +
+            "    float dist = distance(v_TexCoord, center);\n" +
+            "    \n" +
+            "    // Radio del círculo = 0.5 (para que toque los bordes)\n" +
+            "    float radius = 0.5;\n" +
+            "    \n" +
+            "    // Crear borde suave (anti-aliasing)\n" +
+            "    float alpha = 1.0 - smoothstep(radius - 0.05, radius, dist);\n" +
+            "    \n" +
+            "    // Multiplicar por el color y alpha\n" +
+            "    gl_FragColor = vec4(u_Color.rgb, u_Color.a * alpha);\n" +
+            "}\n";
+
+        int vShader = ShaderUtils.compileShader(GLES20.GL_VERTEX_SHADER, vertexShader);
+        int fShader = ShaderUtils.compileShader(GLES20.GL_FRAGMENT_SHADER, fragmentShader);
+
+        particleShaderProgramId = GLES20.glCreateProgram();
+        GLES20.glAttachShader(particleShaderProgramId, vShader);
+        GLES20.glAttachShader(particleShaderProgramId, fShader);
+        GLES20.glLinkProgram(particleShaderProgramId);
+
+        int[] linkStatus = new int[1];
+        GLES20.glGetProgramiv(particleShaderProgramId, GLES20.GL_LINK_STATUS, linkStatus, 0);
+        if (linkStatus[0] == 0) {
+            Log.e(TAG, "✗ Particle shader link failed: " + GLES20.glGetProgramInfoLog(particleShaderProgramId));
+        }
+
+        GLES20.glDeleteShader(vShader);
+        GLES20.glDeleteShader(fShader);
+
+        particleAPosLoc = GLES20.glGetAttribLocation(particleShaderProgramId, "a_Position");
+        particleATexLoc = GLES20.glGetAttribLocation(particleShaderProgramId, "a_TexCoord");
+        particleUColorLoc = GLES20.glGetUniformLocation(particleShaderProgramId, "u_Color");
+
+        Log.d(TAG, "✓ Shader de partículas REDONDAS creado - programId: " + particleShaderProgramId);
     }
 
     /**
@@ -582,6 +653,9 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
         // Activar partícula
         p.active = true;
 
+        // 🌟 DETERMINAR SI ES ESPECIAL (15% de probabilidad)
+        p.isSpecial = random.nextFloat() < 0.15f;
+
         // Posición: en la posición actual de la estrella (o ligeramente atrás para simular cola)
         p.x = position[0];
         p.y = position[1];
@@ -597,14 +671,17 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
         p.vy = (float)(Math.sin(elevation)) * speed * 0.5f;  // Menos velocidad vertical inicial
         p.vz = (float)(Math.sin(angle) * Math.cos(elevation)) * speed;
 
-        // Vida: más larga que las explosiones (2-3 segundos vs 0.8-1.2)
-        p.maxLife = 2.0f + random.nextFloat() * 1.0f;  // 2-3 segundos
+        // 🌟 Vida: Las especiales viven MÁS tiempo (3-5 segundos vs 2-3 normales)
+        if (p.isSpecial) {
+            p.maxLife = 3.5f + random.nextFloat() * 1.5f;  // 3.5-5 segundos (ESPECIAL)
+            p.size = 0.015f + random.nextFloat() * 0.02f;   // Un poco más grandes
+        } else {
+            p.maxLife = 2.0f + random.nextFloat() * 1.0f;   // 2-3 segundos (NORMAL)
+            p.size = 0.012f + random.nextFloat() * 0.015f;  // 0.012-0.027
+        }
         p.life = p.maxLife;
 
-        // Tamaño: MUCHO más pequeño que las explosiones
-        p.size = 0.012f + random.nextFloat() * 0.015f;  // 0.012-0.027 (vs 0.03-0.07 de explosiones)
-
-        // Color arcoíris (similar a la estela)
+        // Color arcoíris inicial (similar a la estela)
         // Usar el tiempo para variar el color
         float hue = (System.currentTimeMillis() % 10000) / 10000.0f * (float)Math.PI * 6.0f;
         p.color[0] = (float)Math.sin(hue) * 0.5f + 0.5f;
@@ -618,7 +695,7 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
     /**
      * Crea una explosión de partículas en la posición actual
      */
-    private void triggerExplosion(float intensity) {
+    public void triggerExplosion(float intensity) {
         // No explotar si está en cooldown
         if (explosionCooldown > 0) {
             Log.d(TAG, "[triggerExplosion] ⏸️ Bloqueado por cooldown: " + String.format("%.2f", explosionCooldown));
@@ -697,7 +774,8 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);  // Blending aditivo para brillo
         GLES20.glDisable(GLES20.GL_DEPTH_TEST);  // Sin depth test para partículas
 
-        useProgram();
+        // ✨ USAR SHADER DE PARTÍCULAS REDONDAS ✨
+        GLES20.glUseProgram(particleShaderProgramId);
 
         for (Particle p : particles) {
             if (!p.active || p.life <= 0) continue;
@@ -711,40 +789,31 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
 
             // Calcular MVP
             camera.computeMvp(model, mvp);
-            setMvpAndResolution(mvp, SceneRenderer.screenWidth, SceneRenderer.screenHeight);
 
             // Color con alpha basado en vida (fade out)
-            float alpha = p.life * 0.9f;  // Fade out suave
-            int uUseSolidColorLoc = GLES20.glGetUniformLocation(programId, "u_UseSolidColor");
-            GLES20.glUniform1i(uUseSolidColorLoc, 1);  // Usar color sólido
-            GLES20.glUniform4f(uSolidColorLoc, p.color[0], p.color[1], p.color[2], alpha);
-            GLES20.glUniform1f(uAlphaLoc, alpha);
+            float alpha = p.life * 0.9f;
 
-            // Textura
-            GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-            GLES20.glUniform1i(uTexLoc, 0);
+            // ✨ CONFIGURAR UNIFORMS PARA SHADER DE CÍRCULOS ✨
+            int uMVPLoc = GLES20.glGetUniformLocation(particleShaderProgramId, "u_MVP");
+            GLES20.glUniformMatrix4fv(uMVPLoc, 1, false, mvp, 0);
+            GLES20.glUniform4f(particleUColorLoc, p.color[0], p.color[1], p.color[2], alpha);
 
             // Atributos - USAR GEOMETRÍA SIMPLE DE CUADRADO
             particleVertexBuffer.position(0);
-            GLES20.glEnableVertexAttribArray(aPosLoc);
-            GLES20.glVertexAttribPointer(aPosLoc, 3, GLES20.GL_FLOAT, false, 0, particleVertexBuffer);
+            GLES20.glEnableVertexAttribArray(particleAPosLoc);
+            GLES20.glVertexAttribPointer(particleAPosLoc, 3, GLES20.GL_FLOAT, false, 0, particleVertexBuffer);
 
-            if (aTexLoc >= 0) {
-                particleTexCoordBuffer.position(0);
-                GLES20.glEnableVertexAttribArray(aTexLoc);
-                GLES20.glVertexAttribPointer(aTexLoc, 2, GLES20.GL_FLOAT, false, 0, particleTexCoordBuffer);
-            }
+            particleTexCoordBuffer.position(0);
+            GLES20.glEnableVertexAttribArray(particleATexLoc);
+            GLES20.glVertexAttribPointer(particleATexLoc, 2, GLES20.GL_FLOAT, false, 0, particleTexCoordBuffer);
 
-            // Dibujar partícula como cuadrado simple (6 vértices = 2 triángulos)
+            // Dibujar partícula REDONDA (círculo con anti-aliasing)
             GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6);
         }
 
         // Limpiar
-        GLES20.glDisableVertexAttribArray(aPosLoc);
-        if (aTexLoc >= 0) {
-            GLES20.glDisableVertexAttribArray(aTexLoc);
-        }
+        GLES20.glDisableVertexAttribArray(particleAPosLoc);
+        GLES20.glDisableVertexAttribArray(particleATexLoc);
 
         // Restaurar estados OpenGL
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
@@ -776,7 +845,8 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);  // Blending aditivo para brillo
         GLES20.glDisable(GLES20.GL_DEPTH_TEST);  // Sin depth test para transparencia correcta
 
-        useProgram();
+        // ✨ USAR SHADER DE PARTÍCULAS REDONDAS ✨
+        GLES20.glUseProgram(particleShaderProgramId);
 
         for (TrailParticle p : trailParticles) {
             if (!p.active || p.life <= 0) continue;
@@ -790,13 +860,10 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
 
             // Calcular MVP
             camera.computeMvp(model, mvp);
-            setMvpAndResolution(mvp, SceneRenderer.screenWidth, SceneRenderer.screenHeight);
 
             // ✨ FADE OUT GRADUAL basado en vida restante ✨
-            // Cuando life = maxLife (recién creada), alpha = 1.0
-            // Cuando life = 0 (muerta), alpha = 0.0
             float lifeFraction = p.life / p.maxLife;  // 1.0 → 0.0
-            float alpha = lifeFraction * 1.0f;  // Brillo completo para que llamen más atención
+            float alpha = lifeFraction * 1.0f;
 
             // 🔥 AUMENTAR BRILLO: Intensificar colores para más resplandor
             float[] intensifiedColor = new float[3];
@@ -804,37 +871,63 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
             intensifiedColor[1] = Math.min(1.0f, p.color[1] * 1.3f);
             intensifiedColor[2] = Math.min(1.0f, p.color[2] * 1.3f);
 
-            // Color con alpha basado en vida (fade out suave) + BRILLO AUMENTADO
-            int uUseSolidColorLoc = GLES20.glGetUniformLocation(programId, "u_UseSolidColor");
-            GLES20.glUniform1i(uUseSolidColorLoc, 1);  // Usar color sólido
-            GLES20.glUniform4f(uSolidColorLoc, intensifiedColor[0], intensifiedColor[1], intensifiedColor[2], alpha);
-            GLES20.glUniform1f(uAlphaLoc, alpha);
+            // 🌟🌟🌟 EFECTO ESPECIAL: Partículas dorado-rosa-morado al final 🌟🌟🌟
+            if (p.isSpecial && p.life < 1.5f) {
+                float specialPhase = 1.0f - (p.life / 1.5f);
 
-            // Textura
-            GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-            GLES20.glUniform1i(uTexLoc, 0);
+                // Colores mágicos finales
+                float[] goldenColor = new float[]{1.0f, 0.85f, 0.3f};
+                float[] pinkColor = new float[]{1.0f, 0.4f, 0.6f};
+                float[] purpleColor = new float[]{0.8f, 0.3f, 0.9f};
+
+                // Mezclar colores con ondulación
+                float goldenWeight = (float)Math.sin(p.rotationPhase * 0.5f) * 0.5f + 0.5f;
+                float pinkWeight = (float)Math.sin(p.rotationPhase * 0.7f + 2.0f) * 0.5f + 0.5f;
+                float purpleWeight = (float)Math.sin(p.rotationPhase * 0.9f + 4.0f) * 0.5f + 0.5f;
+
+                float totalWeight = goldenWeight + pinkWeight + purpleWeight;
+                goldenWeight /= totalWeight;
+                pinkWeight /= totalWeight;
+                purpleWeight /= totalWeight;
+
+                float[] specialColor = new float[3];
+                specialColor[0] = goldenColor[0] * goldenWeight + pinkColor[0] * pinkWeight + purpleColor[0] * purpleWeight;
+                specialColor[1] = goldenColor[1] * goldenWeight + pinkColor[1] * pinkWeight + purpleColor[1] * purpleWeight;
+                specialColor[2] = goldenColor[2] * goldenWeight + pinkColor[2] * pinkWeight + purpleColor[2] * purpleWeight;
+
+                intensifiedColor[0] = intensifiedColor[0] * (1 - specialPhase) + specialColor[0] * specialPhase;
+                intensifiedColor[1] = intensifiedColor[1] * (1 - specialPhase) + specialColor[1] * specialPhase;
+                intensifiedColor[2] = intensifiedColor[2] * (1 - specialPhase) + specialColor[2] * specialPhase;
+
+                float extraGlow = 1.0f + (specialPhase * 0.5f);
+                intensifiedColor[0] = Math.min(1.0f, intensifiedColor[0] * extraGlow);
+                intensifiedColor[1] = Math.min(1.0f, intensifiedColor[1] * extraGlow);
+                intensifiedColor[2] = Math.min(1.0f, intensifiedColor[2] * extraGlow);
+
+                alpha = Math.min(1.0f, alpha * (1.0f + specialPhase * 0.3f));
+            }
+
+            // ✨ CONFIGURAR UNIFORMS PARA SHADER DE CÍRCULOS ✨
+            int uMVPLoc = GLES20.glGetUniformLocation(particleShaderProgramId, "u_MVP");
+            GLES20.glUniformMatrix4fv(uMVPLoc, 1, false, mvp, 0);
+            GLES20.glUniform4f(particleUColorLoc, intensifiedColor[0], intensifiedColor[1], intensifiedColor[2], alpha);
 
             // Atributos - USAR GEOMETRÍA SIMPLE DE CUADRADO
             particleVertexBuffer.position(0);
-            GLES20.glEnableVertexAttribArray(aPosLoc);
-            GLES20.glVertexAttribPointer(aPosLoc, 3, GLES20.GL_FLOAT, false, 0, particleVertexBuffer);
+            GLES20.glEnableVertexAttribArray(particleAPosLoc);
+            GLES20.glVertexAttribPointer(particleAPosLoc, 3, GLES20.GL_FLOAT, false, 0, particleVertexBuffer);
 
-            if (aTexLoc >= 0) {
-                particleTexCoordBuffer.position(0);
-                GLES20.glEnableVertexAttribArray(aTexLoc);
-                GLES20.glVertexAttribPointer(aTexLoc, 2, GLES20.GL_FLOAT, false, 0, particleTexCoordBuffer);
-            }
+            particleTexCoordBuffer.position(0);
+            GLES20.glEnableVertexAttribArray(particleATexLoc);
+            GLES20.glVertexAttribPointer(particleATexLoc, 2, GLES20.GL_FLOAT, false, 0, particleTexCoordBuffer);
 
-            // Dibujar partícula como cuadrado simple (6 vértices = 2 triángulos)
+            // Dibujar partícula REDONDA (círculo con anti-aliasing)
             GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6);
         }
 
         // Limpiar
-        GLES20.glDisableVertexAttribArray(aPosLoc);
-        if (aTexLoc >= 0) {
-            GLES20.glDisableVertexAttribArray(aTexLoc);
-        }
+        GLES20.glDisableVertexAttribArray(particleAPosLoc);
+        GLES20.glDisableVertexAttribArray(particleATexLoc);
 
         // Restaurar estados OpenGL
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);

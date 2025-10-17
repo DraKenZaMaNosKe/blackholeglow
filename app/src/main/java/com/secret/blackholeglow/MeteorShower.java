@@ -47,6 +47,8 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     private final TextureManager textureManager;
     private CameraController camera;
     private BatteryPowerBar powerBar;  // Para efectos basados en batería
+    private SceneRenderer sceneRenderer;  // Para efectos de impacto en pantalla
+    private MeteorCountdownBar countdownBar;  // Barra visual de countdown
 
     // Estadísticas
     private int totalMeteoritosLanzados = 0;
@@ -55,6 +57,11 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     // ===== SISTEMA DE REACTIVIDAD MUSICAL =====
     private boolean musicReactive = true;
     private float musicIntensityBoost = 0f;  // Boost de intensidad por música
+
+    // ===== 💥 SISTEMA DE METEORITOS A PANTALLA (GRIETAS) 💥 =====
+    private float screenMeteorTimer = 0f;           // Tiempo desde último meteorito a pantalla
+    private float screenMeteorInterval = 40f;       // Intervalo aleatorio (30-60 segundos)
+    private final List<Meteorito> screenDirectedMeteors = new ArrayList<>();  // Meteoritos hacia pantalla
 
     public MeteorShower(Context context, TextureManager textureManager) {
         this.context = context;
@@ -90,6 +97,22 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         this.hpBarSun = hpBarSun;
         this.hpBarForceField = hpBarForceField;
         Log.d(TAG, "[MeteorShower] ✓ Sistema HP conectado");
+    }
+
+    /**
+     * 💥 Conecta el SceneRenderer para efectos de impacto en pantalla
+     */
+    public void setSceneRenderer(SceneRenderer renderer) {
+        this.sceneRenderer = renderer;
+        Log.d(TAG, "[MeteorShower] 💥 Sistema de impacto en pantalla conectado");
+    }
+
+    /**
+     * 💥 Conecta la barra de countdown visual
+     */
+    public void setCountdownBar(MeteorCountdownBar bar) {
+        this.countdownBar = bar;
+        Log.d(TAG, "[MeteorShower] 💥 Barra de countdown conectada");
     }
 
     /**
@@ -143,11 +166,35 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
             tiempoDesdeUltimoSpawn = 0;
         }
 
+        // 💥 SISTEMA DE METEORITO A PANTALLA 💥
+        screenMeteorTimer += deltaTime;
+
+        // Actualizar barra de countdown visual
+        if (countdownBar != null) {
+            countdownBar.setProgress(screenMeteorTimer, screenMeteorInterval);
+        }
+
+        if (screenMeteorTimer >= screenMeteorInterval && !poolMeteorites.isEmpty()) {
+            spawnScreenMeteor();
+            screenMeteorTimer = 0f;
+            // Nuevo intervalo aleatorio entre 30-60 segundos
+            screenMeteorInterval = 30f + (float)(Math.random() * 30f);
+        }
+
         // Actualizar meteoritos activos
         List<Meteorito> paraRemover = new ArrayList<>();
 
         for (Meteorito m : meteoritosActivos) {
             m.update(deltaTime);
+
+            // 💥 VERIFICAR IMPACTO EN PANTALLA (meteoritos dirigidos a pantalla)
+            if (screenDirectedMeteors.contains(m) && m.getEstado() == Meteorito.Estado.CAYENDO) {
+                if (verificarImpactoPantalla(m)) {
+                    paraRemover.add(m);
+                    screenDirectedMeteors.remove(m);
+                    continue;  // No verificar otras colisiones
+                }
+            }
 
             // Verificar colisiones solo si está cayendo
             if (m.getEstado() == Meteorito.Estado.CAYENDO) {
@@ -163,6 +210,7 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         // Devolver al pool
         for (Meteorito m : paraRemover) {
             meteoritosActivos.remove(m);
+            screenDirectedMeteors.remove(m);  // Asegurar que se remueva de ambas listas
             poolMeteorites.add(m);
         }
 
@@ -224,6 +272,224 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     }
 
     /**
+     * 🚀 DISPARA UN METEORITO CONTROLADO POR EL JUGADOR
+     * Lanzado desde la parte inferior de la pantalla hacia el sol
+     * PROTEGIDO contra crashes
+     * @param power Potencia del disparo (0.0 - 1.0)
+     */
+    public void shootPlayerMeteor(float power) {
+        try {
+            if (poolMeteorites.isEmpty()) {
+                Log.w(TAG, "[shootPlayerMeteor] ⚠️ Pool vacío - esperando reciclar meteorito");
+                return;
+            }
+
+            // Validar poder
+            if (power < 0.0f || power > 1.0f) {
+                Log.w(TAG, "[shootPlayerMeteor] ⚠️ Poder inválido: " + power);
+                return;
+            }
+
+            Meteorito m = poolMeteorites.remove(0);
+
+        // 🎯 POSICIÓN INICIAL: Desde la parte inferior-frontal de la pantalla
+        // (En coordenadas 3D: abajo y hacia la cámara)
+        float x = 0.0f;           // Centro horizontal
+        float y = -3.0f;          // Abajo
+        float z = 4.0f;           // Adelante (hacia la cámara)
+
+        // 🚀 VELOCIDAD: Dirección hacia el sol (centro en 0,0,0)
+        // Velocidad base escalada por la potencia
+        float velocidadBase = 5.0f + (power * 10.0f);  // 5-15 unidades/seg según potencia
+
+        float targetX = 0.0f;  // Sol en el centro
+        float targetY = 0.0f;
+        float targetZ = 0.0f;
+
+        // Calcular vector de dirección
+        float dx = targetX - x;
+        float dy = targetY - y;
+        float dz = targetZ - z;
+        float dist = (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+        // Normalizar y aplicar velocidad
+        float vx = (dx / dist) * velocidadBase;
+        float vy = (dy / dist) * velocidadBase;
+        float vz = (dz / dist) * velocidadBase;
+
+        // 💪 TAMAÑO: Más grande con más potencia
+        float tamaño = 0.08f + (power * 0.12f);  // 0.08 - 0.20 según potencia
+
+        // Activar el meteorito
+        m.activar(x, y, z, vx, vy, vz, tamaño);
+        meteoritosActivos.add(m);
+
+        totalMeteoritosLanzados++;
+        Log.d(TAG, "╔════════════════════════════════════════════════════════╗");
+        Log.d(TAG, "║                                                        ║");
+        Log.d(TAG, String.format("║   🚀 METEORITO DEL JUGADOR DISPARADO! (%.0f%%)        ║", power * 100));
+        Log.d(TAG, "║                                                        ║");
+        Log.d(TAG, String.format("║   Posición: (%.1f, %.1f, %.1f)                        ║", x, y, z));
+        Log.d(TAG, String.format("║   Velocidad: %.1f unidades/seg                       ║", velocidadBase));
+        Log.d(TAG, String.format("║   Tamaño: %.3f                                        ║", tamaño));
+        Log.d(TAG, "║                                                        ║");
+        Log.d(TAG, "╚════════════════════════════════════════════════════════╝");
+        } catch (Exception e) {
+            Log.e(TAG, "✗ Error disparando meteorito del jugador: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 💥💥💥 LANZA UN METEORITO HACIA LA PANTALLA DEL USUARIO 💥💥💥
+     * El meteorito vuela directo hacia la cámara y causa grietas en la pantalla
+     * VISIBLE: Se ve acercándose para crear SUSPENSO
+     */
+    private void spawnScreenMeteor() {
+        if (poolMeteorites.isEmpty()) {
+            Log.w(TAG, "[spawnScreenMeteor] ⚠️ Pool vacío");
+            return;
+        }
+
+        Meteorito m = poolMeteorites.remove(0);
+
+        // 📍 POSICIÓN INICIAL: DENTRO DEL CAMPO DE VISIÓN
+        // Cámara está en (4, 3, 6) mirando hacia (0, 0, 0)
+        // El meteorito debe venir desde ADELANTE (Z negativo) hacia la cámara (Z=6)
+
+        float spawnType = (float) Math.random();
+        float x, y, z;
+
+        // Spawn en posiciones VISIBLES dentro del frustum de la cámara
+        // Rango visible aproximado: X(-3 a 3), Y(-2 a 4), Z(-5 a 5)
+
+        if (spawnType < 0.25f) {
+            // Desde la DERECHA (visible)
+            x = 2.5f + (float)(Math.random() * 1.5f);  // 2.5 a 4.0
+            y = (float)(Math.random() * 4f) - 1f;      // -1 a 3
+            z = -4f - (float)(Math.random() * 2f);     // -4 a -6 (LEJOS, adelante)
+        } else if (spawnType < 0.5f) {
+            // Desde la IZQUIERDA (visible)
+            x = -2.5f - (float)(Math.random() * 1.5f); // -2.5 a -4.0
+            y = (float)(Math.random() * 4f) - 1f;      // -1 a 3
+            z = -4f - (float)(Math.random() * 2f);     // -4 a -6 (LEJOS, adelante)
+        } else if (spawnType < 0.75f) {
+            // Desde ARRIBA (visible)
+            x = (float)(Math.random() * 4f) - 2f;      // -2 a 2
+            y = 3f + (float)(Math.random() * 2f);      // 3 a 5 (arriba)
+            z = -4f - (float)(Math.random() * 2f);     // -4 a -6 (LEJOS, adelante)
+        } else {
+            // Desde el CENTRO (directo)
+            x = (float)(Math.random() * 2f) - 1f;      // -1 a 1 (centro)
+            y = (float)(Math.random() * 2f);           // 0 a 2
+            z = -5f - (float)(Math.random() * 3f);     // -5 a -8 (MUY LEJOS)
+        }
+
+        // 🎯 OBJETIVO: La posición de la CÁMARA (para que vuele directo a la pantalla)
+        float targetX = 4f + (float)(Math.random() * 0.5f) - 0.25f;  // Cerca de cámara X
+        float targetY = 3f + (float)(Math.random() * 0.5f) - 0.25f;  // Cerca de cámara Y
+        float targetZ = 6f + (float)(Math.random() * 0.3f);          // Hacia/pasando la cámara
+
+        // 🚀 VELOCIDAD: MÁS LENTO para dar tiempo de verlo y crear SUSPENSO
+        float velocidadBase = 4.0f + (float)(Math.random() * 2f);  // 4-6 unidades/seg (REDUCIDO)
+
+        float dx = targetX - x;
+        float dy = targetY - y;
+        float dz = targetZ - z;
+        float dist = (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+        float vx = (dx / dist) * velocidadBase;
+        float vy = (dy / dist) * velocidadBase;
+        float vz = (dz / dist) * velocidadBase;
+
+        // 💪 TAMAÑO: MÁS GRANDE para que sea MUY VISIBLE
+        float tamaño = 0.25f + (float)(Math.random() * 0.15f);  // 0.25 - 0.40 (GRANDE!)
+
+        // Activar el meteorito
+        m.activar(x, y, z, vx, vy, vz, tamaño);
+        meteoritosActivos.add(m);
+        screenDirectedMeteors.add(m);  // Marcar como dirigido a pantalla
+
+        totalMeteoritosLanzados++;
+        Log.d(TAG, "╔════════════════════════════════════════════════════════╗");
+        Log.d(TAG, "║                                                        ║");
+        Log.d(TAG, "║   💥💥💥 METEORITO VISIBLE LANZADO! 💥💥💥          ║");
+        Log.d(TAG, "║   ¡MIRA CÓMO SE ACERCA A LA PANTALLA!                ║");
+        Log.d(TAG, "║                                                        ║");
+        Log.d(TAG, String.format("║   Desde: (%.1f, %.1f, %.1f) [VISIBLE]                ║", x, y, z));
+        Log.d(TAG, String.format("║   Hacia: (%.1f, %.1f, %.1f) [CÁMARA]                 ║", targetX, targetY, targetZ));
+        Log.d(TAG, String.format("║   Velocidad: %.1f u/s (LENTO = SUSPENSO)            ║", velocidadBase));
+        Log.d(TAG, String.format("║   Tamaño: %.3f (GRANDE Y VISIBLE)                    ║", tamaño));
+        Log.d(TAG, String.format("║   Distancia: %.1f unidades                            ║", dist));
+        Log.d(TAG, String.format("║   Tiempo aprox: %.1f segundos                         ║", dist / velocidadBase));
+        Log.d(TAG, String.format("║   Próximo en: %.0f segundos                          ║", screenMeteorInterval));
+        Log.d(TAG, "║                                                        ║");
+        Log.d(TAG, "╚════════════════════════════════════════════════════════╝");
+    }
+
+    /**
+     * 💥 VERIFICA SI UN METEORITO DIRIGIDO A PANTALLA HA IMPACTADO
+     * Cuando el meteorito alcanza la posición Z de la cámara, activa las grietas
+     * @return true si impactó (para removerlo de la lista)
+     */
+    private boolean verificarImpactoPantalla(Meteorito m) {
+        if (sceneRenderer == null || camera == null) return false;
+
+        float[] pos = m.getPosicion();
+
+        // UMBRAL DE IMPACTO: Cuando el meteorito llega CERCA de la cámara
+        // Cámara está en Z=6, impactar cuando llegue a Z >= 5.7
+        // (Más cerca = más dramático, parece que va a golpear la pantalla de verdad)
+        float cameraZ = 6.0f;  // Posición Z de la cámara
+        float impactThreshold = cameraZ - 0.3f;  // Impactar 0.3 unidades antes (MÁS CERCA)
+
+        if (pos[2] >= impactThreshold) {
+            // ¡IMPACTO EN PANTALLA!
+
+            // Calcular coordenadas de pantalla (0-1) basadas en posición 3D
+            // La cámara mira hacia (0,0,0) desde (4,3,6)
+            // Proyectar la posición XY del meteorito a coordenadas de pantalla
+
+            // Mapear X: -4 a +4 → 0 a 1 (rango ajustado para mejor precisión)
+            float screenX = (pos[0] + 4f) / 8f;
+            screenX = Math.max(0f, Math.min(1f, screenX));  // Clamp 0-1
+
+            // Mapear Y: -2 a +5 → 0 a 1 (invertido porque OpenGL Y+ es arriba)
+            float screenY = 1f - ((pos[1] + 2f) / 7f);
+            screenY = Math.max(0f, Math.min(1f, screenY));  // Clamp 0-1
+
+            // Intensidad basada en tamaño del meteorito (0.25-0.40 → 0.8-0.95)
+            // Los meteoritos de pantalla son MÁS GRANDES, así que más intensos
+            float sizeNormalized = (m.getTamaño() - 0.25f) / 0.15f;  // 0-1
+            float intensity = 0.8f + sizeNormalized * 0.15f;
+            intensity = Math.max(0.8f, Math.min(0.95f, intensity));  // Clamp 0.8-0.95
+
+            // 💥💥💥 ACTIVAR GRIETAS EN LA PANTALLA 💥💥💥
+            sceneRenderer.triggerScreenCrack(screenX, screenY, intensity);
+
+            // Marcar el meteorito como impactado
+            m.impactar();
+
+            totalImpactos++;
+            Log.d(TAG, "╔════════════════════════════════════════════════════════╗");
+            Log.d(TAG, "║                                                        ║");
+            Log.d(TAG, "║   💥💥💥 ¡IMPACTO EN PANTALLA! 💥💥💥                ║");
+            Log.d(TAG, "║   ¡EL METEORITO GOLPEÓ LA PANTALLA!                   ║");
+            Log.d(TAG, "║                                                        ║");
+            Log.d(TAG, String.format("║   Posición 3D: (%.2f, %.2f, %.2f)                    ║", pos[0], pos[1], pos[2]));
+            Log.d(TAG, String.format("║   Pantalla: (%.2f, %.2f)                             ║", screenX, screenY));
+            Log.d(TAG, String.format("║   Tamaño: %.3f                                        ║", m.getTamaño()));
+            Log.d(TAG, String.format("║   Intensidad: %.0f%%                                  ║", intensity * 100));
+            Log.d(TAG, "║                                                        ║");
+            Log.d(TAG, "╚════════════════════════════════════════════════════════╝");
+
+            return true;  // Impactó, remover de lista
+        }
+
+        return false;  // Aún no impacta
+    }
+
+    /**
      * Verifica colisiones con objetos de la escena
      */
     private void verificarColisiones(Meteorito m) {
@@ -241,6 +507,14 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
                 // ACTUALIZAR HP BAR del escudo
                 if (hpBarForceField != null) {
                     hpBarForceField.setHealth(campoFuerza.getCurrentHealth());
+                }
+
+                // 💥 EFECTO DE IMPACTO EN PANTALLA (ESCUDO) - MÁS SUTIL
+                // Intensidad basada en tamaño del meteorito (0.05-0.20 → 0.15-0.3)
+                if (sceneRenderer != null) {
+                    float intensity = 0.15f + (radioMeteorito / 0.20f) * 0.15f;
+                    intensity = Math.min(0.3f, Math.max(0.15f, intensity));  // Clamp 0.15-0.3
+                    sceneRenderer.triggerScreenImpact(intensity);
                 }
 
                 totalImpactos++;
@@ -268,6 +542,14 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
                 // ACTUALIZAR HP BAR del sol
                 if (hpBarSun != null) {
                     hpBarSun.setHealth(sol.getCurrentHealth());
+                }
+
+                // 💥💥 EFECTO DE IMPACTO EN PANTALLA (SOL) - MÁS SUTIL
+                // Intensidad basada en tamaño del meteorito (0.05-0.20 → 0.2-0.4)
+                if (sceneRenderer != null) {
+                    float intensity = 0.2f + (radioMeteorito / 0.20f) * 0.2f;
+                    intensity = Math.min(0.4f, Math.max(0.2f, intensity));  // Clamp 0.2-0.4
+                    sceneRenderer.triggerScreenImpact(intensity);
                 }
 
                 totalImpactos++;

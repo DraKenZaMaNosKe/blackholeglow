@@ -30,6 +30,7 @@ public class LiveWallpaperService extends WallpaperService {
         private SceneRenderer sceneRenderer;
         private boolean rendererSet = false;
         private Handler mainHandler;
+        private ChargingScreenManager chargingScreenManager;  // 🔋 Gestor de pantalla de carga
 
         GLWallpaperEngine(Context context) {
             Log.d(TAG, "GLWallpaperEngine constructor");
@@ -38,10 +39,26 @@ public class LiveWallpaperService extends WallpaperService {
 
             prefs = context.getSharedPreferences("blackholeglow_prefs", MODE_PRIVATE);
 
-            // NO habilitar touch por ahora - causa problemas
-            setTouchEventsEnabled(false);
+            // 👆 HABILITAR TOUCH para sistema interactivo de disparo
+            setTouchEventsEnabled(true);
+            Log.d(TAG, "✨ Touch events HABILITADOS para interactividad");
+
+            // 🔋 Inicializar gestor de pantalla de carga
+            chargingScreenManager = new ChargingScreenManager(context);
+            chargingScreenManager.register();
+            Log.d(TAG, "🔋 ChargingScreenManager ACTIVADO");
 
             initializeGL();
+        }
+
+        @Override
+        public void onTouchEvent(MotionEvent event) {
+            super.onTouchEvent(event);
+
+            // Pasar evento al renderer para procesamiento
+            if (sceneRenderer != null) {
+                sceneRenderer.onTouchEvent(event);
+            }
         }
 
         private void initializeGL() {
@@ -149,6 +166,12 @@ public class LiveWallpaperService extends WallpaperService {
         @Override
         public void onDestroy() {
             Log.d(TAG, "onDestroy");
+
+            // 🔋 Desregistrar gestor de pantalla de carga
+            if (chargingScreenManager != null) {
+                chargingScreenManager.unregister();
+                Log.d(TAG, "🔋 ChargingScreenManager desactivado");
+            }
 
             if (glSurfaceView != null) {
                 glSurfaceView.onDestroy();

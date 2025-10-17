@@ -16,7 +16,7 @@ import javax.microedition.khronos.opengles.GL10;
 /**
  * SceneRenderer con sistema de logging detallado para desarrollo
  */
-public class SceneRenderer implements GLSurfaceView.Renderer {
+public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosionListener {
     private static final String TAG = "depurar";
     public static int screenWidth = 1, screenHeight = 1;
 
@@ -42,6 +42,34 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
     private MusicIndicator musicIndicator;  // Indicador visual de música
     private List<EstrellaBailarina> estrellasBailarinas = new ArrayList<>();  // 3 estrella bailarina
     private HPBar musicStatusBar;  // Barra de prueba para indicador de música
+
+    // ===== 👆 SISTEMA DE TOQUE INTERACTIVO 👆 =====
+    private boolean isTouching = false;           // Usuario está tocando la pantalla?
+    private float touchStartTime = 0f;            // Cuándo empezó a tocar
+    private float chargeLevel = 0f;               // Nivel de carga (0.0 - 1.0)
+    private static final float MAX_CHARGE_TIME = 1.5f;  // 1.5 segundos (antes de que Android muestre menú)
+    private HPBar chargePowerBar;                 // Barra visual de carga
+    private float touchX = 0f;                    // Posición X del toque (en coordenadas de pantalla)
+    private float touchY = 0f;                    // Posición Y del toque
+
+    // ===== 💥 SISTEMA DE IMPACTO EN PANTALLA 💥 =====
+    private float impactFlashAlpha = 0f;          // Alpha del flash blanco (0-1)
+    private float impactFlashTimer = 0f;          // Tiempo restante del flash
+    private int flashShaderProgramId = 0;         // Shader para el flash blanco
+    private int flashAPositionLoc = -1;
+    private int flashAColorLoc = -1;
+
+    // ===== 💥 SISTEMA DE PANTALLA ROTA (GRIETAS) 💥 =====
+    private float crackAlpha = 0f;                // Alpha de las grietas (0-1)
+    private float crackTimer = 0f;                // Tiempo desde el impacto
+    private float crackX = 0.5f;                  // Posición X del impacto (0-1)
+    private float crackY = 0.5f;                  // Posición Y del impacto (0-1)
+    private int crackShaderProgramId = 0;         // Shader para las grietas
+    private int crackAPositionLoc = -1;
+    private int crackATexCoordLoc = -1;
+    private int crackUTimeLoc = -1;
+    private int crackUImpactPosLoc = -1;
+    private int crackUAlphaLoc = -1;
 
     // Métricas de rendimiento
     private int frameCount = 0;
@@ -205,8 +233,8 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
         // Limpiar buffers
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
 
-        // La cámara NO se actualiza (está fija)
-        //sharedCamera.update(dt); // COMENTADO - cámara estática
+        // Actualizar cámara (para screen shake)
+        sharedCamera.update(dt);
 
         // Coordinar respawn de Sol y Campo de Fuerza
         coordinarRespawn();
@@ -271,10 +299,55 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             distribuirDatosMusicales();
         }
 
+        // 👆 ACTUALIZAR SISTEMA DE CARGA DE PODER
+        updateChargeSystem(dt);
+
+        // 💥 ACTUALIZAR FLASH DE IMPACTO
+        if (impactFlashTimer > 0) {
+            impactFlashTimer -= dt;
+            impactFlashAlpha *= 0.85f;  // Decay rápido
+            if (impactFlashTimer <= 0) {
+                impactFlashAlpha = 0f;
+            }
+        }
+
+        // 💥 ACTUALIZAR GRIETAS DE PANTALLA ROTA
+        if (crackTimer > 0) {
+            crackTimer += dt;
+
+            // Fase 1 (0-0.5s): Grietas aparecen y se expanden rápidamente
+            if (crackTimer < 0.5f) {
+                crackAlpha = crackTimer / 0.5f;  // 0 → 1
+            }
+            // Fase 2 (0.5-3.5s): Grietas visibles
+            else if (crackTimer < 3.5f) {
+                crackAlpha = 1.0f;  // Máximo
+            }
+            // Fase 3 (3.5-5.0s): Grietas se desvanecen
+            else if (crackTimer < 5.0f) {
+                crackAlpha = 1.0f - ((crackTimer - 3.5f) / 1.5f);  // 1 → 0
+            }
+            // Fin
+            else {
+                crackTimer = 0f;
+                crackAlpha = 0f;
+            }
+        }
+
         // Dibujar objetos
         for (SceneObject obj : sceneObjects) {
             obj.update(dt);
             obj.draw();
+        }
+
+        // 💥 DIBUJAR FLASH BLANCO SI ESTÁ ACTIVO
+        if (impactFlashAlpha > 0.01f) {
+            drawImpactFlash();
+        }
+
+        // 💥 DIBUJAR GRIETAS DE PANTALLA ROTA SI ESTÁN ACTIVAS
+        if (crackAlpha > 0.01f) {
+            drawScreenCracks();
         }
     }
 
@@ -337,8 +410,10 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
                 ((CameraAware) sol).setCameraController(sharedCamera);
             }
             sol.setMaxHealth(30);  // Sol tiene 30 HP
+            sol.setOnExplosionListener(this);  // 💥 CONECTAR EXPLOSIÓN ÉPICA
             sceneObjects.add(sol);
             Log.d(TAG, "  ✓ Sun added with lava shader (opaque) - HP: 30");
+            Log.d(TAG, "  💥 Explosion listener connected for EPIC particle show");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creating sun: " + e.getMessage());
         }
@@ -471,6 +546,24 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             Log.e(TAG, "[SceneRenderer] ✗ Error creando barras HP: " + e.getMessage());
         }
 
+        // 👆 BARRA DE CARGA DE PODER (PARA DISPARAR METEORITOS)
+        try {
+            chargePowerBar = new HPBar(
+                    context,
+                    "⚡ PODER",
+                    0.35f, 0.15f,  // Posición: centro-abajo
+                    0.30f, 0.04f,  // Tamaño: más ancha y gruesa
+                    100,  // Max = 100 (porcentaje)
+                    new float[]{1.0f, 0.9f, 0.2f, 1.0f},  // Amarillo brillante
+                    new float[]{0.3f, 0.3f, 0.3f, 0.5f}   // Gris oscuro vacío
+            );
+            chargePowerBar.setHealth(0);  // Empieza vacía
+            sceneObjects.add(chargePowerBar);
+            Log.d(TAG, "  ⚡✓ Barra de carga de poder agregada");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ ERROR creando barra de carga: " + e.getMessage());
+        }
+
         // 🎵 INDICADOR DE ESTADO MUSICAL 🎵
         // OCULTO VISUALMENTE - Solo se usa internamente para monitoreo
         try {
@@ -489,6 +582,20 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             Log.d(TAG, "  🎵✓ Indicador de audio creado (oculto)");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ ERROR creando indicador de audio: " + e.getMessage());
+        }
+
+        // 💥 BARRA DE COUNTDOWN PARA METEORITO DE PANTALLA 💥
+        MeteorCountdownBar meteorCountdownBar = null;
+        try {
+            meteorCountdownBar = new MeteorCountdownBar(
+                    context,
+                    0.70f, 0.87f,  // Posición: alineada con barra del escudo (Y=0.87)
+                    0.25f, 0.025f  // Tamaño: más fina que HP bar
+            );
+            sceneObjects.add(meteorCountdownBar);
+            Log.d(TAG, "  💥✓ Barra de countdown alineada con escudo");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ ERROR creando barra de countdown: " + e.getMessage());
         }
 
         // 🎵 INDICADOR VISUAL DE MÚSICA 🎵
@@ -525,6 +632,15 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             if (sol != null && forceField != null && hpBarSun != null && hpBarForceField != null) {
                 meteorShower.setHPSystem(sol, forceField, hpBarSun, hpBarForceField);
                 Log.d(TAG, "[SceneRenderer] ✓ Sistema HP conectado con MeteorShower");
+            }
+
+            // 💥 Conectar sistema de impacto en pantalla
+            meteorShower.setSceneRenderer(this);
+
+            // 💥 Conectar barra de countdown de meteorito
+            if (meteorCountdownBar != null) {
+                meteorShower.setCountdownBar(meteorCountdownBar);
+                Log.d(TAG, "[SceneRenderer] ✓ Barra de countdown conectada con MeteorShower");
             }
 
             // Registrar el sol, planeta Y campo de fuerza para colisiones
@@ -749,6 +865,520 @@ public class SceneRenderer implements GLSurfaceView.Renderer {
             Log.d(TAG, "Scene change requested: " + selectedItem + " → " + item);
             this.selectedItem = item;
             prepareScene();
+        }
+    }
+
+    // ===== 👆 SISTEMA DE TOQUE INTERACTIVO 👆 =====
+
+    /**
+     * Maneja eventos de toque del usuario
+     * PROTEGIDO contra interferencia del menú de Android
+     */
+    public void onTouchEvent(android.view.MotionEvent event) {
+        int action = event.getAction();
+
+        try {
+            switch (action) {
+                case android.view.MotionEvent.ACTION_DOWN:
+                    // Usuario empezó a tocar
+                    isTouching = true;
+                    touchStartTime = 0f;  // Se actualizará en onDrawFrame
+                    chargeLevel = 0f;
+                    touchX = event.getX();
+                    touchY = event.getY();
+                    Log.d(TAG, String.format("👆 TOUCH DOWN en (%.0f, %.0f)", touchX, touchY));
+                    break;
+
+                case android.view.MotionEvent.ACTION_MOVE:
+                    // Usuario está moviendo el dedo (actualizar posición)
+                    if (isTouching) {
+                        touchX = event.getX();
+                        touchY = event.getY();
+                    }
+                    break;
+
+                case android.view.MotionEvent.ACTION_UP:
+                    // Usuario soltó el dedo - DISPARAR METEORITO
+                    if (isTouching && chargeLevel > 0.1f) {  // Mínimo 10% de carga
+                        shootMeteor(chargeLevel);
+                        Log.d(TAG, String.format("🚀 DISPARAR - Carga: %.0f%%", chargeLevel * 100));
+                    }
+                    isTouching = false;
+                    chargeLevel = 0f;
+                    break;
+
+                case android.view.MotionEvent.ACTION_CANCEL:
+                    // Sistema canceló el toque (ej: menú de Android apareció)
+                    // NO disparar, solo limpiar estado
+                    Log.d(TAG, "⚠️ Touch CANCELADO por sistema (menú Android?) - limpiando estado");
+                    isTouching = false;
+                    chargeLevel = 0f;
+                    break;
+            }
+        } catch (Exception e) {
+            // Protección contra crashes
+            Log.e(TAG, "✗ Error en onTouchEvent: " + e.getMessage());
+            isTouching = false;
+            chargeLevel = 0f;
+        }
+    }
+
+    /**
+     * Actualiza el sistema de carga de poder (llamado desde onDrawFrame)
+     * PROTEGIDO: Auto-cancela si excede tiempo máximo
+     */
+    private void updateChargeSystem(float dt) {
+        if (isTouching) {
+            touchStartTime += dt;
+            chargeLevel = Math.min(1.0f, touchStartTime / MAX_CHARGE_TIME);
+
+            // PROTECCIÓN: Si alcanza el tiempo máximo, disparar automáticamente
+            // Esto previene conflictos con el menú de Android
+            if (touchStartTime >= MAX_CHARGE_TIME) {
+                if (chargeLevel > 0.1f) {
+                    shootMeteor(chargeLevel);
+                    Log.d(TAG, "⚡ AUTO-DISPARO al 100% (prevención de menú Android)");
+                }
+                isTouching = false;
+                chargeLevel = 0f;
+                touchStartTime = 0f;
+            }
+
+            // Actualizar barra visual
+            if (chargePowerBar != null) {
+                try {
+                    chargePowerBar.setHealth((int)(chargeLevel * 100));  // 0-100
+                } catch (Exception e) {
+                    Log.e(TAG, "Error actualizando barra de carga: " + e.getMessage());
+                }
+            }
+
+            // Log reducido para performance
+            if (frameCount % 120 == 0) {
+                Log.d(TAG, String.format("⚡ Cargando: %.0f%%", chargeLevel * 100));
+            }
+        } else {
+            // Resetear barra cuando no está tocando
+            if (chargePowerBar != null) {
+                try {
+                    chargePowerBar.setHealth(0);
+                } catch (Exception e) {
+                    // Ignorar errores al resetear
+                }
+            }
+        }
+    }
+
+    /**
+     * Dispara un meteorito hacia el sol
+     * PROTEGIDO contra crashes
+     */
+    private void shootMeteor(float power) {
+        try {
+            if (meteorShower == null) {
+                Log.w(TAG, "⚠️ MeteorShower no disponible");
+                return;
+            }
+
+            if (power < 0.01f || power > 1.0f) {
+                Log.w(TAG, "⚠️ Poder inválido: " + power + " (debe ser 0.0-1.0)");
+                return;
+            }
+
+            // Disparar meteorito con la potencia especificada
+            meteorShower.shootPlayerMeteor(power);
+
+            Log.d(TAG, String.format("💥 Meteorito disparado - Poder: %.0f%%", power * 100));
+        } catch (Exception e) {
+            Log.e(TAG, "✗ Error disparando meteorito: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // ===== 💥 SISTEMA DE IMPACTO EN PANTALLA 💥 =====
+
+    /**
+     * Activa efecto de impacto en pantalla (screen shake + flash blanco)
+     * @param intensity Intensidad del impacto (0.0 - 1.0)
+     */
+    public void triggerScreenImpact(float intensity) {
+        // Screen shake
+        if (sharedCamera != null) {
+            sharedCamera.triggerScreenShake(intensity * 0.8f, 0.3f);
+        }
+
+        // Flash blanco
+        impactFlashAlpha = intensity * 0.6f;  // Máximo 60% de alpha para no cegar
+        impactFlashTimer = 0.25f;  // 0.25 segundos
+
+        Log.d(TAG, String.format("💥 IMPACTO EN PANTALLA! Intensidad: %.0f%%", intensity * 100));
+    }
+
+    /**
+     * 💥💥 Activa efecto de PANTALLA ROTA con grietas procedurales
+     * @param screenX Posición X del impacto en coordenadas de pantalla (0-1)
+     * @param screenY Posición Y del impacto en coordenadas de pantalla (0-1)
+     * @param intensity Intensidad del impacto (0.0 - 1.0)
+     */
+    public void triggerScreenCrack(float screenX, float screenY, float intensity) {
+        // Screen shake MÁS FUERTE
+        if (sharedCamera != null) {
+            sharedCamera.triggerScreenShake(intensity * 1.2f, 0.5f);
+        }
+
+        // Flash blanco MÁS INTENSO
+        impactFlashAlpha = intensity * 0.8f;  // Máximo 80%
+        impactFlashTimer = 0.4f;
+
+        // GRIETAS
+        crackX = screenX;
+        crackY = screenY;
+        crackTimer = 0.01f;  // Iniciar animación
+        crackAlpha = 0f;
+
+        Log.d(TAG, "╔════════════════════════════════════════════════════════╗");
+        Log.d(TAG, "║                                                        ║");
+        Log.d(TAG, "║    💥💥💥 ¡PANTALLA ROTA! 💥💥💥                      ║");
+        Log.d(TAG, "║                                                        ║");
+        Log.d(TAG, String.format("║    Impacto en: (%.2f, %.2f)                           ║", screenX, screenY));
+        Log.d(TAG, String.format("║    Intensidad: %.0f%%                                  ║", intensity * 100));
+        Log.d(TAG, "║                                                        ║");
+        Log.d(TAG, "╚════════════════════════════════════════════════════════╝");
+    }
+
+    /**
+     * Dibuja un flash blanco semi-transparente en toda la pantalla
+     */
+    private void drawImpactFlash() {
+        // Desactivar depth test y habilitar blending
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+
+        // ╔═════════════════════════════════════════════════════════╗
+        // ║  INICIALIZACIÓN LAZY DEL SHADER (solo primera vez)     ║
+        // ╚═════════════════════════════════════════════════════════╝
+        if (flashShaderProgramId == 0) {
+            // Shader muy simple para dibujar quad 2D con color
+            String vertexShader =
+                "attribute vec2 a_Position;\n" +
+                "attribute vec4 a_Color;\n" +
+                "varying vec4 v_Color;\n" +
+                "void main() {\n" +
+                "    v_Color = a_Color;\n" +
+                "    gl_Position = vec4(a_Position, 0.0, 1.0);\n" +
+                "}\n";
+
+            String fragmentShader =
+                "#ifdef GL_ES\n" +
+                "precision mediump float;\n" +
+                "#endif\n" +
+                "varying vec4 v_Color;\n" +
+                "void main() {\n" +
+                "    gl_FragColor = v_Color;\n" +
+                "}\n";
+
+            int vShader = ShaderUtils.compileShader(GLES20.GL_VERTEX_SHADER, vertexShader);
+            int fShader = ShaderUtils.compileShader(GLES20.GL_FRAGMENT_SHADER, fragmentShader);
+
+            flashShaderProgramId = GLES20.glCreateProgram();
+            GLES20.glAttachShader(flashShaderProgramId, vShader);
+            GLES20.glAttachShader(flashShaderProgramId, fShader);
+            GLES20.glLinkProgram(flashShaderProgramId);
+
+            // Verificar link
+            int[] linkStatus = new int[1];
+            GLES20.glGetProgramiv(flashShaderProgramId, GLES20.GL_LINK_STATUS, linkStatus, 0);
+            if (linkStatus[0] == 0) {
+                Log.e(TAG, "💥 Flash shader link failed: " + GLES20.glGetProgramInfoLog(flashShaderProgramId));
+                flashShaderProgramId = 0;
+                return;
+            }
+
+            GLES20.glDeleteShader(vShader);
+            GLES20.glDeleteShader(fShader);
+
+            flashAPositionLoc = GLES20.glGetAttribLocation(flashShaderProgramId, "a_Position");
+            flashAColorLoc = GLES20.glGetAttribLocation(flashShaderProgramId, "a_Color");
+
+            Log.d(TAG, "💥 Flash shader creado - ID: " + flashShaderProgramId);
+        }
+
+        // ╔═════════════════════════════════════════════════════════╗
+        // ║  DIBUJAR QUAD BLANCO SEMI-TRANSPARENTE                 ║
+        // ╚═════════════════════════════════════════════════════════╝
+        if (flashShaderProgramId > 0 && GLES20.glIsProgram(flashShaderProgramId)) {
+            GLES20.glUseProgram(flashShaderProgramId);
+
+            // Vértices en NDC que cubren toda la pantalla (TRIANGLE_STRIP)
+            float[] vertices = {
+                -1.0f, -1.0f,  // Bottom-left
+                 1.0f, -1.0f,  // Bottom-right
+                -1.0f,  1.0f,  // Top-left
+                 1.0f,  1.0f   // Top-right
+            };
+
+            // Color blanco con alpha variable
+            float[] colors = new float[16];
+            for (int i = 0; i < 4; i++) {
+                colors[i * 4] = 1.0f;  // R
+                colors[i * 4 + 1] = 1.0f;  // G
+                colors[i * 4 + 2] = 1.0f;  // B
+                colors[i * 4 + 3] = impactFlashAlpha;  // A
+            }
+
+            // Crear buffers
+            java.nio.ByteBuffer vbb = java.nio.ByteBuffer.allocateDirect(vertices.length * 4);
+            vbb.order(java.nio.ByteOrder.nativeOrder());
+            java.nio.FloatBuffer vb = vbb.asFloatBuffer();
+            vb.put(vertices);
+            vb.position(0);
+
+            java.nio.ByteBuffer cbb = java.nio.ByteBuffer.allocateDirect(colors.length * 4);
+            cbb.order(java.nio.ByteOrder.nativeOrder());
+            java.nio.FloatBuffer cb = cbb.asFloatBuffer();
+            cb.put(colors);
+            cb.position(0);
+
+            // Configurar atributos
+            GLES20.glEnableVertexAttribArray(flashAPositionLoc);
+            GLES20.glVertexAttribPointer(flashAPositionLoc, 2, GLES20.GL_FLOAT, false, 0, vb);
+
+            GLES20.glEnableVertexAttribArray(flashAColorLoc);
+            GLES20.glVertexAttribPointer(flashAColorLoc, 4, GLES20.GL_FLOAT, false, 0, cb);
+
+            // Dibujar
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+
+            // Limpiar
+            GLES20.glDisableVertexAttribArray(flashAPositionLoc);
+            GLES20.glDisableVertexAttribArray(flashAColorLoc);
+        }
+
+        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+    }
+
+    /**
+     * 💥💥 Dibuja grietas procedurales en la pantalla
+     */
+    private void drawScreenCracks() {
+        // Desactivar depth test y habilitar blending
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+
+        // ╔═════════════════════════════════════════════════════════╗
+        // ║  INICIALIZACIÓN LAZY DEL SHADER (solo primera vez)     ║
+        // ╚═════════════════════════════════════════════════════════╝
+        if (crackShaderProgramId == 0) {
+            // Vertex shader simple
+            String vertexShader =
+                "attribute vec2 a_Position;\n" +
+                "attribute vec2 a_TexCoord;\n" +
+                "varying vec2 v_TexCoord;\n" +
+                "void main() {\n" +
+                "    v_TexCoord = a_TexCoord;\n" +
+                "    gl_Position = vec4(a_Position, 0.0, 1.0);\n" +
+                "}\n";
+
+            // Fragment shader con grietas procedurales
+            String fragmentShader =
+                "#ifdef GL_ES\n" +
+                "precision mediump float;\n" +
+                "#endif\n" +
+                "varying vec2 v_TexCoord;\n" +
+                "uniform float u_Time;\n" +
+                "uniform vec2 u_ImpactPos;\n" +
+                "uniform float u_Alpha;\n" +
+                "\n" +
+                "// Función de ruido simple\n" +
+                "float hash(float n) {\n" +
+                "    return fract(sin(n) * 43758.5453);\n" +
+                "}\n" +
+                "\n" +
+                "float noise(vec2 p) {\n" +
+                "    vec2 i = floor(p);\n" +
+                "    vec2 f = fract(p);\n" +
+                "    f = f * f * (3.0 - 2.0 * f);\n" +
+                "    float n = i.x + i.y * 57.0;\n" +
+                "    return mix(mix(hash(n), hash(n + 1.0), f.x),\n" +
+                "               mix(hash(n + 57.0), hash(n + 58.0), f.x), f.y);\n" +
+                "}\n" +
+                "\n" +
+                "void main() {\n" +
+                "    vec2 uv = v_TexCoord;\n" +
+                "    vec2 toImpact = uv - u_ImpactPos;\n" +
+                "    float dist = length(toImpact);\n" +
+                "    float angle = atan(toImpact.y, toImpact.x);\n" +
+                "    \n" +
+                "    // Grietas radiales desde el punto de impacto\n" +
+                "    float numCracks = 12.0;\n" +
+                "    float crackPattern = 0.0;\n" +
+                "    \n" +
+                "    for (float i = 0.0; i < numCracks; i++) {\n" +
+                "        float crackAngle = (i / numCracks) * 6.28318;\n" +
+                "        float angleDiff = abs(mod(angle - crackAngle + 3.14159, 6.28318) - 3.14159);\n" +
+                "        \n" +
+                "        // Grieta con variación de ruido\n" +
+                "        float crackNoise = noise(vec2(dist * 20.0, i));\n" +
+                "        float crackWidth = 0.02 + crackNoise * 0.01;\n" +
+                "        float crack = smoothstep(crackWidth, 0.0, angleDiff);\n" +
+                "        \n" +
+                "        // Fade out con la distancia\n" +
+                "        float distFade = smoothstep(1.2, 0.0, dist);\n" +
+                "        crack *= distFade;\n" +
+                "        \n" +
+                "        // Expansión animada\n" +
+                "        float expansion = smoothstep(dist * 1.5, dist * 1.5 + 0.1, u_Time * 2.0);\n" +
+                "        crack *= expansion;\n" +
+                "        \n" +
+                "        crackPattern = max(crackPattern, crack);\n" +
+                "    }\n" +
+                "    \n" +
+                "    // Grietas secundarias más finas\n" +
+                "    float secondaryCracks = 0.0;\n" +
+                "    for (float i = 0.0; i < 6.0; i++) {\n" +
+                "        float offset = hash(i) * 6.28318;\n" +
+                "        float crackAngle = (i / 6.0) * 6.28318 + offset;\n" +
+                "        float angleDiff = abs(mod(angle - crackAngle + 3.14159, 6.28318) - 3.14159);\n" +
+                "        \n" +
+                "        float crack = smoothstep(0.01, 0.0, angleDiff);\n" +
+                "        float distFade = smoothstep(0.8, 0.0, dist);\n" +
+                "        crack *= distFade;\n" +
+                "        \n" +
+                "        float expansion = smoothstep(dist * 1.5, dist * 1.5 + 0.1, u_Time * 2.0);\n" +
+                "        crack *= expansion * 0.5;\n" +
+                "        \n" +
+                "        secondaryCracks = max(secondaryCracks, crack);\n" +
+                "    }\n" +
+                "    \n" +
+                "    crackPattern = max(crackPattern, secondaryCracks);\n" +
+                "    \n" +
+                "    // Color blanco/gris para las grietas\n" +
+                "    vec3 crackColor = vec3(0.9, 0.95, 1.0);\n" +
+                "    \n" +
+                "    gl_FragColor = vec4(crackColor, crackPattern * u_Alpha * 0.8);\n" +
+                "}\n";
+
+            int vShader = ShaderUtils.compileShader(GLES20.GL_VERTEX_SHADER, vertexShader);
+            int fShader = ShaderUtils.compileShader(GLES20.GL_FRAGMENT_SHADER, fragmentShader);
+
+            crackShaderProgramId = GLES20.glCreateProgram();
+            GLES20.glAttachShader(crackShaderProgramId, vShader);
+            GLES20.glAttachShader(crackShaderProgramId, fShader);
+            GLES20.glLinkProgram(crackShaderProgramId);
+
+            // Verificar link
+            int[] linkStatus = new int[1];
+            GLES20.glGetProgramiv(crackShaderProgramId, GLES20.GL_LINK_STATUS, linkStatus, 0);
+            if (linkStatus[0] == 0) {
+                Log.e(TAG, "💥 Crack shader link failed: " + GLES20.glGetProgramInfoLog(crackShaderProgramId));
+                crackShaderProgramId = 0;
+                return;
+            }
+
+            GLES20.glDeleteShader(vShader);
+            GLES20.glDeleteShader(fShader);
+
+            crackAPositionLoc = GLES20.glGetAttribLocation(crackShaderProgramId, "a_Position");
+            crackATexCoordLoc = GLES20.glGetAttribLocation(crackShaderProgramId, "a_TexCoord");
+            crackUTimeLoc = GLES20.glGetUniformLocation(crackShaderProgramId, "u_Time");
+            crackUImpactPosLoc = GLES20.glGetUniformLocation(crackShaderProgramId, "u_ImpactPos");
+            crackUAlphaLoc = GLES20.glGetUniformLocation(crackShaderProgramId, "u_Alpha");
+
+            Log.d(TAG, "💥 Crack shader creado - ID: " + crackShaderProgramId);
+        }
+
+        // ╔═════════════════════════════════════════════════════════╗
+        // ║  DIBUJAR GRIETAS PROCEDURALES                           ║
+        // ╚═════════════════════════════════════════════════════════╝
+        if (crackShaderProgramId > 0 && GLES20.glIsProgram(crackShaderProgramId)) {
+            GLES20.glUseProgram(crackShaderProgramId);
+
+            // Vértices en NDC
+            float[] vertices = {
+                -1.0f, -1.0f,  // Bottom-left
+                 1.0f, -1.0f,  // Bottom-right
+                -1.0f,  1.0f,  // Top-left
+                 1.0f,  1.0f   // Top-right
+            };
+
+            // UV coordinates
+            float[] uvs = {
+                0.0f, 0.0f,
+                1.0f, 0.0f,
+                0.0f, 1.0f,
+                1.0f, 1.0f
+            };
+
+            // Crear buffers
+            java.nio.ByteBuffer vbb = java.nio.ByteBuffer.allocateDirect(vertices.length * 4);
+            vbb.order(java.nio.ByteOrder.nativeOrder());
+            java.nio.FloatBuffer vb = vbb.asFloatBuffer();
+            vb.put(vertices);
+            vb.position(0);
+
+            java.nio.ByteBuffer ubb = java.nio.ByteBuffer.allocateDirect(uvs.length * 4);
+            ubb.order(java.nio.ByteOrder.nativeOrder());
+            java.nio.FloatBuffer ub = ubb.asFloatBuffer();
+            ub.put(uvs);
+            ub.position(0);
+
+            // Configurar uniforms
+            GLES20.glUniform1f(crackUTimeLoc, crackTimer);
+            GLES20.glUniform2f(crackUImpactPosLoc, crackX, crackY);
+            GLES20.glUniform1f(crackUAlphaLoc, crackAlpha);
+
+            // Configurar atributos
+            GLES20.glEnableVertexAttribArray(crackAPositionLoc);
+            GLES20.glVertexAttribPointer(crackAPositionLoc, 2, GLES20.GL_FLOAT, false, 0, vb);
+
+            GLES20.glEnableVertexAttribArray(crackATexCoordLoc);
+            GLES20.glVertexAttribPointer(crackATexCoordLoc, 2, GLES20.GL_FLOAT, false, 0, ub);
+
+            // Dibujar
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+
+            // Limpiar
+            GLES20.glDisableVertexAttribArray(crackAPositionLoc);
+            GLES20.glDisableVertexAttribArray(crackATexCoordLoc);
+        }
+
+        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+    }
+
+    // ===== 💥💥💥 EXPLOSIÓN ÉPICA DEL SOL 💥💥💥 =====
+
+    /**
+     * Callback cuando el sol explota - GENERA EXPLOSIÓN MASIVA DE PARTÍCULAS
+     * Llamado desde Planeta cuando HP llega a 0
+     */
+    @Override
+    public void onExplosion(float x, float y, float z, float intensity) {
+        Log.d(TAG, "╔════════════════════════════════════════════════════════╗");
+        Log.d(TAG, "║                                                        ║");
+        Log.d(TAG, "║         💥💥💥 ¡¡¡EXPLOSIÓN ÉPICA!!! 💥💥💥           ║");
+        Log.d(TAG, "║                                                        ║");
+        Log.d(TAG, "║   El sol ha sido destruido!                           ║");
+        Log.d(TAG, String.format("║   Intensidad: %.1f (MÁXIMA)                           ║", intensity));
+        Log.d(TAG, String.format("║   Posición: (%.2f, %.2f, %.2f)                        ║", x, y, z));
+        Log.d(TAG, "║                                                        ║");
+        Log.d(TAG, "║   🌟 ACTIVANDO EXPLOSIÓN MASIVA DE PARTÍCULAS 🌟     ║");
+        Log.d(TAG, "║                                                        ║");
+        Log.d(TAG, "╚════════════════════════════════════════════════════════╝");
+
+        // Disparar explosiones MASIVAS en TODAS las estrellas bailarinas
+        if (estrellasBailarinas != null && !estrellasBailarinas.isEmpty()) {
+            for (EstrellaBailarina estrella : estrellasBailarinas) {
+                if (estrella != null) {
+                    // Explosión con intensidad MÁXIMA (2.5x la normal)
+                    estrella.triggerExplosion(intensity * 2.5f);
+                    Log.d(TAG, "   💥 Estrella bailarina activada con intensidad " + (intensity * 2.5f));
+                }
+            }
+            Log.d(TAG, "   ✨✨✨ " + estrellasBailarinas.size() + " EXPLOSIONES MASIVAS DISPARADAS! ✨✨✨");
+        } else {
+            Log.w(TAG, "   ⚠️ No hay estrellas bailarinas disponibles para explosión");
         }
     }
 }

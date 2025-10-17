@@ -9,10 +9,10 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
 /**
- * HPBar - Barra de vida para objetos (Sol, Campo de Fuerza, etc.)
- * Renderiza en espacio de pantalla (2D overlay)
+ * 💥 Barra de Countdown para Meteorito de Pantalla
+ * Muestra el progreso del tiempo restante hasta el próximo impacto
  */
-public class HPBar implements SceneObject {
+public class MeteorCountdownBar implements SceneObject {
     private static final String TAG = "depurar";
 
     private int programId;
@@ -21,47 +21,39 @@ public class HPBar implements SceneObject {
     private FloatBuffer uvBuffer;
 
     // Ubicación y tamaño
-    private float x, y;           // Posición en pantalla (0-1)
-    private final float width;    // Ancho de la barra
-    private final float height;   // Alto de la barra
+    private final float x, y;           // Posición en pantalla (0-1)
+    private final float width;          // Ancho de la barra
+    private final float height;         // Alto de la barra
 
-    // Estado de vida
-    private int maxHealth;
-    private int currentHealth;
+    // Estado del countdown (0.0 = listo para spawn, 1.0 = recién spawneado)
+    private float progress = 0f;  // 0-1
 
     // Colores
-    private final float[] colorFull;      // Color cuando está llena
-    private final float[] colorEmpty;     // Color cuando está vacía
-    private final float[] colorBorder;    // Color del borde
+    private final float[] colorEmpty = {0.2f, 0.2f, 0.3f, 0.7f};   // Gris oscuro
+    private final float[] colorFull = {1.0f, 0.5f, 0.1f, 0.9f};    // Naranja fuego
+    private final float[] colorBorder = {1.0f, 1.0f, 1.0f, 1.0f};  // Blanco
 
-    // Label de texto
-    private final String label;
+    // Parpadeo cuando está cerca
+    private float blinkTimer = 0f;
 
-    public HPBar(Context context, String label, float x, float y, float width, float height,
-                 int maxHealth, float[] colorFull, float[] colorEmpty) {
-        this.label = label;
+    public MeteorCountdownBar(Context context, float x, float y, float width, float height) {
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
-        this.maxHealth = maxHealth;
-        this.currentHealth = maxHealth;
-        this.colorFull = colorFull;
-        this.colorEmpty = colorEmpty;
-        this.colorBorder = new float[]{1.0f, 1.0f, 1.0f, 1.0f};  // Blanco
 
         initShader(context);
         setupGeometry();
 
-        Log.d(TAG, "[HPBar] ✓ Barra HP creada: " + label + " - HP: " + maxHealth);
+        Log.d(TAG, "[MeteorCountdownBar] ✓ Barra de countdown creada en (" + x + ", " + y + ")");
     }
 
     private void initShader(Context context) {
-        // Shader con esquinas redondeadas para barras HP
+        // Shader con esquinas redondeadas (igual que HPBar)
         String vertexShader =
             "attribute vec2 a_Position;\n" +
             "attribute vec4 a_Color;\n" +
-            "attribute vec2 a_TexCoord;\n" +  // UV coordinates
+            "attribute vec2 a_TexCoord;\n" +
             "varying vec4 v_Color;\n" +
             "varying vec2 v_TexCoord;\n" +
             "void main() {\n" +
@@ -102,7 +94,7 @@ public class HPBar implements SceneObject {
         int[] linkStatus = new int[1];
         GLES20.glGetProgramiv(programId, GLES20.GL_LINK_STATUS, linkStatus, 0);
         if (linkStatus[0] == 0) {
-            Log.e(TAG, "[HPBar] Shader link failed: " + GLES20.glGetProgramInfoLog(programId));
+            Log.e(TAG, "[MeteorCountdownBar] Shader link failed: " + GLES20.glGetProgramInfoLog(programId));
         }
 
         GLES20.glDeleteShader(vShader);
@@ -110,15 +102,13 @@ public class HPBar implements SceneObject {
     }
 
     private void setupGeometry() {
-        // Dos rectángulos: borde y relleno
-        // Por ahora solo vértices (se actualizan en draw según HP)
-        float[] vertices = new float[24];  // 12 vértices (6 por rectángulo, 2 componentes)
+        float[] vertices = new float[24];
         vertexBuffer = createFloatBuffer(vertices);
 
-        float[] colors = new float[48];  // 12 vértices, 4 componentes RGBA
+        float[] colors = new float[48];
         colorBuffer = createFloatBuffer(colors);
 
-        // UV coordinates para esquinas redondeadas (0-1 para cada quad)
+        // UV coordinates para esquinas redondeadas
         float[] uvs = {
             0.0f, 0.0f,  // Bottom-left
             1.0f, 0.0f,  // Bottom-right
@@ -139,39 +129,24 @@ public class HPBar implements SceneObject {
         return fb;
     }
 
-    public void setHealth(int health) {
-        this.currentHealth = Math.max(0, Math.min(health, maxHealth));
-    }
-
-    public void damage(int amount) {
-        this.currentHealth = Math.max(0, currentHealth - amount);
-        Log.d(TAG, "[HPBar] " + label + " dañado: " + currentHealth + "/" + maxHealth);
-    }
-
-    public void heal(int amount) {
-        this.currentHealth = Math.min(maxHealth, currentHealth + amount);
-    }
-
-    public void reset() {
-        this.currentHealth = maxHealth;
-        Log.d(TAG, "[HPBar] " + label + " HP restaurado: " + maxHealth);
-    }
-
-    public boolean isDead() {
-        return currentHealth <= 0;
-    }
-
-    public int getCurrentHealth() {
-        return currentHealth;
-    }
-
-    public int getMaxHealth() {
-        return maxHealth;
+    /**
+     * Actualiza el progreso del countdown
+     * @param currentTime Tiempo actual transcurrido desde último spawn
+     * @param maxTime Intervalo total para el próximo spawn
+     */
+    public void setProgress(float currentTime, float maxTime) {
+        this.progress = currentTime / maxTime;
+        this.progress = Math.max(0f, Math.min(1f, this.progress));
     }
 
     @Override
     public void update(float deltaTime) {
-        // No hay animación por ahora
+        // Parpadeo cuando está cerca (último 20%)
+        if (progress > 0.8f) {
+            blinkTimer += deltaTime * 8f;  // Parpadeo rápido
+        } else {
+            blinkTimer = 0f;
+        }
     }
 
     @Override
@@ -191,32 +166,35 @@ public class HPBar implements SceneObject {
         float ndcW = width * 2.0f;
         float ndcH = height * 2.0f;
 
-        // Calcular porcentaje de vida
-        float healthPercent = (float) currentHealth / maxHealth;
-
-        // Interpolar color según vida
+        // Interpolar color según progreso
         float[] currentColor = new float[4];
         for (int i = 0; i < 4; i++) {
-            currentColor[i] = colorEmpty[i] + (colorFull[i] - colorEmpty[i]) * healthPercent;
+            currentColor[i] = colorEmpty[i] + (colorFull[i] - colorEmpty[i]) * progress;
+        }
+
+        // Efecto de parpadeo cuando está cerca
+        if (progress > 0.8f) {
+            float blinkFactor = (float) Math.sin(blinkTimer) * 0.5f + 0.5f;
+            currentColor[3] *= (0.5f + blinkFactor * 0.5f);  // Parpadea entre 50% y 100% alpha
         }
 
         // RECTÁNGULO DE FONDO (borde/vacío)
         float[] bgVertices = {
-            ndcX, ndcY,                    // Bottom-left
-            ndcX + ndcW, ndcY,            // Bottom-right
-            ndcX, ndcY + ndcH,            // Top-left
+            ndcX, ndcY,
+            ndcX + ndcW, ndcY,
+            ndcX, ndcY + ndcH,
 
-            ndcX + ndcW, ndcY,            // Bottom-right
-            ndcX + ndcW, ndcY + ndcH,     // Top-right
-            ndcX, ndcY + ndcH             // Top-left
+            ndcX + ndcW, ndcY,
+            ndcX + ndcW, ndcY + ndcH,
+            ndcX, ndcY + ndcH
         };
 
-        float[] bgColors = new float[24];  // 6 vértices * 4 componentes
+        float[] bgColors = new float[24];
         for (int i = 0; i < 6; i++) {
-            bgColors[i * 4] = colorBorder[0] * 0.3f;
-            bgColors[i * 4 + 1] = colorBorder[1] * 0.3f;
-            bgColors[i * 4 + 2] = colorBorder[2] * 0.3f;
-            bgColors[i * 4 + 3] = 0.8f;
+            bgColors[i * 4] = colorBorder[0] * 0.2f;
+            bgColors[i * 4 + 1] = colorBorder[1] * 0.2f;
+            bgColors[i * 4 + 2] = colorBorder[2] * 0.2f;
+            bgColors[i * 4 + 3] = 0.6f;
         }
 
         // Dibujar fondo
@@ -230,38 +208,40 @@ public class HPBar implements SceneObject {
 
         drawQuad();
 
-        // RECTÁNGULO DE VIDA (relleno según HP)
-        float fillWidth = ndcW * healthPercent;
-        float padding = 0.005f;  // Pequeño padding interno
+        // RECTÁNGULO DE PROGRESO (relleno según countdown)
+        float fillWidth = ndcW * progress;
+        float padding = 0.003f;  // Padding más pequeño para barra más fina
 
-        float[] fillVertices = {
-            ndcX + padding, ndcY + padding,
-            ndcX + fillWidth - padding, ndcY + padding,
-            ndcX + padding, ndcY + ndcH - padding,
+        if (fillWidth > padding * 2) {
+            float[] fillVertices = {
+                ndcX + padding, ndcY + padding,
+                ndcX + fillWidth - padding, ndcY + padding,
+                ndcX + padding, ndcY + ndcH - padding,
 
-            ndcX + fillWidth - padding, ndcY + padding,
-            ndcX + fillWidth - padding, ndcY + ndcH - padding,
-            ndcX + padding, ndcY + ndcH - padding
-        };
+                ndcX + fillWidth - padding, ndcY + padding,
+                ndcX + fillWidth - padding, ndcY + ndcH - padding,
+                ndcX + padding, ndcY + ndcH - padding
+            };
 
-        float[] fillColors = new float[24];
-        for (int i = 0; i < 6; i++) {
-            fillColors[i * 4] = currentColor[0];
-            fillColors[i * 4 + 1] = currentColor[1];
-            fillColors[i * 4 + 2] = currentColor[2];
-            fillColors[i * 4 + 3] = currentColor[3];
+            float[] fillColors = new float[24];
+            for (int i = 0; i < 6; i++) {
+                fillColors[i * 4] = currentColor[0];
+                fillColors[i * 4 + 1] = currentColor[1];
+                fillColors[i * 4 + 2] = currentColor[2];
+                fillColors[i * 4 + 3] = currentColor[3];
+            }
+
+            // Dibujar relleno
+            vertexBuffer.clear();
+            vertexBuffer.put(fillVertices);
+            vertexBuffer.position(0);
+
+            colorBuffer.clear();
+            colorBuffer.put(fillColors);
+            colorBuffer.position(0);
+
+            drawQuad();
         }
-
-        // Dibujar relleno
-        vertexBuffer.clear();
-        vertexBuffer.put(fillVertices);
-        vertexBuffer.position(0);
-
-        colorBuffer.clear();
-        colorBuffer.put(fillColors);
-        colorBuffer.position(0);
-
-        drawQuad();
 
         // Restaurar estado
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
@@ -273,8 +253,8 @@ public class HPBar implements SceneObject {
         int aTexCoordLoc = GLES20.glGetAttribLocation(programId, "a_TexCoord");
         int uCornerRadiusLoc = GLES20.glGetUniformLocation(programId, "u_CornerRadius");
 
-        // Radio de las esquinas (0.15 = esquinas suavemente redondeadas)
-        GLES20.glUniform1f(uCornerRadiusLoc, 0.15f);
+        // Radio de las esquinas
+        GLES20.glUniform1f(uCornerRadiusLoc, 0.25f);  // Más redondeada
 
         GLES20.glEnableVertexAttribArray(aPosLoc);
         GLES20.glVertexAttribPointer(aPosLoc, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);

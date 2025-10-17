@@ -25,6 +25,11 @@ public class CameraController {
     private float[] target = {0f, 0f, 0f};        // Punto que mira la cámara
     private float[] up = {0f, 1f, 0f};            // Vector "arriba"
 
+    // ====== SCREEN SHAKE (EFECTO DE IMPACTO) ======
+    private float shakeIntensity = 0f;            // Intensidad actual del temblor
+    private float shakeTimer = 0f;                // Tiempo restante del temblor
+    private final java.util.Random shakeRandom = new java.util.Random();
+
     // ====== PARÁMETROS DE PROYECCIÓN ======
     private float fov = 60f;           // Campo de visión
     private float nearPlane = 0.1f;
@@ -61,23 +66,52 @@ public class CameraController {
     }
 
     /**
-     * Actualización simplificada - ya no hay movimiento
-     * Este método se mantiene por compatibilidad pero no hace nada
+     * Actualización simplificada - solo maneja screen shake
      */
     public void update(float deltaTime) {
-        // Cámara completamente estática - no hay actualización
+        // Actualizar screen shake si está activo
+        if (shakeTimer > 0) {
+            shakeTimer -= deltaTime;
+            if (shakeTimer <= 0) {
+                shakeTimer = 0;
+                shakeIntensity = 0;
+                updateViewMatrix();  // Restaurar posición original
+            } else {
+                // Decay de la intensidad
+                shakeIntensity *= 0.92f;
+                updateViewMatrix();  // Aplicar shake
+            }
+        }
     }
 
     /**
-     * Actualiza la matriz de vista
+     * Actualiza la matriz de vista (con screen shake si está activo)
      */
     private void updateViewMatrix() {
+        // Aplicar shake si está activo
+        float shakeX = 0f, shakeY = 0f, shakeZ = 0f;
+        if (shakeIntensity > 0.01f) {
+            shakeX = (shakeRandom.nextFloat() * 2f - 1f) * shakeIntensity;
+            shakeY = (shakeRandom.nextFloat() * 2f - 1f) * shakeIntensity;
+            shakeZ = (shakeRandom.nextFloat() * 2f - 1f) * shakeIntensity * 0.5f;  // Menos shake en Z
+        }
+
         Matrix.setLookAtM(
                 viewMatrix, 0,
-                position[0], position[1], position[2],    // Posición de cámara
-                target[0], target[1], target[2],          // Punto objetivo
-                up[0], up[1], up[2]                       // Vector arriba
+                position[0] + shakeX, position[1] + shakeY, position[2] + shakeZ,
+                target[0], target[1], target[2],
+                up[0], up[1], up[2]
         );
+    }
+
+    /**
+     * Activa el screen shake (efecto de impacto)
+     * @param intensity Intensidad del temblor (0.0 - 1.0, recomendado 0.3-0.8)
+     * @param duration Duración en segundos (recomendado 0.2-0.5)
+     */
+    public void triggerScreenShake(float intensity, float duration) {
+        shakeIntensity = intensity * 0.5f;  // 0.5f = factor de escala para no ser muy extremo
+        shakeTimer = duration;
     }
 
     /**

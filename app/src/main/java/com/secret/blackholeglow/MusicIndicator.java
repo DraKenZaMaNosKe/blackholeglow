@@ -21,6 +21,7 @@ public class MusicIndicator implements SceneObject {
 
     private int aPositionLoc;
     private int aColorLoc;
+    private int aTexCoordLoc;
 
     // Posición y tamaño del indicador (coordenadas NDC 2D)
     private final float x;
@@ -62,13 +63,16 @@ public class MusicIndicator implements SceneObject {
     private void initShader(Context context) {
         Log.d(TAG, "[MusicIndicator] Iniciando shader...");
 
-        // Shader simple inline (igual que HPBar) para rectángulos 2D
+        // Shader con esquinas redondeadas para barras de música
         String vertexShader =
             "attribute vec2 a_Position;\n" +
             "attribute vec4 a_Color;\n" +
+            "attribute vec2 a_TexCoord;\n" +
             "varying vec4 v_Color;\n" +
+            "varying vec2 v_TexCoord;\n" +
             "void main() {\n" +
             "    v_Color = a_Color;\n" +
+            "    v_TexCoord = a_TexCoord;\n" +
             "    gl_Position = vec4(a_Position, 0.0, 1.0);\n" +
             "}\n";
 
@@ -77,8 +81,19 @@ public class MusicIndicator implements SceneObject {
             "precision mediump float;\n" +
             "#endif\n" +
             "varying vec4 v_Color;\n" +
+            "varying vec2 v_TexCoord;\n" +
+            "uniform float u_CornerRadius;\n" +
+            "\n" +
             "void main() {\n" +
-            "    gl_FragColor = v_Color;\n" +
+            "    // Calcular distancia a las esquinas para bordes redondeados\n" +
+            "    vec2 uv = v_TexCoord;\n" +
+            "    vec2 d = abs(uv - 0.5) - 0.5 + u_CornerRadius;\n" +
+            "    float dist = length(max(d, 0.0)) - u_CornerRadius;\n" +
+            "    \n" +
+            "    // Crear borde suave (anti-aliasing)\n" +
+            "    float alpha = 1.0 - smoothstep(-0.01, 0.01, dist);\n" +
+            "    \n" +
+            "    gl_FragColor = vec4(v_Color.rgb, v_Color.a * alpha);\n" +
             "}\n";
 
         Log.d(TAG, "[MusicIndicator] Compilando shaders inline...");
@@ -118,11 +133,13 @@ public class MusicIndicator implements SceneObject {
 
         aPositionLoc = GLES20.glGetAttribLocation(programId, "a_Position");
         aColorLoc = GLES20.glGetAttribLocation(programId, "a_Color");
+        aTexCoordLoc = GLES20.glGetAttribLocation(programId, "a_TexCoord");
 
         Log.d(TAG, "[MusicIndicator] ✓✓✓ Shader inicializado CORRECTAMENTE");
         Log.d(TAG, "[MusicIndicator]   programId: " + programId);
         Log.d(TAG, "[MusicIndicator]   aPositionLoc: " + aPositionLoc);
         Log.d(TAG, "[MusicIndicator]   aColorLoc: " + aColorLoc);
+        Log.d(TAG, "[MusicIndicator]   aTexCoordLoc: " + aTexCoordLoc);
     }
 
     /**
@@ -229,7 +246,7 @@ public class MusicIndicator implements SceneObject {
     }
 
     /**
-     * Dibuja un quad (2 triángulos)
+     * Dibuja un quad (2 triángulos) con esquinas redondeadas
      */
     private void drawQuad(float[] vertices, float[] colors) {
         // Crear buffers
@@ -245,6 +262,24 @@ public class MusicIndicator implements SceneObject {
         cb.put(colors);
         cb.position(0);
 
+        // UV coordinates para TRIANGLE_STRIP (4 vértices en orden especial)
+        float[] uvs = {
+            0.0f, 0.0f,  // Bottom-left
+            1.0f, 0.0f,  // Bottom-right
+            0.0f, 1.0f,  // Top-left
+            1.0f, 1.0f   // Top-right
+        };
+
+        ByteBuffer ubb = ByteBuffer.allocateDirect(uvs.length * 4);
+        ubb.order(ByteOrder.nativeOrder());
+        FloatBuffer ub = ubb.asFloatBuffer();
+        ub.put(uvs);
+        ub.position(0);
+
+        // Configurar uniform para esquinas redondeadas
+        int uCornerRadiusLoc = GLES20.glGetUniformLocation(programId, "u_CornerRadius");
+        GLES20.glUniform1f(uCornerRadiusLoc, 0.2f);  // Esquinas más redondeadas que HPBar
+
         // Configurar atributos
         GLES20.glEnableVertexAttribArray(aPositionLoc);
         GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 0, vb);
@@ -252,11 +287,15 @@ public class MusicIndicator implements SceneObject {
         GLES20.glEnableVertexAttribArray(aColorLoc);
         GLES20.glVertexAttribPointer(aColorLoc, 4, GLES20.GL_FLOAT, false, 0, cb);
 
+        GLES20.glEnableVertexAttribArray(aTexCoordLoc);
+        GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 0, ub);
+
         // Dibujar
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
 
         // Limpiar
         GLES20.glDisableVertexAttribArray(aPositionLoc);
         GLES20.glDisableVertexAttribArray(aColorLoc);
+        GLES20.glDisableVertexAttribArray(aTexCoordLoc);
     }
 }
