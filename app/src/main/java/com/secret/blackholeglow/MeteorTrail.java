@@ -69,17 +69,19 @@ public class MeteorTrail {
             this.alpha = 1.0f;
             this.age = 0;
 
-            // Color según el tipo de estela
+            // Color según el tipo de estela (MEJORADO - verde translúcido)
             switch (type) {
                 case FIRE:
-                    color[0] = 1.0f;  // Rojo
-                    color[1] = 0.5f + (float)Math.random() * 0.3f;  // Naranja variable
-                    color[2] = 0.1f;
+                    // Verde translúcido en lugar de naranja
+                    color[0] = 0.2f + (float)Math.random() * 0.2f;  // Verde
+                    color[1] = 0.8f + (float)Math.random() * 0.2f;  // Verde brillante
+                    color[2] = 0.3f;
                     break;
                 case PLASMA:
+                    // Verde-cyan translúcido
                     color[0] = 0.2f;
-                    color[1] = 0.6f + (float)Math.random() * 0.4f;  // Cyan variable
-                    color[2] = 1.0f;  // Azul
+                    color[1] = 0.8f + (float)Math.random() * 0.2f;  // Verde-cyan
+                    color[2] = 0.5f + (float)Math.random() * 0.3f;
                     break;
                 case RAINBOW:
                     // Color arcoíris basado en la edad
@@ -93,8 +95,8 @@ public class MeteorTrail {
 
         void update(float dt) {
             age += dt;
-            alpha = Math.max(0, 1.0f - age * 2.0f);  // Desvanecer en 0.5 segundos
-            size *= 0.98f;  // Reducir tamaño gradualmente
+            alpha = Math.max(0, 1.0f - age * 3.0f) * 0.4f;  // Más translúcido (40% alpha max)
+            size *= 0.95f;  // Reducir tamaño más rápido (más delgado)
 
             // Para el arcoíris, actualizar color
             if (type == TrailType.RAINBOW) {
@@ -362,9 +364,9 @@ public class MeteorTrail {
 
         GLES20.glUseProgram(programId);
 
-        // Configurar blending para efecto de fuego/plasma
+        // Configurar blending para efecto translúcido (NO aditivo)
         GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);  // Aditivo
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);  // Translúcido
 
         // Desactivar depth write para transparencia
         GLES20.glDepthMask(false);

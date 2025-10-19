@@ -55,6 +55,9 @@ public class Meteorito implements SceneObject, CameraAware {
     // Estela del meteorito
     private MeteorTrail trail;
 
+    // Sistema de explosión
+    private MeteorExplosion explosion;
+
     // Modelo 3D (compartido entre todos los meteoritos)
     private static MeteoritoMesh sharedMesh = null;
 
@@ -113,6 +116,9 @@ public class Meteorito implements SceneObject, CameraAware {
 
         // Asegurar que el shader se inicialice correctamente
         trail.invalidateShader();
+
+        // Crear sistema de explosión
+        explosion = new MeteorExplosion();
 
         Log.d(TAG, "[Meteorito] Creado con estela tipo: " + trailType);
         Log.d(TAG, "[Meteorito] Shader locations - Pos:" + aPositionLoc + " Tex:" + aTexCoordLoc +
@@ -174,7 +180,11 @@ public class Meteorito implements SceneObject, CameraAware {
         if (estado == Estado.CAYENDO) {
             estado = Estado.IMPACTANDO;
             tiempoImpacto = 0;
-            Log.d(TAG, "[Meteorito] ¡IMPACTO!");
+
+            // ACTIVAR EXPLOSIÓN DE FRAGMENTOS
+            explosion.explotar(posicion[0], posicion[1], posicion[2], tamaño, color);
+
+            Log.d(TAG, "[Meteorito] ¡IMPACTO! Explosión de fragmentos activada");
         }
     }
 
@@ -250,6 +260,9 @@ public class Meteorito implements SceneObject, CameraAware {
         // Actualizar la estela
         boolean isActive = (estado == Estado.CAYENDO);
         trail.update(deltaTime, posicion[0], posicion[1], posicion[2], tamaño, isActive);
+
+        // Actualizar la explosión si está activa
+        explosion.update(deltaTime);
     }
 
     @Override
@@ -258,6 +271,9 @@ public class Meteorito implements SceneObject, CameraAware {
 
         // Dibujar la estela primero (detrás del meteorito)
         trail.draw(camera);
+
+        // Dibujar la explosión si está activa
+        explosion.draw(camera);
 
         GLES20.glUseProgram(programId);
 

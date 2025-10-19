@@ -38,6 +38,11 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
     private int uImpactIntensityLoc;  // Intensidad de cada impacto
     private int uHealthLoc;  // Vida del campo de fuerza
 
+    // 🎵 PLASMA: Uniforms para reactividad musical
+    private int uMusicBassLoc;
+    private int uMusicTrebleLoc;
+    private int uMusicBeatLoc;
+
     // Estado del campo de fuerza
     private final float[] position;
     private final float scale;
@@ -96,12 +101,13 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
     }
 
     private void initShader(Context context) {
+        // 🌩️ USAR NUEVO SHADER DE PLASMA
         programId = ShaderUtils.createProgramFromAssets(context,
                 "shaders/forcefield_vertex.glsl",
-                "shaders/forcefield_fragment.glsl");
+                "shaders/plasma_forcefield_fragment.glsl");
 
         if (programId == 0) {
-            Log.e(TAG, "[ForceField] ✗ Error creando shader");
+            Log.e(TAG, "[ForceField] ✗ Error creando shader de PLASMA");
             return;
         }
 
@@ -115,7 +121,12 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
         uImpactIntensityLoc = GLES20.glGetUniformLocation(programId, "u_ImpactIntensity");
         uHealthLoc = GLES20.glGetUniformLocation(programId, "u_Health");
 
-        Log.d(TAG, "[ForceField] Shader inicializado - programId=" + programId);
+        // 🎵 PLASMA: Locations de música
+        uMusicBassLoc = GLES20.glGetUniformLocation(programId, "u_MusicBass");
+        uMusicTrebleLoc = GLES20.glGetUniformLocation(programId, "u_MusicTreble");
+        uMusicBeatLoc = GLES20.glGetUniformLocation(programId, "u_MusicBeat");
+
+        Log.d(TAG, "[ForceField] ⚡ Shader de PLASMA inicializado - programId=" + programId);
     }
 
     private void setupGeometry(Context context) {
@@ -364,6 +375,15 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
         // Salud (0.0 a 1.0)
         float healthPercent = (float)currentHealth / MAX_HEALTH;
         GLES20.glUniform1f(uHealthLoc, healthPercent);
+
+        // 🎵 PLASMA: Enviar datos de música al shader
+        float bassValue = musicReactive ? musicEnergyBoost : 0f;  // Usar energía como graves
+        float trebleValue = musicReactive ? musicTrebleIntensity : 0f;
+        float beatValue = musicReactive ? musicBeatFlash : 0f;
+
+        GLES20.glUniform1f(uMusicBassLoc, bassValue);
+        GLES20.glUniform1f(uMusicTrebleLoc, trebleValue);
+        GLES20.glUniform1f(uMusicBeatLoc, beatValue);
 
         // Textura
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);

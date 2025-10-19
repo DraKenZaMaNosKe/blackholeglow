@@ -260,8 +260,21 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         float vy = (dy / dist) * velocidadBase;
         float vz = (dz / dist) * velocidadBase;
 
-        // Tamaño aleatorio (más grandes con más batería)
-        float tamaño = (0.05f + (float) Math.random() * 0.1f) * (0.8f + powerBoost * 0.4f);
+        // Tamaño VARIABLE (pequeños, medianos, grandes)
+        // 50% pequeños, 30% medianos, 20% grandes
+        float sizeRoll = (float) Math.random();
+        float tamaño;
+        if (sizeRoll < 0.5f) {
+            // Pequeños (50%)
+            tamaño = 0.04f + (float) Math.random() * 0.06f;  // 0.04-0.10
+        } else if (sizeRoll < 0.8f) {
+            // Medianos (30%)
+            tamaño = 0.10f + (float) Math.random() * 0.08f;  // 0.10-0.18
+        } else {
+            // Grandes (20%)
+            tamaño = 0.18f + (float) Math.random() * 0.10f;  // 0.18-0.28
+        }
+        tamaño *= (0.9f + powerBoost * 0.2f);  // Boost de batería
 
         m.activar(x, y, z, vx, vy, vz, tamaño);
         meteoritosActivos.add(m);
@@ -317,8 +330,22 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         float vy = (dy / dist) * velocidadBase;
         float vz = (dz / dist) * velocidadBase;
 
-        // 💪 TAMAÑO: Más grande con más potencia
-        float tamaño = 0.08f + (power * 0.12f);  // 0.08 - 0.20 según potencia
+        // 💪 TAMAÑO VARIABLE: Más grande con más potencia, pero con variación
+        // 50% pequeños, 30% medianos, 20% grandes
+        float sizeRoll = (float) Math.random();
+        float tamaño;
+        if (sizeRoll < 0.5f) {
+            // Pequeños (50%)
+            tamaño = 0.08f + (float) Math.random() * 0.06f;  // 0.08-0.14
+        } else if (sizeRoll < 0.8f) {
+            // Medianos (30%)
+            tamaño = 0.14f + (float) Math.random() * 0.08f;  // 0.14-0.22
+        } else {
+            // Grandes (20%)
+            tamaño = 0.22f + (float) Math.random() * 0.10f;  // 0.22-0.32
+        }
+        // Aplicar boost de potencia
+        tamaño *= (0.8f + power * 0.4f);  // 80%-120% según potencia
 
         // Activar el meteorito
         m.activar(x, y, z, vx, vy, vz, tamaño);
@@ -402,8 +429,20 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         float vy = (dy / dist) * velocidadBase;
         float vz = (dz / dist) * velocidadBase;
 
-        // 💪 TAMAÑO: MÁS GRANDE para que sea MUY VISIBLE
-        float tamaño = 0.25f + (float)(Math.random() * 0.15f);  // 0.25 - 0.40 (GRANDE!)
+        // 💪 TAMAÑO VARIABLE: MÁS GRANDE para que sea MUY VISIBLE
+        // 50% grandes, 30% muy grandes, 20% gigantes
+        float sizeRoll = (float) Math.random();
+        float tamaño;
+        if (sizeRoll < 0.5f) {
+            // Grandes (50%)
+            tamaño = 0.25f + (float) Math.random() * 0.10f;  // 0.25-0.35
+        } else if (sizeRoll < 0.8f) {
+            // Muy grandes (30%)
+            tamaño = 0.35f + (float) Math.random() * 0.10f;  // 0.35-0.45
+        } else {
+            // Gigantes (20%)
+            tamaño = 0.45f + (float) Math.random() * 0.15f;  // 0.45-0.60 (¡ÉPICO!)
+        }
 
         // Activar el meteorito
         m.activar(x, y, z, vx, vy, vz, tamaño);

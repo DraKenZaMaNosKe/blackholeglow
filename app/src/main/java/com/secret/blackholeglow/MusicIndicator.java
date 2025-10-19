@@ -9,51 +9,56 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
 /**
- * Indicador visual de música en tiempo real
- * Muestra 3 barras: BASS (rojo), MID (verde), TREBLE (azul)
+ * Indicador visual de música en tiempo real - ESTILO LED BARS
+ * Muestra múltiples barras verticales con gradiente de color (rojo→amarillo→verde)
+ * Similar a ecualizadores LED profesionales
  */
 public class MusicIndicator implements SceneObject {
     private static final String TAG = "depurar";
 
+    // Configuración del ecualizador - ESTILO RETRO
+    private static final int NUM_BARRAS = 4;  // Solo 4 barras (bass, low-mid, high-mid, treble)
+    private static final int LEDS_POR_BARRA = 12;  // 12 LEDs por barra (estilo retro/pixelado)
+
     private int programId;
-    private FloatBuffer vertexBuffer;
-    private FloatBuffer colorBuffer;
 
     private int aPositionLoc;
     private int aColorLoc;
-    private int aTexCoordLoc;
 
     // Posición y tamaño del indicador (coordenadas NDC 2D)
     private final float x;
     private final float y;
-    private final float barWidth;
-    private final float maxBarHeight;
+    private final float width;   // Ancho total del ecualizador
+    private final float height;  // Alto total del ecualizador
 
-    // Niveles de música (0-1)
+    // Niveles de música (0-1) - Uno por cada barra
+    private float[] barLevels = new float[NUM_BARRAS];
+
+    // Suavizado independiente por barra
+    private float[] smoothedLevels = new float[NUM_BARRAS];
+
+    // Asignación de barras a frecuencias
+    // Barra 0 = BASS, Barra 1 = LOW-MID, Barra 2 = HIGH-MID, Barra 3 = TREBLE
     private float bassLevel = 0f;
     private float midLevel = 0f;
     private float trebleLevel = 0f;
 
-    // Suavizado
-    private float smoothedBass = 0f;
-    private float smoothedMid = 0f;
-    private float smoothedTreble = 0f;
-
     // Contador de frames para logs
     private int frameCount = 0;
 
-    public MusicIndicator(Context context, float x, float y, float barWidth, float maxBarHeight) {
+    public MusicIndicator(Context context, float x, float y, float width, float height) {
         Log.d(TAG, "╔══════════════════════════════════════════════╗");
-        Log.d(TAG, "║      CREANDO MUSIC INDICATOR                ║");
+        Log.d(TAG, "║      CREANDO LED MUSIC EQUALIZER            ║");
         Log.d(TAG, "╚══════════════════════════════════════════════╝");
 
         this.x = x;
         this.y = y;
-        this.barWidth = barWidth;
-        this.maxBarHeight = maxBarHeight;
+        this.width = width;
+        this.height = height;
 
         Log.d(TAG, "[MusicIndicator] Posición: (" + x + ", " + y + ")");
-        Log.d(TAG, "[MusicIndicator] Tamaño barras: " + barWidth + " x " + maxBarHeight);
+        Log.d(TAG, "[MusicIndicator] Tamaño: " + width + " x " + height);
+        Log.d(TAG, "[MusicIndicator] Barras: " + NUM_BARRAS + " x " + LEDS_POR_BARRA + " LEDs");
 
         initShader(context);
 
@@ -61,85 +66,51 @@ public class MusicIndicator implements SceneObject {
     }
 
     private void initShader(Context context) {
-        Log.d(TAG, "[MusicIndicator] Iniciando shader...");
+        Log.d(TAG, "[MusicIndicator] Iniciando shader LED...");
 
-        // Shader con esquinas redondeadas para barras de música
+        // Vertex shader simple para barras 2D
         String vertexShader =
             "attribute vec2 a_Position;\n" +
             "attribute vec4 a_Color;\n" +
-            "attribute vec2 a_TexCoord;\n" +
             "varying vec4 v_Color;\n" +
-            "varying vec2 v_TexCoord;\n" +
             "void main() {\n" +
             "    v_Color = a_Color;\n" +
-            "    v_TexCoord = a_TexCoord;\n" +
             "    gl_Position = vec4(a_Position, 0.0, 1.0);\n" +
             "}\n";
 
+        // Fragment shader con efecto de brillo/glow
         String fragmentShader =
             "#ifdef GL_ES\n" +
             "precision mediump float;\n" +
             "#endif\n" +
             "varying vec4 v_Color;\n" +
-            "varying vec2 v_TexCoord;\n" +
-            "uniform float u_CornerRadius;\n" +
             "\n" +
             "void main() {\n" +
-            "    // Calcular distancia a las esquinas para bordes redondeados\n" +
-            "    vec2 uv = v_TexCoord;\n" +
-            "    vec2 d = abs(uv - 0.5) - 0.5 + u_CornerRadius;\n" +
-            "    float dist = length(max(d, 0.0)) - u_CornerRadius;\n" +
+            "    // Efecto de brillo LED (bordes más suaves)\n" +
+            "    vec4 color = v_Color;\n" +
             "    \n" +
-            "    // Crear borde suave (anti-aliasing)\n" +
-            "    float alpha = 1.0 - smoothstep(-0.01, 0.01, dist);\n" +
+            "    // Aumentar brillo si el alpha indica LED encendido\n" +
+            "    if (color.a > 0.5) {\n" +
+            "        color.rgb *= 1.3;  // Brillo extra para LEDs encendidos\n" +
+            "    }\n" +
             "    \n" +
-            "    gl_FragColor = vec4(v_Color.rgb, v_Color.a * alpha);\n" +
+            "    gl_FragColor = color;\n" +
             "}\n";
 
-        Log.d(TAG, "[MusicIndicator] Compilando shaders inline...");
-
-        int vShader = ShaderUtils.compileShader(GLES20.GL_VERTEX_SHADER, vertexShader);
-        int fShader = ShaderUtils.compileShader(GLES20.GL_FRAGMENT_SHADER, fragmentShader);
-
-        Log.d(TAG, "[MusicIndicator] Vertex shader: " + vShader + ", Fragment shader: " + fShader);
-
-        programId = GLES20.glCreateProgram();
-        GLES20.glAttachShader(programId, vShader);
-        GLES20.glAttachShader(programId, fShader);
-        GLES20.glLinkProgram(programId);
-
-        // Verificar link
-        int[] linkStatus = new int[1];
-        GLES20.glGetProgramiv(programId, GLES20.GL_LINK_STATUS, linkStatus, 0);
-        if (linkStatus[0] == 0) {
-            Log.e(TAG, "[MusicIndicator] ✗✗✗ Shader link FALLÓ: " + GLES20.glGetProgramInfoLog(programId));
-            return;
-        }
-
-        GLES20.glDeleteShader(vShader);
-        GLES20.glDeleteShader(fShader);
-
-        Log.d(TAG, "[MusicIndicator] Shader creado - programId=" + programId);
+        programId = ShaderUtils.createProgram(vertexShader, fragmentShader);
 
         if (programId == 0) {
-            Log.e(TAG, "[MusicIndicator] ✗✗✗ ERROR CRÍTICO: Shader NO se pudo crear! programId=0");
-            return;
-        }
-
-        if (!GLES20.glIsProgram(programId)) {
-            Log.e(TAG, "[MusicIndicator] ✗✗✗ ERROR: programId no es válido según glIsProgram!");
+            Log.e(TAG, "[MusicIndicator] ✗✗✗ ERROR: Shader NO se pudo crear!");
             return;
         }
 
         aPositionLoc = GLES20.glGetAttribLocation(programId, "a_Position");
         aColorLoc = GLES20.glGetAttribLocation(programId, "a_Color");
-        aTexCoordLoc = GLES20.glGetAttribLocation(programId, "a_TexCoord");
 
-        Log.d(TAG, "[MusicIndicator] ✓✓✓ Shader inicializado CORRECTAMENTE");
+        Log.d(TAG, "[MusicIndicator] ✓✓✓ Shader LED inicializado");
         Log.d(TAG, "[MusicIndicator]   programId: " + programId);
         Log.d(TAG, "[MusicIndicator]   aPositionLoc: " + aPositionLoc);
         Log.d(TAG, "[MusicIndicator]   aColorLoc: " + aColorLoc);
-        Log.d(TAG, "[MusicIndicator]   aTexCoordLoc: " + aTexCoordLoc);
     }
 
     /**
@@ -150,8 +121,20 @@ public class MusicIndicator implements SceneObject {
         this.midLevel = mid;
         this.trebleLevel = treble;
 
-        // Log DESACTIVADO para performance
-        // Solo log cada 300 frames (cada 5 segundos) si hay audio significativo
+        // Distribuir los niveles a las 4 barras
+        // Barra 0: BASS puro
+        barLevels[0] = bass;
+
+        // Barra 1: LOW-MID (mezcla de bass y mid, más bass)
+        barLevels[1] = bass * 0.3f + mid * 0.7f;
+
+        // Barra 2: HIGH-MID (mezcla de mid y treble, más mid)
+        barLevels[2] = mid * 0.7f + treble * 0.3f;
+
+        // Barra 3: TREBLE puro
+        barLevels[3] = treble;
+
+        // Log cada 300 frames (reducido para performance)
         if (frameCount % 300 == 0 && (bass > 0.05f || mid > 0.05f || treble > 0.05f)) {
             Log.d(TAG, String.format("[MusicIndicator] Bass:%.2f Mid:%.2f Treble:%.2f",
                     bass, mid, treble));
@@ -162,18 +145,15 @@ public class MusicIndicator implements SceneObject {
     public void update(float deltaTime) {
         frameCount++;
 
-        // Suavizar los valores para animación fluida
-        float smoothing = 0.85f;
-        smoothedBass = smoothedBass * smoothing + bassLevel * (1f - smoothing);
-        smoothedMid = smoothedMid * smoothing + midLevel * (1f - smoothing);
-        smoothedTreble = smoothedTreble * smoothing + trebleLevel * (1f - smoothing);
-
-        // Log desactivado para performance
+        // Suavizar cada barra independientemente para animación fluida
+        float smoothing = 0.75f;  // Más suave que antes para efecto LED
+        for (int i = 0; i < NUM_BARRAS; i++) {
+            smoothedLevels[i] = smoothedLevels[i] * smoothing + barLevels[i] * (1f - smoothing);
+        }
     }
 
     @Override
     public void draw() {
-        // Verificación sin logs constantes
         if (!GLES20.glIsProgram(programId)) {
             return;
         }
@@ -183,70 +163,117 @@ public class MusicIndicator implements SceneObject {
         // Desactivar depth test para UI 2D
         GLES20.glDisable(GLES20.GL_DEPTH_TEST);
         GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);  // Blending aditivo para brillo
 
-        // Dibujar las 3 barras
-        float gap = 0.01f;  // Espacio entre barras
+        // Calcular dimensiones VERTICALES - ESTILO RETRO
+        // Cada barra es VERTICAL (crece de ABAJO hacia ARRIBA)
+        float barWidth = width / NUM_BARRAS;  // Ancho de cada barra vertical (4 barras lado a lado)
+        float ledHeight = height / LEDS_POR_BARRA;  // Alto de cada LED (más grande para estilo pixelado)
+        float gap = barWidth * 0.25f;  // Espacio MAYOR entre barras (25% del ancho) para estilo retro
 
-        // BASS (izquierda, rojo)
-        drawBar(x, y, smoothedBass, 1.0f, 0.2f, 0.2f, 0.9f);
+        // Dibujar cada barra VERTICAL (lado a lado horizontalmente)
+        for (int barIndex = 0; barIndex < NUM_BARRAS; barIndex++) {
+            float barX = x + barIndex * barWidth;  // Posición X de esta barra
+            float level = Math.min(1.0f, smoothedLevels[barIndex]);
+            int ledsEncendidos = (int)(level * LEDS_POR_BARRA);
 
-        // MID (centro, verde)
-        drawBar(x + barWidth + gap, y, smoothedMid, 0.2f, 1.0f, 0.2f, 0.9f);
+            // Dibujar LEDs de esta barra VERTICAL (de ABAJO hacia ARRIBA)
+            for (int ledIndex = 0; ledIndex < LEDS_POR_BARRA; ledIndex++) {
+                float ledY = y + ledIndex * ledHeight;  // Posición Y del LED (desde abajo)
+                boolean encendido = (ledIndex < ledsEncendidos);
 
-        // TREBLE (derecha, azul)
-        drawBar(x + (barWidth + gap) * 2, y, smoothedTreble, 0.2f, 0.4f, 1.0f, 0.9f);
+                // Calcular color basado en la ALTURA (gradiente rojo→amarillo→verde)
+                float[] ledColor = getLedColor(ledIndex, LEDS_POR_BARRA, encendido);
+
+                // Dibujar el LED VERTICAL
+                drawLed(barX + gap/2, ledY + gap/2,
+                       barWidth - gap, ledHeight - gap,
+                       ledColor);
+            }
+        }
 
         // Restaurar estados
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
     }
 
     /**
-     * Dibuja una barra individual
+     * Calcula el color de un LED basado en su ALTURA
+     * Gradiente: ROJO (abajo) → AMARILLO (medio) → VERDE (arriba)
+     * @param ledIndex Índice del LED (0 = abajo)
+     * @param totalLeds Total de LEDs en la barra
+     * @param encendido Si el LED está encendido o apagado
+     * @return Color RGBA
      */
-    private void drawBar(float xPos, float yPos, float level, float r, float g, float b, float a) {
-        float barHeight = level * maxBarHeight;
+    private float[] getLedColor(int ledIndex, int totalLeds, boolean encendido) {
+        float normalizedHeight = (float)ledIndex / (float)totalLeds;
 
-        // Borde/fondo oscuro (barra completa)
-        float[] bgVertices = {
-            xPos, yPos,
-            xPos + barWidth, yPos,
-            xPos, yPos + maxBarHeight,
-            xPos + barWidth, yPos + maxBarHeight
-        };
+        float r, g, b, a;
 
-        float[] bgColors = {
-            0.1f, 0.1f, 0.1f, 0.6f,
-            0.1f, 0.1f, 0.1f, 0.6f,
-            0.1f, 0.1f, 0.1f, 0.6f,
-            0.1f, 0.1f, 0.1f, 0.6f
-        };
+        if (encendido) {
+            // Gradiente de color según ALTURA
+            if (normalizedHeight < 0.33f) {
+                // ZONA ROJA (abajo) - 0% a 33%
+                float t = normalizedHeight / 0.33f;  // 0-1 en zona roja
+                r = 1.0f;
+                g = t * 0.8f;  // De 0 a 0.8 (rojo puro → naranja)
+                b = 0.0f;
+            } else if (normalizedHeight < 0.66f) {
+                // ZONA AMARILLA (medio) - 33% a 66%
+                float t = (normalizedHeight - 0.33f) / 0.33f;  // 0-1 en zona amarilla
+                r = 1.0f - t * 0.3f;  // De 1.0 a 0.7
+                g = 0.8f + t * 0.2f;  // De 0.8 a 1.0 (amarillo brillante)
+                b = 0.0f;
+            } else {
+                // ZONA VERDE (arriba) - 66% a 100%
+                float t = (normalizedHeight - 0.66f) / 0.34f;  // 0-1 en zona verde
+                r = 0.7f - t * 0.7f;  // De 0.7 a 0.0
+                g = 1.0f;
+                b = t * 0.3f;  // De 0.0 a 0.3 (verde brillante)
+            }
+            a = 1.0f;  // Totalmente visible
 
-        drawQuad(bgVertices, bgColors);
-
-        // Barra de nivel (animada)
-        if (barHeight > 0.001f) {
-            float[] barVertices = {
-                xPos + 0.002f, yPos + 0.002f,
-                xPos + barWidth - 0.002f, yPos + 0.002f,
-                xPos + 0.002f, yPos + barHeight,
-                xPos + barWidth - 0.002f, yPos + barHeight
-            };
-
-            // Gradiente: más brillante arriba
-            float[] barColors = {
-                r * 0.7f, g * 0.7f, b * 0.7f, a,  // Abajo más oscuro
-                r * 0.7f, g * 0.7f, b * 0.7f, a,
-                r, g, b, a,  // Arriba más brillante
-                r, g, b, a
-            };
-
-            drawQuad(barVertices, barColors);
+        } else {
+            // LED APAGADO - mostrar color tenue del LED
+            // Mismo gradiente pero MUY oscuro
+            if (normalizedHeight < 0.33f) {
+                r = 0.15f; g = 0.05f; b = 0.0f;  // Rojo oscuro
+            } else if (normalizedHeight < 0.66f) {
+                r = 0.15f; g = 0.15f; b = 0.0f;  // Amarillo oscuro
+            } else {
+                r = 0.05f; g = 0.15f; b = 0.05f;  // Verde oscuro
+            }
+            a = 0.3f;  // Muy transparente
         }
+
+        return new float[]{r, g, b, a};
     }
 
     /**
-     * Dibuja un quad (2 triángulos) con esquinas redondeadas
+     * Dibuja un LED individual (rectángulo pequeño con brillo)
+     */
+    private void drawLed(float x, float y, float w, float h, float[] color) {
+        // Vértices del LED (rectángulo)
+        float[] vertices = {
+            x,     y,      // Bottom-left
+            x + w, y,      // Bottom-right
+            x,     y + h,  // Top-left
+            x + w, y + h   // Top-right
+        };
+
+        // Colores (mismo color en todos los vértices)
+        float[] colors = {
+            color[0], color[1], color[2], color[3],
+            color[0], color[1], color[2], color[3],
+            color[0], color[1], color[2], color[3],
+            color[0], color[1], color[2], color[3]
+        };
+
+        drawQuad(vertices, colors);
+    }
+
+    /**
+     * Dibuja un quad (rectángulo) usando 2 triángulos
      */
     private void drawQuad(float[] vertices, float[] colors) {
         // Crear buffers
@@ -262,24 +289,6 @@ public class MusicIndicator implements SceneObject {
         cb.put(colors);
         cb.position(0);
 
-        // UV coordinates para TRIANGLE_STRIP (4 vértices en orden especial)
-        float[] uvs = {
-            0.0f, 0.0f,  // Bottom-left
-            1.0f, 0.0f,  // Bottom-right
-            0.0f, 1.0f,  // Top-left
-            1.0f, 1.0f   // Top-right
-        };
-
-        ByteBuffer ubb = ByteBuffer.allocateDirect(uvs.length * 4);
-        ubb.order(ByteOrder.nativeOrder());
-        FloatBuffer ub = ubb.asFloatBuffer();
-        ub.put(uvs);
-        ub.position(0);
-
-        // Configurar uniform para esquinas redondeadas
-        int uCornerRadiusLoc = GLES20.glGetUniformLocation(programId, "u_CornerRadius");
-        GLES20.glUniform1f(uCornerRadiusLoc, 0.2f);  // Esquinas más redondeadas que HPBar
-
         // Configurar atributos
         GLES20.glEnableVertexAttribArray(aPositionLoc);
         GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 0, vb);
@@ -287,15 +296,11 @@ public class MusicIndicator implements SceneObject {
         GLES20.glEnableVertexAttribArray(aColorLoc);
         GLES20.glVertexAttribPointer(aColorLoc, 4, GLES20.GL_FLOAT, false, 0, cb);
 
-        GLES20.glEnableVertexAttribArray(aTexCoordLoc);
-        GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 0, ub);
-
-        // Dibujar
+        // Dibujar usando TRIANGLE_STRIP (4 vértices = 2 triángulos)
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
 
         // Limpiar
         GLES20.glDisableVertexAttribArray(aPositionLoc);
         GLES20.glDisableVertexAttribArray(aColorLoc);
-        GLES20.glDisableVertexAttribArray(aTexCoordLoc);
     }
 }

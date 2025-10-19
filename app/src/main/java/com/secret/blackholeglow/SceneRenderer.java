@@ -435,6 +435,8 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             sceneObjects.add(estrella1);
             estrellasBailarinas.add(estrella1);
 
+            
+
             // Estrella 2 - Posición izquierda
             EstrellaBailarina estrella2 = new EstrellaBailarina(
                     context, textureManager,
@@ -607,9 +609,9 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
 
             musicIndicator = new MusicIndicator(
                     context,
-                    -0.15f, 0.65f, // Posición: CENTRADO HORIZONTALMENTE, ARRIBA del sol
-                    0.09f,         // Ancho de cada barra (más grande: 0.06 → 0.09)
-                    0.25f          // Altura máxima de las barras (más grande: 0.08 → 0.25)
+                    0.35f, 0.82f,  // Posición: Alineado con barras HP (debajo del escudo)
+                    0.10f,         // Ancho: 4 barras verticales compactas
+                    0.10f          // Alto: Barras que crecen de abajo hacia arriba
             );
             sceneObjects.add(musicIndicator);
             Log.d(TAG, "  🎵✓ INDICADOR DE MÚSICA agregado - CENTRADO, ARRIBA del sol");
@@ -1181,7 +1183,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                 "    gl_Position = vec4(a_Position, 0.0, 1.0);\n" +
                 "}\n";
 
-            // Fragment shader con grietas procedurales
+            // Fragment shader MEJORADO - Grietas épicas y caóticas
             String fragmentShader =
                 "#ifdef GL_ES\n" +
                 "precision mediump float;\n" +
@@ -1191,7 +1193,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                 "uniform vec2 u_ImpactPos;\n" +
                 "uniform float u_Alpha;\n" +
                 "\n" +
-                "// Función de ruido simple\n" +
+                "// Funciones de ruido mejoradas\n" +
                 "float hash(float n) {\n" +
                 "    return fract(sin(n) * 43758.5453);\n" +
                 "}\n" +
@@ -1211,53 +1213,72 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                 "    float dist = length(toImpact);\n" +
                 "    float angle = atan(toImpact.y, toImpact.x);\n" +
                 "    \n" +
-                "    // Grietas radiales desde el punto de impacto\n" +
-                "    float numCracks = 12.0;\n" +
+                "    // ===== GRIETAS PRINCIPALES (8 rayos) =====\n" +
+                "    float numCracks = 8.0;  // Reducido de 12 a 8\n" +
                 "    float crackPattern = 0.0;\n" +
                 "    \n" +
                 "    for (float i = 0.0; i < numCracks; i++) {\n" +
-                "        float crackAngle = (i / numCracks) * 6.28318;\n" +
+                "        float crackAngle = (i / numCracks) * 6.28318 + hash(i) * 0.3;  // Variación\n" +
                 "        float angleDiff = abs(mod(angle - crackAngle + 3.14159, 6.28318) - 3.14159);\n" +
                 "        \n" +
-                "        // Grieta con variación de ruido\n" +
-                "        float crackNoise = noise(vec2(dist * 20.0, i));\n" +
-                "        float crackWidth = 0.02 + crackNoise * 0.01;\n" +
+                "        // Grieta MÁS FINA con variación caótica\n" +
+                "        float crackNoise = noise(vec2(dist * 30.0, i)) * 0.5 + 0.5;\n" +
+                "        float crackWidth = 0.004 + crackNoise * 0.003;  // MUY FINA (0.004 vs 0.02)\n" +
                 "        float crack = smoothstep(crackWidth, 0.0, angleDiff);\n" +
                 "        \n" +
+                "        // Ramificaciones caóticas\n" +
+                "        float branch = noise(vec2(dist * 15.0 + i, angle * 8.0));\n" +
+                "        crack *= (0.7 + branch * 0.3);\n" +
+                "        \n" +
                 "        // Fade out con la distancia\n" +
-                "        float distFade = smoothstep(1.2, 0.0, dist);\n" +
+                "        float distFade = smoothstep(1.0, 0.0, dist);\n" +
                 "        crack *= distFade;\n" +
                 "        \n" +
-                "        // Expansión animada\n" +
-                "        float expansion = smoothstep(dist * 1.5, dist * 1.5 + 0.1, u_Time * 2.0);\n" +
+                "        // Expansión animada rápida\n" +
+                "        float expansion = smoothstep(dist * 2.0, dist * 2.0 + 0.15, u_Time * 3.0);\n" +
                 "        crack *= expansion;\n" +
                 "        \n" +
                 "        crackPattern = max(crackPattern, crack);\n" +
                 "    }\n" +
                 "    \n" +
-                "    // Grietas secundarias más finas\n" +
+                "    // ===== GRIETAS SECUNDARIAS (3 rayos sutiles) =====\n" +
                 "    float secondaryCracks = 0.0;\n" +
-                "    for (float i = 0.0; i < 6.0; i++) {\n" +
-                "        float offset = hash(i) * 6.28318;\n" +
-                "        float crackAngle = (i / 6.0) * 6.28318 + offset;\n" +
+                "    for (float i = 0.0; i < 3.0; i++) {  // Reducido de 6 a 3\n" +
+                "        float offset = hash(i + 10.0) * 6.28318;\n" +
+                "        float crackAngle = (i / 3.0) * 6.28318 + offset;\n" +
                 "        float angleDiff = abs(mod(angle - crackAngle + 3.14159, 6.28318) - 3.14159);\n" +
                 "        \n" +
-                "        float crack = smoothstep(0.01, 0.0, angleDiff);\n" +
-                "        float distFade = smoothstep(0.8, 0.0, dist);\n" +
+                "        float crack = smoothstep(0.003, 0.0, angleDiff);  // Super finas\n" +
+                "        float distFade = smoothstep(0.6, 0.0, dist);  // Más cortas\n" +
                 "        crack *= distFade;\n" +
                 "        \n" +
-                "        float expansion = smoothstep(dist * 1.5, dist * 1.5 + 0.1, u_Time * 2.0);\n" +
-                "        crack *= expansion * 0.5;\n" +
+                "        float expansion = smoothstep(dist * 2.0, dist * 2.0 + 0.15, u_Time * 3.0);\n" +
+                "        crack *= expansion * 0.4;  // Mucho más sutiles\n" +
                 "        \n" +
                 "        secondaryCracks = max(secondaryCracks, crack);\n" +
                 "    }\n" +
                 "    \n" +
                 "    crackPattern = max(crackPattern, secondaryCracks);\n" +
                 "    \n" +
-                "    // Color blanco/gris para las grietas\n" +
-                "    vec3 crackColor = vec3(0.9, 0.95, 1.0);\n" +
+                "    // ===== DESTELLO EN PUNTO DE IMPACTO =====\n" +
+                "    float impactGlow = 0.0;\n" +
+                "    if (dist < 0.15) {\n" +
+                "        impactGlow = (1.0 - dist / 0.15) * smoothstep(0.3, 0.0, u_Time);\n" +
+                "        impactGlow = pow(impactGlow, 2.0);\n" +
+                "    }\n" +
                 "    \n" +
-                "    gl_FragColor = vec4(crackColor, crackPattern * u_Alpha * 0.8);\n" +
+                "    // ===== COLOR ENERGÉTICO (azul eléctrico/cyan) =====\n" +
+                "    vec3 crackColor = mix(\n" +
+                "        vec3(0.3, 0.8, 1.0),  // Cyan eléctrico\n" +
+                "        vec3(0.9, 0.95, 1.0), // Blanco\n" +
+                "        crackPattern * 0.6    // Interpolación\n" +
+                "    );\n" +
+                "    \n" +
+                "    // Agregar destello naranja en el centro\n" +
+                "    crackColor = mix(crackColor, vec3(1.0, 0.7, 0.3), impactGlow * 0.8);\n" +
+                "    \n" +
+                "    float finalAlpha = (crackPattern + impactGlow) * u_Alpha * 0.7;  // Reducido\n" +
+                "    gl_FragColor = vec4(crackColor, finalAlpha);\n" +
                 "}\n";
 
             int vShader = ShaderUtils.compileShader(GLES20.GL_VERTEX_SHADER, vertexShader);
