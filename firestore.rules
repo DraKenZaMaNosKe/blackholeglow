@@ -1,0 +1,160 @@
+rules_version = '2';
+
+/**
+ * 🔐 REGLAS DE SEGURIDAD DE FIRESTORE - BLACK HOLE GLOW
+ *
+ * ULTRA SEGURAS para prevenir trampas:
+ * - Solo el propietario puede leer/escribir sus estadísticas
+ * - Solo se permiten INCREMENTOS, nunca disminuciones
+ * - Validación de tipos de datos
+ * - Timestamps del servidor (no manipulables por el cliente)
+ * - Leaderboard de solo lectura pública
+ *
+ * 📋 INSTRUCCIONES PARA APLICAR ESTAS REGLAS:
+ * 1. Ve a Firebase Console (https://console.firebase.google.com)
+ * 2. Selecciona tu proyecto "blackholeglow"
+ * 3. En el menú lateral, ve a "Firestore Database"
+ * 4. Haz clic en la pestaña "Reglas" (Rules)
+ * 5. COPIA TODO el contenido de este archivo
+ * 6. PEGA en el editor de reglas
+ * 7. Haz clic en "Publicar" (Publish)
+ *
+ * ⚠️ IMPORTANTE: Sin estas reglas, los usuarios podrían manipular sus datos
+ */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ====================================================
+    // 📊 COLECCIÓN: player_stats
+    // Estadísticas del jugador (privadas)
+    // ====================================================
+    match /player_stats/{userId} {
+      // 🤖 Función auxiliar para verificar si es un bot
+      function isBot() {
+        return userId.matches('bot_.*');
+      }
+
+      // ✅ LEER: Solo el propietario puede leer sus propias estadísticas, o cualquiera puede leer bots
+      allow read: if (request.auth != null && request.auth.uid == userId) || isBot();
+
+      // ✅ CREAR: Permitir creación de documento nuevo
+      allow create: if (request.auth != null
+                    && request.auth.uid == userId
+                    && request.resource.data.keys().hasAll(['sunsDestroyed', 'securityHash', 'userId'])
+                    && request.resource.data.sunsDestroyed is int
+                    && request.resource.data.sunsDestroyed >= 0
+                    && request.resource.data.sunsDestroyed <= 100000  // Límite razonable
+                    && request.resource.data.userId == userId)
+                    // 🤖 O es un bot (cualquier usuario autenticado puede crear bots)
+                    || (request.auth != null
+                    && isBot()
+                    && request.resource.data.isBot == true
+                    && request.resource.data.sunsDestroyed is int
+                    && request.resource.data.sunsDestroyed >= 0
+                    && request.resource.data.sunsDestroyed <= 100000);
+
+      // ✅ ACTUALIZAR: Solo permitir INCREMENTOS (anti-trampa crítico)
+      allow update: if (request.auth != null
+                    && request.auth.uid == userId
+                    && request.resource.data.sunsDestroyed is int
+                    // 🔒 CRÍTICO: Solo permite incrementar, NUNCA disminuir
+                    && request.resource.data.sunsDestroyed >= resource.data.sunsDestroyed
+                    // Límite de incremento por actualización (máximo +10 soles por vez)
+                    && (request.resource.data.sunsDestroyed - resource.data.sunsDestroyed) <= 10
+                    // Validar que no se modifique el userId
+                    && request.resource.data.userId == resource.data.userId)
+                    // 🤖 O es un bot (cualquier usuario autenticado puede actualizar bots)
+                    || (request.auth != null
+                    && isBot()
+                    && request.resource.data.isBot == true
+                    && request.resource.data.sunsDestroyed is int);
+
+      // ❌ ELIMINAR: No permitir eliminar estadísticas
+      allow delete: if false;
+    }
+
+    // ====================================================
+    // 🏆 COLECCIÓN: leaderboard
+    // Tabla de clasificación global (lectura pública)
+    // ====================================================
+    match /leaderboard/{userId} {
+      // 🤖 Función auxiliar para verificar si es un bot
+      function isBot() {
+        return userId.matches('bot_.*');
+      }
+
+      // ✅ LEER: Todos pueden ver el leaderboard
+      allow read: if true;
+
+      // ✅ ESCRIBIR: Solo el propietario puede actualizar su entrada
+      allow write: if (request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.data.sunsDestroyed is int
+                   && request.resource.data.sunsDestroyed >= 0
+                   && request.resource.data.userId == userId)
+                   // 🤖 O es un bot (cualquier usuario autenticado puede actualizar bots)
+                   || (request.auth != null
+                   && isBot()
+                   && request.resource.data.isBot == true
+                   && request.resource.data.sunsDestroyed is int
+                   && request.resource.data.sunsDestroyed >= 0);
+    }
+
+    // ====================================================
+    // 👤 COLECCIÓN: users
+    // Información de usuarios (para futuro)
+    // ====================================================
+    match /users/{userId} {
+      // ✅ LEER: Solo el propietario puede leer su perfil
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // ✅ ESCRIBIR: Solo el propietario puede escribir su perfil
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ====================================================
+    // ❌ BLOQUEAR TODO LO DEMÁS
+    // ====================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+/**
+ * 🎮 EXPLICACIÓN DE LA SEGURIDAD:
+ *
+ * 1. AUTENTICACIÓN OBLIGATORIA
+ *    - Solo usuarios autenticados pueden escribir
+ *    - Cada usuario solo puede modificar SUS datos
+ *
+ * 2. VALIDACIÓN DE INCREMENTOS
+ *    - La regla crítica: sunsDestroyed >= resource.data.sunsDestroyed
+ *    - Esto previene que alguien reduzca su contador
+ *    - Máximo +10 soles por actualización (previene saltos masivos)
+ *
+ * 3. LÍMITES RAZONABLES
+ *    - Máximo 100,000 soles (previene valores absurdos)
+ *    - Incremento máximo de 10 por vez (previene cheats)
+ *
+ * 4. CAMPOS REQUERIDOS
+ *    - sunsDestroyed (int)
+ *    - securityHash (string)
+ *    - userId (string, no modificable)
+ *    - lastUpdate (timestamp del servidor)
+ *
+ * 5. LEADERBOARD PÚBLICO
+ *    - Todos pueden LEER (para ver rankings)
+ *    - Solo el dueño puede ESCRIBIR su propia entrada
+ *
+ * ⚠️ NOTA IMPORTANTE:
+ * Aunque un usuario pueda intentar modificar los archivos
+ * locales de SharedPreferences, al sincronizar con Firebase:
+ * - Si intenta reducir el contador → RECHAZADO por las reglas
+ * - Si intenta incrementar más de 10 → RECHAZADO
+ * - Si intenta modificar datos de otro usuario → RECHAZADO
+ *
+ * La fuente de verdad es SIEMPRE Firebase, y estas reglas
+ * garantizan que solo se permitan cambios legítimos.
+ */

@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "615188090674",
+    "project_id": "device-streaming-bab2df46",
+    "storage_bucket": "device-streaming-bab2df46.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:615188090674:android:e350d308a2cc0a9218512b",
+        "android_client_info": {
+          "package_name": "com.secret.blackholeglow"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "615188090674-ogbffi71cnvil1epgjorikq6jm4eelq1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.secret.blackholeglow",
+            "certificate_hash": "d9107d917599713f9fcc5a9240a62573737c46cf"
+          }
+        },
+        {
+          "client_id": "615188090674-gu1js8k59si00dioi22itasgrugdsgtt.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBcEulDz2uCAJ5BPVvgH3oL6c1f-2mDryg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "615188090674-gu1js8k59si00dioi22itasgrugdsgtt.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
