@@ -54,16 +54,16 @@ public class AvatarSphere implements SceneObject, CameraAware {
     private float[] modelMatrix = new float[16];
     private float[] mvpMatrix = new float[16];
 
-    // Órbita
-    private float orbitRadius = 1.8f;  // Radio de órbita
-    private float orbitSpeed = 0.2f;   // Velocidad de órbita
-    private float orbitAngle = 0f;
+    // Posición fija (borde izquierdo, EXACTAMENTE alineado con el borde izquierdo de las barras HP)
+    private float fixedX = -1.85f;  // Alineado con el BORDE IZQUIERDO de las barras HP (que están en X=0.05)
+    private float fixedY = 2.70f;   // Debajo de hpBarForceField (Y=0.87)
+    private float fixedZ = 0.10f;    // En el plano frontal
 
-    // Rotación de la esfera
+    // Rotación de la esfera (sobre su eje Y, como el sol)
     private float rotationY = 0f;
 
     // Tamaño
-    private float scale = 0.12f;  // Tamaño del avatar (reducido: más pequeño)
+    private float scale = 0.18f;  // Tamaño incrementado del avatar para mejor visibilidad
 
     // Referencias
     private final Context context;
@@ -252,21 +252,13 @@ public class AvatarSphere implements SceneObject, CameraAware {
     public void update(float deltaTime) {
         time += deltaTime;
 
-        // Actualizar ángulo de órbita
-        orbitAngle += orbitSpeed * deltaTime;
+        // Rotación de la esfera sobre su propio eje Y (como el sol, pero más rápido)
+        rotationY += deltaTime * 15f;  // 15 grados por segundo (diferente al sol que rota a 3°/seg)
 
-        // Calcular posición en órbita
-        float x = (float)(Math.cos(orbitAngle) * orbitRadius);
-        float z = (float)(Math.sin(orbitAngle) * orbitRadius);
-        float y = 0.65f + (float)(Math.sin(time * 0.5) * 0.08);  // Más arriba, debajo de las barras HP
-
-        // Rotación de la esfera sobre sí misma
-        rotationY += deltaTime * 20f;  // 20 grados por segundo
-
-        // Crear matriz de modelo
+        // Crear matriz de modelo - POSICIÓN FIJA
         android.opengl.Matrix.setIdentityM(modelMatrix, 0);
-        android.opengl.Matrix.translateM(modelMatrix, 0, x, y, z);
-        android.opengl.Matrix.rotateM(modelMatrix, 0, rotationY, 0, 1, 0);
+        android.opengl.Matrix.translateM(modelMatrix, 0, fixedX, fixedY, fixedZ);
+        android.opengl.Matrix.rotateM(modelMatrix, 0, rotationY, 0, 1, 0);  // Solo rotación en Y
         android.opengl.Matrix.scaleM(modelMatrix, 0, scale, scale, scale);
     }
 

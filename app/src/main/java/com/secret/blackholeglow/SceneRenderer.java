@@ -34,6 +34,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     private HPBar hpBarSun;
     private HPBar hpBarForceField;
     private MeteorShower meteorShower;
+    private PlayerWeapon playerWeapon;  // 🎮 NUEVO: Arma del jugador (separada de MeteorShower)
     private boolean solWasDead = false;  // Para detectar cuando respawnea
 
     // Sistema de visualización musical
@@ -86,9 +87,38 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     private long totalMemory = 0;
     private long availableMemory = 0;
 
+    // 🎮 SISTEMA DE ESTADÍSTICAS DEL JUGADOR
+    private PlayerStats playerStats;
+
+    // 📊 CONTADOR DE SOLES DESTRUIDOS (UI)
+    private SimpleTextRenderer sunsDestroyedCounter;
+
+    // 🏆 SISTEMA DE LEADERBOARD Y BOTS
+    private BotManager botManager;
+    private LeaderboardManager leaderboardManager;
+    private SimpleTextRenderer[] leaderboardTexts = new SimpleTextRenderer[3];  // Textos para Top 3
+    private long lastLeaderboardUpdate = 0;
+    private static final long LEADERBOARD_UPDATE_INTERVAL = 30000; // 30 segundos
+
     public SceneRenderer(Context ctx, String initialItem) {
         this.context = ctx;
         this.selectedItem = initialItem;
+
+        // 🎮 Inicializar sistema de estadísticas
+        this.playerStats = PlayerStats.getInstance(ctx);
+        playerStats.printStats();  // Mostrar estadísticas al iniciar
+
+        // 🔄 Escuchar sincronización con Firebase para actualizar contador
+        playerStats.setSyncListener(new PlayerStats.SyncListener() {
+            @Override
+            public void onSyncCompleted(int sunsDestroyed) {
+                // Actualizar contador en pantalla cuando se sincronice con Firebase
+                if (sunsDestroyedCounter != null) {
+                    sunsDestroyedCounter.setText("☀️" + sunsDestroyed);
+                    Log.d(TAG, "✅ Contador actualizado después de sincronización: " + sunsDestroyed + " soles");
+                }
+            }
+        });
 
         // Obtener información del dispositivo
         deviceInfo = Build.MANUFACTURER + " " + Build.MODEL;
@@ -203,32 +233,31 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
 
             // ⚡ MEDIDOR DE RENDIMIENTO MEJORADO
             // Logs más visibles cuando hay problemas de rendimiento
-            if (currentFPS < 50) {
+            if (currentFPS < 30) {
                 // FPS bajo - alerta CRÍTICA
                 Log.w(TAG, "╔════════════════════════════════════════╗");
                 Log.w(TAG, "║   ⚠️  RENDIMIENTO BAJO DETECTADO      ║");
                 Log.w(TAG, "╠════════════════════════════════════════╣");
-                Log.w(TAG, String.format("║ FPS Actual:   %.1f FPS (60 FPS objetivo)  ║", currentFPS));
+                Log.w(TAG, String.format("║ FPS Actual:   %.1f FPS                    ║", currentFPS));
                 Log.w(TAG, String.format("║ FPS Promedio: %.1f FPS                    ║", averageFPS));
                 Log.w(TAG, String.format("║ FPS Mínimo:   %.1f FPS                    ║", minFPS));
                 Log.w(TAG, String.format("║ FPS Máximo:   %.1f FPS                    ║", maxFPS));
                 Log.w(TAG, "║                                        ║");
                 Log.w(TAG, "║ Sugerencia: Reducir objetos o efectos ║");
                 Log.w(TAG, "╚════════════════════════════════════════╝");
-            } else if (currentFPS < 55) {
-                // FPS justo - advertencia
-                Log.i(TAG, String.format("[Renderer] ⚠️ FPS: %.1f (promedio: %.1f, min: %.1f)",
-                                        currentFPS, averageFPS, minFPS));
             } else {
                 // FPS bueno - log minimal cada 30 segundos
                 if (elapsedSeconds % 30 == 0) {
-                    Log.d(TAG, String.format("[Renderer] ✓ FPS: %.1f (estable)", currentFPS));
+                    Log.d(TAG, String.format("[Renderer] ✓ FPS: %.1f (promedio: %.1f)", currentFPS, averageFPS));
                 }
             }
 
             frameCount = 0;
             fpsTimer = 0f;
         }
+
+        // 🏆 Actualizar leaderboard periódicamente (cada 30 segundos)
+        updateLeaderboardUI();
 
         // Limpiar buffers
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
@@ -409,10 +438,10 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             if (sol instanceof CameraAware) {
                 ((CameraAware) sol).setCameraController(sharedCamera);
             }
-            sol.setMaxHealth(30);  // Sol tiene 30 HP
+            sol.setMaxHealth(200);  // Sol tiene 200 HP (incrementado aún más para partidas más largas)
             sol.setOnExplosionListener(this);  // 💥 CONECTAR EXPLOSIÓN ÉPICA
             sceneObjects.add(sol);
-            Log.d(TAG, "  ✓ Sun added with lava shader (opaque) - HP: 30");
+            Log.d(TAG, "  ✓ Sun added with lava shader (opaque) - HP: 200");
             Log.d(TAG, "  💥 Explosion listener connected for EPIC particle show");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creating sun: " + e.getMessage());
@@ -506,7 +535,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     0.55f,              // Radio más pequeño y contenido
                     R.drawable.fondo_transparente,  // Textura transparente para efectos puros
                     new float[]{0.2f, 0.6f, 1.0f},  // Color azul eléctrico brillante
-                    0.45f,              // Alpha más visible
+                    0.66f,              // Alpha más visible
                     0.06f,              // Pulsación MUY sutil (6% de variación)
                     0.4f                // Pulsación LENTA (menos de la mitad de velocidad)
             );
@@ -525,7 +554,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     "SOL",
                     0.05f, 0.92f,  // Posición: arriba izquierda
                     0.25f, 0.03f,  // Tamaño: ancho y alto
-                    30,  // Max HP = 30
+                    200,  // Max HP = 200 (incrementado aún más)
                     new float[]{1.0f, 0.8f, 0.0f, 1.0f},  // Amarillo lleno
                     new float[]{1.0f, 0.0f, 0.0f, 1.0f}   // Rojo vacío
             );
@@ -537,7 +566,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     "ESCUDO",
                     0.05f, 0.87f,  // Posición: debajo de la barra del sol
                     0.25f, 0.03f,  // Tamaño
-                    20,  // Max HP = 20
+                    50,  // Max HP = 50 (incrementado para que dure más)
                     new float[]{0.2f, 0.6f, 1.0f, 1.0f},  // Azul lleno
                     new float[]{1.0f, 0.0f, 0.0f, 1.0f}   // Rojo vacío
             );
@@ -572,7 +601,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             musicStatusBar = new HPBar(
                     context,
                     "♪ AUDIO",
-                    0.05f, 0.82f,
+                    0.05f, 1.82f,
                     0.25f, 0.035f,
                     100,
                     new float[]{0.1f, 0.9f, 0.3f, 1.0f},
@@ -609,14 +638,86 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
 
             musicIndicator = new MusicIndicator(
                     context,
-                    0.35f, 0.82f,  // Posición: Alineado con barras HP (debajo del escudo)
-                    0.10f,         // Ancho: 4 barras verticales compactas
-                    0.10f          // Alto: Barras que crecen de abajo hacia arriba
+                    -0.15f,   // X: Centrado (ligeramente a la izquierda del centro)
+                    0.75f,    // Y: Parte superior de la pantalla
+                    0.30f,    // Ancho: HORIZONTAL (más ancho que alto)
+                    0.08f     // Alto: Delgado y compacto
             );
             sceneObjects.add(musicIndicator);
             Log.d(TAG, "  🎵✓ INDICADOR DE MÚSICA agregado - CENTRADO, ARRIBA del sol");
         } catch (Exception e) {
             Log.e(TAG, "  ✗✗✗ ERROR CRÍTICO creando indicador de música: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        // ☀️💀 CONTADOR DE SOLES DESTRUIDOS
+        try {
+            Log.d(TAG, "╔════════════════════════════════════════╗");
+            Log.d(TAG, "║   CREANDO CONTADOR SOLES DESTRUIDOS   ║");
+            Log.d(TAG, "╚════════════════════════════════════════╝");
+
+            sunsDestroyedCounter = new SimpleTextRenderer(
+                    context,
+                    0.50f,    // X: Esquina superior derecha
+                    0.75f,    // Y: Parte superior (mismo nivel que MusicIndicator)
+                    0.40f,    // Ancho
+                    0.10f     // Alto
+            );
+            sunsDestroyedCounter.setColor(android.graphics.Color.rgb(255, 200, 50));  // Amarillo dorado
+
+            // Inicializar con el valor actual de PlayerStats (puede ser de Firebase o local)
+            if (playerStats != null) {
+                int currentSuns = playerStats.getSunsDestroyed();
+                sunsDestroyedCounter.setText("☀️" + currentSuns);
+                Log.d(TAG, "  ☀️ Contador inicializado con: " + currentSuns + " soles");
+            } else {
+                sunsDestroyedCounter.setText("☀️0");
+            }
+
+            sceneObjects.add(sunsDestroyedCounter);
+            Log.d(TAG, "  ☀️✓ CONTADOR agregado - esquina superior derecha");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗✗✗ ERROR CRÍTICO creando contador: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        // 🏆 SISTEMA DE LEADERBOARD (Top 4)
+        try {
+            Log.d(TAG, "╔════════════════════════════════════════╗");
+            Log.d(TAG, "║   INICIALIZANDO LEADERBOARD           ║");
+            Log.d(TAG, "╚════════════════════════════════════════╝");
+
+            // Inicializar managers
+            botManager = BotManager.getInstance();
+            leaderboardManager = LeaderboardManager.getInstance();
+
+            // Inicializar bots (solo primera vez)
+            botManager.initializeBots(new BotManager.InitCallback() {
+                @Override
+                public void onComplete() {
+                    Log.d(TAG, "🤖 Bots inicializados");
+                    // Actualizar leaderboard después de inicializar bots
+                    updateLeaderboardUI();
+                }
+            });
+
+            // Crear textos para Top 3 (horizontal, de izquierda a derecha)
+            float startX = -0.95f;  // Comienza en el borde izquierdo
+            float y = -0.50f;       // Más arriba para no taparse con iconos del sistema
+            float width = 0.45f;    // Ancho de cada texto
+            float spacing = 0.60f;  // Espaciado entre textos
+
+            for (int i = 0; i < 3; i++) {
+                float x = startX + (i * spacing);
+                leaderboardTexts[i] = new SimpleTextRenderer(context, x, y, width, 0.08f);
+                leaderboardTexts[i].setColor(android.graphics.Color.WHITE);
+                leaderboardTexts[i].setText("#" + (i+1) + " ---");
+                sceneObjects.add(leaderboardTexts[i]);
+            }
+
+            Log.d(TAG, "  🏆✓ LEADERBOARD UI creado - 3 posiciones");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗✗✗ ERROR CRÍTICO creando leaderboard: " + e.getMessage());
             e.printStackTrace();
         }
 
@@ -656,6 +757,22 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.d(TAG, "[SceneRenderer] ✓ Sistema de meteoritos agregado (con campo de fuerza)");
         } catch (Exception e) {
             Log.e(TAG, "[SceneRenderer] ✗ Error creando sistema de meteoritos: " + e.getMessage());
+        }
+
+        // 🎮 ARMA DEL JUGADOR - SISTEMA DE DISPARO CONTROLADO
+        try {
+            playerWeapon = new PlayerWeapon(context, textureManager);
+            playerWeapon.setCameraController(sharedCamera);
+
+            // Conectar con MeteorShower para que maneje las colisiones
+            if (meteorShower != null) {
+                playerWeapon.setMeteorShower(meteorShower);
+            }
+
+            sceneObjects.add(playerWeapon);
+            Log.d(TAG, "[SceneRenderer] 🎮 Sistema de arma del jugador agregado");
+        } catch (Exception e) {
+            Log.e(TAG, "[SceneRenderer] ✗ Error creando arma del jugador: " + e.getMessage());
         }
 
         // ✨ AVATAR DEL USUARIO - ESFERA 3D FLOTANTE ✨
@@ -760,6 +877,11 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         if (musicVisualizer != null) {
             musicVisualizer.pause();
         }
+
+        // 🎮 FINALIZAR SESIÓN DE JUEGO
+        playerStats.endSession();
+        playerStats.saveStats();
+
         Log.d(TAG, "Renderer PAUSED");
     }
 
@@ -769,6 +891,9 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         if (musicVisualizer != null) {
             musicVisualizer.resume();
         }
+
+        // 🎮 INICIAR NUEVA SESIÓN DE JUEGO
+        playerStats.startSession();
         Log.d(TAG, "Renderer RESUMED");
     }
 
@@ -974,11 +1099,13 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     /**
      * Dispara un meteorito hacia el sol
      * PROTEGIDO contra crashes
+     *
+     * 🌟 NUEVO: Si la barra de combo está llena (x10), dispara MÚLTIPLES meteoritos épicos
      */
     private void shootMeteor(float power) {
         try {
-            if (meteorShower == null) {
-                Log.w(TAG, "⚠️ MeteorShower no disponible");
+            if (playerWeapon == null) {
+                Log.w(TAG, "⚠️ PlayerWeapon no disponible");
                 return;
             }
 
@@ -987,10 +1114,26 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                 return;
             }
 
-            // Disparar meteorito con la potencia especificada
-            meteorShower.shootPlayerMeteor(power);
+            // VERIFICAR SI LA BARRA DE COMBO ESTÁ LLENA (COMBO x10)
+            if (meteorShower != null && meteorShower.isComboReady()) {
+                // 🌟💥 DISPARO ÉPICO - ¡MÚLTIPLES METEORITOS!
+                playerWeapon.shootEpic();
 
-            Log.d(TAG, String.format("💥 Meteorito disparado - Poder: %.0f%%", power * 100));
+                // Resetear el combo en MeteorShower
+                meteorShower.resetCombo();
+
+                Log.d(TAG, "╔════════════════════════════════════════════════════════╗");
+                Log.d(TAG, "║                                                        ║");
+                Log.d(TAG, "║  🌟💥 DISPARO ÉPICO ACTIVADO! 💥🌟                   ║");
+                Log.d(TAG, "║  ¡MÚLTIPLES METEORITOS LANZADOS!                      ║");
+                Log.d(TAG, "║                                                        ║");
+                Log.d(TAG, "╚════════════════════════════════════════════════════════╝");
+            } else {
+                // DISPARO NORMAL - UN SOLO METEORITO
+                playerWeapon.shootSingle(power);
+                Log.d(TAG, String.format("🚀 DISPARO - Poder: %.0f%%", power * 100));
+            }
+
         } catch (Exception e) {
             Log.e(TAG, "✗ Error disparando meteorito: " + e.getMessage());
             e.printStackTrace();
@@ -1368,6 +1511,59 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
     }
 
+    // ===== 🏆 SISTEMA DE LEADERBOARD =====
+
+    /**
+     * Actualiza el leaderboard UI (cada 30 segundos)
+     */
+    private void updateLeaderboardUI() {
+        long now = System.currentTimeMillis();
+        if (now - lastLeaderboardUpdate < LEADERBOARD_UPDATE_INTERVAL) {
+            return; // No actualizar muy seguido
+        }
+
+        lastLeaderboardUpdate = now;
+
+        if (leaderboardManager != null) {
+            leaderboardManager.getTop3(new LeaderboardManager.Top3Callback() {
+                @Override
+                public void onSuccess(java.util.List<LeaderboardManager.LeaderboardEntry> top3) {
+                    Log.d(TAG, "🏆 Leaderboard actualizado - " + top3.size() + " entradas");
+
+                    // Actualizar textos en el GL thread (next frame)
+                    for (int i = 0; i < Math.min(top3.size(), 3); i++) {
+                        LeaderboardManager.LeaderboardEntry entry = top3.get(i);
+                        if (leaderboardTexts[i] != null) {
+                            String icon = entry.isBot ? "🤖" : "👤";
+                            String text = icon + " #" + entry.rank + " " + entry.displayName + "\n☀️" + entry.sunsDestroyed;
+                            leaderboardTexts[i].setText(text);
+
+                            // Color diferente para el usuario actual
+                            if (!entry.isBot && playerStats != null &&
+                                entry.sunsDestroyed == playerStats.getSunsDestroyed()) {
+                                leaderboardTexts[i].setColor(android.graphics.Color.rgb(255, 215, 0)); // Oro
+                            } else if (entry.isBot) {
+                                leaderboardTexts[i].setColor(android.graphics.Color.rgb(100, 200, 255)); // Azul claro
+                            } else {
+                                leaderboardTexts[i].setColor(android.graphics.Color.WHITE);
+                            }
+                        }
+                    }
+                }
+
+                @Override
+                public void onError(String error) {
+                    Log.e(TAG, "❌ Error actualizando leaderboard: " + error);
+                }
+            });
+        }
+
+        // También actualizar bots si es necesario
+        if (botManager != null) {
+            botManager.updateBotsIfNeeded();
+        }
+    }
+
     // ===== 💥💥💥 EXPLOSIÓN ÉPICA DEL SOL 💥💥💥 =====
 
     /**
@@ -1387,6 +1583,25 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         Log.d(TAG, "║   🌟 ACTIVANDO EXPLOSIÓN MASIVA DE PARTÍCULAS 🌟     ║");
         Log.d(TAG, "║                                                        ║");
         Log.d(TAG, "╚════════════════════════════════════════════════════════╝");
+
+        // ☀️ REGISTRAR SOL DESTRUIDO EN ESTADÍSTICAS (debe hacerse ANTES de actualizar contador)
+        if (playerStats != null) {
+            playerStats.onSunDestroyed();
+            Log.d(TAG, "   ☀️ Sol destruido registrado en PlayerStats");
+        }
+
+        // 📊 ACTUALIZAR CONTADOR DE SOLES DESTRUIDOS (ahora con el valor incrementado)
+        if (sunsDestroyedCounter != null && playerStats != null) {
+            int totalSuns = playerStats.getSunsDestroyed();
+            sunsDestroyedCounter.setText("☀️" + totalSuns);
+            Log.d(TAG, "   📊 Contador actualizado: " + totalSuns + " soles destruidos");
+        }
+
+        // 🏆 FORZAR ACTUALIZACIÓN DEL LEADERBOARD
+        if (leaderboardManager != null) {
+            leaderboardManager.forceRefresh();
+            lastLeaderboardUpdate = 0; // Forzar actualización en próximo frame
+        }
 
         // Disparar explosiones MASIVAS en TODAS las estrellas bailarinas
         if (estrellasBailarinas != null && !estrellasBailarinas.isEmpty()) {

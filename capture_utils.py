@@ -39,6 +39,7 @@ class ADBHelper:
         """Encuentra la ruta de ADB"""
         # Rutas comunes de ADB en Windows
         possible_paths = [
+            r"D:\adb\platform-tools\adb.exe",  # Instalacion automatica
             r"C:\Users\eduar\AppData\Local\Android\Sdk\platform-tools\adb.exe",
             r"C:\Android\sdk\platform-tools\adb.exe",
             r"C:\Program Files (x86)\Android\android-sdk\platform-tools\adb.exe",
@@ -148,8 +149,8 @@ class ADBHelper:
         """Graba video de la pantalla del dispositivo"""
         temp_path = "/sdcard/recording_temp.mp4"
 
-        console.print(f"[yellow]🔴 Grabando {duration} segundos...[/yellow]")
-        console.print("[dim]Asegúrate de que la app esté abierta en el celular[/dim]")
+        console.print(f"[yellow][REC] Grabando {duration} segundos...[/yellow]")
+        console.print("[dim]Asegurate de que la app este abierta en el celular[/dim]")
 
         with Progress(
             SpinnerColumn(),
@@ -166,7 +167,7 @@ class ADBHelper:
             )
 
             if not success:
-                console.print(f"[red]❌ Error al grabar: {stderr}[/red]")
+                console.print(f"[red][ERROR] Error al grabar: {stderr}[/red]")
                 return False
 
             progress.update(task, advance=duration)
@@ -176,7 +177,7 @@ class ADBHelper:
             success, _, stderr = self.run_command(["pull", temp_path, str(output_path)])
 
             if not success:
-                console.print(f"[red]❌ Error al descargar: {stderr}[/red]")
+                console.print(f"[red][ERROR] Error al descargar: {stderr}[/red]")
                 return False
 
             progress.update(task, advance=1)
@@ -190,7 +191,7 @@ class ADBHelper:
     def install_apk(self, apk_path: Path) -> bool:
         """Instala un APK en el dispositivo"""
         if not apk_path.exists():
-            console.print(f"[red]❌ APK no encontrado: {apk_path}[/red]")
+            console.print(f"[red][ERROR] APK no encontrado: {apk_path}[/red]")
             return False
 
         with Progress(
@@ -209,15 +210,15 @@ class ADBHelper:
             progress.update(task, advance=1)
 
             if not success:
-                console.print(f"[red]❌ Error al instalar APK[/red]")
+                console.print(f"[red][ERROR] Error al instalar APK[/red]")
                 console.print(f"[red]{stderr}[/red]")
                 return False
 
             if "Success" in stdout:
-                console.print("[green]✓ APK instalado correctamente[/green]")
+                console.print("[green][OK] APK instalado correctamente[/green]")
                 return True
             else:
-                console.print(f"[yellow]⚠️  Resultado inesperado: {stdout}[/yellow]")
+                console.print(f"[yellow][WARN] Resultado inesperado: {stdout}[/yellow]")
                 return False
 
     def launch_app(self, package: str, activity: str) -> bool:
@@ -227,10 +228,10 @@ class ADBHelper:
         )
 
         if success:
-            console.print("[green]✓ App lanzada correctamente[/green]")
+            console.print("[green][OK] App lanzada correctamente[/green]")
             return True
         else:
-            console.print(f"[red]❌ Error al lanzar app: {stderr}[/red]")
+            console.print(f"[red][ERROR] Error al lanzar app: {stderr}[/red]")
             return False
 
     def get_timestamp(self) -> str:
@@ -242,14 +243,14 @@ class ADBHelper:
         try:
             os.startfile(str(path))
         except Exception as e:
-            console.print(f"[yellow]⚠️  No se pudo abrir automáticamente: {e}[/yellow]")
+            console.print(f"[yellow][WARN] No se pudo abrir automaticamente: {e}[/yellow]")
 
     def open_folder(self, path: Path):
         """Abre una carpeta en el explorador"""
         try:
             os.startfile(str(path))
         except Exception as e:
-            console.print(f"[yellow]⚠️  No se pudo abrir carpeta: {e}[/yellow]")
+            console.print(f"[yellow][WARN] No se pudo abrir carpeta: {e}[/yellow]")
 
 
 def print_header(title: str, subtitle: str = ""):
@@ -266,22 +267,22 @@ def print_header(title: str, subtitle: str = ""):
 
 def print_success(message: str):
     """Imprime mensaje de éxito"""
-    console.print(f"[green]✓ {message}[/green]")
+    console.print(f"[green][OK] {message}[/green]")
 
 
 def print_error(message: str):
     """Imprime mensaje de error"""
-    console.print(f"[red]❌ {message}[/red]")
+    console.print(f"[red][ERROR] {message}[/red]")
 
 
 def print_warning(message: str):
     """Imprime mensaje de advertencia"""
-    console.print(f"[yellow]⚠️  {message}[/yellow]")
+    console.print(f"[yellow][WARN] {message}[/yellow]")
 
 
 def print_info(message: str):
     """Imprime mensaje informativo"""
-    console.print(f"[cyan]ℹ️  {message}[/cyan]")
+    console.print(f"[cyan][INFO] {message}[/cyan]")
 
 
 def get_int_input(prompt: str, min_val: int, max_val: int, default: int) -> int:

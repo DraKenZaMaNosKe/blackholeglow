@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "615188090674-eucf0slo5up3u6etgi8cs7ahusjh8djd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.secret.blackholeglow",
+            "certificate_hash": "6c1b78305439670bb154b4e0e6108be87527f34d"
+          }
+        },
+        {
           "client_id": "615188090674-ogbffi71cnvil1epgjorikq6jm4eelq1.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

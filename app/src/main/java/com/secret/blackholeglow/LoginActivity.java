@@ -41,6 +41,7 @@ public class LoginActivity extends AppCompatActivity {
 
     // UI
     private Button btnSignIn;
+    private Button btnSkip;
     private ProgressBar progressBar;
     private TextView tvStatus;
 
@@ -68,6 +69,7 @@ public class LoginActivity extends AppCompatActivity {
 
         // Inicializar vistas
         btnSignIn = findViewById(R.id.btn_sign_in);
+        btnSkip = findViewById(R.id.btn_skip);
         progressBar = findViewById(R.id.progress_bar);
         tvStatus = findViewById(R.id.tv_status);
 
@@ -100,6 +102,16 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 signIn();
+            }
+        });
+
+        // Botón skip - continuar sin login
+        btnSkip.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.d(TAG, "Skip login - continuando sin autenticacion");
+                Toast.makeText(LoginActivity.this, "Continuando sin login", Toast.LENGTH_SHORT).show();
+                goToMainActivity();
             }
         });
 

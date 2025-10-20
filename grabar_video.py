@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Black Hole Glow - Grabación de Video
+Black Hole Glow - Grabacion de Video
 Graba la pantalla del dispositivo Android para mostrar animaciones
 """
 
@@ -11,9 +12,16 @@ from capture_utils import (
     print_info, get_int_input, console
 )
 
+# Fix encoding for Windows
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except:
+        pass
+
 def main():
     print_header(
-        "🎥 Grabación de Video",
+        "Grabacion de Video",
         "Graba animaciones y movimiento de la pantalla"
     )
 
@@ -63,13 +71,13 @@ def main():
         console.print()
 
         # Instrucciones para Claude
-        console.print("[bold cyan]📋 Para mostrar a Claude, copia esto:[/bold cyan]")
+        console.print("[bold cyan]Para mostrar a Claude, copia esto:[/bold cyan]")
         console.print(f"[green]D:\\img\\{filename}[/green]")
         console.print()
 
-        console.print("[bold cyan]💡 Nota importante:[/bold cyan]")
+        console.print("[bold cyan]Nota importante:[/bold cyan]")
         console.print("[dim]Claude puede ver videos MP4 directamente.[/dim]")
-        console.print("[dim]¡Ya NO necesitas extraer frames con Python![/dim]")
+        console.print("[dim]Ya NO necesitas extraer frames con Python![/dim]")
         console.print()
 
         # Abrir video

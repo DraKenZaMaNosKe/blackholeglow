@@ -54,6 +54,17 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     private int totalMeteoritosLanzados = 0;
     private int totalImpactos = 0;
 
+    // 🎮 SISTEMA DE ESTADÍSTICAS DEL JUGADOR
+    private PlayerStats playerStats;
+
+    // ⚡ BARRA DE COMBO Y LLUVIA DE METEORITOS ÉPICA
+    private ComboBar comboBar;
+    // 🌟 LLUVIA DE METEORITOS ÉPICA (COMBO x10)
+    private boolean epicMeteorShowerActive = false;
+    private float epicMeteorShowerDuration = 0f;
+    private static final float EPIC_SHOWER_DURATION = 3.0f;  // 3 segundos de lluvia épica
+    private static final int EPIC_METEOR_COUNT = 30;  // 30 meteoritos en la lluvia épica
+
     // ===== SISTEMA DE REACTIVIDAD MUSICAL =====
     private boolean musicReactive = true;
     private float musicIntensityBoost = 0f;  // Boost de intensidad por música
@@ -66,6 +77,12 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     public MeteorShower(Context context, TextureManager textureManager) {
         this.context = context;
         this.textureManager = textureManager;
+
+        // 🎮 Inicializar sistema de estadísticas
+        this.playerStats = PlayerStats.getInstance(context);
+
+        // ⚡ Inicializar barra de combo
+        this.comboBar = new ComboBar(context);
 
         // Inicializar pool
         for (int i = 0; i < MAX_METEORITOS; i++) {
@@ -146,9 +163,63 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         }
     }
 
+    /**
+     * 🎮 VERIFICA COLISIONES DE UN METEORITO EXTERNO (del jugador)
+     * Permite que PlayerWeapon delegue la lógica de colisiones a MeteorShower
+     */
+    public void verificarColisionMeteorito(Meteorito m) {
+        if (m.getEstado() == Meteorito.Estado.CAYENDO) {
+            verificarColisiones(m);
+        }
+    }
+
     @Override
     public void update(float deltaTime) {
         if (!activo) return;
+
+        // 🎮 ACTUALIZAR SISTEMA DE COMBOS (timeout automático)
+        playerStats.updateCombo();
+
+        // ⚡ ACTUALIZAR BARRA DE COMBO Y RAYO LÁSER
+        if (comboBar != null) {
+            int currentCombo = playerStats.getCurrentCombo();
+            comboBar.updateCombo(currentCombo, playerStats.getTotalScore());
+            comboBar.update(deltaTime);
+
+            // Si el combo se perdió, resetear la barra visual también
+            if (currentCombo == 0 && comboBar.getCurrentCombo() > 0) {
+                comboBar.resetCombo();
+            }
+
+            // Si el combo llega a x10, ¡ACTIVAR LLUVIA DE METEORITOS ÉPICA!
+            if (comboBar.isLaserReady() && !epicMeteorShowerActive) {
+                fireEpicMeteorShower();
+            }
+        }
+
+        // 🌟 ACTUALIZAR LLUVIA DE METEORITOS ÉPICA
+        if (epicMeteorShowerActive) {
+            epicMeteorShowerDuration -= deltaTime;
+
+            // Generar meteoritos más frecuentemente durante la lluvia épica
+            if (epicMeteorShowerDuration > 0) {
+                // Lanzar 10 meteoritos por segundo durante la lluvia épica
+                if (tiempoDesdeUltimoSpawn > 0.1f) {  // Cada 0.1 segundos
+                    for (int i = 0; i < 3; i++) {  // 3 meteoritos a la vez
+                        Meteorito nuevo = lanzarMeteoritoEpico();
+                        if (nuevo != null) {
+                            meteoritosActivos.add(nuevo);
+                        }
+                    }
+                    tiempoDesdeUltimoSpawn = 0;
+                }
+            } else {
+                // Terminar la lluvia épica
+                epicMeteorShowerActive = false;
+                epicMeteorShowerDuration = 0;
+                Log.d(TAG, "🌟 Lluvia de meteoritos épica terminada");
+            }
+        }
 
         // Actualizar tiempo de spawn
         tiempoDesdeUltimoSpawn += deltaTime;
@@ -191,7 +262,7 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
             if (screenDirectedMeteors.contains(m) && m.getEstado() == Meteorito.Estado.CAYENDO) {
                 if (verificarImpactoPantalla(m)) {
                     paraRemover.add(m);
-                    screenDirectedMeteors.remove(m);
+                    // NO hacer remove aquí, se hará después del loop
                     continue;  // No verificar otras colisiones
                 }
             }
@@ -352,6 +423,10 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         meteoritosActivos.add(m);
 
         totalMeteoritosLanzados++;
+
+        // 🎮 REGISTRAR DISPARO EN ESTADÍSTICAS
+        playerStats.onMeteorLaunched();
+
         Log.d(TAG, "╔════════════════════════════════════════════════════════╗");
         Log.d(TAG, "║                                                        ║");
         Log.d(TAG, String.format("║   🚀 METEORITO DEL JUGADOR DISPARADO! (%.0f%%)        ║", power * 100));
@@ -557,8 +632,13 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
                 }
 
                 totalImpactos++;
+
+                // 🎮 REGISTRAR IMPACTO EN ESTADÍSTICAS (campo de fuerza)
+                int points = playerStats.onImpact(false);
+
                 Log.d(TAG, "[MeteorShower] ¡¡IMPACTO EN CAMPO DE FUERZA!! HP: " +
-                           campoFuerza.getCurrentHealth() + "/" + campoFuerza.getMaxHealth());
+                           campoFuerza.getCurrentHealth() + "/" + campoFuerza.getMaxHealth() +
+                           " | +" + points + " pts");
                 return;  // No verificar más colisiones
             }
         }
@@ -583,6 +663,13 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
                     hpBarSun.setHealth(sol.getCurrentHealth());
                 }
 
+                // 🎮 REGISTRAR IMPACTO EN ESTADÍSTICAS (sol directo)
+                int points = playerStats.onImpact(true);
+
+                // 🔥 VERIFICAR SI EL SOL FUE DESTRUIDO
+                // NOTA: El incremento de soles destruidos se hace en SceneRenderer.onExplosion()
+                // para mantener la sincronización con la actualización del contador visual
+
                 // 💥💥 EFECTO DE IMPACTO EN PANTALLA (SOL) - MÁS SUTIL
                 // Intensidad basada en tamaño del meteorito (0.05-0.20 → 0.2-0.4)
                 if (sceneRenderer != null) {
@@ -593,7 +680,8 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
 
                 totalImpactos++;
                 Log.d(TAG, "[MeteorShower] ¡¡IMPACTO EN EL SOL!! HP: " +
-                           sol.getCurrentHealth() + "/" + sol.getMaxHealth());
+                           sol.getCurrentHealth() + "/" + sol.getMaxHealth() +
+                           " | +" + points + " pts | Combo: x" + playerStats.getCurrentCombo());
                 return;
             }
         }
@@ -635,14 +723,28 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
 
     @Override
     public void draw() {
-        // Dibujar todos los meteoritos activos
-        for (Meteorito m : meteoritosActivos) {
-            m.draw();
+        // Dibujar todos los meteoritos activos (usar índice para thread-safety)
+        for (int i = 0; i < meteoritosActivos.size(); i++) {
+            try {
+                meteoritosActivos.get(i).draw();
+            } catch (IndexOutOfBoundsException e) {
+                // La lista fue modificada durante la iteración, salir
+                break;
+            }
         }
 
-        // Dibujar efectos de impacto
-        for (ImpactEffect efecto : efectosImpacto) {
-            efecto.draw(camera);
+        // Dibujar efectos de impacto (usar índice para thread-safety)
+        for (int i = 0; i < efectosImpacto.size(); i++) {
+            try {
+                efectosImpacto.get(i).draw(camera);
+            } catch (IndexOutOfBoundsException e) {
+                break;
+            }
+        }
+
+        // 🔥 DIBUJAR BARRA DE COMBO (UI overlay)
+        if (comboBar != null) {
+            comboBar.draw();
         }
     }
 
@@ -732,5 +834,99 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     @Override
     public boolean isMusicReactive() {
         return musicReactive;
+    }
+
+    /**
+     * 🌟💥 DISPARA LA LLUVIA DE METEORITOS ÉPICA 💥🌟
+     *
+     * Cuando el combo llega a x10, se desata una lluvia masiva
+     * de 30 meteoritos durante 3 segundos - ¡DESTRUCCIÓN TOTAL!
+     */
+    private void fireEpicMeteorShower() {
+        if (comboBar == null) return;
+
+        // Resetear combo en la barra
+        comboBar.fireLaser(); // Usa el mismo método para resetear
+
+        // ACTIVAR LLUVIA ÉPICA
+        epicMeteorShowerActive = true;
+        epicMeteorShowerDuration = EPIC_SHOWER_DURATION;
+        tiempoDesdeUltimoSpawn = 0; // Resetear timer para spawn inmediato
+
+        Log.d(TAG, "╔════════════════════════════════════════════╗");
+        Log.d(TAG, "║                                            ║");
+        Log.d(TAG, "║  🌟💥 LLUVIA DE METEORITOS ÉPICA! 💥🌟    ║");
+        Log.d(TAG, "║  ¡COMBO x10 ACTIVADO!                      ║");
+        Log.d(TAG, "║  30 METEORITOS CAYENDO DURANTE 3 SEGUNDOS  ║");
+        Log.d(TAG, "║                                            ║");
+        Log.d(TAG, "╚════════════════════════════════════════════╝");
+
+        // Registrar evento especial en estadísticas
+        playerStats.onSpecialAttack("EPIC_METEOR_SHOWER");
+    }
+
+    /**
+     * 🎮 VERIFICA SI EL COMBO ESTÁ LISTO (x10) PARA DISPARO ÉPICO
+     */
+    public boolean isComboReady() {
+        return comboBar != null && comboBar.isLaserReady();
+    }
+
+    /**
+     * 🎮 RESETEA EL COMBO (cuando se dispara el ataque épico del jugador)
+     */
+    public void resetCombo() {
+        if (comboBar != null) {
+            comboBar.fireLaser();  // Usa el método existente para resetear
+            Log.d(TAG, "[MeteorShower] Combo reseteado por disparo épico del jugador");
+        }
+    }
+
+    /**
+     * 🌟 LANZA UN METEORITO ÉPICO (parte de la lluvia x10)
+     * Meteoritos más grandes, más rápidos y más destructivos
+     */
+    private Meteorito lanzarMeteoritoEpico() {
+        if (poolMeteorites.isEmpty()) return null;
+
+        Meteorito m = poolMeteorites.remove(0);
+
+        // Posición aleatoria en esfera alrededor de la escena
+        // Vienen desde TODAS las direcciones para máximo caos
+        float angulo1 = (float) (Math.random() * Math.PI * 2);
+        float angulo2 = (float) (Math.random() * Math.PI * 0.5); // Solo hemisferio superior
+
+        float distance = SPAWN_DISTANCE * 0.7f; // Más cerca para impacto más rápido
+        float x = distance * (float) (Math.sin(angulo2) * Math.cos(angulo1));
+        float y = distance * (float) Math.abs(Math.sin(angulo2) * Math.sin(angulo1)); // Solo desde arriba
+        float z = distance * (float) Math.cos(angulo2);
+
+        // VELOCIDAD ÉPICA - Mucho más rápido que meteoritos normales
+        float velocidadBase = 8.0f + (float) Math.random() * 4.0f; // 8-12 unidades/seg (RÁPIDO!)
+
+        // Apuntar directamente al centro (sol/campo de fuerza)
+        float targetX = (float) (Math.random() * 0.5 - 0.25);  // Pequeña variación
+        float targetY = 0;
+        float targetZ = (float) (Math.random() * 0.5 - 0.25);
+
+        float dx = targetX - x;
+        float dy = targetY - y;
+        float dz = targetZ - z;
+        float dist = (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+        float vx = (dx / dist) * velocidadBase;
+        float vy = (dy / dist) * velocidadBase;
+        float vz = (dz / dist) * velocidadBase;
+
+        // TAMAÑO ÉPICO - Todos son GRANDES para máximo daño
+        float tamaño = 0.25f + (float) Math.random() * 0.2f;  // 0.25-0.45 (GRANDES!)
+
+        m.activar(x, y, z, vx, vy, vz, tamaño);
+
+        totalMeteoritosLanzados++;
+        Log.d(TAG, "🌟 Meteorito ÉPICO #" + totalMeteoritosLanzados + " - Tamaño: " +
+                   String.format("%.2f", tamaño) + " - Velocidad: " + String.format("%.1f", velocidadBase));
+
+        return m;
     }
 }

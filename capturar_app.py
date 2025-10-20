@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Black Hole Glow - Captura Completa
-Instala APK, lanza la app y toma múltiples screenshots
+Instala APK, lanza la app y toma multiples screenshots
 """
 
 import sys
@@ -12,15 +13,22 @@ from capture_utils import (
     print_warning, print_info, get_int_input, console
 )
 
+# Fix encoding for Windows
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except:
+        pass
+
 # Configuración
 PACKAGE = "com.secret.blackholeglow"
-ACTIVITY = f"{PACKAGE}/.SplashActivity"
+ACTIVITY = f"{PACKAGE}/.LoginActivity"  # Cambiado de SplashActivity a LoginActivity
 APK_RELATIVE_PATH = "app/build/outputs/apk/debug/app-debug.apk"
 
 def main():
     print_header(
-        "🔄 Captura Completa con Instalación",
-        "Instala APK → Lanza app → Captura screenshots"
+        "Captura Completa con Instalacion",
+        "Instala APK -> Lanza app -> Captura screenshots"
     )
 
     # Inicializar helper
@@ -86,7 +94,7 @@ def main():
     captured_files = []
 
     for i in range(1, num_capturas + 1):
-        console.print(f"[bold cyan]📸 Captura {i} de {num_capturas}[/bold cyan]")
+        console.print(f"[bold cyan]Captura {i} de {num_capturas}[/bold cyan]")
 
         filename = f"blackhole_{timestamp}_{i}.png"
         output_path = adb.img_dir / filename
@@ -111,17 +119,17 @@ def main():
         console.print("[bold green]" + "="*50 + "[/bold green]")
         console.print()
 
-        console.print(f"[cyan]📁 {len(captured_files)} archivo(s) guardados en: D:\\img\\[/cyan]")
+        console.print(f"[cyan]{len(captured_files)} archivo(s) guardados en: D:\\img\\[/cyan]")
         console.print()
 
         # Listar archivos
         for f in captured_files:
-            console.print(f"  [green]• {f}[/green]")
+            console.print(f"  [green]* {f}[/green]")
 
         console.print()
 
         # Instrucciones para Claude
-        console.print("[bold cyan]📋 Para mostrar a Claude, copia esto:[/bold cyan]")
+        console.print("[bold cyan]Para mostrar a Claude, copia esto:[/bold cyan]")
         if len(captured_files) > 1:
             console.print(f"[green]D:\\img\\blackhole_{timestamp}_*.png[/green]")
         else:

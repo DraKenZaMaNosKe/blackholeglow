@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Black Hole Glow - Captura Rápida
-Toma un screenshot rápido del dispositivo Android conectado
+Black Hole Glow - Captura Rapida
+Toma un screenshot rapido del dispositivo Android conectado
 """
 
 import sys
 from pathlib import Path
 from capture_utils import ADBHelper, print_header, print_success, print_error, console
 
+# Fix encoding for Windows
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except:
+        pass
+
 def main():
-    print_header("📸 Captura Rápida", "Screenshot instantáneo del celular")
+    print_header("Captura Rapida", "Screenshot instantaneo del celular")
 
     # Inicializar helper
     adb = ADBHelper()
@@ -34,7 +42,7 @@ def main():
         console.print()
 
         # Mostrar instrucciones para Claude
-        console.print("[bold cyan]📋 Para mostrar a Claude, copia esto:[/bold cyan]")
+        console.print("[bold cyan]Para mostrar a Claude, copia esto:[/bold cyan]")
         console.print(f"[green]D:\\img\\{filename}[/green]")
         console.print()
 
