@@ -22,11 +22,27 @@
           }
         },
         {
+          "client_id": "615188090674-lbs2pl6jd8c1lofv2a84rs9j70rt9fpp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.secret.blackholeglow",
+            "certificate_hash": "6a34068ff63ac7a74abcd0017ea9e2d787115446"
+          }
+        },
+        {
           "client_id": "615188090674-ogbffi71cnvil1epgjorikq6jm4eelq1.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.secret.blackholeglow",
             "certificate_hash": "d9107d917599713f9fcc5a9240a62573737c46cf"
+          }
+        },
+        {
+          "client_id": "615188090674-sh5258hdqdbajt0avgmglii3ldckkg7i.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.secret.blackholeglow",
+            "certificate_hash": "2d096f90d377f8064b82d69dd54f2598e7052479"
           }
         },
         {

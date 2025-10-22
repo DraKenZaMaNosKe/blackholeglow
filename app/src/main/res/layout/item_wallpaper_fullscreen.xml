@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+╔════════════════════════════════════════════════════════════════╗
+║  🌌 item_wallpaper_fullscreen.xml - Card Fullscreen           ║
+║                                                                ║
+║  Diseño SIMPLE de 1 wallpaper a la vez (scroll vertical)      ║
+║  • Sin OpenGL, solo imagen + gradiente + texto                ║
+║  • Ocupa casi toda la pantalla                                 ║
+║  • Borde animado con Canvas (igual que el botón)              ║
+╚════════════════════════════════════════════════════════════════╝
+-->
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="16dp">
+
+    <!-- ══════════════════════════════════════════════════════════════
+         ✨ BORDE ANIMADO (mismo efecto que el botón)
+         ══════════════════════════════════════════════════════════════ -->
+    <com.secret.blackholeglow.ui.AnimatedGlowCard
+        android:id="@+id/animated_border"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         📦 CARD PRINCIPAL
+         ══════════════════════════════════════════════════════════════ -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/wallpaper_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="4dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="8dp">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="500dp">
+
+        <!-- ══════════════════════════════════════════════════════════════
+             🖼️ PREVIEW IMAGE - Grande y llamativo
+             ══════════════════════════════════════════════════════════════ -->
+        <ImageView
+            android:id="@+id/image_preview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:contentDescription="@string/preview_image_desc"/>
+
+        <!-- ══════════════════════════════════════════════════════════════
+             🌑 OVERLAY GRADIENT - Mejora legibilidad
+             ══════════════════════════════════════════════════════════════ -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:layout_gravity="bottom"
+            android:background="@drawable/gradient_overlay_bottom"/>
+
+        <!-- ══════════════════════════════════════════════════════════════
+             📝 CONTENEDOR DE TEXTO - Parte inferior
+             ══════════════════════════════════════════════════════════════ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <!-- Título con emoji -->
+            <TextView
+                android:id="@+id/text_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/wallpaper_title"
+                android:textColor="@android:color/white"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:shadowColor="#000000"
+                android:shadowDx="0"
+                android:shadowDy="2"
+                android:shadowRadius="8"/>
+
+            <!-- Descripción -->
+            <TextView
+                android:id="@+id/text_description"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/wallpaper_description"
+                android:textColor="#EEEEEE"
+                android:textSize="15sp"
+                android:maxLines="3"
+                android:ellipsize="end"
+                android:shadowColor="#000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="4"/>
+
+            <!-- ✨ Botón ÉPICO ANIMADO con efectos -->
+            <com.secret.blackholeglow.ui.AnimatedGlowButton
+                android:id="@+id/button_preview"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginStart="20dp"
+                android:layout_marginEnd="20dp"
+                android:text="✨ VER WALLPAPER"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.05"/>
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+</com.google.android.material.card.MaterialCardView>
+
+</FrameLayout>

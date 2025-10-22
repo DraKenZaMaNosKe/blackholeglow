@@ -31,7 +31,12 @@
       "Bash(D:/adb/platform-tools/adb.exe logcat -s LeaderboardManager:D SceneRenderer:D BotManager:D PlayerStats:D)",
       "Bash(./gradlew.bat clean bundleRelease --no-daemon)",
       "Bash(\"C:/Program Files/Android/Android Studio/jbr/bin/keytool.exe\" -list -v -keystore \"D:/Orbix/blackholeglow/blackholeglow-release-key.jks\" -alias blackholeglow -storepass blackholeglow2025 -keypass blackholeglow2025)",
-      "Bash(D:/adb/platform-tools/adb.exe logcat -d -s FirebaseAuth:D GoogleSignIn:D)"
+      "Bash(D:/adb/platform-tools/adb.exe logcat -d -s FirebaseAuth:D GoogleSignIn:D)",
+      "Bash(D:/adb/platform-tools/adb.exe shell dumpsys package com.secret.blackholeglow)",
+      "Bash(D:/adb/platform-tools/adb.exe uninstall com.secret.blackholeglow)",
+      "Bash(D:/adb/platform-tools/adb.exe install -r /d/Orbix/blackholeglow/app/build/outputs/apk/debug/app-debug.apk)",
+      "Bash(D:/adb/platform-tools/adb.exe logcat -d -s LoginActivity:D WallpaperPreviewActivity:D MainActivity:D WindowInsets:D)",
+      "Bash(D:/adb/platform-tools/adb.exe install /d/Orbix/blackholeglow/app/build/outputs/apk/debug/app-debug.apk)"
     ],
     "deny": [],
     "ask": []

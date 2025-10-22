@@ -19,6 +19,10 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.graphics.Insets;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.bumptech.glide.Glide;
@@ -98,6 +102,10 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // 🎨 Habilitar Edge-to-Edge (borde a borde)
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+
         setContentView(R.layout.activity_main);
 
         // 0️⃣ Inicializar Firebase Auth y Google Sign-In
@@ -121,6 +129,17 @@ public class MainActivity extends AppCompatActivity
         //    │ El DrawerLayout contiene el NavigationView  │
         //    └──────────────────────────────────────────────┘
         drawerLayout = findViewById(R.id.drawer_layout);
+
+        // 🎨 Aplicar insets al contenedor principal (LinearLayout con Toolbar)
+        // para que el Toolbar no quede tapado por la barra de estado del sistema.
+        // El LinearLayout es el primer hijo del DrawerLayout (índice 0)
+        View mainContainer = drawerLayout.getChildAt(0);
+        ViewCompat.setOnApplyWindowInsetsListener(mainContainer, (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            // Solo aplicar padding superior para el Toolbar
+            v.setPadding(0, systemBars.top, 0, 0);
+            return insets;
+        });
 
         // 2a. Asociar el NavigationView al listener de selección
         NavigationView navigationView = findViewById(R.id.nav_view);

@@ -17,6 +17,10 @@ import android.widget.LinearLayout;
 import android.opengl.GLSurfaceView;
 import android.app.WallpaperManager;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.graphics.Insets;
 
 import com.secret.blackholeglow.LiveWallpaperService;
 import com.secret.blackholeglow.SceneRenderer;
@@ -52,6 +56,9 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // 🎨 Habilitar Edge-to-Edge (borde a borde)
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 
         // 1️⃣ Recuperar parámetros de la invocación
         int previewId = getIntent().getIntExtra(
@@ -90,6 +97,14 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
 
         // 6️⃣ Renderizar el templo en pantalla
         setContentView(layout);
+
+        // 🎨 Aplicar insets para que el contenido no quede tapado por las barras del sistema
+        ViewCompat.setOnApplyWindowInsetsListener(layout, (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            // Aplicar padding solo abajo (donde está el botón)
+            v.setPadding(0, 0, 0, systemBars.bottom);
+            return insets;
+        });
 
         // ╔════════════════════════════╗
         // ║ 🛡️ Botón: Consagrar Wallpaper ║

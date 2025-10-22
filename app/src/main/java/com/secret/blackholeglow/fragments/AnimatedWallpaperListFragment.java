@@ -76,10 +76,17 @@ public class AnimatedWallpaperListFragment extends Fragment {
         );
 
         // ┌───────────────────────────────────────────────────┐
-        // │ 🛠️ 2) Configurar RecyclerView                   │
+        // │ 🛠️ 2) Configurar RecyclerView VERTICAL (1 a la vez)│
         // └───────────────────────────────────────────────────┘
         RecyclerView recyclerView = view.findViewById(R.id.wallpaper_recycler_view);
+        // LinearLayout vertical: muestra 1 wallpaper a la vez (scroll vertical)
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+
+        // ⚡ Optimizaciones de rendimiento
+        recyclerView.setHasFixedSize(true); // Tamaño fijo mejora rendimiento
+        recyclerView.setItemViewCacheSize(4); // Cache de 4 items
+        recyclerView.setDrawingCacheEnabled(true);
+        recyclerView.setDrawingCacheQuality(android.view.View.DRAWING_CACHE_QUALITY_HIGH);
 
         // ┌───────────────────────────────────────────────────┐
         // │ 🌟 3) Cargar datos simulados                     │

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+╔════════════════════════════════════════════════════════════════╗
+║  🌌 background_space_gradient.xml                              ║
+║                                                                ║
+║  Gradiente oscuro espacial para el fondo de la galería         ║
+║  De azul profundo a negro                                      ║
+╚════════════════════════════════════════════════════════════════╝
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient
+        android:type="linear"
+        android:angle="135"
+        android:startColor="#0A0E27"
+        android:centerColor="#1A1B26"
+        android:endColor="#000000"/>
+</shape>

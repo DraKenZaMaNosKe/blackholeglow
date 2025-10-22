@@ -11,6 +11,10 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.graphics.Insets;
 
 import com.secret.blackholeglow.activities.MainActivity;
 
@@ -57,6 +61,9 @@ public class LoginActivity extends AppCompatActivity {
 
         super.onCreate(savedInstanceState);
 
+        // 🎨 Habilitar Edge-to-Edge (borde a borde)
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+
         // Verificar si el usuario ya tiene sesión iniciada
         UserManager userManager = UserManager.getInstance(this);
         if (userManager.isLoggedIn()) {
@@ -66,6 +73,14 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         setContentView(R.layout.activity_login);
+
+        // 🎨 Aplicar insets para que el contenido no quede tapado por las barras del sistema
+        View rootView = findViewById(android.R.id.content);
+        ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
 
         // Inicializar vistas
         btnSignIn = findViewById(R.id.btn_sign_in);

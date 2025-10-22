@@ -1,8 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.recyclerview.widget.RecyclerView
+<!--
+╔════════════════════════════════════════════════════════════════╗
+║  📱 fragment_animated_wallpapers.xml                           ║
+║                                                                ║
+║  Fragment principal con galería de wallpapers                  ║
+║  • Layout vertical (1 wallpaper a la vez)                      ║
+║  • Fondo con mesh gradient animado tipo iOS                    ║
+╚════════════════════════════════════════════════════════════════╝
+-->
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/wallpaper_recycler_view"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@android:color/black"
-    android:padding="8dp"/>
+    android:layout_height="match_parent">
+
+    <!-- ══════════════════════════════════════════════════════════════
+         ✨ FONDO ANIMADO - Mesh Gradient iOS Style
+         ══════════════════════════════════════════════════════════════ -->
+    <com.secret.blackholeglow.ui.AnimatedMeshGradientView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         📱 RECYCLERVIEW - Lista de wallpapers
+         ══════════════════════════════════════════════════════════════ -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/wallpaper_recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="4dp"
+        android:clipToPadding="false"/>
+
+</FrameLayout>
