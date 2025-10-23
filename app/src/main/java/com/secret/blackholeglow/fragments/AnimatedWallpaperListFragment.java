@@ -126,14 +126,21 @@ public class AnimatedWallpaperListFragment extends Fragment {
         List<WallpaperItem> list = new ArrayList<>();
 
         // ╔════════════════════════════════════════════════════════════╗
-        // ║  🎨 10 WALLPAPERS TEMÁTICOS - CATÁLOGO VISUAL ÉPICO      ║
+        // ║  🎨 11 WALLPAPERS TEMÁTICOS - CATÁLOGO VISUAL ÉPICO      ║
         // ║  Cada tema es único con efectos OpenGL hipnotizantes     ║
         // ╚════════════════════════════════════════════════════════════╝
+
+        // 🪩 DISCO BALL - Visualizador musical interactivo ⭐ NUEVO!
+        list.add(new WallpaperItem(
+                R.drawable.agujero_negro,  // Placeholder - usaremos textura oscura
+                "DiscoBall",
+                "Bola disco con cuadritos espejo que gira hipnóticamente. Reacciona a tu música con efectos pulsantes y colores rainbow. La fiesta nunca termina! 🎵✨"
+        ));
 
         // 1️⃣ ESPACIO - Universo con sistema solar completo
         list.add(new WallpaperItem(
                 R.drawable.universo03,
-                "🌌 Viaje Espacial",
+                "Universo",
                 "Flota entre planetas orbitantes y estrellas danzantes en un universo infinito. Tu avatar explora el cosmos en tiempo real con efectos de brillo pulsante."
         ));
 

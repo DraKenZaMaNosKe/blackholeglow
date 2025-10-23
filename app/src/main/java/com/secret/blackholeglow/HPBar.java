@@ -90,9 +90,22 @@ public class HPBar implements SceneObject {
             "    gl_FragColor = vec4(v_Color.rgb, v_Color.a * alpha);\n" +
             "}\n";
 
+        Log.d(TAG, "[HPBar] Compilando vertex shader...");
         int vShader = ShaderUtils.compileShader(GLES20.GL_VERTEX_SHADER, vertexShader);
-        int fShader = ShaderUtils.compileShader(GLES20.GL_FRAGMENT_SHADER, fragmentShader);
+        if (vShader == 0) {
+            Log.e(TAG, "[HPBar] ✗ Vertex shader falló al compilar");
+            return;
+        }
 
+        Log.d(TAG, "[HPBar] Compilando fragment shader...");
+        int fShader = ShaderUtils.compileShader(GLES20.GL_FRAGMENT_SHADER, fragmentShader);
+        if (fShader == 0) {
+            Log.e(TAG, "[HPBar] ✗ Fragment shader falló al compilar");
+            GLES20.glDeleteShader(vShader);
+            return;
+        }
+
+        Log.d(TAG, "[HPBar] Enlazando programa shader...");
         programId = GLES20.glCreateProgram();
         GLES20.glAttachShader(programId, vShader);
         GLES20.glAttachShader(programId, fShader);
@@ -102,7 +115,13 @@ public class HPBar implements SceneObject {
         int[] linkStatus = new int[1];
         GLES20.glGetProgramiv(programId, GLES20.GL_LINK_STATUS, linkStatus, 0);
         if (linkStatus[0] == 0) {
-            Log.e(TAG, "[HPBar] Shader link failed: " + GLES20.glGetProgramInfoLog(programId));
+            String errorLog = GLES20.glGetProgramInfoLog(programId);
+            Log.e(TAG, "[HPBar] ✗✗✗ Shader link failed!");
+            Log.e(TAG, "[HPBar] Error details: " + errorLog);
+            GLES20.glDeleteProgram(programId);
+            programId = 0;
+        } else {
+            Log.d(TAG, "[HPBar] ✓ Shader enlazado exitosamente - programId: " + programId);
         }
 
         GLES20.glDeleteShader(vShader);

@@ -97,15 +97,23 @@ public class MusicIndicator implements SceneObject {
             "    gl_FragColor = color;\n" +
             "}\n";
 
+        Log.d(TAG, "[MusicIndicator] Compilando shaders...");
         programId = ShaderUtils.createProgram(vertexShader, fragmentShader);
 
         if (programId == 0) {
-            Log.e(TAG, "[MusicIndicator] ✗✗✗ ERROR: Shader NO se pudo crear!");
+            Log.e(TAG, "[MusicIndicator] ✗✗✗ ERROR CRÍTICO: Shader NO se pudo crear!");
+            Log.e(TAG, "[MusicIndicator] Verifica los logs anteriores de ShaderUtils para detalles");
             return;
         }
 
         aPositionLoc = GLES20.glGetAttribLocation(programId, "a_Position");
         aColorLoc = GLES20.glGetAttribLocation(programId, "a_Color");
+
+        if (aPositionLoc == -1 || aColorLoc == -1) {
+            Log.e(TAG, "[MusicIndicator] ✗ Error: No se encontraron los atributos del shader");
+            Log.e(TAG, "[MusicIndicator]   aPositionLoc: " + aPositionLoc);
+            Log.e(TAG, "[MusicIndicator]   aColorLoc: " + aColorLoc);
+        }
 
         Log.d(TAG, "[MusicIndicator] ✓✓✓ Shader LED inicializado");
         Log.d(TAG, "[MusicIndicator]   programId: " + programId);

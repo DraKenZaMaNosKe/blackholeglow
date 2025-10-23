@@ -28,6 +28,9 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     private CameraController sharedCamera;
     private TextureManager textureManager;
 
+    // Flag para recrear escena en GL thread
+    private volatile boolean needsSceneRecreation = false;
+
     // Referencias para el sistema de HP y respawn
     private Planeta sol;
     private ForceField forceField;
@@ -208,6 +211,13 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     @Override
     public void onDrawFrame(GL10 gl) {
         if (paused) return;
+
+        // ===== RECREAR ESCENA SI ES NECESARIO (GL THREAD SAFE) =====
+        if (needsSceneRecreation) {
+            Log.d(TAG, "════════ RECREANDO ESCENA EN GL THREAD ════════");
+            prepareScene();
+            needsSceneRecreation = false;
+        }
 
         // Delta time
         long now = System.nanoTime();
@@ -390,13 +400,47 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
 
         sceneObjects.clear();
 
-        if ("Universo".equals(selectedItem)) {
-            setupUniverseScene();
-        } else if ("Agujero Negro".equals(selectedItem)) {
-            setupBlackHoleScene();
-        } else {
-            // Por defecto usar Universo
-            setupUniverseScene();
+        // ═══════════════════════════════════════════════════════════
+        // 🎨 SELECTOR DE ESCENAS - 10 WALLPAPERS ÚNICOS
+        // ═══════════════════════════════════════════════════════════
+        switch (selectedItem) {
+            case "DiscoBall":
+                setupDiscoBallScene();
+                break;
+            case "Universo":
+                setupUniverseScene();
+                break;
+            case "Bosque Encantado":
+                setupBosqueScene();
+                break;
+            case "Neo Tokyo 2099":
+                setupCyberpunkScene();
+                break;
+            case "Paraíso Dorado":
+                setupPlayaScene();
+                break;
+            case "Safari Salvaje":
+                setupSafariScene();
+                break;
+            case "Lluvia Mística":
+                setupLluviaScene();
+                break;
+            case "Pixel Quest":
+                setupRetroScene();
+                break;
+            case "Agujero Negro":
+                setupBlackHoleScene();
+                break;
+            case "Jardín Zen":
+                setupZenScene();
+                break;
+            case "Furia Celestial":
+                setupTormentaScene();
+                break;
+            default:
+                Log.w(TAG, "⚠️ Escena desconocida: " + selectedItem + " - usando Universo");
+                setupUniverseScene();
+                break;
         }
 
         Log.d(TAG, "✓ Scene prepared with " + sceneObjects.size() + " objects");
@@ -872,6 +916,327 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         Log.d(TAG, "✓ Black hole scene setup complete");
     }
 
+    /**
+     * ============================================
+     * DISCO BALL SCENE - Music Visualization
+     * ============================================
+     * Features:
+     *  - Central disco ball with mirror tiles
+     *  - Rotating spotlights (laser beams)
+     *  - Bokeh background effect
+     *  - Cinematic camera movements
+     *  - Audio reactive breathing
+     */
+    private void setupDiscoBallScene() {
+        Log.d(TAG, "Setting up DISCO BALL scene...");
+
+        // ============================================
+        // FONDO OSCURO (club atmosphere)
+        // ============================================
+        // Por ahora sin fondo - el clear color es negro (ya está configurado)
+        // TODO FASE B: Agregar StarryBackground o bokeh effect
+        Log.d(TAG, "  ✓ Using black clear color as background");
+
+        // ============================================
+        // BOLA DISCO CENTRAL ⭐
+        // ============================================
+        try {
+            DiscoBall discoBall = new DiscoBall(
+                    context,
+                    1.0f,  // spinSpeed: 1 rad/sec (rotación suave)
+                    2.5f   // scale: bola grande y prominente
+            );
+            discoBall.setCameraController(sharedCamera);
+            sceneObjects.add(discoBall);
+            Log.d(TAG, "  ✓ Disco ball added (spin: 1.0 rad/s, scale: 2.5)");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating disco ball: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        // ============================================
+        // TODO FASE B: RAYOS LASER
+        // ============================================
+        // Agregar 4-6 laser beams rotando alrededor de la bola
+        // usando beam.obj con colores cyan, magenta, yellow
+
+        // ============================================
+        // TODO FASE B: PARTÍCULAS DE HUMO
+        // ============================================
+        // Plano con shader de niebla sutil
+
+        // ============================================
+        // TODO FASE C: SISTEMA CINEMÁTICO
+        // ============================================
+        // CinematicSequence con 5 shots predefinidos
+
+        Log.d(TAG, "✓ Disco ball scene setup complete (FASE A - básico)");
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🌲 BOSQUE ENCANTADO - Verde oscuro mágico
+    // ═══════════════════════════════════════════════════════════════
+    private void setupBosqueScene() {
+        Log.d(TAG, "Setting up BOSQUE ENCANTADO scene...");
+
+        // Color de fondo: Verde bosque oscuro
+        GLES20.glClearColor(0.04f, 0.18f, 0.12f, 1f);  // #0A2F1F
+
+        // Planeta central verde (simulando árbol mágico)
+        try {
+            Planeta arbolMagico = new Planeta(
+                    context, textureManager,
+                    "shaders/planeta_vertex.glsl",
+                    "shaders/planeta_fragment.glsl",
+                    R.drawable.textura_roninplaneta,
+                    0.0f, 0.0f, 0.0f,
+                    0.1f, 1.5f, 5.0f,
+                    true, new float[]{0.2f, 0.6f, 0.2f, 1.0f}, 1.0f,
+                    null, 1.0f
+            );
+            if (arbolMagico instanceof CameraAware) {
+                ((CameraAware) arbolMagico).setCameraController(sharedCamera);
+            }
+            sceneObjects.add(arbolMagico);
+            Log.d(TAG, "  ✓ Bosque scene - árbol mágico verde");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating bosque: " + e.getMessage());
+        }
+
+        Log.d(TAG, "✓ Bosque Encantado scene complete");
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🏙️ NEO TOKYO 2099 - Rosa neón cyberpunk
+    // ═══════════════════════════════════════════════════════════════
+    private void setupCyberpunkScene() {
+        Log.d(TAG, "Setting up CYBERPUNK scene...");
+
+        // Color de fondo: Rosa neón intenso
+        GLES20.glClearColor(1.0f, 0.0f, 0.5f, 1f);  // #FF0080
+
+        // Esfera neón pulsante (edificio holográfico)
+        try {
+            Planeta neonSphere = new Planeta(
+                    context, textureManager,
+                    "shaders/planeta_vertex.glsl",
+                    "shaders/planeta_fragment.glsl",
+                    R.drawable.agujero_negro,
+                    0.0f, 0.0f, 0.0f,
+                    0.2f, 1.2f, 10.0f,
+                    true, new float[]{1.0f, 0.0f, 1.0f, 1.0f}, 0.8f,
+                    0.15f, 1.0f
+            );
+            if (neonSphere instanceof CameraAware) {
+                ((CameraAware) neonSphere).setCameraController(sharedCamera);
+            }
+            sceneObjects.add(neonSphere);
+            Log.d(TAG, "  ✓ Cyberpunk scene - esfera neón rosa");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating cyberpunk: " + e.getMessage());
+        }
+
+        Log.d(TAG, "✓ Neo Tokyo 2099 scene complete");
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🏖️ PARAÍSO DORADO - Naranja atardecer
+    // ═══════════════════════════════════════════════════════════════
+    private void setupPlayaScene() {
+        Log.d(TAG, "Setting up PLAYA scene...");
+
+        // Color de fondo: Naranja dorado atardecer
+        GLES20.glClearColor(1.0f, 0.55f, 0.0f, 1f);  // #FF8C00
+
+        // Sol de atardecer (amarillo-naranja)
+        try {
+            Planeta solAtardecer = new Planeta(
+                    context, textureManager,
+                    "shaders/planeta_vertex.glsl",
+                    "shaders/planeta_fragment.glsl",
+                    R.drawable.textura_sol,
+                    0.0f, 0.0f, 0.0f,
+                    0.15f, 1.8f, 2.0f,
+                    true, new float[]{1.0f, 0.7f, 0.0f, 1.0f}, 1.0f,
+                    0.1f, 1.0f
+            );
+            if (solAtardecer instanceof CameraAware) {
+                ((CameraAware) solAtardecer).setCameraController(sharedCamera);
+            }
+            sceneObjects.add(solAtardecer);
+            Log.d(TAG, "  ✓ Playa scene - sol dorado");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating playa: " + e.getMessage());
+        }
+
+        Log.d(TAG, "✓ Paraíso Dorado scene complete");
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🦁 SAFARI SALVAJE - Amarillo tierra savanna
+    // ═══════════════════════════════════════════════════════════════
+    private void setupSafariScene() {
+        Log.d(TAG, "Setting up SAFARI scene...");
+
+        // Color de fondo: Amarillo tierra/savanna
+        GLES20.glClearColor(0.85f, 0.65f, 0.13f, 1f);  // #DAA520
+
+        // Planeta texturizado (tierra africana)
+        try {
+            Planeta savanna = new Planeta(
+                    context, textureManager,
+                    "shaders/planeta_vertex.glsl",
+                    "shaders/planeta_fragment.glsl",
+                    R.drawable.textura_asteroide,
+                    0.0f, 0.0f, 0.0f,
+                    0.1f, 1.6f, 8.0f,
+                    true, new float[]{0.9f, 0.7f, 0.2f, 1.0f}, 1.0f,
+                    null, 1.0f
+            );
+            if (savanna instanceof CameraAware) {
+                ((CameraAware) savanna).setCameraController(sharedCamera);
+            }
+            sceneObjects.add(savanna);
+            Log.d(TAG, "  ✓ Safari scene - sabana dorada");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating safari: " + e.getMessage());
+        }
+
+        Log.d(TAG, "✓ Safari Salvaje scene complete");
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🌧️ LLUVIA MÍSTICA - Gris azulado tormentoso
+    // ═══════════════════════════════════════════════════════════════
+    private void setupLluviaScene() {
+        Log.d(TAG, "Setting up LLUVIA scene...");
+
+        // Color de fondo: Gris pizarra tormentoso
+        GLES20.glClearColor(0.18f, 0.31f, 0.31f, 1f);  // #2F4F4F
+
+        // Planeta oscuro con lluvia
+        try {
+            Planeta tormenta = new Planeta(
+                    context, textureManager,
+                    "shaders/planeta_vertex.glsl",
+                    "shaders/planeta_fragment.glsl",
+                    R.drawable.universo03,
+                    0.0f, 0.0f, 0.0f,
+                    0.2f, 1.4f, 6.0f,
+                    true, new float[]{0.3f, 0.5f, 0.6f, 1.0f}, 0.9f,
+                    null, 1.0f
+            );
+            if (tormenta instanceof CameraAware) {
+                ((CameraAware) tormenta).setCameraController(sharedCamera);
+            }
+            sceneObjects.add(tormenta);
+            Log.d(TAG, "  ✓ Lluvia scene - tormenta gris");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating lluvia: " + e.getMessage());
+        }
+
+        Log.d(TAG, "✓ Lluvia Mística scene complete");
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🎮 PIXEL QUEST - Magenta retro gaming
+    // ═══════════════════════════════════════════════════════════════
+    private void setupRetroScene() {
+        Log.d(TAG, "Setting up RETRO scene...");
+
+        // Color de fondo: Magenta retro gaming
+        GLES20.glClearColor(1.0f, 0.0f, 1.0f, 1f);  // #FF00FF
+
+        // Cubo pixelado (8-bit style)
+        try {
+            Planeta pixelCube = new Planeta(
+                    context, textureManager,
+                    "shaders/planeta_vertex.glsl",
+                    "shaders/planeta_fragment.glsl",
+                    R.drawable.fondo_transparente,
+                    0.0f, 0.0f, 0.0f,
+                    0.3f, 1.5f, 15.0f,
+                    true, new float[]{1.0f, 0.0f, 1.0f, 1.0f}, 1.0f,
+                    0.2f, 1.0f
+            );
+            if (pixelCube instanceof CameraAware) {
+                ((CameraAware) pixelCube).setCameraController(sharedCamera);
+            }
+            sceneObjects.add(pixelCube);
+            Log.d(TAG, "  ✓ Retro scene - cubo magenta");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating retro: " + e.getMessage());
+        }
+
+        Log.d(TAG, "✓ Pixel Quest scene complete");
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🌸 JARDÍN ZEN - Rosa sakura suave
+    // ═══════════════════════════════════════════════════════════════
+    private void setupZenScene() {
+        Log.d(TAG, "Setting up ZEN scene...");
+
+        // Color de fondo: Rosa sakura suave
+        GLES20.glClearColor(1.0f, 0.72f, 0.77f, 1f);  // #FFB7C5
+
+        // Planeta rosa (flor de cerezo)
+        try {
+            Planeta sakura = new Planeta(
+                    context, textureManager,
+                    "shaders/planeta_vertex.glsl",
+                    "shaders/planeta_fragment.glsl",
+                    R.drawable.textura_roninplaneta,
+                    0.0f, 0.0f, 0.0f,
+                    0.1f, 1.3f, 4.0f,
+                    true, new float[]{1.0f, 0.8f, 0.9f, 1.0f}, 1.0f,
+                    0.05f, 1.0f
+            );
+            if (sakura instanceof CameraAware) {
+                ((CameraAware) sakura).setCameraController(sharedCamera);
+            }
+            sceneObjects.add(sakura);
+            Log.d(TAG, "  ✓ Zen scene - sakura rosa");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating zen: " + e.getMessage());
+        }
+
+        Log.d(TAG, "✓ Jardín Zen scene complete");
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ⚡ FURIA CELESTIAL - Amarillo eléctrico brillante
+    // ═══════════════════════════════════════════════════════════════
+    private void setupTormentaScene() {
+        Log.d(TAG, "Setting up TORMENTA scene...");
+
+        // Color de fondo: Amarillo eléctrico brillante
+        GLES20.glClearColor(1.0f, 1.0f, 0.0f, 1f);  // #FFFF00
+
+        // Esfera eléctrica pulsante
+        try {
+            Planeta rayo = new Planeta(
+                    context, textureManager,
+                    "shaders/planeta_vertex.glsl",
+                    "shaders/planeta_fragment.glsl",
+                    R.drawable.textura_sol,
+                    0.0f, 0.0f, 0.0f,
+                    0.25f, 1.4f, 12.0f,
+                    true, new float[]{1.0f, 1.0f, 0.0f, 1.0f}, 1.0f,
+                    0.25f, 1.0f
+            );
+            if (rayo instanceof CameraAware) {
+                ((CameraAware) rayo).setCameraController(sharedCamera);
+            }
+            sceneObjects.add(rayo);
+            Log.d(TAG, "  ✓ Tormenta scene - rayo amarillo");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating tormenta: " + e.getMessage());
+        }
+
+        Log.d(TAG, "✓ Furia Celestial scene complete");
+    }
+
     public void pause() {
         paused = true;
         if (musicVisualizer != null) {
@@ -988,10 +1353,21 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     }
 
     public void setSelectedItem(String item) {
-        if (item != null && !item.equals(selectedItem)) {
-            Log.d(TAG, "Scene change requested: " + selectedItem + " → " + item);
-            this.selectedItem = item;
-            prepareScene();
+        if (item != null) {
+            if (!item.equals(selectedItem)) {
+                Log.d(TAG, "Scene change requested: " + selectedItem + " → " + item);
+                Log.d(TAG, "⚠️  Marcando escena para recreación en GL thread (thread-safe)");
+                this.selectedItem = item;
+                // NO llamar prepareScene() aquí - puede estar en MAIN THREAD
+                // En su lugar, marcar flag para recrear en GL thread (onDrawFrame)
+                needsSceneRecreation = true;
+            } else {
+                // Mismo wallpaper, pero forzar recreación de escena
+                // (útil cuando el GL context fue recreado)
+                Log.d(TAG, "Scene refresh requested for: " + selectedItem);
+                Log.d(TAG, "⚠️  Marcando escena para recreación en GL thread (thread-safe)");
+                needsSceneRecreation = true;
+            }
         }
     }
 

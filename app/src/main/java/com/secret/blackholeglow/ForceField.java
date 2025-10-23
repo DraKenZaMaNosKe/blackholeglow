@@ -102,12 +102,18 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
 
     private void initShader(Context context) {
         // 🌩️ USAR NUEVO SHADER DE PLASMA
+        Log.d(TAG, "[ForceField] Intentando cargar shaders...");
+        Log.d(TAG, "[ForceField]   Vertex: shaders/forcefield_vertex.glsl");
+        Log.d(TAG, "[ForceField]   Fragment: shaders/plasma_forcefield_fragment.glsl");
+
         programId = ShaderUtils.createProgramFromAssets(context,
                 "shaders/forcefield_vertex.glsl",
                 "shaders/plasma_forcefield_fragment.glsl");
 
         if (programId == 0) {
-            Log.e(TAG, "[ForceField] ✗ Error creando shader de PLASMA");
+            Log.e(TAG, "[ForceField] ✗✗✗ ERROR CRÍTICO creando shader de PLASMA");
+            Log.e(TAG, "[ForceField] El shader NO se compiló o NO se enlazó correctamente");
+            Log.e(TAG, "[ForceField] Verifica los logs anteriores de ShaderUtils para detalles");
             return;
         }
 

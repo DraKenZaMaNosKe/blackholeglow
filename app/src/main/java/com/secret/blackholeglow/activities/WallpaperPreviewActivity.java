@@ -24,6 +24,7 @@ import androidx.core.graphics.Insets;
 
 import com.secret.blackholeglow.LiveWallpaperService;
 import com.secret.blackholeglow.SceneRenderer;
+import com.secret.blackholeglow.WallpaperPreferences;
 import com.secret.blackholeglow.R;
 
 /**
@@ -110,22 +111,23 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         // ║ 🛡️ Botón: Consagrar Wallpaper ║
         // ╚════════════════════════════╝
         setWallpaperButton.setOnClickListener(v -> {
-            // ⚙️ Guardar elección en SharedPreferences
-            getSharedPreferences("blackholeglow_prefs", MODE_PRIVATE)
-                    .edit()
-                    .putString("selected_wallpaper", nombre_wallpaper)
-                    .apply();
+            // ⚙️ Guardar elección usando WallpaperPreferences (Firebase + SharedPreferences)
+            WallpaperPreferences prefs = WallpaperPreferences.getInstance(this);
 
-            // 📜 Crear intent para el selector de Live Wallpaper
-            Intent intent = new Intent(
-                    WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER);
-            intent.putExtra(
-                    WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
-                    new android.content.ComponentName(
-                            this, LiveWallpaperService.class));
+            prefs.setSelectedWallpaper(nombre_wallpaper, (success, message) -> {
+                Log.d("WallpaperPreviewActivity", "Wallpaper guardado: " + message);
 
-            // 🚀 Lanzar el selector cósmico
-            startActivity(intent);
+                // 📜 Crear intent para el selector de Live Wallpaper
+                Intent intent = new Intent(
+                        WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER);
+                intent.putExtra(
+                        WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
+                        new android.content.ComponentName(
+                                this, LiveWallpaperService.class));
+
+                // 🚀 Lanzar el selector cósmico
+                startActivity(intent);
+            });
         });
     }
 

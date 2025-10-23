@@ -12,6 +12,7 @@ import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.nio.ShortBuffer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -135,5 +136,33 @@ public class ObjLoader {
         Log.d(TAG, "ObjLoader: buffers preparados (vBuf, uvBuf).");
 
         return new Mesh(vBuf, vertsArr, faceList, uvBuf, vCount);
+    }
+
+    /**
+     * Utility: Construye un ShortBuffer de índices a partir de una lista de caras.
+     * Triangula polígonos usando fan triangulation.
+     *
+     * @param faces Lista de caras (cada cara es un array de índices de vértices)
+     * @param indexCount Número total de índices (triCount * 3)
+     * @return ShortBuffer listo para glDrawElements
+     */
+    public static ShortBuffer buildIndexBuffer(List<short[]> faces, int indexCount) {
+        ShortBuffer ib = ByteBuffer
+                .allocateDirect(indexCount * Short.BYTES)
+                .order(ByteOrder.nativeOrder())
+                .asShortBuffer();
+
+        for (short[] face : faces) {
+            // Fan triangulation: v0, v1, v2 -> v0, v2, v3 -> ...
+            short v0 = face[0];
+            for (int i = 1; i < face.length - 1; i++) {
+                ib.put(v0);
+                ib.put(face[i]);
+                ib.put(face[i + 1]);
+            }
+        }
+
+        ib.position(0);
+        return ib;
     }
 }

@@ -340,9 +340,14 @@ public class MusicVisualizer {
      */
     public void pause() {
         if (visualizer != null && isEnabled) {
-            visualizer.setEnabled(false);
-            isEnabled = false;
-            Log.d(TAG, "[MusicVisualizer] Pausado");
+            try {
+                visualizer.setEnabled(false);
+                isEnabled = false;
+                Log.d(TAG, "[MusicVisualizer] Pausado");
+            } catch (IllegalStateException e) {
+                Log.w(TAG, "[MusicVisualizer] Error al pausar (ya estaba pausado): " + e.getMessage());
+                isEnabled = false;
+            }
         }
     }
 
@@ -351,9 +356,13 @@ public class MusicVisualizer {
      */
     public void resume() {
         if (visualizer != null && !isEnabled) {
-            visualizer.setEnabled(true);
-            isEnabled = true;
-            Log.d(TAG, "[MusicVisualizer] Reanudado");
+            try {
+                visualizer.setEnabled(true);
+                isEnabled = true;
+                Log.d(TAG, "[MusicVisualizer] Reanudado");
+            } catch (IllegalStateException e) {
+                Log.w(TAG, "[MusicVisualizer] Error al reanudar: " + e.getMessage());
+            }
         }
     }
 }

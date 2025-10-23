@@ -11,6 +11,8 @@ import android.opengl.GLSurfaceView;
 import android.os.Handler;
 import android.os.Looper;
 
+import androidx.annotation.NonNull;
+
 /**
  * LiveWallpaperService con inicialización robusta
  */
@@ -24,7 +26,7 @@ public class LiveWallpaperService extends WallpaperService {
     }
 
     private class GLWallpaperEngine extends Engine {
-        private final SharedPreferences prefs;
+        private final WallpaperPreferences wallpaperPrefs;  // ✨ Nueva clase de preferencias
         private final Context context;
         private GLWallpaperSurfaceView glSurfaceView;
         private SceneRenderer sceneRenderer;
@@ -37,7 +39,7 @@ public class LiveWallpaperService extends WallpaperService {
             this.context = context;
             this.mainHandler = new Handler(Looper.getMainLooper());
 
-            prefs = context.getSharedPreferences("blackholeglow_prefs", MODE_PRIVATE);
+            wallpaperPrefs = WallpaperPreferences.getInstance(context);
 
             // 👆 HABILITAR TOUCH para sistema interactivo de disparo
             setTouchEventsEnabled(true);
@@ -76,7 +78,8 @@ public class LiveWallpaperService extends WallpaperService {
                         5, 6, 5, 0, 16, 0  // RGB565, depth 16, sin stencil
                 );
 
-                String nombreWallpaper = prefs.getString("selected_wallpaper", "Universo");
+                // ✨ Obtener wallpaper usando WallpaperPreferences (síncrono para inicialización)
+                String nombreWallpaper = wallpaperPrefs.getSelectedWallpaperSync();
                 Log.d(TAG, "Wallpaper seleccionado: " + nombreWallpaper);
 
                 sceneRenderer = new SceneRenderer(context, nombreWallpaper);
@@ -103,17 +106,22 @@ public class LiveWallpaperService extends WallpaperService {
             }
 
             if (visible) {
-                // Recargar configuración
-                String nuevo = prefs.getString("selected_wallpaper", "Universo");
+                // ✨ Recargar configuración con callback asíncrono (primero Firebase, luego local)
+                wallpaperPrefs.getSelectedWallpaper(new WallpaperPreferences.WallpaperCallback() {
+                    @Override
+                    public void onWallpaperReceived(@NonNull String wallpaperName) {
+                        Log.d(TAG, "Wallpaper recibido: " + wallpaperName);
 
-                // Usar handler para evitar problemas de threading
-                mainHandler.post(() -> {
-                    if (sceneRenderer != null) {
-                        sceneRenderer.setSelectedItem(nuevo);
-                        sceneRenderer.resume();
-                    }
-                    if (glSurfaceView != null) {
-                        glSurfaceView.onResume();
+                        // Usar handler para evitar problemas de threading
+                        mainHandler.post(() -> {
+                            if (sceneRenderer != null) {
+                                sceneRenderer.setSelectedItem(wallpaperName);
+                                sceneRenderer.resume();
+                            }
+                            if (glSurfaceView != null) {
+                                glSurfaceView.onResume();
+                            }
+                        });
                     }
                 });
 
