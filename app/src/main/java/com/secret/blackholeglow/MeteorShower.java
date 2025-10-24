@@ -290,6 +290,17 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
             efecto.update(deltaTime);
         }
 
+        // 🛡️ ACTUALIZAR BARRA HP DEL FORCEFIELD (SIEMPRE)
+        if (campoFuerza != null && hpBarForceField != null) {
+            // Si está destruido, mostrar HP = 0
+            if (campoFuerza.isDestroyed()) {
+                hpBarForceField.setHealth(0);
+            } else {
+                // Si está vivo, actualizar con HP actual
+                hpBarForceField.setHealth(campoFuerza.getCurrentHealth());
+            }
+        }
+
         // Log de estadísticas cada 5 segundos (simplificado)
         if ((int)(tiempoDesdeUltimoSpawn * 2) % 10 == 0 && tiempoDesdeUltimoSpawn > 0.1f) {
             Log.d(TAG, "[MeteorShower] Activos:" + meteoritosActivos.size() +

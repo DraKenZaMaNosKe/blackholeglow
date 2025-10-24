@@ -34,6 +34,11 @@ public class HPBar implements SceneObject {
     private final float[] colorEmpty;     // Color cuando está vacía
     private final float[] colorBorder;    // Color del borde
 
+    // Parpadeo cuando HP está bajo
+    private float blinkTime = 0f;
+    private boolean blinkVisible = true;
+    private static final float BLINK_SPEED = 3.0f;  // Parpadeos por segundo
+
     // Label de texto
     private final String label;
 
@@ -190,12 +195,27 @@ public class HPBar implements SceneObject {
 
     @Override
     public void update(float deltaTime) {
-        // No hay animación por ahora
+        // ⚠️ Parpadeo cuando HP está bajo (menos de 20% o HP = 0)
+        float hpPercent = (float) currentHealth / maxHealth;
+        if (hpPercent <= 0.2f) {  // HP bajo o destruido
+            blinkTime += deltaTime * BLINK_SPEED;
+            if (blinkTime >= 1.0f) {
+                blinkTime = 0f;
+                blinkVisible = !blinkVisible;
+            }
+        } else {
+            // HP normal - siempre visible
+            blinkVisible = true;
+            blinkTime = 0f;
+        }
     }
 
     @Override
     public void draw() {
         if (!GLES20.glIsProgram(programId)) return;
+
+        // ⚠️ Si está parpadeando y no es visible, no dibujar
+        if (!blinkVisible) return;
 
         GLES20.glUseProgram(programId);
 
