@@ -6,6 +6,7 @@ import android.opengl.Matrix;
 import android.util.Log;
 
 import com.secret.blackholeglow.util.ObjLoader;
+import com.secret.blackholeglow.util.ProceduralSphere;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -180,36 +181,27 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
         Log.d(TAG, String.format("   Escala: %.2f", scale));
         Log.d(TAG, "═══════════════════════════════════════════════");
 
-        // Cargar geometría
-        ObjLoader.Mesh mesh;
-        try {
-            mesh = ObjLoader.loadObj(ctx, "planeta.obj");
-            Log.d(TAG, "✓ Malla cargada: " + mesh.vertexCount + " vértices");
-        } catch (IOException e) {
-            throw new RuntimeException("Error cargando planeta.obj para estrella", e);
-        }
+        // ════════════════════════════════════════════════════════════
+        // ✅ USAR ESFERA PROCEDURAL con UVs perfectos
+        // ════════════════════════════════════════════════════════════
+        // En lugar de cargar planeta.obj (que tiene problemas de UV seam),
+        // generamos una esfera matemáticamente con UVs correctos.
+        // ════════════════════════════════════════════════════════════
+
+        Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Log.d(TAG, "✨ Usando ESFERA PROCEDURAL (UVs perfectos)");
+        Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+        ProceduralSphere.Mesh mesh = ProceduralSphere.generateMedium(1.0f);
 
         vertexBuffer = mesh.vertexBuffer;
         texCoordBuffer = mesh.uvBuffer;
+        indexBuffer = mesh.indexBuffer;
+        indexCount = mesh.indexCount;
 
-        // Construir índices
-        List<short[]> faces = mesh.faces;
-        int triCount = 0;
-        for (short[] f : faces) triCount += f.length - 2;
-        indexCount = triCount * 3;
-
-        ShortBuffer ib = ByteBuffer
-                .allocateDirect(indexCount * Short.BYTES)
-                .order(ByteOrder.nativeOrder())
-                .asShortBuffer();
-        for (short[] f : faces) {
-            short v0 = f[0];
-            for (int i = 1; i < f.length - 1; i++) {
-                ib.put(v0).put(f[i]).put(f[i + 1]);
-            }
-        }
-        ib.position(0);
-        indexBuffer = ib;
+        Log.d(TAG, "✓ Estrella mesh preparada:");
+        Log.d(TAG, "  Vértices: " + mesh.vertexCount);
+        Log.d(TAG, "  Índices: " + indexCount + " (" + (indexCount / 3) + " triángulos)");
 
         // Obtener uniform locations (usando shader de planeta)
         aPosLoc = GLES20.glGetAttribLocation(programId, "a_Position");

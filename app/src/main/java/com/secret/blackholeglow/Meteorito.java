@@ -5,7 +5,10 @@ import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.util.Log;
 
+import com.secret.blackholeglow.util.ProceduralSphere;
+
 import java.nio.FloatBuffer;
+import java.nio.ShortBuffer;
 
 /**
  * Meteorito individual con física y efectos visuales
@@ -353,56 +356,42 @@ public class Meteorito implements SceneObject, CameraAware {
     private static class MeteoritoMesh {
         private final FloatBuffer vertexBuffer;
         private final FloatBuffer texCoordBuffer;
+        private final ShortBuffer indexBuffer;  // ← Añadido para ProceduralSphere
         private final int vertexCount;
+        private final int indexCount;  // ← Añadido para ProceduralSphere
 
+        /**
+         * ════════════════════════════════════════════════════════════
+         * ✅ USAR ESFERA PROCEDURAL con UVs perfectos
+         * ════════════════════════════════════════════════════════════
+         * Reemplaza createSphereMesh manual por ProceduralSphere
+         * para UVs correctos en texturas de meteoritos
+         * ════════════════════════════════════════════════════════════
+         */
         public MeteoritoMesh(Context context) {
-            // Crear una esfera simple de baja resolución para rendimiento
-            // Podríamos cargar asteroide.obj pero mejor algo más simple
-            float[] vertices = createSphereMesh(8, 6);
-            float[] texCoords = createSphereTexCoords(8, 6);
+            Log.d(TAG, "[Meteorito] Generando mesh con ProceduralSphere...");
 
-            vertexBuffer = ShaderUtils.createFloatBuffer(vertices);
-            texCoordBuffer = ShaderUtils.createFloatBuffer(texCoords);
-            vertexCount = vertices.length / 3;
+            // Usar LowPoly para meteoritos (son pequeños y hay muchos)
+            ProceduralSphere.Mesh mesh = ProceduralSphere.generateLowPoly(0.5f);
+
+            vertexBuffer = mesh.vertexBuffer;
+            texCoordBuffer = mesh.uvBuffer;
+            indexBuffer = mesh.indexBuffer;
+            vertexCount = mesh.vertexCount;
+            indexCount = mesh.indexCount;
+
+            Log.d(TAG, "[Meteorito] ✓ Mesh creado - vértices: " + vertexCount +
+                       ", índices: " + indexCount);
         }
 
-        private float[] createSphereMesh(int segments, int rings) {
-            float[] vertices = new float[(segments + 1) * (rings + 1) * 3];
-            int index = 0;
+        // Ya no necesitamos estos métodos manuales
+        // ProceduralSphere los reemplaza con UVs matemáticamente correctos
 
-            for (int r = 0; r <= rings; r++) {
-                float v = (float) r / rings;
-                float theta = v * (float) Math.PI;
-
-                for (int s = 0; s <= segments; s++) {
-                    float u = (float) s / segments;
-                    float phi = u * 2 * (float) Math.PI;
-
-                    float x = (float) (Math.sin(theta) * Math.cos(phi));
-                    float y = (float) Math.cos(theta);
-                    float z = (float) (Math.sin(theta) * Math.sin(phi));
-
-                    vertices[index++] = x * 0.5f;
-                    vertices[index++] = y * 0.5f;
-                    vertices[index++] = z * 0.5f;
-                }
-            }
-            return vertices;
-        }
-
-        private float[] createSphereTexCoords(int segments, int rings) {
-            float[] texCoords = new float[(segments + 1) * (rings + 1) * 2];
-            int index = 0;
-
-            for (int r = 0; r <= rings; r++) {
-                for (int s = 0; s <= segments; s++) {
-                    texCoords[index++] = (float) s / segments;
-                    texCoords[index++] = (float) r / rings;
-                }
-            }
-            return texCoords;
-        }
-
+        /**
+         * ════════════════════════════════════════════════════════════
+         * ✅ DRAW con glDrawElements (indexBuffer)
+         * ════════════════════════════════════════════════════════════
+         */
         public void draw(int positionLoc, int texCoordLoc) {
             GLES20.glEnableVertexAttribArray(positionLoc);
             GLES20.glVertexAttribPointer(positionLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
@@ -412,7 +401,9 @@ public class Meteorito implements SceneObject, CameraAware {
                 GLES20.glVertexAttribPointer(texCoordLoc, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
             }
 
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, vertexCount);
+            // Usar glDrawElements con indexBuffer de ProceduralSphere
+            indexBuffer.position(0);
+            GLES20.glDrawElements(GLES20.GL_TRIANGLES, indexCount, GLES20.GL_UNSIGNED_SHORT, indexBuffer);
 
             GLES20.glDisableVertexAttribArray(positionLoc);
             if (texCoordLoc >= 0) {

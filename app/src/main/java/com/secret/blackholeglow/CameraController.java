@@ -14,7 +14,8 @@ public class CameraController {
         PERSPECTIVE_3_4,      // Vista 3/4 estilo isométrico con perspectiva
         PERSPECTIVE_FRONT,    // Vista frontal directa
         PERSPECTIVE_TOP,      // Vista desde arriba
-        PERSPECTIVE_DRAMATIC  // Vista dramática desde abajo
+        PERSPECTIVE_DRAMATIC, // Vista dramática desde abajo
+        ORBIT_AUTO            // 🌀 Órbita automática alrededor del sol
     }
 
     // ====== ESTADO ACTUAL ======
@@ -29,6 +30,14 @@ public class CameraController {
     private float shakeIntensity = 0f;            // Intensidad actual del temblor
     private float shakeTimer = 0f;                // Tiempo restante del temblor
     private final java.util.Random shakeRandom = new java.util.Random();
+
+    // ====== 🌀 ÓRBITA AUTOMÁTICA ======
+    private float orbitAngle = 0f;                // Ángulo actual de la órbita (0-360°)
+    private float orbitSpeed = 0.15f;             // Velocidad de rotación (radianes/segundo)
+    private float orbitRadius = 10f;              // Radio de la órbita (distancia al centro)
+    private float orbitHeightBase = 3f;           // Altura base de la órbita
+    private float orbitHeightVariation = 2f;      // Variación de altura (sube/baja)
+    private float orbitHeightSpeed = 0.08f;       // Velocidad del movimiento vertical
 
     // ====== PARÁMETROS DE PROYECCIÓN ======
     private float fov = 60f;           // Campo de visión
@@ -65,11 +74,40 @@ public class CameraController {
         );
     }
 
+    // Log counter para no saturar
+    private int updateLogCounter = 0;
+
     /**
-     * Actualización simplificada - solo maneja screen shake
+     * Actualización - maneja órbita automática y screen shake
      */
     public void update(float deltaTime) {
-        // Actualizar screen shake si está activo
+        // ====== 🌀 ÓRBITA AUTOMÁTICA ======
+        if (currentMode == CameraMode.ORBIT_AUTO) {
+            // Incrementar ángulo de órbita
+            orbitAngle += orbitSpeed * deltaTime;
+
+            // Calcular posición en círculo (plano XZ)
+            float x = (float) Math.cos(orbitAngle) * orbitRadius;
+            float z = (float) Math.sin(orbitAngle) * orbitRadius;
+
+            // Calcular altura con movimiento ondulante
+            float heightWave = (float) Math.sin(orbitAngle * orbitHeightSpeed * 10f);
+            float y = orbitHeightBase + heightWave * orbitHeightVariation;
+
+            // Actualizar posición de la cámara
+            position[0] = x;
+            position[1] = y;
+            position[2] = z;
+
+            // Siempre mirar al centro (sol)
+            target[0] = 0f;
+            target[1] = 0f;
+            target[2] = 0f;
+
+            updateViewMatrix();
+        }
+
+        // ====== SCREEN SHAKE ======
         if (shakeTimer > 0) {
             shakeTimer -= deltaTime;
             if (shakeTimer <= 0) {
@@ -151,10 +189,10 @@ public class CameraController {
         // Configurar parámetros según el modo
         switch (mode) {
             case PERSPECTIVE_3_4:
-                // Vista 3/4 clásica - buena para ver toda la escena
-                position[0] = 4f;
-                position[1] = 3f;
-                position[2] = 6f;
+                // Vista 3/4 clásica - alejada para mejor visibilidad de texturas
+                position[0] = 6f;      // Alejado 1.5x (era 4f)
+                position[1] = 4.5f;    // Alejado 1.5x (era 3f)
+                position[2] = 9f;      // Alejado 1.5x (era 6f)
                 target[0] = 0f;
                 target[1] = 0f;
                 target[2] = 0f;
@@ -204,6 +242,24 @@ public class CameraController {
                 up[1] = 1f;
                 up[2] = 0f;
                 fov = 70f;
+                break;
+
+            case ORBIT_AUTO:
+                // 🌀 Órbita automática alrededor del sol (MUY PRONUNCIADA)
+                orbitAngle = 0f;
+                orbitSpeed = 0.5f;            // VELOCIDAD RÁPIDA (3x más rápido)
+                orbitRadius = 7f;             // MÁS CERCA (era 10)
+                orbitHeightBase = 2f;         // Más bajo
+                orbitHeightVariation = 4f;    // MUCHA variación vertical (±4 unidades)
+                orbitHeightSpeed = 0.08f;     // Velocidad de ondulación vertical
+                target[0] = 0f;
+                target[1] = 0f;
+                target[2] = 0f;
+                up[0] = 0f;
+                up[1] = 1f;
+                up[2] = 0f;
+                fov = 60f;
+                // Posición inicial se calcula en update()
                 break;
         }
 

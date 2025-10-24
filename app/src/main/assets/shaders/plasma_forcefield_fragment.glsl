@@ -232,40 +232,60 @@ void main() {
                 float impactStrength = (1.0 - (impactDist / impactRadius)) * u_ImpactIntensity[i];
                 impactStrength = pow(impactStrength, 1.5);
 
-                // Onda expansiva SUTIL
-                float wave = sin(impactDist * 30.0 - effectiveTime * 15.0) * 0.5 + 0.5;
-                wave = pow(wave, 3.0);
+                // ═══════════════════════════════════════════════════════════
+                // ✅ ONDA EXPANSIVA MÁS VISIBLE (impactos notorios)
+                // ═══════════════════════════════════════════════════════
+                float wave = sin(impactDist * 25.0 - effectiveTime * 12.0) * 0.5 + 0.5;
+                wave = pow(wave, 2.0);  // Menos suave = más visible
 
-                // Resplandor del impacto (color del campo, no blanco)
-                vec3 impactColor = mix(baseColor * 1.5, vec3(1.0, 0.9, 0.6), 0.3);
-                impactGlow += impactColor * impactStrength * wave * 0.8;  // Reducido
-                impactAlphaBoost += impactStrength * 0.4;  // Reducido
+                // Resplandor del impacto MUY BRILLANTE (blanco-amarillo)
+                vec3 impactColor = mix(vec3(1.0, 1.0, 0.8), baseColor * 2.0, 0.3);
+                impactGlow += impactColor * impactStrength * wave * 1.8;  // 2.25x más (era 0.8)
+                impactAlphaBoost += impactStrength * 0.9;  // 2.25x más (era 0.4)
             }
         }
     }
 
     finalColor += impactGlow;
 
-    // ===== GRADIENTE DE COLOR (verde centro → cyan bordes) =====
+    // ═══════════════════════════════════════════════════════════════
+    // 🔥 GRADIENTE CÁLIDO (naranja-amarillo-rojo como el sol)
+    // ═══════════════════════════════════════════════════════════════
     vec3 gradientColor = mix(
-        vec3(0.2, 0.8, 0.5),  // Verde en el centro
-        vec3(0.2, 0.6, 1.0),  // Cyan en los bordes
+        vec3(1.0, 0.6, 0.2),  // Naranja centro
+        vec3(1.0, 0.9, 0.3),  // Amarillo bordes
         fresnelEffect
     );
 
-    // Mezclar gradiente con el color final
-    finalColor = mix(finalColor, gradientColor, 0.5);
+    // Añadir toque rojizo en impactos
+    if (length(impactGlow) > 0.1) {
+        gradientColor = mix(gradientColor, vec3(1.0, 0.4, 0.1), 0.3); // Rojo-naranja
+    }
 
-    // ===== ALPHA FINAL (MÁS TRANSPARENTE) =====
-    float finalAlpha = u_Alpha * 0.45; // Base MUY transparente (45% vs 70%)
-    finalAlpha *= (0.15 + fresnelEffect * 0.85); // Casi invisible al centro
-    finalAlpha += rays * 0.15; // Rayos sutiles
-    finalAlpha += impactAlphaBoost * 0.7;
-    finalAlpha += musicIntensity * 0.1; // Música aumenta visibilidad sutilmente
+    // Mezclar gradiente con el color final
+    finalColor = mix(finalColor, gradientColor, 0.6);
+
+    // ═══════════════════════════════════════════════════════════════
+    // ✅ ALPHA FINAL - MUY TRANSPARENTE, SOLO BORDES SUTILES
+    // ═══════════════════════════════════════════════════════════════
+    // Base ULTRA transparente (apenas visible)
+    float finalAlpha = u_Alpha * 0.02; // Apenas 2% visible en reposo
+
+    // BORDES SUTILES (efecto fresnel más suave)
+    finalAlpha += fresnelEffect * 0.20; // Bordes sutiles (20% en los bordes)
+
+    // Rayos muy sutiles
+    finalAlpha += rays * 0.01;
+
+    // IMPACTOS - BRILLANTES Y VISIBLES
+    finalAlpha += impactAlphaBoost * 2.5; // Impactos visibles
+
+    // Música aumenta muy sutilmente
+    finalAlpha += musicIntensity * 0.03;
 
     // ===== SALIDA =====
-    finalColor = clamp(finalColor, 0.0, 2.0); // Permitir brillo extra
-    finalAlpha = clamp(finalAlpha, 0.0, 0.8); // Máximo 80% alpha
+    finalColor = clamp(finalColor, 0.0, 3.0); // Permitir mucho brillo en impactos
+    finalAlpha = clamp(finalAlpha, 0.0, 0.95); // Máximo 95% en impactos
 
     gl_FragColor = vec4(finalColor, finalAlpha);
 }

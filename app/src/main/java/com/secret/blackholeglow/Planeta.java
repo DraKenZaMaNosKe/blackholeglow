@@ -7,6 +7,8 @@ import android.opengl.Matrix;
 import android.util.Log;
 
 import com.secret.blackholeglow.util.ObjLoader;
+import com.secret.blackholeglow.util.ProceduralSphere;
+import com.secret.blackholeglow.util.TextureConfig;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -51,6 +53,9 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
 
     // ===== CAMERA CONTROLLER =====
     private CameraController camera;
+
+    // ===== 💾 PLAYER STATS (para auto-guardar HP) =====
+    private PlayerStats playerStats;
 
     // ===== SISTEMA DE VIDA Y RESPAWN =====
     private int maxHealth = 0;
@@ -129,42 +134,38 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
         // NO habilitar GL_CULL_FACE para ver todas las caras de la esfera
 
-        // Cargar textura
+        // ════════════════════════════════════════════════════════════
+        // ✅ CARGAR Y CONFIGURAR TEXTURA usando TextureConfig
+        // ════════════════════════════════════════════════════════════
         textureId = texMgr.getTexture(textureResId);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_REPEAT);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_REPEAT);
+        // Configurar como textura de planeta (REPEAT + mipmaps)
+        TextureConfig.configure(textureId, TextureConfig.Type.PLANET);
 
-        // Cargar malla .obj
-        ObjLoader.Mesh mesh;
-        try {
-            mesh = ObjLoader.loadObj(ctx, "planeta.obj");
-            Log.d(TAG, "Malla cargada: " + mesh.vertexCount + " vértices");
-        } catch (IOException e) {
-            throw new RuntimeException("Error cargando planeta.obj", e);
-        }
+        // ════════════════════════════════════════════════════════════
+        // ✅ USAR ESFERA PROCEDURAL con UVs perfectos
+        // ════════════════════════════════════════════════════════════
+        // Migrado de planeta.obj a generación procedural para:
+        //  - UVs perfectos sin seams
+        //  - Mejor rendimiento
+        //  - Texturas se ven correctamente
+        // ════════════════════════════════════════════════════════════
+
+        Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Log.d(TAG, "✨ Usando ESFERA PROCEDURAL (UVs perfectos)");
+        Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+        ProceduralSphere.Mesh mesh = ProceduralSphere.generateMedium(1.0f);
 
         vertexBuffer = mesh.vertexBuffer;
         texCoordBuffer = mesh.uvBuffer;
 
-        // Construir índices
-        List<short[]> faces = mesh.faces;
-        int triCount = 0;
-        for (short[] f: faces) triCount += f.length - 2;
-        indexCount = triCount * 3;
+        Log.d(TAG, "✓ Planeta mesh preparada:");
+        Log.d(TAG, "  Vértices: " + mesh.vertexCount);
+        Log.d(TAG, "  Triángulos: " + (mesh.indexCount / 3));
 
-        ShortBuffer ib = ByteBuffer
-                .allocateDirect(indexCount * Short.BYTES)
-                .order(ByteOrder.nativeOrder())
-                .asShortBuffer();
-        for (short[] f: faces) {
-            short v0 = f[0];
-            for (int i = 1; i < f.length-1; i++) {
-                ib.put(v0).put(f[i]).put(f[i+1]);
-            }
-        }
-        ib.position(0);
-        indexBuffer = ib;
+        // ✅ ProceduralSphere ya incluye indexBuffer listo para usar
+        indexBuffer = mesh.indexBuffer;
+        indexCount = mesh.indexCount;
 
         // Obtener uniform locations
         aPosLoc = GLES20.glGetAttribLocation(programId, "a_Position");
@@ -354,6 +355,11 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
         currentHealth = Math.max(0, currentHealth - amount);
         Log.d(TAG, "Planeta dañado: " + currentHealth + "/" + maxHealth);
 
+        // 💾 AUTO-GUARDAR HP en PlayerStats
+        if (playerStats != null) {
+            playerStats.updateSunHealth(currentHealth);
+        }
+
         if (currentHealth <= 0) {
             die();
         }
@@ -408,6 +414,21 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
 
     public int getMaxHealth() {
         return maxHealth;
+    }
+
+    /**
+     * 💾 Establece el HP directamente (usado para cargar estado guardado)
+     */
+    public void setHealth(int health) {
+        this.currentHealth = Math.max(0, Math.min(health, maxHealth));
+        Log.d(TAG, "HP establecido: " + currentHealth + "/" + maxHealth);
+    }
+
+    /**
+     * 💾 Inyecta PlayerStats para auto-guardar HP
+     */
+    public void setPlayerStats(PlayerStats stats) {
+        this.playerStats = stats;
     }
 
     public void updateRespawn(float dt) {

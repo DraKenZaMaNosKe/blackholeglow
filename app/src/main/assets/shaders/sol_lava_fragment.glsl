@@ -1,7 +1,7 @@
 // ============================================
 // archivo: sol_lava_fragment.glsl
-// Shader de lava estilizado para el sol
-// Efecto de videojuego con superficie fluida de lava
+// Shader de sol procedural SIMPLIFICADO
+// Sin distorsión, solo gradientes suaves y animación mínima
 // ============================================
 
 #ifdef GL_ES
@@ -21,97 +21,82 @@ varying vec2 v_TexCoord;
 varying vec3 v_WorldPos;
 
 // ============================================
-// Funciones de ruido para efectos procedurales
+// Ruido simple (sin distorsión)
 // ============================================
 
-// Ruido 2D simple
-float noise2D(vec2 p) {
-    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
 
-// Ruido suavizado
-float smoothNoise(vec2 p) {
+float noise(vec2 p) {
     vec2 i = floor(p);
     vec2 f = fract(p);
     f = f * f * (3.0 - 2.0 * f);
 
-    float a = noise2D(i);
-    float b = noise2D(i + vec2(1.0, 0.0));
-    float c = noise2D(i + vec2(0.0, 1.0));
-    float d = noise2D(i + vec2(1.0, 1.0));
+    float a = hash(i);
+    float b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0));
+    float d = hash(i + vec2(1.0, 1.0));
 
     return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
-// Ruido fractal ULTRA-OPTIMIZADO (1 octava - máximo rendimiento)
-float fbm(vec2 p) {
-    // Solo 1 octava para rendimiento extremo
-    return smoothNoise(p * 2.0) * 0.5;
-}
+// ════════════════════════════════════════════════════════════════
+// ☀️ SOL CON VIDA - Manchas solares + flujo de plasma
+// ════════════════════════════════════════════════════════════════
 
-// ============================================
-// Función principal de efecto de lava
-// ============================================
-
-vec3 getLavaColor(vec2 uv, float time) {
-    // Coordenadas polares para efectos radiales
+vec3 getSunColor(vec2 uv, float time) {
     vec2 center = vec2(0.5, 0.5);
-    vec2 toCenter = uv - center;
-    float dist = length(toCenter);
-    float angle = atan(toCenter.y, toCenter.x);
+    float dist = length(uv - center);
+    float angle = atan(uv.y - center.y, uv.x - center.x);
 
-    // Animación de flujo de lava
-    float flowSpeed = 0.3;
-    vec2 flowOffset = vec2(
-        sin(time * flowSpeed) * 0.1,
-        cos(time * flowSpeed * 0.7) * 0.1
-    );
+    // ═══════════════════════════════════════════════════════════
+    // 🌀 FLUJO DE PLASMA (movimiento visible)
+    // ═══════════════════════════════════════════════════════════
+    vec2 flowUV = uv * 3.0;
+    flowUV.x += time * 0.08;  // Flujo horizontal
+    flowUV.y += sin(uv.x * 10.0 + time * 0.1) * 0.05; // Ondulación
 
-    // Distorsión UV para simular flujo
-    vec2 distortedUV = uv + flowOffset;
+    float plasma = noise(flowUV) * 0.5 + noise(flowUV * 2.0) * 0.25;
 
-    // OPTIMIZADO: Solo 2 capas de ruido (en lugar de 3)
-    float noise1 = fbm(distortedUV * 3.0 + time * 0.2);
-    float noise2 = smoothNoise(distortedUV * 6.0 - time * 0.15);
+    // ═══════════════════════════════════════════════════════════
+    // ☀️ MANCHAS SOLARES (dark spots que se mueven)
+    // ═══════════════════════════════════════════════════════════
+    vec2 spotUV = uv * 6.0 + vec2(time * 0.03, time * 0.02);
+    float spots = noise(spotUV);
+    spots = smoothstep(0.6, 0.7, spots); // Solo manchas oscuras
 
-    // Combinar ruidos simplificado
-    float lavaPattern = noise1 * 0.6 + noise2 * 0.4;
+    // Manchas más oscuras
+    float darkening = 1.0 - spots * 0.4;
 
-    // OPTIMIZADO: Burbujas ELIMINADAS (ahorro ~15 ops/pixel)
+    // ═══════════════════════════════════════════════════════════
+    // 🎨 GRADIENTE RADIAL + PLASMA
+    // ═══════════════════════════════════════════════════════════
+    float intensity = 1.0 - smoothstep(0.0, 0.5, dist);
+    intensity += plasma * 0.3;
+    intensity *= darkening; // Aplicar manchas oscuras
 
-    // OPTIMIZADO: Anillos simplificados (sin pow costoso)
-    float rings = sin(dist * 20.0 - time * 0.8) * 0.5 + 0.5;
-    lavaPattern += rings * 0.08 * (1.0 - dist);
+    // ═══════════════════════════════════════════════════════════
+    // 🔥 PALETA SOLAR (naranja → amarillo → blanco)
+    // ═══════════════════════════════════════════════════════════
+    vec3 deepOrange = vec3(0.8, 0.25, 0.0);   // Naranja oscuro (menos amarillo)
+    vec3 brightOrange = vec3(1.0, 0.5, 0.1);  // Naranja brillante
+    vec3 hotYellow = vec3(1.0, 0.85, 0.4);    // Amarillo cálido
 
-    // Gradiente radial para el núcleo más caliente
-    float coreIntensity = 1.0 - smoothstep(0.0, 0.5, dist);
-    lavaPattern = mix(lavaPattern, 1.0, coreIntensity * 0.5);
-
-    // Paleta de colores de lava estilizada
-    vec3 coolLava = vec3(0.5, 0.1, 0.0);     // Rojo oscuro
-    vec3 midLava = vec3(1.0, 0.3, 0.0);      // Naranja
-    vec3 hotLava = vec3(1.0, 0.8, 0.0);      // Amarillo
-    vec3 superHotLava = vec3(1.0, 1.0, 0.6); // Blanco amarillento
-
-    // Mapear el patrón a la paleta de colores
     vec3 color;
-    if(lavaPattern < 0.25) {
-        color = mix(coolLava, midLava, lavaPattern * 4.0);
-    } else if(lavaPattern < 0.5) {
-        color = mix(midLava, hotLava, (lavaPattern - 0.25) * 4.0);
-    } else if(lavaPattern < 0.75) {
-        color = mix(hotLava, superHotLava, (lavaPattern - 0.5) * 4.0);
+    if (intensity < 0.3) {
+        color = mix(deepOrange, brightOrange, intensity / 0.3);
+    } else if (intensity < 0.7) {
+        color = mix(brightOrange, hotYellow, (intensity - 0.3) / 0.4);
     } else {
-        color = superHotLava;
+        color = hotYellow;
     }
 
-    // Añadir emisión/glow
-    float glow = pow(lavaPattern, 2.0) * 0.5;
-    color += vec3(glow * 0.5, glow * 0.3, glow * 0.1);
+    // Añadir variación de plasma
+    color += vec3(plasma * 0.2, plasma * 0.15, plasma * 0.05);
 
-    // Pulsación MUY sutil y lenta (respiración suave del sol)
-    float pulse = sin(time * 0.6) * 0.03 + 0.97;  // Reducido de 4.0 a 0.6 (6.6x más lento)
-                                                     // Variación reducida de 5% a 3%
+    // Pulsación SUTIL
+    float pulse = sin(time * 0.12) * 0.02 + 0.98;
     color *= pulse;
 
     return color;
@@ -124,31 +109,34 @@ vec3 getLavaColor(vec2 uv, float time) {
 void main() {
     vec2 uv = v_TexCoord;
 
-    // Efecto de lava procedural
-    vec3 lavaColor = getLavaColor(uv, u_Time);
+    // Color del sol (limpio, sin distorsión)
+    vec3 sunColor = getSunColor(uv, u_Time);
 
-    // Si hay textura, mezclarla sutilmente
+    // Si hay textura, mezclarla MÍNIMAMENTE
     if(u_UseSolidColor == 0) {
         vec4 texColor = texture2D(u_Texture, uv);
-        // Usar la textura como máscara de intensidad
         float texIntensity = (texColor.r + texColor.g + texColor.b) / 3.0;
-        lavaColor *= 0.7 + texIntensity * 0.3;
+        sunColor *= 0.9 + texIntensity * 0.1;  // Influencia mínima
     }
 
-    // Oscurecer los bordes para efecto esférico
+    // ════════════════════════════════════════════════════════════════
+    // ☀️ CORONA SOLAR SIMPLE - Solo glow suave, sin rayos complejos
+    // ════════════════════════════════════════════════════════════════
     vec2 center = vec2(0.5, 0.5);
-    float edgeDist = length(uv - center);
-    float edgeFactor = 1.0 - smoothstep(0.3, 0.5, edgeDist);
-    lavaColor *= edgeFactor;
+    float dist = length(uv - center);
 
-    // Alpha y salida final - SOL COMPLETAMENTE SÓLIDO
-    float finalAlpha = 1.0;  // SIEMPRE OPACO
+    // Corona MUY simple - solo un glow radial suave
+    float coronaStart = 0.42;
+    float coronaEnd = 0.60;
+    float coronaMask = smoothstep(coronaStart, coronaStart + 0.08, dist) *
+                       (1.0 - smoothstep(coronaEnd - 0.08, coronaEnd, dist));
 
-    // NO hacer transparente en ningún caso para cubrir toda la esfera
-    // El modelo 3D ya define la forma esférica
+    // Glow amarillo suave
+    vec3 coronaGlow = vec3(1.0, 0.9, 0.5) * 0.3 * coronaMask;
+    sunColor += coronaGlow;
 
-    // Asegurar que el color nunca sea negro (evitar agujeros)
-    lavaColor = max(lavaColor, vec3(0.1, 0.05, 0.0));  // Mínimo color lava oscuro
+    // Alpha final - siempre opaco
+    float finalAlpha = 1.0;
 
-    gl_FragColor = vec4(lavaColor, finalAlpha);
+    gl_FragColor = vec4(sunColor, finalAlpha);
 }

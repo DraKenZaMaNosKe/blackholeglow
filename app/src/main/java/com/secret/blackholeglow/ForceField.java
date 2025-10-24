@@ -5,6 +5,7 @@ import android.opengl.GLES20;
 import android.util.Log;
 
 import com.secret.blackholeglow.util.ObjLoader;
+import com.secret.blackholeglow.util.ProceduralSphere;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -27,6 +28,9 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
     private FloatBuffer texCoordBuffer;
     private ShortBuffer indexBuffer;
     private CameraController camera;
+
+    // ===== 💾 PLAYER STATS (para auto-guardar HP) =====
+    private PlayerStats playerStats;
 
     // Uniforms
     private int uMvpLoc;
@@ -135,93 +139,32 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
         Log.d(TAG, "[ForceField] ⚡ Shader de PLASMA inicializado - programId=" + programId);
     }
 
-    private void setupGeometry(Context context) {
-        // OPTIMIZACIÓN: Usar esfera procedural en lugar de modelo .obj pesado
-        // Esto reduce vértices de 559 a ~200 para mejor rendimiento
-        float[] vertices = createOptimizedSphere(16, 12);  // 16 segmentos, 12 anillos
-        float[] texCoords = createSphereUVs(vertices);
-
-        vertexBuffer = createFloatBuffer(vertices);
-        texCoordBuffer = createFloatBuffer(texCoords);
-
-        Log.d(TAG, "[ForceField] Geometría optimizada - vértices: " + (vertices.length / 3) + " (vs 559 original)");
-    }
-
     /**
-     * Crea una esfera optimizada usando geometría procedural
-     * @param segments Número de segmentos (verticales)
-     * @param rings Número de anillos (horizontales)
-     * @return Array de vértices en formato triangular
+     * ════════════════════════════════════════════════════════════
+     * ✅ USAR ESFERA PROCEDURAL con UVs perfectos
+     * ════════════════════════════════════════════════════════════
+     * Reemplazamos createOptimizedSphere() manual por ProceduralSphere:
+     *  - UVs matemáticamente correctos (antes eran placeholder)
+     *  - Código más limpio (antes ~70 líneas, ahora ~10)
+     *  - Misma o mejor performance
+     *  - Consistencia con otros objetos esféricos
+     * ════════════════════════════════════════════════════════════
      */
-    private float[] createOptimizedSphere(int segments, int rings) {
-        java.util.ArrayList<Float> vertices = new java.util.ArrayList<>();
+    private void setupGeometry(Context context) {
+        Log.d(TAG, "[ForceField] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Log.d(TAG, "[ForceField] ✨ Usando ESFERA PROCEDURAL (UVs perfectos)");
+        Log.d(TAG, "[ForceField] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
-        for (int ring = 0; ring < rings; ring++) {
-            float theta1 = (float)ring / rings * (float)Math.PI;
-            float theta2 = (float)(ring + 1) / rings * (float)Math.PI;
+        // Usar resolución media para el campo de fuerza (balance calidad/rendimiento)
+        ProceduralSphere.Mesh mesh = ProceduralSphere.generateMedium(1.0f);
 
-            for (int seg = 0; seg < segments; seg++) {
-                float phi1 = (float)seg / segments * 2.0f * (float)Math.PI;
-                float phi2 = (float)(seg + 1) / segments * 2.0f * (float)Math.PI;
+        vertexBuffer = mesh.vertexBuffer;
+        texCoordBuffer = mesh.uvBuffer;
+        indexBuffer = mesh.indexBuffer;
 
-                // Calcular los 4 vértices del quad
-                float x1 = (float)(Math.sin(theta1) * Math.cos(phi1));
-                float y1 = (float)Math.cos(theta1);
-                float z1 = (float)(Math.sin(theta1) * Math.sin(phi1));
-
-                float x2 = (float)(Math.sin(theta1) * Math.cos(phi2));
-                float y2 = (float)Math.cos(theta1);
-                float z2 = (float)(Math.sin(theta1) * Math.sin(phi2));
-
-                float x3 = (float)(Math.sin(theta2) * Math.cos(phi2));
-                float y3 = (float)Math.cos(theta2);
-                float z3 = (float)(Math.sin(theta2) * Math.sin(phi2));
-
-                float x4 = (float)(Math.sin(theta2) * Math.cos(phi1));
-                float y4 = (float)Math.cos(theta2);
-                float z4 = (float)(Math.sin(theta2) * Math.sin(phi1));
-
-                // Primer triángulo del quad
-                vertices.add(x1); vertices.add(y1); vertices.add(z1);
-                vertices.add(x2); vertices.add(y2); vertices.add(z2);
-                vertices.add(x3); vertices.add(y3); vertices.add(z3);
-
-                // Segundo triángulo del quad
-                vertices.add(x1); vertices.add(y1); vertices.add(z1);
-                vertices.add(x3); vertices.add(y3); vertices.add(z3);
-                vertices.add(x4); vertices.add(y4); vertices.add(z4);
-            }
-        }
-
-        // Convertir ArrayList a array primitivo
-        float[] result = new float[vertices.size()];
-        for (int i = 0; i < vertices.size(); i++) {
-            result[i] = vertices.get(i);
-        }
-        return result;
-    }
-
-    private float[] createSphereVertices() {
-        // Método legacy - ya no se usa
-        return createOptimizedSphere(8, 6);
-    }
-
-    private float[] createSphereUVs(float[] vertices) {
-        float[] uvs = new float[vertices.length / 3 * 2];
-        for (int i = 0; i < vertices.length / 3; i++) {
-            uvs[i * 2] = (float)i / (vertices.length / 3);
-            uvs[i * 2 + 1] = 0.5f;
-        }
-        return uvs;
-    }
-
-    private FloatBuffer createFloatBuffer(float[] data) {
-        ByteBuffer bb = ByteBuffer.allocateDirect(data.length * 4);
-        bb.order(ByteOrder.nativeOrder());
-        FloatBuffer fb = bb.asFloatBuffer();
-        fb.put(data);
-        fb.position(0);
-        return fb;
+        Log.d(TAG, "[ForceField] ✓ ForceField mesh preparada:");
+        Log.d(TAG, "[ForceField]   Vértices: " + mesh.vertexCount + " (vs ~200 manual anterior)");
+        Log.d(TAG, "[ForceField]   Triángulos: " + (mesh.indexCount / 3));
     }
 
     @Override
@@ -237,6 +180,11 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
 
         // Reducir vida
         currentHealth--;
+
+        // 💾 AUTO-GUARDAR HP en PlayerStats
+        if (playerStats != null) {
+            playerStats.updateForceFieldHealth(currentHealth);
+        }
 
         // Registrar posición del impacto
         int idx = currentImpactIndex % MAX_IMPACTS;
@@ -259,8 +207,12 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
 
     /**
      * Verifica si una posición está dentro del campo de fuerza
+     * ✅ Si está destruido, NO bloquea meteoros (dejan pasar)
      */
     public boolean containsPoint(float worldX, float worldY, float worldZ) {
+        // Si está destruido, no bloquea nada (meteoros pasan directo al sol)
+        if (isDestroyed) return false;
+
         float dx = worldX - position[0];
         float dy = worldY - position[1];
         float dz = worldZ - position[2];
@@ -279,6 +231,24 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
 
     public int getMaxHealth() {
         return MAX_HEALTH;
+    }
+
+    /**
+     * 💾 Establece el HP directamente (usado para cargar estado guardado)
+     */
+    public void setHealth(int health) {
+        this.currentHealth = Math.max(0, Math.min(health, MAX_HEALTH));
+        if (currentHealth <= 0) {
+            isDestroyed = true;
+        }
+        Log.d(TAG, "HP establecido: " + currentHealth + "/" + MAX_HEALTH);
+    }
+
+    /**
+     * 💾 Inyecta PlayerStats para auto-guardar HP
+     */
+    public void setPlayerStats(PlayerStats stats) {
+        this.playerStats = stats;
     }
 
     public void reset() {
@@ -317,19 +287,26 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
     public void draw() {
         if (!GLES20.glIsProgram(programId)) return;
 
+        // ✅ Si está destruido, NO dibujarlo (desaparece completamente)
+        if (isDestroyed) {
+            return;  // No dibujar nada cuando está destruido
+        }
+
         GLES20.glUseProgram(programId);
 
-        // Calcular escala con pulsación
+        // ════════════════════════════════════════════════════════════
+        // ✗ ESCALA GRADUAL ELIMINADA (era solo para pruebas)
+        // ════════════════════════════════════════════════════════════
         float currentScale = scale;
-        if (scaleOscPercent != null) {
-            float osc = 1.0f + (float)(Math.sin(rotationAngle * scaleOscSpeed) * scaleOscPercent);
-            currentScale *= osc;
-        }
+        // if (scaleOscPercent != null) {  // COMENTADO - ya no necesario
+        //     float osc = 1.0f + (float)(Math.sin(rotationAngle * scaleOscSpeed) * scaleOscPercent);
+        //     currentScale *= osc;
+        // }
 
-        // Animación de destrucción (expansión y desvanecimiento)
-        if (isDestroyed) {
-            currentScale *= (1.0f + destructionAnimation * 0.5f);  // Crece 50%
-        }
+        // ✗ DESTRUCCIÓN - NO crece, simplemente desaparece (early return arriba)
+        // if (isDestroyed) {
+        //     currentScale *= (1.0f + destructionAnimation * 0.5f);  // ELIMINADO
+        // }
 
         // Matriz de modelo
         float[] modelMatrix = new float[16];
@@ -351,9 +328,10 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
 
         // Color y alpha con reactividad musical
         float currentAlpha = baseAlpha;
-        if (isDestroyed) {
-            currentAlpha *= Math.max(0, 1.0f - destructionAnimation);  // Fade out
-        }
+        // ✗ YA NO NECESITAMOS FADE OUT - el campo desaparece instantáneamente
+        // if (isDestroyed) {
+        //     currentAlpha *= Math.max(0, 1.0f - destructionAnimation);  // ELIMINADO
+        // }
 
         // REACTIVIDAD MUSICAL → Aumentar brillo y alpha
         float musicBrightness = 1.0f;
@@ -406,8 +384,13 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
         GLES20.glEnableVertexAttribArray(aTexLoc);
         GLES20.glVertexAttribPointer(aTexLoc, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
 
-        // Dibujar
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, vertexBuffer.capacity() / 3);
+        // ════════════════════════════════════════════════════════════
+        // ✅ USAR glDrawElements con indexBuffer de ProceduralSphere
+        // ════════════════════════════════════════════════════════════
+        // Cambio de glDrawArrays a glDrawElements para usar índices
+        // Esto es más eficiente y correcto con ProceduralSphere
+        indexBuffer.position(0);
+        GLES20.glDrawElements(GLES20.GL_TRIANGLES, indexBuffer.capacity(), GLES20.GL_UNSIGNED_SHORT, indexBuffer);
 
         GLES20.glDisableVertexAttribArray(aPosLoc);
         GLES20.glDisableVertexAttribArray(aTexLoc);

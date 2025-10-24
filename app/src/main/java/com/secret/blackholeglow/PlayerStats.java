@@ -52,6 +52,12 @@ public class PlayerStats {
     private long totalPlayTimeMs = 0;
     private long sessionStartTime = 0;
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // 💾 PERSISTENCIA DE ESTADO DEL JUEGO (HP)
+    // ═══════════════════════════════════════════════════════════════════════
+    private int savedSunHealth = 100;         // HP del sol (default 100, se carga al iniciar)
+    private int savedForceFieldHealth = 50;   // HP del campo de fuerza (default 50, se carga al iniciar)
+
     // Contexto para guardar
     private Context context;
 
@@ -225,9 +231,14 @@ public class PlayerStats {
         editor.putInt("totalScore", totalScore);
         editor.putLong("totalPlayTimeMs", totalPlayTimeMs);
 
+        // ═══ NUEVO: Guardar HP del Sol y Campo de Fuerza ═══
+        editor.putInt("savedSunHealth", savedSunHealth);
+        editor.putInt("savedForceFieldHealth", savedForceFieldHealth);
+
         editor.apply();
 
-        Log.d(TAG, "💾 Estadísticas guardadas");
+        Log.d(TAG, String.format("💾 Estadísticas guardadas (Sol HP: %d, Escudo HP: %d)",
+                savedSunHealth, savedForceFieldHealth));
     }
 
     /**
@@ -245,7 +256,12 @@ public class PlayerStats {
         totalScore = prefs.getInt("totalScore", 0);
         totalPlayTimeMs = prefs.getLong("totalPlayTimeMs", 0);
 
-        Log.d(TAG, "📂 Estadísticas cargadas: " + totalScore + " pts, " + sunsDestroyed + " soles destruidos");
+        // ═══ NUEVO: Cargar HP del Sol y Campo de Fuerza ═══
+        savedSunHealth = prefs.getInt("savedSunHealth", 100);  // Default 100 si es primera vez
+        savedForceFieldHealth = prefs.getInt("savedForceFieldHealth", 50);  // Default 50 si es primera vez
+
+        Log.d(TAG, String.format("📂 Estadísticas cargadas: %d pts, %d soles | Sol HP: %d, Escudo HP: %d",
+                totalScore, sunsDestroyed, savedSunHealth, savedForceFieldHealth));
     }
 
     /**
@@ -276,6 +292,36 @@ public class PlayerStats {
     public int getMaxCombo() { return maxCombo; }
     public int getTotalScore() { return totalScore; }
     public long getTotalPlayTimeMs() { return totalPlayTimeMs; }
+
+    // ═══ NUEVO: Getters/Setters para HP persistente ═══
+    public int getSavedSunHealth() { return savedSunHealth; }
+    public int getSavedForceFieldHealth() { return savedForceFieldHealth; }
+
+    /**
+     * 💾 Actualiza y GUARDA automáticamente el HP del Sol
+     * Guarda localmente (SharedPreferences) y en la nube (Firebase)
+     */
+    public void updateSunHealth(int health) {
+        savedSunHealth = health;
+        saveStats();  // Auto-guardar localmente
+
+        // 🔥 Guardar en Firebase (nube)
+        firebaseManager.saveGameState(savedSunHealth, savedForceFieldHealth, sunsDestroyed);
+        Log.d(TAG, "☁️ HP del Sol guardado en Firebase: " + health);
+    }
+
+    /**
+     * 💾 Actualiza y GUARDA automáticamente el HP del Campo de Fuerza
+     * Guarda localmente (SharedPreferences) y en la nube (Firebase)
+     */
+    public void updateForceFieldHealth(int health) {
+        savedForceFieldHealth = health;
+        saveStats();  // Auto-guardar localmente
+
+        // 🔥 Guardar en Firebase (nube)
+        firebaseManager.saveGameState(savedSunHealth, savedForceFieldHealth, sunsDestroyed);
+        Log.d(TAG, "☁️ HP del ForceField guardado en Firebase: " + health);
+    }
 
     /**
      * 🔄 RESETEAR COMBO (cuando pasa mucho tiempo sin impactar o excede duración máxima)
@@ -344,7 +390,8 @@ public class PlayerStats {
 
     /**
      * 🔄 SINCRONIZAR CON FIREBASE
-     * Compara datos locales con la nube y toma el mayor
+     * Compara datos locales con la nube y toma el mayor (para evitar pérdida de progreso)
+     * Sincroniza: HP del Sol, HP del ForceField, y Soles Destruidos
      */
     private void syncWithFirebase() {
         if (firebaseManager == null) {
@@ -352,24 +399,59 @@ public class PlayerStats {
             return;
         }
 
-        firebaseManager.syncStats(sunsDestroyed, new FirebaseStatsManager.StatsCallback() {
+        firebaseManager.loadGameState(new FirebaseStatsManager.GameStateCallback() {
             @Override
-            public void onSuccess(int remoteSuns) {
-                if (remoteSuns > sunsDestroyed) {
-                    // Firebase tiene más - actualizar local
-                    Log.d(TAG, "📥 SINCRONIZACIÓN: Firebase tiene " + remoteSuns + " soles, local tiene " + sunsDestroyed);
-                    sunsDestroyed = remoteSuns;
-                    saveStats();
-                    Log.d(TAG, "✅ Estadísticas actualizadas desde Firebase: " + remoteSuns + " soles");
+            public void onSuccess(int remoteSunHP, int remoteForceFieldHP, int remoteSuns) {
+                Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗");
+                Log.d(TAG, "║               🔄 SINCRONIZACIÓN CON FIREBASE ☁️               ║");
+                Log.d(TAG, "╠════════════════════════════════════════════════════════════════╣");
+                Log.d(TAG, String.format("║ Sol HP:         Local=%3d  vs  Firebase=%3d              ║", savedSunHealth, remoteSunHP));
+                Log.d(TAG, String.format("║ ForceField HP:  Local=%3d  vs  Firebase=%3d              ║", savedForceFieldHealth, remoteForceFieldHP));
+                Log.d(TAG, String.format("║ Soles:          Local=%3d  vs  Firebase=%3d              ║", sunsDestroyed, remoteSuns));
+                Log.d(TAG, "╠════════════════════════════════════════════════════════════════╣");
 
-                    // Notificar cambio a quien esté escuchando
-                    notifySyncCompleted();
-                } else if (sunsDestroyed > 0) {
-                    Log.d(TAG, "📊 SINCRONIZACIÓN: Local tiene " + sunsDestroyed + " soles, Firebase tiene " + remoteSuns);
-                    Log.d(TAG, "✓ No se necesita actualizar (local >= remoto)");
-                } else {
-                    Log.d(TAG, "📊 SINCRONIZACIÓN: Primera vez jugando, ambos en 0");
+                boolean needsUpdate = false;
+
+                // Sincronizar HP del Sol (tomar el MENOR HP = MÁS progreso)
+                // Menos HP = más daño hecho = mejor progreso del jugador
+                if (remoteSunHP < savedSunHealth) {
+                    Log.d(TAG, "║ 📥 Firebase tiene MÁS progreso! Sol HP: " + remoteSunHP + " < " + savedSunHealth + "      ║");
+                    savedSunHealth = remoteSunHP;
+                    needsUpdate = true;
+                } else if (savedSunHealth < remoteSunHP) {
+                    Log.d(TAG, "║ 📤 Local tiene MÁS progreso! Sol HP: " + savedSunHealth + " < " + remoteSunHP + "      ║");
+                    firebaseManager.saveGameState(savedSunHealth, savedForceFieldHealth, sunsDestroyed);
                 }
+
+                // Sincronizar HP del ForceField (tomar el MENOR HP = MÁS progreso)
+                if (remoteForceFieldHP < savedForceFieldHealth) {
+                    Log.d(TAG, "║ 📥 Firebase tiene MÁS progreso! Escudo HP: " + remoteForceFieldHP + " < " + savedForceFieldHealth + "   ║");
+                    savedForceFieldHealth = remoteForceFieldHP;
+                    needsUpdate = true;
+                } else if (savedForceFieldHealth < remoteForceFieldHP) {
+                    Log.d(TAG, "║ 📤 Local tiene MÁS progreso! Escudo HP: " + savedForceFieldHealth + " < " + remoteForceFieldHP + "   ║");
+                    firebaseManager.saveGameState(savedSunHealth, savedForceFieldHealth, sunsDestroyed);
+                }
+
+                // Sincronizar Soles Destruidos (tomar el mayor)
+                if (remoteSuns > sunsDestroyed) {
+                    Log.d(TAG, "║ 📥 Actualizando Soles desde Firebase: " + remoteSuns + " soles        ║");
+                    sunsDestroyed = remoteSuns;
+                    needsUpdate = true;
+                } else if (sunsDestroyed > remoteSuns) {
+                    Log.d(TAG, "║ 📤 Subiendo Soles a Firebase: " + sunsDestroyed + " soles              ║");
+                    firebaseManager.saveGameState(savedSunHealth, savedForceFieldHealth, sunsDestroyed);
+                }
+
+                if (needsUpdate) {
+                    saveStats();  // Guardar cambios localmente
+                    Log.d(TAG, "║ ✅ Estadísticas locales actualizadas desde Firebase          ║");
+                } else {
+                    Log.d(TAG, "║ ✓ Local y Firebase sincronizados (local >= remoto)           ║");
+                }
+
+                Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝");
+                notifySyncCompleted();
             }
 
             @Override

@@ -107,6 +107,43 @@ public class FirebaseStatsManager {
     }
 
     /**
+     * 💾 Guarda el estado completo del juego (HP + soles destruidos)
+     */
+    public void saveGameState(final int sunHealth, final int forceFieldHealth, final int sunsDestroyed) {
+        final String userId = getUserId();
+        if (userId == null) {
+            Log.e(TAG, "❌ Usuario no autenticado - no se puede guardar");
+            return;
+        }
+
+        String securityHash = generateSecurityHash(userId, sunsDestroyed);
+
+        Map<String, Object> gameState = new HashMap<>();
+        gameState.put("sunHealth", sunHealth);
+        gameState.put("forceFieldHealth", forceFieldHealth);
+        gameState.put("sunsDestroyed", sunsDestroyed);
+        gameState.put("securityHash", securityHash);
+        gameState.put("lastUpdate", FieldValue.serverTimestamp());
+        gameState.put("userId", userId);
+
+        db.collection(COLLECTION_STATS).document(userId)
+                .set(gameState, SetOptions.merge())
+                .addOnSuccessListener(new OnSuccessListener<Void>() {
+                    @Override
+                    public void onSuccess(Void aVoid) {
+                        Log.d(TAG, String.format("💾 Estado guardado en Firebase: Sol HP=%d, Escudo HP=%d, Soles=%d",
+                                sunHealth, forceFieldHealth, sunsDestroyed));
+                    }
+                })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        Log.e(TAG, "❌ Error guardando estado: " + e.getMessage());
+                    }
+                });
+    }
+
+    /**
      * ☀️ Incrementa el contador de soles destruidos (SEGURO)
      *
      * @param newSunsDestroyed Nuevo total de soles destruidos
@@ -320,5 +357,62 @@ public class FirebaseStatsManager {
     public interface StatsCallback {
         void onSuccess(int sunsDestroyed);
         void onError(String error);
+    }
+
+    /**
+     * 📦 Callback para cargar estado completo del juego
+     */
+    public interface GameStateCallback {
+        void onSuccess(int sunHealth, int forceFieldHealth, int sunsDestroyed);
+        void onError(String error);
+    }
+
+    /**
+     * 📥 Carga el estado completo del juego desde Firebase
+     */
+    public void loadGameState(final GameStateCallback callback) {
+        String userId = getUserId();
+        if (userId == null) {
+            callback.onError("Usuario no autenticado");
+            return;
+        }
+
+        db.collection(COLLECTION_STATS).document(userId)
+                .get()
+                .addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                        if (task.isSuccessful()) {
+                            DocumentSnapshot document = task.getResult();
+                            if (document.exists()) {
+                                Long sunsLong = document.getLong("sunsDestroyed");
+                                Long sunHealthLong = document.getLong("sunHealth");
+                                Long forceFieldHealthLong = document.getLong("forceFieldHealth");
+                                String hash = document.getString("securityHash");
+
+                                int suns = sunsLong != null ? sunsLong.intValue() : 0;
+                                int sunHP = sunHealthLong != null ? sunHealthLong.intValue() : 100;
+                                int forceFieldHP = forceFieldHealthLong != null ? forceFieldHealthLong.intValue() : 50;
+
+                                // Verificar integridad
+                                String expectedHash = generateSecurityHash(userId, suns);
+                                if (hash != null && hash.equals(expectedHash)) {
+                                    Log.d(TAG, String.format("✅ Estado completo cargado: Sol HP=%d, Escudo HP=%d, Soles=%d",
+                                            sunHP, forceFieldHP, suns));
+                                    callback.onSuccess(sunHP, forceFieldHP, suns);
+                                } else {
+                                    Log.w(TAG, "⚠️ Hash inválido - datos posiblemente manipulados");
+                                    callback.onSuccess(sunHP, forceFieldHP, suns); // Cargar de todos modos
+                                }
+                            } else {
+                                Log.d(TAG, "📂 No hay estado guardado - usando valores por defecto");
+                                callback.onSuccess(100, 50, 0); // Valores por defecto
+                            }
+                        } else {
+                            Log.e(TAG, "❌ Error cargando estado: " + task.getException());
+                            callback.onError("Error de conexión");
+                        }
+                    }
+                });
     }
 }

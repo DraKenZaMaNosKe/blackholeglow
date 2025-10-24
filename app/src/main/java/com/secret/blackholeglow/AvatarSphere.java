@@ -6,9 +6,13 @@ import android.opengl.GLES20;
 import android.opengl.GLUtils;
 import android.util.Log;
 
+import com.secret.blackholeglow.util.ProceduralSphere;
+import com.secret.blackholeglow.util.TextureConfig;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.nio.ShortBuffer;
 
 /**
  * AvatarSphere - Esfera 3D que muestra el avatar del usuario
@@ -42,7 +46,9 @@ public class AvatarSphere implements SceneObject, CameraAware {
     // Geometría
     private FloatBuffer vertexBuffer;
     private FloatBuffer texCoordBuffer;
+    private ShortBuffer indexBuffer;
     private int vertexCount;
+    private int indexCount;
 
     // Textura del avatar
     private int textureId = -1;
@@ -94,153 +100,99 @@ public class AvatarSphere implements SceneObject, CameraAware {
     }
 
     /**
-     * Inicializa el shader
+     * ════════════════════════════════════════════════════════════
+     * ✅ SHADER SIMPLE PARA AVATAR (SIN EFECTOS)
+     * ════════════════════════════════════════════════════════════
+     * Usa shaders dedicados que solo muestran la textura fija
+     * sin destellos, brillos ni animaciones
+     * ════════════════════════════════════════════════════════════
      */
     private void initShader() {
+        Log.d(TAG, "[AvatarSphere] Cargando shaders simples para avatar...");
+
         programId = ShaderUtils.createProgramFromAssets(
                 context,
-                "shaders/planeta_vertex.glsl",
-                "shaders/planeta_fragment.glsl");
+                "shaders/avatar_vertex.glsl",
+                "shaders/avatar_fragment.glsl");
 
         if (programId == 0) {
-            Log.e(TAG, "✗ Error creando shader");
+            Log.e(TAG, "✗ Error creando shader de avatar");
             return;
         }
 
-        // Obtener locations
+        // Obtener locations (shader simple solo necesita MVP, texture y alpha)
         aPositionLoc = GLES20.glGetAttribLocation(programId, "a_Position");
         aTexCoordLoc = GLES20.glGetAttribLocation(programId, "a_TexCoord");
         uMVPLoc = GLES20.glGetUniformLocation(programId, "u_MVP");
         uTextureLoc = GLES20.glGetUniformLocation(programId, "u_Texture");
-        uTimeLoc = GLES20.glGetUniformLocation(programId, "u_Time");
-        uUseSolidColorLoc = GLES20.glGetUniformLocation(programId, "u_UseSolidColor");
-        uSolidColorLoc = GLES20.glGetUniformLocation(programId, "u_SolidColor");
         uAlphaLoc = GLES20.glGetUniformLocation(programId, "u_Alpha");
 
-        Log.d(TAG, "[AvatarSphere] ✓ Shader inicializado - programId=" + programId +
-                   ", locations: pos=" + aPositionLoc + ", tex=" + aTexCoordLoc +
-                   ", MVP=" + uMVPLoc + ", texture=" + uTextureLoc);
+        // Ya no usamos estos uniforms (eran del shader de planeta con efectos)
+        uTimeLoc = -1;
+        uUseSolidColorLoc = -1;
+        uSolidColorLoc = -1;
+
+        Log.d(TAG, "[AvatarSphere] ✓ Shader simple de avatar inicializado - programId=" + programId);
+        Log.d(TAG, "[AvatarSphere]   Sin efectos, solo textura fija");
     }
 
     /**
-     * Crea una esfera procedural simple
+     * ════════════════════════════════════════════════════════════
+     * ✅ USAR PROCEDURAL SPHERE HIGH POLY CON CLAMP_TO_EDGE
+     * ════════════════════════════════════════════════════════════
+     * Para el avatar usamos ProceduralSphere.generateHighPoly() porque:
+     *  - Tiene UVs esféricos que cubren 0..1 perfectamente
+     *  - Usando GL_CLAMP_TO_EDGE la textura NO se repite
+     *  - HighPoly da mejor calidad visual para el avatar del usuario
+     *  - Incluye indexBuffer listo para glDrawElements
+     * ════════════════════════════════════════════════════════════
      */
     private void setupGeometry() {
-        // Crear esfera de baja resolución (12 segmentos, 8 anillos)
-        int segments = 12;
-        int rings = 8;
+        Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Log.d(TAG, "✨ Usando ProceduralSphere HighPoly para avatar");
+        Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
-        java.util.ArrayList<Float> vertices = new java.util.ArrayList<>();
-        java.util.ArrayList<Float> texCoords = new java.util.ArrayList<>();
+        ProceduralSphere.Mesh mesh = ProceduralSphere.generateHigh(1.0f);
 
-        for (int ring = 0; ring < rings; ring++) {
-            float theta1 = (float)ring / rings * (float)Math.PI;
-            float theta2 = (float)(ring + 1) / rings * (float)Math.PI;
+        vertexBuffer = mesh.vertexBuffer;
+        texCoordBuffer = mesh.uvBuffer;
+        indexBuffer = mesh.indexBuffer;
+        vertexCount = mesh.vertexCount;
+        indexCount = mesh.indexCount;
 
-            for (int seg = 0; seg < segments; seg++) {
-                float phi1 = (float)seg / segments * 2.0f * (float)Math.PI;
-                float phi2 = (float)(seg + 1) / segments * 2.0f * (float)Math.PI;
-
-                // Vértice 1
-                float x1 = (float)(Math.sin(theta1) * Math.cos(phi1));
-                float y1 = (float)(Math.cos(theta1));
-                float z1 = (float)(Math.sin(theta1) * Math.sin(phi1));
-
-                // Vértice 2
-                float x2 = (float)(Math.sin(theta1) * Math.cos(phi2));
-                float y2 = (float)(Math.cos(theta1));
-                float z2 = (float)(Math.sin(theta1) * Math.sin(phi2));
-
-                // Vértice 3
-                float x3 = (float)(Math.sin(theta2) * Math.cos(phi2));
-                float y3 = (float)(Math.cos(theta2));
-                float z3 = (float)(Math.sin(theta2) * Math.sin(phi2));
-
-                // Vértice 4
-                float x4 = (float)(Math.sin(theta2) * Math.cos(phi1));
-                float y4 = (float)(Math.cos(theta2));
-                float z4 = (float)(Math.sin(theta2) * Math.sin(phi1));
-
-                // Triángulo 1
-                vertices.add(x1); vertices.add(y1); vertices.add(z1);
-                vertices.add(x2); vertices.add(y2); vertices.add(z2);
-                vertices.add(x3); vertices.add(y3); vertices.add(z3);
-
-                // Triángulo 2
-                vertices.add(x1); vertices.add(y1); vertices.add(z1);
-                vertices.add(x3); vertices.add(y3); vertices.add(z3);
-                vertices.add(x4); vertices.add(y4); vertices.add(z4);
-
-                // UVs para triángulo 1
-                float u1 = (float)seg / segments;
-                float u2 = (float)(seg + 1) / segments;
-                float v1 = (float)ring / rings;
-                float v2 = (float)(ring + 1) / rings;
-
-                texCoords.add(u1); texCoords.add(v1);
-                texCoords.add(u2); texCoords.add(v1);
-                texCoords.add(u2); texCoords.add(v2);
-
-                // UVs para triángulo 2
-                texCoords.add(u1); texCoords.add(v1);
-                texCoords.add(u2); texCoords.add(v2);
-                texCoords.add(u1); texCoords.add(v2);
-            }
-        }
-
-        // Convertir a arrays
-        vertexCount = vertices.size() / 3;
-        float[] vertexArray = new float[vertices.size()];
-        float[] texCoordArray = new float[texCoords.size()];
-
-        for (int i = 0; i < vertices.size(); i++) {
-            vertexArray[i] = vertices.get(i);
-        }
-        for (int i = 0; i < texCoords.size(); i++) {
-            texCoordArray[i] = texCoords.get(i);
-        }
-
-        // Crear buffers
-        vertexBuffer = createFloatBuffer(vertexArray);
-        texCoordBuffer = createFloatBuffer(texCoordArray);
-
-        Log.d(TAG, "Geometría creada - vértices: " + vertexCount);
+        Log.d(TAG, "✓ Avatar mesh preparada desde ProceduralSphere:");
+        Log.d(TAG, "  Vértices: " + vertexCount);
+        Log.d(TAG, "  Índices: " + indexCount);
+        Log.d(TAG, "  Triángulos: " + (indexCount / 3));
+        Log.d(TAG, "  UVs esféricos con CLAMP_TO_EDGE (no repetición)");
     }
 
     /**
-     * Crea un FloatBuffer desde un array
-     */
-    private FloatBuffer createFloatBuffer(float[] data) {
-        ByteBuffer bb = ByteBuffer.allocateDirect(data.length * 4);
-        bb.order(ByteOrder.nativeOrder());
-        FloatBuffer buffer = bb.asFloatBuffer();
-        buffer.put(data);
-        buffer.position(0);
-        return buffer;
-    }
-
-    /**
-     * Crea una textura OpenGL desde un Bitmap
+     * Crea una textura OpenGL desde un Bitmap usando TextureConfig
+     * ════════════════════════════════════════════════════════════════
+     * ✅ REFACTORIZADO: Usa TextureConfig.Type.AVATAR
+     * ════════════════════════════════════════════════════════════════
+     * La configuración de wrapping y filtering ahora está centralizada
+     * en TextureConfig para mantener consistencia en toda la app.
      */
     private void createTextureFromBitmap(Bitmap bitmap) {
+        // Generar ID de textura
         int[] textures = new int[1];
         GLES20.glGenTextures(1, textures, 0);
         textureId = textures[0];
 
+        // Bind y cargar bitmap
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-
-        // Configurar parámetros de textura
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
-
-        // Cargar bitmap a la textura
         GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
-
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
 
-        Log.d(TAG, "✓ Textura creada desde bitmap - textureId=" + textureId);
+        // ════════════════════════════════════════════════════════════
+        // ✅ CONFIGURAR COMO TEXTURA TIPO AVATAR
+        // ════════════════════════════════════════════════════════════
+        // Esto aplica: CLAMP_TO_EDGE (no repetir), LINEAR filtering
+        TextureConfig.configure(textureId, TextureConfig.Type.AVATAR);
+
+        Log.d(TAG, "✓ Textura avatar creada usando TextureConfig.AVATAR - textureId=" + textureId);
     }
 
     @Override
@@ -315,17 +267,28 @@ public class AvatarSphere implements SceneObject, CameraAware {
         // 🎨 Dibujar el avatar
         GLES20.glUseProgram(programId);
 
+        // ════════════════════════════════════════════════════════════
+        // ✅ DESACTIVAR FACE CULLING (como en Planeta)
+        // ════════════════════════════════════════════════════════════
+        // Esto evita que se vean "agujeros" o caras transparentes en la esfera
+        GLES20.glDisable(GLES20.GL_CULL_FACE);
+
+        // Asegurar depth test activo
+        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES20.glDepthFunc(GLES20.GL_LEQUAL);
+
+        // Habilitar blending para transparencia
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+
         // Calcular MVP usando CameraController
         camera.computeMvp(modelMatrix, mvpMatrix);
 
-        // Pasar uniforms
+        // ════════════════════════════════════════════════════════════
+        // ✅ UNIFORMS SIMPLES (solo MVP, texture y alpha)
+        // ════════════════════════════════════════════════════════════
         GLES20.glUniformMatrix4fv(uMVPLoc, 1, false, mvpMatrix, 0);
-        GLES20.glUniform1f(uTimeLoc, time);
-
-        // Uniforms adicionales requeridos por planeta_fragment.glsl
-        GLES20.glUniform1i(uUseSolidColorLoc, 0);  // 0 = usar textura
-        GLES20.glUniform4f(uSolidColorLoc, 1.0f, 1.0f, 1.0f, 1.0f);  // blanco (no afecta)
-        GLES20.glUniform1f(uAlphaLoc, 1.0f);  // alpha completo
+        GLES20.glUniform1f(uAlphaLoc, 1.0f);  // alpha completo (opaco)
 
         // Bind textura
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
@@ -341,8 +304,11 @@ public class AvatarSphere implements SceneObject, CameraAware {
         GLES20.glEnableVertexAttribArray(aTexCoordLoc);
         GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
 
-        // Dibujar
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, vertexCount);
+        // ════════════════════════════════════════════════════════════
+        // ✅ DIBUJAR CON glDrawElements (usando indexBuffer)
+        // ════════════════════════════════════════════════════════════
+        indexBuffer.position(0);
+        GLES20.glDrawElements(GLES20.GL_TRIANGLES, indexCount, GLES20.GL_UNSIGNED_SHORT, indexBuffer);
 
         // Deshabilitar atributos
         GLES20.glDisableVertexAttribArray(aPositionLoc);

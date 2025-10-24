@@ -163,9 +163,9 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         sharedCamera = new CameraController();
         textureManager = new TextureManager(context);
 
-        // CONFIGURAR CÁMARA EN POSICIÓN ÓPTIMA
+        // CONFIGURAR CÁMARA EN PERSPECTIVA FIJA (3/4 isométrica)
         sharedCamera.setMode(CameraController.CameraMode.PERSPECTIVE_3_4);
-        Log.d(TAG, "✓ Camera mode set to PERSPECTIVE_3_4");
+        Log.d(TAG, "📷 Camera mode set to PERSPECTIVE_3_4 - Cámara fija activada");
 
         // INICIALIZAR VISUALIZADOR MUSICAL
         musicVisualizer = new MusicVisualizer();
@@ -462,7 +462,6 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.e(TAG, "[SceneRenderer] ✗ Error creando fondo: " + e.getMessage());
         }
 
-
         // SOL CENTRAL CON NUEVO SHADER DE LAVA (CENTRADO EN 0,0,0)
         try {
             sol = new Planeta(
@@ -474,8 +473,8 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     0.0f,              // orbitRadiusZ = 0 (centro)
                     0.0f,              // orbitSpeed = 0 (sin órbita)
                     0.0f,              // scaleAmplitude = sin variación
-                    0.4f,              // instanceScale = tamaño del sol
-                    3.0f,              // spinSpeed = rotación muy lenta para lava
+                    0.55f,             // instanceScale = tamaño del sol (aumentado de 0.4 a 0.55)
+                    7.0f,              // spinSpeed = rotación más rápida (era 3.0)
                     false, null, 1.0f,
                     null, 1.0f
             );
@@ -484,6 +483,13 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             }
             sol.setMaxHealth(200);  // Sol tiene 200 HP (incrementado aún más para partidas más largas)
             sol.setOnExplosionListener(this);  // 💥 CONECTAR EXPLOSIÓN ÉPICA
+
+            // ═══ 💾 CARGAR HP GUARDADO ═══
+            sol.setPlayerStats(playerStats);  // Inyectar PlayerStats para auto-guardar
+            int savedSunHP = playerStats.getSavedSunHealth();
+            sol.setHealth(savedSunHP);  // Cargar HP guardado
+            Log.d(TAG, "  💾 Sol HP cargado: " + savedSunHP + "/200");
+
             sceneObjects.add(sol);
             Log.d(TAG, "  ✓ Sun added with lava shader (opaque) - HP: 200");
             Log.d(TAG, "  💥 Explosion listener connected for EPIC particle show");
@@ -537,26 +543,26 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.e(TAG, "  ✗ Error creando estrellas bailarinas: " + e.getMessage());
         }
 
-        // PLANETA ORBITANTE (REDUCIDO Y ALEJADO)
+        // 🌍 PLANETA TIERRA ORBITANDO AL SOL
         try {
             Planeta planeta1 = new Planeta(
                     context, textureManager,
                     "shaders/planeta_vertex.glsl",
                     "shaders/planeta_iluminado_fragment.glsl",  // SHADER CON ILUMINACIÓN
-                    R.drawable.textura_roninplaneta,
-                    3.2f, 2.8f, 0.3f,  // Órbita más amplia (alejada)
+                    R.drawable.texturaplanetatierra,            // ✨ TEXTURA DE LA TIERRA
+                    2.2f, 1.8f, 0.25f,  // Órbita más cercana al Sol (acercada de 2.5/2.0)
                     0.1f,              // Poca variación
-                    0.18f,             // REDUCIDO de 0.25 a 0.18 (28% más pequeño)
-                    30.0f,             // Rotación media
+                    0.24f,             // Tamaño aumentado (de 0.18 a 0.24 - 33% más grande)
+                    30.0f,             // Rotación media (simulando rotación terrestre)
                     false, null, 1.0f,
                     null,
-                    1.0f
+                    1.0f               // UV scale 1.0 para textura completa
             );
             if (planeta1 instanceof CameraAware) {
                 ((CameraAware) planeta1).setCameraController(sharedCamera);
             }
             sceneObjects.add(planeta1);
-            Log.d(TAG, "  ✓ Orbiting planet added with illumination");
+            Log.d(TAG, "  🌍 TIERRA añadida orbitando al Sol con iluminación");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creating planet: " + e.getMessage());
         }
@@ -584,6 +590,13 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     0.4f                // Pulsación LENTA (menos de la mitad de velocidad)
             );
             forceField.setCameraController(sharedCamera);
+
+            // ═══ 💾 CARGAR HP GUARDADO ═══
+            forceField.setPlayerStats(playerStats);  // Inyectar PlayerStats para auto-guardar
+            int savedForceFieldHP = playerStats.getSavedForceFieldHealth();
+            forceField.setHealth(savedForceFieldHP);  // Cargar HP guardado
+            Log.d(TAG, "  💾 ForceField HP cargado: " + savedForceFieldHP + "/50");
+
             sceneObjects.add(forceField);
             Log.d(TAG, "[SceneRenderer] ✓ Campo de fuerza interactivo agregado");
         } catch (Exception e) {
@@ -828,6 +841,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
 
             // Crear AvatarSphere (se creará sin textura primero)
             final AvatarSphere avatarSphere = new AvatarSphere(context, textureManager, null);
+            // Le pasamos la cámara para que pueda calcular MVP, pero se mantiene en posición fija
             avatarSphere.setCameraController(sharedCamera);
             sceneObjects.add(avatarSphere);
 

@@ -44,7 +44,9 @@
       "Bash(D:/adb/platform-tools/adb.exe kill-server:*)",
       "Bash(D:/adb/platform-tools/adb.exe start-server:*)",
       "Bash(D:/adb/platform-tools/adb.exe devices:*)",
-      "Bash(D:/adb/platform-tools/adb.exe shell pm:*)"
+      "Bash(D:/adb/platform-tools/adb.exe shell pm:*)",
+      "Bash(D:/adb/platform-tools/adb.exe shell:*)",
+      "Bash(D:/adb/platform-tools/adb.exe pull:*)"
     ],
     "deny": [],
     "ask": []

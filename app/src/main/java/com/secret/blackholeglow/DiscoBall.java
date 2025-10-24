@@ -12,6 +12,7 @@ import android.opengl.Matrix;
 import android.util.Log;
 
 import com.secret.blackholeglow.util.ObjLoader;
+import com.secret.blackholeglow.util.ProceduralSphere;
 
 import java.io.IOException;
 import java.nio.FloatBuffer;
@@ -79,35 +80,34 @@ public class DiscoBall implements SceneObject, CameraAware, MusicReactive {
         // Crear shader program
         shader = new DiscoBallShaderProgram(ctx);
 
-        // Cargar malla .obj (usamos planeta.obj que es una esfera)
-        ObjLoader.Mesh mesh;
-        try {
-            mesh = ObjLoader.loadObj(ctx, "planeta.obj");
-            Log.d(TAG, "Malla cargada: " + mesh.vertexCount + " vértices");
-        } catch (IOException e) {
-            throw new RuntimeException("Error cargando planeta.obj para disco ball", e);
-        }
+        // ════════════════════════════════════════════════════════════
+        // ✅ USAR ESFERA PROCEDURAL con UVs perfectos
+        // ════════════════════════════════════════════════════════════
+        // En lugar de cargar planeta.obj (que tiene problemas de UV seam),
+        // generamos una esfera matemáticamente con UVs correctos.
+        //
+        // Resolución: MEDIUM (16 latitudes x 32 longitudes)
+        //  - Suficiente calidad visual para la cuadrícula de disco ball
+        //  - Buen rendimiento
+        //
+        // Si necesitas más detalle, usa: ProceduralSphere.generateHigh(1.0f)
+        // ════════════════════════════════════════════════════════════
+
+        Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Log.d(TAG, "✨ Usando ESFERA PROCEDURAL (UVs perfectos)");
+        Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+        ProceduralSphere.Mesh mesh = ProceduralSphere.generateMedium(1.0f);
 
         vertexBuffer = mesh.vertexBuffer;
         texCoordBuffer = mesh.uvBuffer;
+        normalBuffer = mesh.normalBuffer;  // ← Ya viene con normales correctas
+        indexBuffer = mesh.indexBuffer;    // ← Ya viene con índices listos
+        indexCount = mesh.indexCount;
 
-        // ============================================
-        // CALCULAR NORMALES (para iluminación)
-        // ============================================
-        // Para una esfera centrada en origen, normal = posición normalizada
-        normalBuffer = mesh.vertexBuffer.duplicate();  // Las normales son iguales a vértices en esfera unitaria
-
-        // ============================================
-        // CONSTRUIR ÍNDICES
-        // ============================================
-        List<short[]> faces = mesh.faces;
-        int triCount = 0;
-        for (short[] f : faces) {
-            triCount += f.length - 2;
-        }
-        indexCount = triCount * 3;
-
-        indexBuffer = ObjLoader.buildIndexBuffer(faces, indexCount);
+        Log.d(TAG, "✓ Disco ball mesh preparada:");
+        Log.d(TAG, "  Vértices: " + mesh.vertexCount);
+        Log.d(TAG, "  Índices: " + indexCount + " (" + (indexCount / 3) + " triángulos)");
 
         // ============================================
         // OBTENER ATTRIBUTE LOCATIONS
