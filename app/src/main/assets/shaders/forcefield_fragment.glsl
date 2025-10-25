@@ -133,7 +133,7 @@ void main() {
     }
 
     // ============================================
-    // EFECTOS DE IMPACTO
+    // EFECTOS DE IMPACTO - SIMPLIFICADOS Y LIMPIOS
     // ============================================
 
     vec3 impactGlow = vec3(0.0);
@@ -142,22 +142,19 @@ void main() {
     for (int i = 0; i < 8; i++) {
         if (u_ImpactIntensity[i] > 0.0) {
             float impactDist = length(v_WorldPos - u_ImpactPos[i]);
-            float impactRadius = 0.45;
+            float impactRadius = 0.35;  // Radio más pequeño para impactos más concentrados
 
             if (impactDist < impactRadius) {
+                // Gradiente suave desde el centro del impacto
                 float impactStrength = (1.0 - (impactDist / impactRadius)) * u_ImpactIntensity[i];
-                impactStrength = pow(impactStrength, 1.5);  // Curva suave
+                impactStrength = pow(impactStrength, 2.5);  // Curva más pronunciada = bordes más difusos
 
-                // Onda expansiva brillante
-                float wave = sin(impactDist * 25.0 - u_Time * 12.0) * 0.5 + 0.5;
-                wave = pow(wave, 2.0);
+                // Destello simple sin ondas complejas (elimina manchas)
+                vec3 impactColor = baseColor * 1.2 + vec3(1.0) * 0.3;  // Color azul eléctrico brillante
+                impactGlow += impactColor * impactStrength * 0.8;
 
-                // Resplandor blanco-azulado del impacto
-                vec3 impactColor = vec3(1.0, 1.0, 1.0) * 0.8 + baseColor * 0.4;
-                impactGlow += impactColor * impactStrength * wave * 1.8;
-
-                // Aumentar alpha en zona de impacto
-                impactAlphaBoost += impactStrength * 0.6;
+                // Aumentar alpha solo en el punto de impacto
+                impactAlphaBoost += impactStrength * 0.9;
             }
         }
     }
@@ -165,16 +162,17 @@ void main() {
     finalColor += impactGlow;
 
     // ============================================
-    // ALPHA FINAL - MÁS TRANSPARENTE
+    // ALPHA FINAL - EXTREMADAMENTE TRANSPARENTE
     // ============================================
 
-    // Alpha base reducido, con Fresnel para bordes brillantes
-    float finalAlpha = baseAlpha * 0.65;  // 65% del alpha original → más transparente
-    finalAlpha *= (0.3 + fresnel * 0.7);  // Más transparente al centro
-    finalAlpha += impactAlphaBoost;
+    // Alpha base EXTREMADAMENTE reducido (prácticamente invisible sin impactos)
+    float finalAlpha = baseAlpha * 0.003;  // Solo 0.3% del alpha → casi imperceptible
 
-    // Modulación suave con el patrón de energía
-    finalAlpha *= (0.85 + energyPattern * 0.15);
+    // Fresnel ULTRA sutil solo en los bordes (apenas visible)
+    finalAlpha *= (0.01 + fresnel * 0.05);  // Extremadamente transparente
+
+    // Los impactos son lo ÚNICO visible
+    finalAlpha += impactAlphaBoost;
 
     // ============================================
     // SALIDA FINAL

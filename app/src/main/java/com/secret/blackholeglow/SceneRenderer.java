@@ -462,13 +462,13 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.e(TAG, "[SceneRenderer] ✗ Error creando fondo: " + e.getMessage());
         }
 
-        // SOL CENTRAL CON NUEVO SHADER DE LAVA (CENTRADO EN 0,0,0)
+        // SOL CENTRAL CON TEXTURA VOLCÁNICA REALISTA (CENTRADO EN 0,0,0)
         try {
             sol = new Planeta(
                     context, textureManager,
                     "shaders/planeta_vertex.glsl",
-                    "shaders/sol_lava_fragment.glsl",  // NUEVO SHADER DE LAVA
-                    R.drawable.textura_sol,
+                    "shaders/planeta_iluminado_fragment.glsl",  // ✨ MISMO SHADER QUE LA TIERRA - MUESTRA LA TEXTURA
+                    R.drawable.texturasolvolcanico,  // ✨ TEXTURA VOLCÁNICA REALISTA
                     0.0f,              // orbitRadiusX = 0 (centro)
                     0.0f,              // orbitRadiusZ = 0 (centro)
                     0.0f,              // orbitSpeed = 0 (sin órbita)
@@ -490,9 +490,16 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             sol.setHealth(savedSunHP);  // Cargar HP guardado
             Log.d(TAG, "  💾 Sol HP cargado: " + savedSunHP + "/200");
 
+            // ═══ 🌞 SINCRONIZACIÓN CON TIEMPO REAL ACELERADA ═══
+            sol.setRealTimeRotation(true);           // Rotación sincronizada con tiempo real
+            sol.setRealTimeRotationPeriod(27 * 24);  // Sol rota cada 27 días terrestres (648 horas)
+            sol.setTimeAccelerationFactor(120.0f);   // Acelerar 120x para que sea visible
+            Log.d(TAG, "  ⏰ Sol configurado: 27 días real → " + (27 * 24 * 60 / 120) + " min acelerado");
+
             sceneObjects.add(sol);
-            Log.d(TAG, "  ✓ Sun added with lava shader (opaque) - HP: 200");
+            Log.d(TAG, "  ✓ Sun added with Fresnel Glow shader - HP: 200");
             Log.d(TAG, "  💥 Explosion listener connected for EPIC particle show");
+            Log.d(TAG, "  ✨ Fresnel Glow effect: Edges glow brighter than center");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creating sun: " + e.getMessage());
         }
@@ -543,9 +550,10 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.e(TAG, "  ✗ Error creando estrellas bailarinas: " + e.getMessage());
         }
 
-        // 🌍 PLANETA TIERRA ORBITANDO AL SOL
+        // 🌍 PLANETA TIERRA ORBITANDO AL SOL (INDICADOR DE HORAS)
+        Planeta planetaTierra = null;  // Referencia para la Luna
         try {
-            Planeta planeta1 = new Planeta(
+            planetaTierra = new Planeta(
                     context, textureManager,
                     "shaders/planeta_vertex.glsl",
                     "shaders/planeta_iluminado_fragment.glsl",  // SHADER CON ILUMINACIÓN
@@ -558,13 +566,98 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     null,
                     1.0f               // UV scale 1.0 para textura completa
             );
-            if (planeta1 instanceof CameraAware) {
-                ((CameraAware) planeta1).setCameraController(sharedCamera);
+            if (planetaTierra instanceof CameraAware) {
+                ((CameraAware) planetaTierra).setCameraController(sharedCamera);
             }
-            sceneObjects.add(planeta1);
+
+            // ═══ 🕐 RELOJ ASTRONÓMICO - TIERRA = SEGUNDOS (60 segundos por órbita) ═══
+            planetaTierra.setRealTimeRotation(true);        // Rotación sincronizada
+            planetaTierra.setRealTimeRotationPeriod(24);    // 24 horas/rotación
+            planetaTierra.setRealTimeOrbit(true);           // Órbita = indicador de SEGUNDOS
+            planetaTierra.setRealTimeOrbitPeriod(1.0f / 60.0f);    // 1/60 hora = 60 segundos
+            planetaTierra.setTimeAccelerationFactor(1.0f);  // Sin aceleración - tiempo REAL
+            Log.d(TAG, "  🕐 TIERRA configurada como indicador de SEGUNDOS:");
+            Log.d(TAG, "     • Órbita completa = 60 segundos REALES");
+
+            sceneObjects.add(planetaTierra);
             Log.d(TAG, "  🌍 TIERRA añadida orbitando al Sol con iluminación");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creating planet: " + e.getMessage());
+        }
+
+        // 🔴 PLANETA MARTE - INDICADOR DE MINUTOS (60 minutos por órbita)
+        try {
+            Planeta planetaMarte = new Planeta(
+                    context, textureManager,
+                    "shaders/planeta_vertex.glsl",
+                    "shaders/planeta_iluminado_fragment.glsl",
+                    R.drawable.textura_marte,            // Textura de Marte
+                    3.0f, 2.5f, 0.30f,  // Órbita más externa que la Tierra
+                    0.08f,              // Poca variación
+                    0.18f,              // Tamaño menor que la Tierra
+                    25.0f,              // Rotación media
+                    false, null, 1.0f,
+                    null,
+                    1.0f
+            );
+            if (planetaMarte instanceof CameraAware) {
+                ((CameraAware) planetaMarte).setCameraController(sharedCamera);
+            }
+
+            // ═══ 🕐 RELOJ ASTRONÓMICO - MARTE = MINUTOS (60 minutos por órbita) ═══
+            planetaMarte.setRealTimeRotation(true);
+            planetaMarte.setRealTimeRotationPeriod(24);
+            planetaMarte.setRealTimeOrbit(true);           // Órbita = indicador de MINUTOS
+            planetaMarte.setRealTimeOrbitPeriod(1.0f);     // 1 hora = 60 minutos (TIEMPO REAL)
+            planetaMarte.setTimeAccelerationFactor(1.0f);  // Sin aceleración - tiempo REAL
+            Log.d(TAG, "  🕐 MARTE configurado como indicador de MINUTOS:");
+            Log.d(TAG, "     • Órbita completa = 60 minutos REALES");
+
+            sceneObjects.add(planetaMarte);
+            Log.d(TAG, "  🔴 MARTE añadido orbitando al Sol");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating Mars: " + e.getMessage());
+        }
+
+        // 🌙 LUNA - INDICADOR DE SEGUNDOS (60 segundos por órbita alrededor de la Tierra)
+        try {
+            Planeta planetaLuna = new Planeta(
+                    context, textureManager,
+                    "shaders/planeta_vertex.glsl",
+                    "shaders/planeta_iluminado_fragment.glsl",
+                    R.drawable.textura_luna,             // Textura de la Luna
+                    0.5f, 0.4f, 1.0f,    // Órbita pequeña (alrededor de la Tierra, NO del Sol)
+                    0.05f,               // Muy poca variación
+                    0.10f,               // Pequeña (como una luna)
+                    10.0f,               // Rotación lenta
+                    false, null, 1.0f,
+                    null,
+                    1.0f
+            );
+            if (planetaLuna instanceof CameraAware) {
+                ((CameraAware) planetaLuna).setCameraController(sharedCamera);
+            }
+
+            // ═══ 🕐 RELOJ ASTRONÓMICO - LUNA = SEGUNDOS (40 segundos por órbita - más rápida) ═══
+            // La Luna orbita la Tierra (no el Sol)
+            if (planetaTierra != null) {
+                planetaLuna.setParentPlanet(planetaTierra);
+                Log.d(TAG, "     • Luna configurada para orbitar la Tierra");
+            }
+
+            planetaLuna.setRealTimeRotation(true);
+            planetaLuna.setRealTimeRotationPeriod(1);
+            planetaLuna.setRealTimeOrbit(true);            // Órbita = indicador de SEGUNDOS
+            planetaLuna.setRealTimeOrbitPeriod(1.0f / 90.0f);  // 1/90 hora = 40 segundos (más rápida)
+            planetaLuna.setTimeAccelerationFactor(1.0f);   // Sin aceleración - tiempo REAL
+            Log.d(TAG, "  🕐 LUNA configurada como indicador de SEGUNDOS:");
+            Log.d(TAG, "     • Órbita completa = 40 segundos REALES (acelerada)");
+            Log.d(TAG, "     • Orbita alrededor de la TIERRA (no del Sol)");
+
+            sceneObjects.add(planetaLuna);
+            Log.d(TAG, "  🌙 LUNA añadida orbitando a la Tierra");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating Moon: " + e.getMessage());
         }
 
         // BARRA DE PODER DE BATERÍA - UI ELEMENT
@@ -577,17 +670,26 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.e(TAG, "  ✗ Error creating power bar: " + e.getMessage());
         }
 
-        // CAMPO DE FUERZA INTERACTIVO DEL SOL - AZUL ELÉCTRICO (CENTRADO CON EL SOL)
+        // 👋 SALUDO PERSONALIZADO CON NOMBRE DE USUARIO
+        try {
+            GreetingText greetingText = new GreetingText(context);
+            sceneObjects.add(greetingText);
+            Log.d(TAG, "  👋 Greeting text added");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating greeting text: " + e.getMessage());
+        }
+
+        // CAMPO DE FUERZA INTERACTIVO DEL SOL - CASI INVISIBLE, MÁS GRANDE
         try {
             forceField = new ForceField(
                     context, textureManager,
                     0.0f, 0.0f, 0.0f,   // CENTRADO con el sol en (0, 0, 0)
-                    0.55f,              // Radio más pequeño y contenido
+                    0.85f,              // Radio más grande que antes (0.85 vs 0.68)
                     R.drawable.fondo_transparente,  // Textura transparente para efectos puros
-                    new float[]{0.2f, 0.6f, 1.0f},  // Color azul eléctrico brillante
-                    0.66f,              // Alpha más visible
-                    0.06f,              // Pulsación MUY sutil (6% de variación)
-                    0.4f                // Pulsación LENTA (menos de la mitad de velocidad)
+                    new float[]{0.3f, 0.9f, 1.0f},  // Color azul eléctrico suave
+                    0.0f,               // ✨ CASI INVISIBLE (alpha 0%, solo impactos)
+                    0.03f,              // Pulsación ULTRA sutil (3% de variación)
+                    0.3f                // Pulsación ULTRA LENTA
             );
             forceField.setCameraController(sharedCamera);
 

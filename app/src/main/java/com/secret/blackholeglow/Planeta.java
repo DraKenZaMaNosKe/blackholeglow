@@ -78,6 +78,21 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
     private float musicBeatPulse = 0f;     // Pulso por beats
     private long lastMusicLogTime = 0;     // Para logs periódicos
 
+    // ===== 🌍 SISTEMA DE SINCRONIZACIÓN CON TIEMPO REAL =====
+    private boolean useRealTimeRotation = false;   // Sincronizar rotación con hora del día
+    private boolean useRealTimeOrbit = false;      // Sincronizar órbita con día del año
+    private float realTimeRotationPeriodHours = 24.0f;  // Horas por rotación completa (24h = Tierra, 27*24h = Sol)
+    private float realTimeOrbitPeriodHours = 365.25f * 24.0f;  // Horas por órbita completa (365.25 días = Tierra)
+    private float timeAccelerationFactor = 1.0f;      // Tiempo REAL sin aceleración - Reloj Astronómico ⏰
+
+    // ===== 🌙 SISTEMA DE ÓRBITA RELATIVA (para Luna orbitando Tierra) =====
+    private Planeta parentPlanet = null;           // Planeta padre (ej: Tierra para Luna)
+    private float[] currentOrbitalPosition = new float[3];  // Posición orbital actual {x, y, z}
+
+    // ===== 🔍 DEBUG - Contador para logs periódicos de órbitas =====
+    private int orbitDebugCounter = 0;
+    private static final int ORBIT_DEBUG_INTERVAL = 60;  // Log cada 60 frames (~1 segundo a 60fps)
+
     // Constantes mejoradas
     private static final float BASE_SCALE = 1.0f; // Escala base más grande
     private static final float SCALE_OSC_FREQ = 0.2f;
@@ -195,20 +210,86 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
             float healthPercent = (float)currentHealth / maxHealth;
             isCritical = healthPercent < 0.3f && maxHealth > 0;
 
-            // 🔥 ACTUALIZAR PARPADEO DE ADVERTENCIA
+            // 🔥 ACTUALIZAR PARPADEO DE ADVERTENCIA (más lento, no acelerado)
             if (isCritical) {
-                criticalFlashTimer += dt * 8.0f;  // Parpadea rápido (8x velocidad)
+                criticalFlashTimer += dt * 3.0f;  // Parpadea moderado (3x velocidad - menos acelerado)
             }
 
-            // Velocidad de rotación reactiva a la música
-            float currentSpinSpeed = spinSpeed;
-            if (musicReactive && musicSpeedBoost > 0) {
-                currentSpinSpeed *= (1.0f + musicSpeedBoost);
-            }
-            rotation = (rotation + dt * currentSpinSpeed) % 360f;
+            // ===== 🌍 ROTACIÓN - Sincronizada con tiempo real o animada =====
+            if (useRealTimeRotation) {
+                // MODO TIEMPO REAL ACELERADO: Calcular ángulo basado en la hora actual
+                java.util.Calendar calendar = java.util.Calendar.getInstance();
+                int hour = calendar.get(java.util.Calendar.HOUR_OF_DAY);
+                int minute = calendar.get(java.util.Calendar.MINUTE);
+                int second = calendar.get(java.util.Calendar.SECOND);
+                int millis = calendar.get(java.util.Calendar.MILLISECOND);
 
-            // Órbita con velocidad reactiva a la música
-            if (orbitRadiusX > 0 && orbitRadiusZ > 0 && orbitSpeed > 0) {
+                // Calcular fracción del día (0.0 a 1.0) con precisión de milisegundos
+                float dayFraction = (hour + minute / 60.0f + second / 3600.0f + millis / 3600000.0f) / realTimeRotationPeriodHours;
+
+                // Aplicar aceleración de tiempo (120x = 1 minuto real = 1 hora simulada)
+                dayFraction = (dayFraction * timeAccelerationFactor) % 1.0f;
+
+                // Convertir a ángulo (0 a 360 grados)
+                rotation = (dayFraction * 360.0f) % 360f;
+            } else {
+                // MODO ANIMADO: Rotación continua normal
+                float currentSpinSpeed = spinSpeed;
+                if (musicReactive && musicSpeedBoost > 0) {
+                    currentSpinSpeed *= (1.0f + musicSpeedBoost);
+                }
+                rotation = (rotation + dt * currentSpinSpeed) % 360f;
+            }
+
+            // ===== 🪐 ÓRBITA - Sincronizada con tiempo real o animada =====
+            if (useRealTimeOrbit && orbitRadiusX > 0 && orbitRadiusZ > 0) {
+                // MODO TIEMPO REAL: Calcular ángulo basado en el tiempo actual
+                java.util.Calendar calendar = java.util.Calendar.getInstance();
+                int hour = calendar.get(java.util.Calendar.HOUR_OF_DAY);
+                int minute = calendar.get(java.util.Calendar.MINUTE);
+                int second = calendar.get(java.util.Calendar.SECOND);
+                int millis = calendar.get(java.util.Calendar.MILLISECOND);
+
+                // Calcular tiempo actual según el período orbital
+                float currentTime = 0;
+
+                if (realTimeOrbitPeriodHours >= 24.0f) {
+                    // Períodos de días (>= 24 horas): usar día del año
+                    int dayOfYear = calendar.get(java.util.Calendar.DAY_OF_YEAR);
+                    currentTime = (dayOfYear - 1) * 24.0f + hour + minute / 60.0f + second / 3600.0f + millis / 3600000.0f;
+                } else if (realTimeOrbitPeriodHours > 1.0f) {
+                    // Períodos de múltiples horas (> 1 hora): usar horas del día
+                    currentTime = hour + minute / 60.0f + second / 3600.0f + millis / 3600000.0f;
+                } else if (realTimeOrbitPeriodHours == 1.0f) {
+                    // Período de 1 hora exacta: usar solo minutos dentro de la hora actual
+                    currentTime = minute / 60.0f + second / 3600.0f + millis / 3600000.0f;
+                } else if (realTimeOrbitPeriodHours >= 1.0f / 60.0f) {
+                    // Períodos de minutos (>= 1 minuto): usar segundos dentro del minuto actual
+                    currentTime = second / 3600.0f + millis / 3600000.0f;
+                } else {
+                    // Períodos menores a 1 minuto: usar solo segundos
+                    currentTime = second / 3600.0f + millis / 3600000.0f;
+                }
+
+                // Calcular fracción de órbita (0.0 a 1.0) basada en período configurado
+                float orbitFraction = (currentTime * timeAccelerationFactor / realTimeOrbitPeriodHours) % 1.0f;
+
+                // Convertir a ángulo (0 a 2π)
+                // IMPORTANTE: Negativo para movimiento en sentido de las manecillas del reloj
+                orbitAngle = -orbitFraction * 2f * (float)Math.PI;
+
+                // 🔍 DEBUG: Log periódico de cálculos orbitales (para verificar que Marte se mueve)
+                orbitDebugCounter++;
+                if (orbitDebugCounter >= ORBIT_DEBUG_INTERVAL) {
+                    orbitDebugCounter = 0;
+                    if (realTimeOrbitPeriodHours <= 24.0f) {  // Solo para planetas del reloj astronómico
+                        Log.d(TAG, String.format("⏰ ÓRBITA [Período=%.2fh] Time=%.4f, Fraction=%.4f, Angle=%.2f° (%.3frad)",
+                            realTimeOrbitPeriodHours, currentTime, orbitFraction,
+                            Math.toDegrees(orbitAngle), orbitAngle));
+                    }
+                }
+            } else if (orbitRadiusX > 0 && orbitRadiusZ > 0 && orbitSpeed > 0) {
+                // MODO ANIMADO: Órbita continua normal
                 float currentOrbitSpeed = orbitSpeed;
                 if (musicReactive && musicSpeedBoost > 0) {
                     currentOrbitSpeed *= (1.0f + musicSpeedBoost);
@@ -259,6 +340,21 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
         if (orbitRadiusX > 0 && orbitRadiusZ > 0) {
             float ox = orbitRadiusX * (float)Math.cos(orbitAngle);
             float oz = orbitRadiusZ * (float)Math.sin(orbitAngle);
+
+            // 🌙 Si tiene planeta padre, orbitar alrededor de él en lugar del Sol
+            if (parentPlanet != null) {
+                float[] parentPos = parentPlanet.getCurrentOrbitalPosition();
+                ox += parentPos[0];  // Sumar posición X del padre
+                oz += parentPos[2];  // Sumar posición Z del padre
+                Log.v(TAG, String.format("🌙 Órbita relativa: parent=(%.2f, %.2f) local=(%.2f, %.2f)",
+                    parentPos[0], parentPos[2], ox, oz));
+            }
+
+            // Guardar posición orbital actual (para lunas que dependan de este planeta)
+            currentOrbitalPosition[0] = ox;
+            currentOrbitalPosition[1] = 0;
+            currentOrbitalPosition[2] = oz;
+
             Matrix.translateM(model, 0, ox, 0, oz);
 
             Log.v(TAG, String.format("Órbita: x=%.2f z=%.2f angle=%.2f", ox, oz, orbitAngle));
@@ -311,8 +407,8 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
             finalColor[1] = solidColor[1] * (1 - flashValue) + dangerColor[1] * flashValue;
             finalColor[2] = solidColor[2] * (1 - flashValue) + dangerColor[2] * flashValue;
 
-            // Alpha también parpadea (más visible cuando está crítico)
-            finalAlpha = alpha * (0.7f + flashValue * 0.3f);
+            // ✨ ALPHA SIEMPRE OPACO (sin transparencia, más realista)
+            finalAlpha = 1.0f;  // El sol NO se hace transparente
         }
 
         GLES20.glUniform1i(uUseSolidColorLoc, useSolidColor ? 1 : 0);
@@ -488,5 +584,78 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
     @Override
     public boolean isMusicReactive() {
         return musicReactive;
+    }
+
+    // ===== 🌍 MÉTODOS DE SINCRONIZACIÓN CON TIEMPO REAL =====
+
+    /**
+     * Activa/desactiva la sincronización de rotación con la hora del día
+     * @param enabled true para sincronizar con la hora actual
+     */
+    public void setRealTimeRotation(boolean enabled) {
+        this.useRealTimeRotation = enabled;
+        Log.d(TAG, "🌍 Rotación en tiempo real " + (enabled ? "ACTIVADA" : "DESACTIVADA"));
+    }
+
+    /**
+     * Activa/desactiva la sincronización de órbita con el día del año
+     * @param enabled true para sincronizar con el calendario
+     */
+    public void setRealTimeOrbit(boolean enabled) {
+        this.useRealTimeOrbit = enabled;
+        Log.d(TAG, "🪐 Órbita en tiempo real " + (enabled ? "ACTIVADA" : "DESACTIVADA"));
+    }
+
+    /**
+     * Configura el período de rotación en horas para sincronización con tiempo real
+     * @param hours Horas por rotación completa (24 = Tierra, 27*24 = Sol)
+     */
+    public void setRealTimeRotationPeriod(float hours) {
+        this.realTimeRotationPeriodHours = hours;
+        Log.d(TAG, "⏰ Período de rotación configurado: " + hours + " horas");
+    }
+
+    /**
+     * Configura el período de órbita en horas para sincronización con tiempo real (RELOJ ASTRONÓMICO)
+     * @param hours Horas por órbita completa (24 = Tierra-horas, 1 = Marte-minutos, 1/60 = Luna-segundos)
+     */
+    public void setRealTimeOrbitPeriod(float hours) {
+        this.realTimeOrbitPeriodHours = hours;
+        Log.d(TAG, "🪐 Período de órbita configurado: " + hours + " horas");
+    }
+
+    /**
+     * Configura el factor de aceleración del tiempo
+     * @param factor Multiplicador de velocidad (60 = 60x más rápido, 120 = 120x, etc.)
+     *               120x = La Tierra rota cada 12 minutos, órbita cada ~3 horas
+     */
+    public void setTimeAccelerationFactor(float factor) {
+        this.timeAccelerationFactor = factor;
+        Log.d(TAG, "⚡ Aceleración de tiempo configurada: " + factor + "x");
+        Log.d(TAG, "   • Rotación de 24h → " + (24 * 60 / factor) + " min reales");
+        Log.d(TAG, "   • Órbita de 365d → " + (365 * 24 * 60 / factor) + " min reales (~" + (365 * 24 / factor) + "h)");
+    }
+
+    /**
+     * 🌙 Configura un planeta padre para que este planeta orbite alrededor de él
+     * Útil para crear lunas orbitando planetas (ej: Luna orbitando Tierra)
+     * @param parent Planeta padre alrededor del cual orbitar (null = orbitar el Sol)
+     */
+    public void setParentPlanet(Planeta parent) {
+        this.parentPlanet = parent;
+        if (parent != null) {
+            Log.d(TAG, "🌙 Planeta configurado para orbitar alrededor de otro planeta (sistema luna-planeta)");
+        } else {
+            Log.d(TAG, "🪐 Planeta configurado para orbitar alrededor del Sol (sistema normal)");
+        }
+    }
+
+    /**
+     * Obtiene la posición orbital actual del planeta en coordenadas del mundo
+     * Útil para que otros objetos (lunas) puedan orbitar alrededor de este planeta
+     * @return Array {x, y, z} con la posición actual
+     */
+    public float[] getCurrentOrbitalPosition() {
+        return currentOrbitalPosition.clone();
     }
 }

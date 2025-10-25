@@ -61,19 +61,14 @@ void main() {
     vec3 sunColor = vec3(1.0, 0.95, 0.8);  // Color cálido del sol
     vec3 diffuseColor = baseColor.rgb * sunColor * diffuseFactor * 0.8;
 
-    // 3. Luz de Borde (Rim Light) - para resaltar la silueta
-    float rimFactor = 1.0 - max(0.0, dot(normal, vec3(0.0, 0.0, 1.0)));
-    rimFactor = pow(rimFactor, 2.0);
-    vec3 rimColor = sunColor * rimFactor * 0.3;
-
-    // 4. Sombra propia - oscurecer el lado opuesto al sol
+    // 3. Sombra propia - oscurecer el lado opuesto al sol
     float shadowFactor = smoothstep(-0.2, 0.3, diffuseFactor);
 
     // ============================================
     // COMBINAR ILUMINACIÓN
     // ============================================
 
-    vec3 finalColor = ambientColor + (diffuseColor * shadowFactor) + rimColor;
+    vec3 finalColor = ambientColor + (diffuseColor * shadowFactor);
 
     // Añadir un poco de variación con el tiempo (opcional)
     float pulse = sin(u_Time * 2.0) * 0.02 + 0.98;
