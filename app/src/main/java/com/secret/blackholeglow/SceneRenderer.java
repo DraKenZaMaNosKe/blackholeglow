@@ -473,8 +473,8 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     0.0f,              // orbitRadiusZ = 0 (centro)
                     0.0f,              // orbitSpeed = 0 (sin órbita)
                     0.0f,              // scaleAmplitude = sin variación
-                    0.55f,             // instanceScale = tamaño del sol (aumentado de 0.4 a 0.55)
-                    7.0f,              // spinSpeed = rotación más rápida (era 3.0)
+                    0.45f,             // instanceScale = Sol grande (estrella principal)
+                    35.0f,             // spinSpeed = rotación MUY visible
                     false, null, 1.0f,
                     null, 1.0f
             );
@@ -558,10 +558,10 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     "shaders/planeta_vertex.glsl",
                     "shaders/planeta_iluminado_fragment.glsl",  // SHADER CON ILUMINACIÓN
                     R.drawable.texturaplanetatierra,            // ✨ TEXTURA DE LA TIERRA
-                    2.2f, 1.8f, 0.25f,  // Órbita más cercana al Sol (acercada de 2.5/2.0)
+                    2.4f, 2.0f, 0.25f,  // Órbita más cercana al Sol
                     0.1f,              // Poca variación
-                    0.24f,             // Tamaño aumentado (de 0.18 a 0.24 - 33% más grande)
-                    30.0f,             // Rotación media (simulando rotación terrestre)
+                    0.15f,             // Tamaño realista (más pequeña que el Sol)
+                    80.0f,             // Rotación MUY visible
                     false, null, 1.0f,
                     null,
                     1.0f               // UV scale 1.0 para textura completa
@@ -592,10 +592,10 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     "shaders/planeta_vertex.glsl",
                     "shaders/planeta_iluminado_fragment.glsl",
                     R.drawable.textura_marte,            // Textura de Marte
-                    3.0f, 2.5f, 0.30f,  // Órbita más externa que la Tierra
+                    3.2f, 2.7f, 0.30f,  // Órbita más cercana (ligeramente)
                     0.08f,              // Poca variación
-                    0.18f,              // Tamaño menor que la Tierra
-                    25.0f,              // Rotación media
+                    0.12f,              // Tamaño realista (más pequeño que la Tierra)
+                    90.0f,              // Rotación MUY visible (casi el doble)
                     false, null, 1.0f,
                     null,
                     1.0f
@@ -604,14 +604,14 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                 ((CameraAware) planetaMarte).setCameraController(sharedCamera);
             }
 
-            // ═══ 🕐 RELOJ ASTRONÓMICO - MARTE = MINUTOS (60 minutos por órbita) ═══
+            // ═══ 🕐 RELOJ ASTRONÓMICO - MARTE = CADA MINUTO (órbita rápida) ═══
             planetaMarte.setRealTimeRotation(true);
             planetaMarte.setRealTimeRotationPeriod(24);
-            planetaMarte.setRealTimeOrbit(true);           // Órbita = indicador de MINUTOS
-            planetaMarte.setRealTimeOrbitPeriod(1.0f);     // 1 hora = 60 minutos (TIEMPO REAL)
+            planetaMarte.setRealTimeOrbit(true);           // Órbita = cada minuto
+            planetaMarte.setRealTimeOrbitPeriod(1.0f / 60.0f);  // 1/60 hora = 1 minuto REAL
             planetaMarte.setTimeAccelerationFactor(1.0f);  // Sin aceleración - tiempo REAL
-            Log.d(TAG, "  🕐 MARTE configurado como indicador de MINUTOS:");
-            Log.d(TAG, "     • Órbita completa = 60 minutos REALES");
+            Log.d(TAG, "  🕐 MARTE configurado para órbita RÁPIDA:");
+            Log.d(TAG, "     • Órbita completa = 1 minuto REAL (60 segundos)");
 
             sceneObjects.add(planetaMarte);
             Log.d(TAG, "  🔴 MARTE añadido orbitando al Sol");
@@ -626,10 +626,10 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     "shaders/planeta_vertex.glsl",
                     "shaders/planeta_iluminado_fragment.glsl",
                     R.drawable.textura_luna,             // Textura de la Luna
-                    0.5f, 0.4f, 1.0f,    // Órbita pequeña (alrededor de la Tierra, NO del Sol)
+                    0.6f, 0.5f, 1.0f,    // Órbita más cercana a la Tierra
                     0.05f,               // Muy poca variación
-                    0.10f,               // Pequeña (como una luna)
-                    10.0f,               // Rotación lenta
+                    0.06f,               // Pequeña (proporción realista con la Tierra)
+                    20.0f,               // Rotación visible
                     false, null, 1.0f,
                     null,
                     1.0f

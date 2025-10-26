@@ -96,7 +96,7 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
     // Constantes mejoradas
     private static final float BASE_SCALE = 1.0f; // Escala base más grande
     private static final float SCALE_OSC_FREQ = 0.2f;
-    private static final float MUSIC_SCALE_FACTOR = 0.3f;    // Factor de escala musical (30% máx)
+    private static final float MUSIC_SCALE_FACTOR = 0.10f;    // Factor de escala musical (10% máx - más sutil)
     private static final float MUSIC_SPEED_FACTOR = 2.0f;    // Factor de velocidad (2x máx)
     private static final float MUSIC_BEAT_FACTOR = 0.2f;     // Factor de pulso por beat (20%)
 

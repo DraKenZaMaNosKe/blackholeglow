@@ -52,8 +52,8 @@ public class GreetingText implements SceneObject {
     private State currentState = State.HIDDEN;
 
     // Posición y tamaño
-    private float x = 0.05f;  // Parte inferior izquierda (5% desde la izquierda)
-    private float y = 0.15f;  // 15% desde abajo
+    private float x = 0.08f;  // Parte inferior izquierda (5% desde la izquierda)
+    private float y = 0.8f;  // 15% desde abajo
     private float width = 0.5f;   // 50% del ancho de pantalla
     private float height = 0.08f; // 8% de altura
 

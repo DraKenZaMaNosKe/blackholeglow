@@ -50,25 +50,40 @@ void main() {
     vec3 lightDir = normalize(vec3(-v_WorldPos.x, -v_WorldPos.y, 1.0));
 
     // ============================================
-    // COMPONENTES DE ILUMINACIÓN
+    // COMPONENTES DE ILUMINACIÓN MEJORADA
     // ============================================
 
     // 1. Luz Ambiente - siempre presente para que no quede totalmente negro
-    vec3 ambientColor = baseColor.rgb * 0.2;  // 20% de luz ambiente
+    vec3 ambientColor = baseColor.rgb * 0.15;  // Reducido a 15% para mejor contraste
 
     // 2. Luz Difusa - iluminación principal del sol
     float diffuseFactor = max(0.0, dot(normal, lightDir));
     vec3 sunColor = vec3(1.0, 0.95, 0.8);  // Color cálido del sol
-    vec3 diffuseColor = baseColor.rgb * sunColor * diffuseFactor * 0.8;
+    vec3 diffuseColor = baseColor.rgb * sunColor * diffuseFactor * 0.9;
 
-    // 3. Sombra propia - oscurecer el lado opuesto al sol
-    float shadowFactor = smoothstep(-0.2, 0.3, diffuseFactor);
+    // 3. Sombra propia - lado oscuro más definido
+    float shadowFactor = smoothstep(-0.3, 0.4, diffuseFactor);
+
+    // ✨ 4. SPECULAR HIGHLIGHTS - Brillo del sol reflejado (MUY SUTIL)
+    vec3 viewDir = normalize(vec3(0.0, 0.0, 1.0) - v_WorldPos);  // Dirección hacia cámara
+    vec3 reflectDir = reflect(-lightDir, normal);  // Reflexión de la luz
+    float specularStrength = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);  // Shininess = 32
+    vec3 specularColor = sunColor * specularStrength * 0.15;  // Brillo MUY sutil (reducido de 0.4 a 0.15)
+
+    // 🌙 5. RIM LIGHTING - Contorno luminoso en los bordes (MUY TENUE)
+    float rimDot = 1.0 - max(dot(viewDir, normal), 0.0);  // Inverso del ángulo vista-normal
+    float rimIntensity = pow(rimDot, 3.0);  // Curvatura del rim
+    float rimLightFactor = max(0.0, dot(normal, lightDir));  // Solo en lado iluminado
+    vec3 rimColor = sunColor * rimIntensity * rimLightFactor * 0.10;  // Rim MUY tenue (reducido de 0.25 a 0.10)
 
     // ============================================
     // COMBINAR ILUMINACIÓN
     // ============================================
 
-    vec3 finalColor = ambientColor + (diffuseColor * shadowFactor);
+    vec3 finalColor = ambientColor
+                    + (diffuseColor * shadowFactor)
+                    + specularColor
+                    + rimColor;
 
     // Añadir un poco de variación con el tiempo (opcional)
     float pulse = sin(u_Time * 2.0) * 0.02 + 0.98;
