@@ -38,6 +38,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     private HPBar hpBarForceField;
     private MeteorShower meteorShower;
     private PlayerWeapon playerWeapon;  // 🎮 NUEVO: Arma del jugador (separada de MeteorShower)
+    private FireButton fireButton;      // 🎯 Botón visual de disparo con indicador de estado
     private boolean solWasDead = false;  // Para detectar cuando respawnea
 
     // Sistema de visualización musical
@@ -93,8 +94,8 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     // 🎮 SISTEMA DE ESTADÍSTICAS DEL JUGADOR
     private PlayerStats playerStats;
 
-    // 📊 CONTADOR DE SOLES DESTRUIDOS (UI)
-    private SimpleTextRenderer sunsDestroyedCounter;
+    // 📊 CONTADOR DE PLANETAS DESTRUIDOS (UI)
+    private SimpleTextRenderer planetsDestroyedCounter;
 
     // 🏆 SISTEMA DE LEADERBOARD Y BOTS
     private BotManager botManager;
@@ -114,11 +115,11 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         // 🔄 Escuchar sincronización con Firebase para actualizar contador
         playerStats.setSyncListener(new PlayerStats.SyncListener() {
             @Override
-            public void onSyncCompleted(int sunsDestroyed) {
+            public void onSyncCompleted(int planetsDestroyed) {
                 // Actualizar contador en pantalla cuando se sincronice con Firebase
-                if (sunsDestroyedCounter != null) {
-                    sunsDestroyedCounter.setText("☀️" + sunsDestroyed);
-                    Log.d(TAG, "✅ Contador actualizado después de sincronización: " + sunsDestroyed + " soles");
+                if (planetsDestroyedCounter != null) {
+                    planetsDestroyedCounter.setText("🪐" + planetsDestroyed);
+                    Log.d(TAG, "✅ Contador actualizado después de sincronización: " + planetsDestroyed + " planetas");
                 }
             }
         });
@@ -373,13 +374,23 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             }
         }
 
-        // Dibujar objetos
+        // ═══════════════════════════════════════════════════════════
+        // 🎨 RENDERIZADO EN CAPAS - FireButton siempre encima
+        // ═══════════════════════════════════════════════════════════
+
+        // Actualizar TODOS los objetos primero
         for (SceneObject obj : sceneObjects) {
             obj.update(dt);
-            obj.draw();
         }
 
-        // 💥 DIBUJAR FLASH BLANCO SI ESTÁ ACTIVO
+        // Dibujar objetos del JUEGO (excepto FireButton)
+        for (SceneObject obj : sceneObjects) {
+            if (!(obj instanceof FireButton)) {
+                obj.draw();
+            }
+        }
+
+        // 💥 DIBUJAR FLASH BLANCO SI ESTÁ ACTIVO (puede cubrir el juego)
         if (impactFlashAlpha > 0.01f) {
             drawImpactFlash();
         }
@@ -387,6 +398,11 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         // 💥 DIBUJAR GRIETAS DE PANTALLA ROTA SI ESTÁN ACTIVAS
         if (crackAlpha > 0.01f) {
             drawScreenCracks();
+        }
+
+        // 🎯 DIBUJAR FIREBUTTON AL FINAL - SIEMPRE VISIBLE ENCIMA DE TODO
+        if (fireButton != null) {
+            fireButton.draw();
         }
     }
 
@@ -462,46 +478,80 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.e(TAG, "[SceneRenderer] ✗ Error creando fondo: " + e.getMessage());
         }
 
-        // SOL CENTRAL CON TEXTURA VOLCÁNICA REALISTA (CENTRADO EN 0,0,0)
+        // 🌍 PLANETA TIERRA EN EL CENTRO - PROTAGONISTA DE LA ESCENA
+        // Nota: La variable se llama "sol" por razones históricas (sistema de HP/respawn)
+        // pero ahora representa a la TIERRA en el centro de la escena
         try {
             sol = new Planeta(
                     context, textureManager,
                     "shaders/planeta_vertex.glsl",
-                    "shaders/planeta_iluminado_fragment.glsl",  // ✨ MISMO SHADER QUE LA TIERRA - MUESTRA LA TEXTURA
-                    R.drawable.texturasolvolcanico,  // ✨ TEXTURA VOLCÁNICA REALISTA
-                    0.0f,              // orbitRadiusX = 0 (centro)
-                    0.0f,              // orbitRadiusZ = 0 (centro)
-                    0.0f,              // orbitSpeed = 0 (sin órbita)
+                    "shaders/planeta_iluminado_fragment.glsl",  // ✨ SHADER CON ILUMINACIÓN
+                    R.drawable.texturaplanetatierra,  // 🌍 TEXTURA DE LA TIERRA
+                    0.8f, 0.0f,        // Posición orbital X, Z
+                    0.0f,              // orbitSpeed = 0 (FIJO, sin órbita)
+                    0.0f,              // 📍 orbitOffsetY = 0.0 (sin altura)
                     0.0f,              // scaleAmplitude = sin variación
-                    0.45f,             // instanceScale = Sol grande (estrella principal)
-                    35.0f,             // spinSpeed = rotación MUY visible
+                    1.0f,              // 🌎 TAMAÑO PROTAGONISTA (planeta principal)
+                    80.0f,             // spinSpeed = rotación visible (24h reales aceleradas)
                     false, null, 1.0f,
                     null, 1.0f
             );
             if (sol instanceof CameraAware) {
                 ((CameraAware) sol).setCameraController(sharedCamera);
             }
-            sol.setMaxHealth(200);  // Sol tiene 200 HP (incrementado aún más para partidas más largas)
+            sol.setMaxHealth(200);  // Tierra tiene 200 HP - objetivo principal a defender
             sol.setOnExplosionListener(this);  // 💥 CONECTAR EXPLOSIÓN ÉPICA
 
             // ═══ 💾 CARGAR HP GUARDADO ═══
             sol.setPlayerStats(playerStats);  // Inyectar PlayerStats para auto-guardar
-            int savedSunHP = playerStats.getSavedSunHealth();
-            sol.setHealth(savedSunHP);  // Cargar HP guardado
-            Log.d(TAG, "  💾 Sol HP cargado: " + savedSunHP + "/200");
+            int savedPlanetHP = playerStats.getSavedPlanetHealth();  // Nota: usa "PlanetHealth" (campo Firebase: "sunHealth" por compatibilidad)
+            sol.setHealth(savedPlanetHP);  // Cargar HP guardado
+            Log.d(TAG, "  💾 TIERRA HP cargado: " + savedPlanetHP + "/200");
 
-            // ═══ 🌞 SINCRONIZACIÓN CON TIEMPO REAL ACELERADA ═══
+            // ═══ 🌍 SINCRONIZACIÓN CON TIEMPO REAL - ROTACIÓN TERRESTRE (ACELERADA VISUALMENTE) ═══
             sol.setRealTimeRotation(true);           // Rotación sincronizada con tiempo real
-            sol.setRealTimeRotationPeriod(27 * 24);  // Sol rota cada 27 días terrestres (648 horas)
-            sol.setTimeAccelerationFactor(120.0f);   // Acelerar 120x para que sea visible
-            Log.d(TAG, "  ⏰ Sol configurado: 27 días real → " + (27 * 24 * 60 / 120) + " min acelerado");
+            sol.setRealTimeRotationPeriod(24);       // Tierra rota cada 24 horas (base real)
+            sol.setTimeAccelerationFactor(720.0f);   // Acelerar 720x para rotación VISIBLE (2 min por vuelta)
+            Log.d(TAG, "  ⏰ TIERRA rotación acelerada: 24h → " + (24 * 60 / 720) + " min por vuelta completa");
 
             sceneObjects.add(sol);
-            Log.d(TAG, "  ✓ Sun added with Fresnel Glow shader - HP: 200");
+            Log.d(TAG, "  ✓ 🌍 TIERRA añadida en el CENTRO - Protagonista con HP: 200");
             Log.d(TAG, "  💥 Explosion listener connected for EPIC particle show");
-            Log.d(TAG, "  ✨ Fresnel Glow effect: Edges glow brighter than center");
+            Log.d(TAG, "  ✨ Shader con iluminación activo");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creating sun: " + e.getMessage());
+        }
+
+        // 🌍✨ CAPA DE EFECTOS DE LA TIERRA (compositing)
+        // Atmósfera + Nubes + Océanos + Auroras
+        try {
+            Planeta tierraEffects = new Planeta(
+                    context, textureManager,
+                    "shaders/planeta_vertex.glsl",
+                    "shaders/tierra_effects_fragment.glsl",  // 🌍 SHADER DE EFECTOS ATMOSFÉRICOS
+                    R.drawable.fondo_transparente,  // Textura dummy (el shader no la usa)
+                    0.8f, 0.0f,        // Misma posición que la Tierra
+                    0.0f,              // orbitSpeed = 0
+                    0.0f,              // orbitOffsetY = 0.0
+                    0.0f,              // scaleAmplitude = 0
+                    1.15f,             // 🌌 15% MÁS GRANDE (capa de atmósfera bien separada)
+                    80.0f,             // Misma rotación
+                    false, null, 1.0f,
+                    null, 1.0f
+            );
+            if (tierraEffects instanceof CameraAware) {
+                ((CameraAware) tierraEffects).setCameraController(sharedCamera);
+            }
+
+            // Sincronización igual a la Tierra base
+            tierraEffects.setRealTimeRotation(true);
+            tierraEffects.setRealTimeRotationPeriod(24);
+            tierraEffects.setTimeAccelerationFactor(720.0f);
+
+            sceneObjects.add(tierraEffects);
+            Log.d(TAG, "  🌍✨ CAPA DE EFECTOS DE LA TIERRA añadida (atmósfera + nubes + océanos + auroras)");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating Earth effects layer: " + e.getMessage());
         }
 
         // ✨ 3 ESTRELLAS BAILARINAS - PARTÍCULAS MÁGICAS CON ESTELA ✨
@@ -550,52 +600,83 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.e(TAG, "  ✗ Error creando estrellas bailarinas: " + e.getMessage());
         }
 
-        // 🌍 PLANETA TIERRA ORBITANDO AL SOL (INDICADOR DE HORAS)
-        Planeta planetaTierra = null;  // Referencia para la Luna
+        // ☀️ SOL ARRIBA Y AL FONDO - ILUMINA LA ESCENA DESDE ARRIBA
+        // Esta variable local no se guarda en la clase (sol = la Tierra principal tiene el sistema de HP)
+        Planeta planetaSol = null;
         try {
-            planetaTierra = new Planeta(
+            planetaSol = new Planeta(
                     context, textureManager,
-                    "shaders/planeta_vertex.glsl",
-                    "shaders/planeta_iluminado_fragment.glsl",  // SHADER CON ILUMINACIÓN
-                    R.drawable.texturaplanetatierra,            // ✨ TEXTURA DE LA TIERRA
-                    2.4f, 2.0f, 0.25f,  // Órbita más cercana al Sol
-                    0.1f,              // Poca variación
-                    0.15f,             // Tamaño realista (más pequeña que el Sol)
-                    80.0f,             // Rotación MUY visible
+                    "shaders/sol_vertex.glsl",         // 🔥 VERTEX CON DEFORMACIÓN PLASMA
+                    "shaders/sol_fragment.glsl",       // ☀️ FRAGMENT CON TEXTURA
+                    R.drawable.texturasolvolcanico,    // ☀️ TEXTURA DEL SOL
+                    0.5f,              // orbitRadiusX = 0 (centrado en X)
+                    -0.9f,            // orbitRadiusZ = -10 (FONDO, muy atrás)
+                    5.5f,              // orbitSpeed = 0 (FIJO, sin órbita)
+                    5.0f,              // 📍 orbitOffsetY = 5.0 (ARRIBA!)
+                    0.0f,              // scaleAmplitude = sin variación
+                    1.5f,              // ☀️ SOL GRANDE (dramático)
+                    -1.0f,            // 🔄 spinSpeed NEGATIVO = antihorario, más lento que Tierra (80.0)
                     false, null, 1.0f,
                     null,
                     1.0f               // UV scale 1.0 para textura completa
             );
-            if (planetaTierra instanceof CameraAware) {
-                ((CameraAware) planetaTierra).setCameraController(sharedCamera);
+            if (planetaSol instanceof CameraAware) {
+                ((CameraAware) planetaSol).setCameraController(sharedCamera);
             }
 
-            // ═══ 🕐 RELOJ ASTRONÓMICO - TIERRA = SEGUNDOS (60 segundos por órbita) ═══
-            planetaTierra.setRealTimeRotation(true);        // Rotación sincronizada
-            planetaTierra.setRealTimeRotationPeriod(24);    // 24 horas/rotación
-            planetaTierra.setRealTimeOrbit(true);           // Órbita = indicador de SEGUNDOS
-            planetaTierra.setRealTimeOrbitPeriod(1.0f / 60.0f);    // 1/60 hora = 60 segundos
-            planetaTierra.setTimeAccelerationFactor(1.0f);  // Sin aceleración - tiempo REAL
-            Log.d(TAG, "  🕐 TIERRA configurada como indicador de SEGUNDOS:");
-            Log.d(TAG, "     • Órbita completa = 60 segundos REALES");
+            // ═══ ☀️ ROTACIÓN SIMPLE - USA SOLO spinSpeed ═══
+            // Sin sincronización de tiempo real, el sol rota con su spinSpeed configurado arriba
 
-            sceneObjects.add(planetaTierra);
-            Log.d(TAG, "  🌍 TIERRA añadida orbitando al Sol con iluminación");
+            sceneObjects.add(planetaSol);
+            Log.d(TAG, "  ☀️ SOL añadido con rotación simple");
         } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creating planet: " + e.getMessage());
+            Log.e(TAG, "  ✗ Error creating sun: " + e.getMessage());
         }
 
-        // 🔴 PLANETA MARTE - INDICADOR DE MINUTOS (60 minutos por órbita)
+        // ═══════════════════════════════════════════════════════════
+        // ✨ SEGUNDA CAPA - MISMA TEXTURA + EFECTOS VISUALES
+        // ═══════════════════════════════════════════════════════════
+        try {
+            Planeta solEffects = new Planeta(
+                    context, textureManager,
+                    "shaders/sol_effects_vertex.glsl",         // 🔥 MISMO DESPLAZAMIENTO QUE EL SOL
+                    "shaders/sol_effects_fragment_nuevo.glsl", // ✨ TEXTURA + EFECTOS
+                    R.drawable.texturasolvolcanico,            // ☀️ MISMA TEXTURA QUE EL SOL BASE
+                    0.5f,              // orbitRadiusX = misma posición que sol
+                    -0.9f,             // orbitRadiusZ = misma posición que sol
+                    5.5f,              // orbitSpeed = misma órbita que sol
+                    5.0f,              // orbitOffsetY = misma altura que sol
+                    0.0f,              // scaleAmplitude
+                    1.51f,             // ☀️ LIGERAMENTE MÁS GRANDE (1.51 vs 1.5) para evitar z-fighting
+                    -1.0f,             // spinSpeed = misma rotación que sol
+                    false,             // useSolidColor = false (usa textura)
+                    null,              // sin color sólido
+                    1.0f,              // alpha controlado en shader
+                    null,              // sin oscilación de escala
+                    1.0f               // UV scale
+            );
+            if (solEffects instanceof CameraAware) {
+                ((CameraAware) solEffects).setCameraController(sharedCamera);
+            }
+            sceneObjects.add(solEffects);
+            Log.d(TAG, "  ✨ Capa de efectos del sol añadida (misma textura)");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating sun effects layer: " + e.getMessage());
+        }
+
+        // 🔴 PLANETA MARTE - ORBITANDO EN EL FONDO MÁS LEJANO
         try {
             Planeta planetaMarte = new Planeta(
                     context, textureManager,
                     "shaders/planeta_vertex.glsl",
                     "shaders/planeta_iluminado_fragment.glsl",
                     R.drawable.textura_marte,            // Textura de Marte
-                    3.2f, 2.7f, 0.30f,  // Órbita más cercana (ligeramente)
-                    0.08f,              // Poca variación
-                    0.12f,              // Tamaño realista (más pequeño que la Tierra)
-                    90.0f,              // Rotación MUY visible (casi el doble)
+                    4.5f, 4.0f,        // orbitRadiusX, orbitRadiusZ
+                    0.30f,             // 🔄 orbitSpeed POSITIVO (sentido horario - manecillas del reloj)
+                    0.0f,              // 📍 orbitOffsetY = 0.0 (sin altura)
+                    0.08f,             // scaleAmplitude
+                    0.53f,             // instanceScale - Tamaño realista proporcional a Tierra (53%)
+                    90.0f,             // spinSpeed - Rotación MUY visible
                     false, null, 1.0f,
                     null,
                     1.0f
@@ -619,17 +700,19 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.e(TAG, "  ✗ Error creating Mars: " + e.getMessage());
         }
 
-        // 🌙 LUNA - INDICADOR DE SEGUNDOS (60 segundos por órbita alrededor de la Tierra)
+        // 🌙 LUNA - ORBITANDO LA TIERRA (SATÉLITE NATURAL)
         try {
             Planeta planetaLuna = new Planeta(
                     context, textureManager,
                     "shaders/planeta_vertex.glsl",
                     "shaders/planeta_iluminado_fragment.glsl",
                     R.drawable.textura_luna,             // Textura de la Luna
-                    0.6f, 0.5f, 1.0f,    // Órbita más cercana a la Tierra
-                    0.05f,               // Muy poca variación
-                    0.06f,               // Pequeña (proporción realista con la Tierra)
-                    20.0f,               // Rotación visible
+                    1.8f, 1.5f,          // orbitRadiusX, orbitRadiusZ
+                    0.65f,               // 🌙 orbitSpeed MÁS LENTO (menos sincronizada con Tierra)
+                    0.0f,                // 📍 orbitOffsetY = 0.0 (sin altura)
+                    0.05f,               // scaleAmplitude - Muy poca variación
+                    0.27f,               // instanceScale - Proporción realista con Tierra (27% del tamaño)
+                    20.0f,               // spinSpeed - Rotación visible
                     false, null, 1.0f,
                     null,
                     1.0f
@@ -639,19 +722,19 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             }
 
             // ═══ 🕐 RELOJ ASTRONÓMICO - LUNA = SEGUNDOS (40 segundos por órbita - más rápida) ═══
-            // La Luna orbita la Tierra (no el Sol)
-            if (planetaTierra != null) {
-                planetaLuna.setParentPlanet(planetaTierra);
-                Log.d(TAG, "     • Luna configurada para orbitar la Tierra");
+            // La Luna orbita la Tierra (variable "sol" = Tierra en el centro)
+            if (sol != null) {
+                planetaLuna.setParentPlanet(sol);  // sol = Tierra en el centro
+                Log.d(TAG, "     • Luna configurada para orbitar la Tierra (variable sol)");
             }
 
             planetaLuna.setRealTimeRotation(true);
-            planetaLuna.setRealTimeRotationPeriod(1);
-            planetaLuna.setRealTimeOrbit(true);            // Órbita = indicador de SEGUNDOS
-            planetaLuna.setRealTimeOrbitPeriod(1.0f / 90.0f);  // 1/90 hora = 40 segundos (más rápida)
-            planetaLuna.setTimeAccelerationFactor(1.0f);   // Sin aceleración - tiempo REAL
-            Log.d(TAG, "  🕐 LUNA configurada como indicador de SEGUNDOS:");
-            Log.d(TAG, "     • Órbita completa = 40 segundos REALES (acelerada)");
+            planetaLuna.setRealTimeRotationPeriod(27.3f);  // Luna rota sincrónicamente (27.3 días = periodo orbital real)
+            planetaLuna.setRealTimeOrbit(true);            // Órbita alrededor de la Tierra
+            planetaLuna.setRealTimeOrbitPeriod(1.5f / 60.0f);  // 🌙 1.5 minutos por órbita (más lenta)
+            planetaLuna.setTimeAccelerationFactor(1.0f);   // Sin aceleración adicional
+            Log.d(TAG, "  🕐 LUNA configurada con órbita VISIBLE:");
+            Log.d(TAG, "     • Órbita completa = 60 segundos (1 minuto real)");
             Log.d(TAG, "     • Orbita alrededor de la TIERRA (no del Sol)");
 
             sceneObjects.add(planetaLuna);
@@ -679,12 +762,12 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.e(TAG, "  ✗ Error creating greeting text: " + e.getMessage());
         }
 
-        // CAMPO DE FUERZA INTERACTIVO DEL SOL - CASI INVISIBLE, MÁS GRANDE
+        // 🛡️ CAMPO DE FUERZA DE LA TIERRA - DEFENSA PLANETARIA
         try {
             forceField = new ForceField(
                     context, textureManager,
-                    0.0f, 0.0f, 0.0f,   // CENTRADO con el sol en (0, 0, 0)
-                    0.85f,              // Radio más grande que antes (0.85 vs 0.68)
+                    0.0f, 0.0f, 0.0f,   // 🎯 CENTRADO CON LA TIERRA en (0, 0, 0)
+                    1.70f,              // 🛡️ MUCHO MÁS GRANDE (envuelve atmósfera sin tocarla)
                     R.drawable.fondo_transparente,  // Textura transparente para efectos puros
                     new float[]{0.3f, 0.9f, 1.0f},  // Color azul eléctrico suave
                     0.0f,               // ✨ CASI INVISIBLE (alpha 0%, solo impactos)
@@ -705,16 +788,16 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.e(TAG, "[SceneRenderer] ✗ Error creando campo de fuerza: " + e.getMessage());
         }
 
-        // BARRAS HP para Sol y Campo de Fuerza
+        // BARRAS HP para Tierra y Campo de Fuerza
         try {
-            // Barra HP del Sol (amarilla cuando llena, roja cuando vacía)
+            // Barra HP de la Tierra (azul-verde cuando llena, roja cuando vacía)
             hpBarSun = new HPBar(
                     context,
-                    "SOL",
+                    "🌍 TIERRA",  // Actualizado a TIERRA
                     0.05f, 0.92f,  // Posición: arriba izquierda
                     0.25f, 0.03f,  // Tamaño: ancho y alto
-                    200,  // Max HP = 200 (incrementado aún más)
-                    new float[]{1.0f, 0.8f, 0.0f, 1.0f},  // Amarillo lleno
+                    200,  // Max HP = 200
+                    new float[]{0.2f, 0.8f, 0.3f, 1.0f},  // Verde-azul lleno (colores tierra)
                     new float[]{1.0f, 0.0f, 0.0f, 1.0f}   // Rojo vacío
             );
             sceneObjects.add(hpBarSun);
@@ -745,11 +828,12 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     0.30f, 0.04f,  // Tamaño: más ancha y gruesa
                     100,  // Max = 100 (porcentaje)
                     new float[]{1.0f, 0.9f, 0.2f, 1.0f},  // Amarillo brillante
-                    new float[]{0.3f, 0.3f, 0.3f, 0.5f}   // Gris oscuro vacío
+                    new float[]{0.3f, 0.3f, 0.3f, 0.5f},  // Gris oscuro vacío
+                    false  // ⚠️ Deshabilitar parpadeo (solo se usa para indicar carga, no daño)
             );
             chargePowerBar.setHealth(0);  // Empieza vacía
             sceneObjects.add(chargePowerBar);
-            Log.d(TAG, "  ⚡✓ Barra de carga de poder agregada");
+            Log.d(TAG, "  ⚡✓ Barra de carga de poder agregada (sin parpadeo)");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ ERROR creando barra de carga: " + e.getMessage());
         }
@@ -812,29 +896,29 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         // ☀️💀 CONTADOR DE SOLES DESTRUIDOS
         try {
             Log.d(TAG, "╔════════════════════════════════════════╗");
-            Log.d(TAG, "║   CREANDO CONTADOR SOLES DESTRUIDOS   ║");
+            Log.d(TAG, "║  CREANDO CONTADOR PLANETAS DESTRUIDOS  ║");
             Log.d(TAG, "╚════════════════════════════════════════╝");
 
-            sunsDestroyedCounter = new SimpleTextRenderer(
+            planetsDestroyedCounter = new SimpleTextRenderer(
                     context,
                     0.50f,    // X: Esquina superior derecha
-                    0.75f,    // Y: Parte superior (mismo nivel que MusicIndicator)
+                    0.60f,    // Y: Más abajo (movido desde 0.75)
                     0.40f,    // Ancho
                     0.10f     // Alto
             );
-            sunsDestroyedCounter.setColor(android.graphics.Color.rgb(255, 200, 50));  // Amarillo dorado
+            planetsDestroyedCounter.setColor(android.graphics.Color.rgb(100, 150, 255));  // Azul planeta
 
             // Inicializar con el valor actual de PlayerStats (puede ser de Firebase o local)
             if (playerStats != null) {
-                int currentSuns = playerStats.getSunsDestroyed();
-                sunsDestroyedCounter.setText("☀️" + currentSuns);
-                Log.d(TAG, "  ☀️ Contador inicializado con: " + currentSuns + " soles");
+                int currentPlanets = playerStats.getPlanetsDestroyed();
+                planetsDestroyedCounter.setText("🪐" + currentPlanets);
+                Log.d(TAG, "  🪐 Contador inicializado con: " + currentPlanets + " planetas");
             } else {
-                sunsDestroyedCounter.setText("☀️0");
+                planetsDestroyedCounter.setText("🪐0");
             }
 
-            sceneObjects.add(sunsDestroyedCounter);
-            Log.d(TAG, "  ☀️✓ CONTADOR agregado - esquina superior derecha");
+            sceneObjects.add(planetsDestroyedCounter);
+            Log.d(TAG, "  🪐✓ CONTADOR agregado - esquina superior derecha");
         } catch (Exception e) {
             Log.e(TAG, "  ✗✗✗ ERROR CRÍTICO creando contador: " + e.getMessage());
             e.printStackTrace();
@@ -860,14 +944,14 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                 }
             });
 
-            // Crear textos para Top 3 (horizontal, de izquierda a derecha)
-            float startX = -0.95f;  // Comienza en el borde izquierdo
-            float y = -0.50f;       // Más arriba para no taparse con iconos del sistema
+            // Crear textos para Top 3 (VERTICAL, de arriba a abajo, en la parte inferior izquierda)
+            float x = -0.99f;        // X fija en el borde izquierdo (alineado con barras HP)
+            float startY = 0.10f;   // Y inicial (parte inferior, justo arriba de las barras HP)
             float width = 0.45f;    // Ancho de cada texto
-            float spacing = 0.60f;  // Espaciado entre textos
+            float spacing = 0.18f;  // Espaciado VERTICAL entre textos
 
             for (int i = 0; i < 3; i++) {
-                float x = startX + (i * spacing);
+                float y = startY + (i * spacing);  // Y varía (vertical), X fija
                 leaderboardTexts[i] = new SimpleTextRenderer(context, x, y, width, 0.08f);
                 leaderboardTexts[i].setColor(android.graphics.Color.WHITE);
                 leaderboardTexts[i].setText("#" + (i+1) + " ---");
@@ -934,6 +1018,24 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.e(TAG, "[SceneRenderer] ✗ Error creando arma del jugador: " + e.getMessage());
         }
 
+        // 🎯 BOTÓN VISUAL DE DISPARO - INDICADOR DE ESTADO
+            Log.d(TAG, "[SceneRenderer] >>> ANTES de crear FireButton");
+        try {
+            Log.d(TAG, "[SceneRenderer] >>> Creando FireButton...");
+            fireButton = new FireButton(context);
+            Log.d(TAG, "[SceneRenderer] >>> FireButton creado, asignando cámara...");
+            fireButton.setCameraController(sharedCamera);
+            Log.d(TAG, "[SceneRenderer] >>> Agregando a sceneObjects...");
+            sceneObjects.add(fireButton);
+            Log.d(TAG, "[SceneRenderer] 🎯 Botón de disparo agregado (verde=listo, amarillo=cooldown)");
+        } catch (Exception e) {
+            Log.e(TAG, "[SceneRenderer] ✗✗✗ ERROR FIREBUTTON ✗✗✗");
+            Log.e(TAG, "[SceneRenderer] Mensaje: " + e.getMessage());
+            Log.e(TAG, "[SceneRenderer] Clase: " + e.getClass().getName());
+            e.printStackTrace();
+        }
+        Log.d(TAG, "[SceneRenderer] >>> DESPUÉS de intentar crear FireButton");
+
         // ✨ AVATAR DEL USUARIO - ESFERA 3D FLOTANTE ✨
         // Carga la foto de perfil del usuario y la muestra orbitando el sol
         try {
@@ -981,15 +1083,17 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     "shaders/planeta_vertex.glsl",
                     "shaders/planeta_fragment.glsl",
                     R.drawable.fondo_transparente,
-                    0.0f, 0.0f, 0.0f,
-                    0.05f,
-                    2.0f,
-                    0.0f,
-                    true,
-                    new float[]{0.0f, 0.0f, 0.0f, 1.0f},
-                    1.0f,
-                    0.98f,
-                    1.0f
+                    0.0f, 0.0f,        // orbitRadiusX, orbitRadiusZ
+                    0.0f,              // orbitSpeed
+                    0.0f,              // 📍 orbitOffsetY
+                    0.05f,             // scaleAmplitude
+                    2.0f,              // instanceScale
+                    0.0f,              // spinSpeed
+                    true,              // useSolidColor
+                    new float[]{0.0f, 0.0f, 0.0f, 1.0f},  // solidColor (negro)
+                    1.0f,              // alpha
+                    0.98f,             // scaleOscPercent
+                    1.0f               // uvScale
             );
             if (blackHole instanceof CameraAware) {
                 ((CameraAware) blackHole).setCameraController(sharedCamera);
@@ -1009,15 +1113,17 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                         "shaders/planeta_vertex.glsl",
                         "shaders/planeta_fragment.glsl",
                         R.drawable.textura_asteroide,
-                        radius, radius * 0.8f, 0.5f / (i + 1),
-                        0.1f,
-                        0.3f,
-                        50.0f,
-                        true,
-                        new float[]{1.0f, 0.5f, 0.2f, 0.7f},
-                        0.8f,
-                        null,
-                        1.0f
+                        radius, radius * 0.8f,  // orbitRadiusX, orbitRadiusZ
+                        0.5f / (i + 1),         // orbitSpeed
+                        0.0f,                   // 📍 orbitOffsetY
+                        0.1f,                   // scaleAmplitude
+                        0.3f,                   // instanceScale
+                        50.0f,                  // spinSpeed
+                        true,                   // useSolidColor
+                        new float[]{1.0f, 0.5f, 0.2f, 0.7f},  // solidColor
+                        0.8f,                   // alpha
+                        null,                   // scaleOscPercent
+                        1.0f                    // uvScale
                 );
                 if (particle instanceof CameraAware) {
                     ((CameraAware) particle).setCameraController(sharedCamera);
@@ -1105,10 +1211,17 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     "shaders/planeta_vertex.glsl",
                     "shaders/planeta_fragment.glsl",
                     R.drawable.textura_roninplaneta,
-                    0.0f, 0.0f, 0.0f,
-                    0.1f, 1.5f, 5.0f,
-                    true, new float[]{0.2f, 0.6f, 0.2f, 1.0f}, 1.0f,
-                    null, 1.0f
+                    0.0f, 0.0f,         // orbitRadiusX, orbitRadiusZ
+                    0.0f,               // orbitSpeed
+                    0.0f,               // 📍 orbitOffsetY
+                    0.1f,               // scaleAmplitude
+                    1.5f,               // instanceScale
+                    5.0f,               // spinSpeed
+                    true,               // useSolidColor
+                    new float[]{0.2f, 0.6f, 0.2f, 1.0f},  // solidColor (verde)
+                    1.0f,               // alpha
+                    null,               // scaleOscPercent
+                    1.0f                // uvScale
             );
             if (arbolMagico instanceof CameraAware) {
                 ((CameraAware) arbolMagico).setCameraController(sharedCamera);
@@ -1138,10 +1251,17 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     "shaders/planeta_vertex.glsl",
                     "shaders/planeta_fragment.glsl",
                     R.drawable.agujero_negro,
-                    0.0f, 0.0f, 0.0f,
-                    0.2f, 1.2f, 10.0f,
-                    true, new float[]{1.0f, 0.0f, 1.0f, 1.0f}, 0.8f,
-                    0.15f, 1.0f
+                    0.0f, 0.0f,          // orbitRadiusX, orbitRadiusZ
+                    0.0f,                // orbitSpeed
+                    0.0f,                // 📍 orbitOffsetY
+                    0.2f,                // scaleAmplitude
+                    1.2f,                // instanceScale
+                    10.0f,               // spinSpeed
+                    true,                // useSolidColor
+                    new float[]{1.0f, 0.0f, 1.0f, 1.0f},  // solidColor (magenta)
+                    0.8f,                // alpha
+                    0.15f,               // scaleOscPercent
+                    1.0f                 // uvScale
             );
             if (neonSphere instanceof CameraAware) {
                 ((CameraAware) neonSphere).setCameraController(sharedCamera);
@@ -1171,10 +1291,17 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     "shaders/planeta_vertex.glsl",
                     "shaders/planeta_fragment.glsl",
                     R.drawable.textura_sol,
-                    0.0f, 0.0f, 0.0f,
-                    0.15f, 1.8f, 2.0f,
-                    true, new float[]{1.0f, 0.7f, 0.0f, 1.0f}, 1.0f,
-                    0.1f, 1.0f
+                    0.0f, 0.0f,         // orbitRadiusX, orbitRadiusZ
+                    0.0f,               // orbitSpeed
+                    0.0f,               // 📍 orbitOffsetY
+                    0.15f,              // scaleAmplitude
+                    1.8f,               // instanceScale
+                    2.0f,               // spinSpeed
+                    true,               // useSolidColor
+                    new float[]{1.0f, 0.7f, 0.0f, 1.0f},  // solidColor (naranja dorado)
+                    1.0f,               // alpha
+                    0.1f,               // scaleOscPercent
+                    1.0f                // uvScale
             );
             if (solAtardecer instanceof CameraAware) {
                 ((CameraAware) solAtardecer).setCameraController(sharedCamera);
@@ -1204,10 +1331,17 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     "shaders/planeta_vertex.glsl",
                     "shaders/planeta_fragment.glsl",
                     R.drawable.textura_asteroide,
-                    0.0f, 0.0f, 0.0f,
-                    0.1f, 1.6f, 8.0f,
-                    true, new float[]{0.9f, 0.7f, 0.2f, 1.0f}, 1.0f,
-                    null, 1.0f
+                    0.0f, 0.0f,          // orbitRadiusX, orbitRadiusZ
+                    0.0f,                // orbitSpeed
+                    0.0f,                // 📍 orbitOffsetY
+                    0.1f,                // scaleAmplitude
+                    1.6f,                // instanceScale
+                    8.0f,                // spinSpeed
+                    true,                // useSolidColor
+                    new float[]{0.9f, 0.7f, 0.2f, 1.0f},  // solidColor (amarillo tierra)
+                    1.0f,                // alpha
+                    null,                // scaleOscPercent
+                    1.0f                 // uvScale
             );
             if (savanna instanceof CameraAware) {
                 ((CameraAware) savanna).setCameraController(sharedCamera);
@@ -1237,10 +1371,17 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     "shaders/planeta_vertex.glsl",
                     "shaders/planeta_fragment.glsl",
                     R.drawable.universo03,
-                    0.0f, 0.0f, 0.0f,
-                    0.2f, 1.4f, 6.0f,
-                    true, new float[]{0.3f, 0.5f, 0.6f, 1.0f}, 0.9f,
-                    null, 1.0f
+                    0.0f, 0.0f,          // orbitRadiusX, orbitRadiusZ
+                    0.0f,                // orbitSpeed
+                    0.0f,                // 📍 orbitOffsetY
+                    0.2f,                // scaleAmplitude
+                    1.4f,                // instanceScale
+                    6.0f,                // spinSpeed
+                    true,                // useSolidColor
+                    new float[]{0.3f, 0.5f, 0.6f, 1.0f},  // solidColor (azul tormentoso)
+                    0.9f,                // alpha
+                    null,                // scaleOscPercent
+                    1.0f                 // uvScale
             );
             if (tormenta instanceof CameraAware) {
                 ((CameraAware) tormenta).setCameraController(sharedCamera);
@@ -1270,10 +1411,17 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     "shaders/planeta_vertex.glsl",
                     "shaders/planeta_fragment.glsl",
                     R.drawable.fondo_transparente,
-                    0.0f, 0.0f, 0.0f,
-                    0.3f, 1.5f, 15.0f,
-                    true, new float[]{1.0f, 0.0f, 1.0f, 1.0f}, 1.0f,
-                    0.2f, 1.0f
+                    0.0f, 0.0f,          // orbitRadiusX, orbitRadiusZ
+                    0.0f,                // orbitSpeed
+                    0.0f,                // 📍 orbitOffsetY
+                    0.3f,                // scaleAmplitude
+                    1.5f,                // instanceScale
+                    15.0f,               // spinSpeed
+                    true,                // useSolidColor
+                    new float[]{1.0f, 0.0f, 1.0f, 1.0f},  // solidColor (magenta retro)
+                    1.0f,                // alpha
+                    0.2f,                // scaleOscPercent
+                    1.0f                 // uvScale
             );
             if (pixelCube instanceof CameraAware) {
                 ((CameraAware) pixelCube).setCameraController(sharedCamera);
@@ -1303,10 +1451,17 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     "shaders/planeta_vertex.glsl",
                     "shaders/planeta_fragment.glsl",
                     R.drawable.textura_roninplaneta,
-                    0.0f, 0.0f, 0.0f,
-                    0.1f, 1.3f, 4.0f,
-                    true, new float[]{1.0f, 0.8f, 0.9f, 1.0f}, 1.0f,
-                    0.05f, 1.0f
+                    0.0f, 0.0f,          // orbitRadiusX, orbitRadiusZ
+                    0.0f,                // orbitSpeed
+                    0.0f,                // 📍 orbitOffsetY
+                    0.1f,                // scaleAmplitude
+                    1.3f,                // instanceScale
+                    4.0f,                // spinSpeed
+                    true,                // useSolidColor
+                    new float[]{1.0f, 0.8f, 0.9f, 1.0f},  // solidColor (rosa sakura)
+                    1.0f,                // alpha
+                    0.05f,               // scaleOscPercent
+                    1.0f                 // uvScale
             );
             if (sakura instanceof CameraAware) {
                 ((CameraAware) sakura).setCameraController(sharedCamera);
@@ -1336,10 +1491,17 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     "shaders/planeta_vertex.glsl",
                     "shaders/planeta_fragment.glsl",
                     R.drawable.textura_sol,
-                    0.0f, 0.0f, 0.0f,
-                    0.25f, 1.4f, 12.0f,
-                    true, new float[]{1.0f, 1.0f, 0.0f, 1.0f}, 1.0f,
-                    0.25f, 1.0f
+                    0.0f, 0.0f,          // orbitRadiusX, orbitRadiusZ
+                    0.0f,                // orbitSpeed
+                    0.0f,                // 📍 orbitOffsetY
+                    0.25f,               // scaleAmplitude
+                    1.4f,                // instanceScale
+                    12.0f,               // spinSpeed
+                    true,                // useSolidColor
+                    new float[]{1.0f, 1.0f, 0.0f, 1.0f},  // solidColor (amarillo eléctrico)
+                    1.0f,                // alpha
+                    0.25f,               // scaleOscPercent
+                    1.0f                 // uvScale
             );
             if (rayo instanceof CameraAware) {
                 ((CameraAware) rayo).setCameraController(sharedCamera);
@@ -1500,12 +1662,37 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             switch (action) {
                 case android.view.MotionEvent.ACTION_DOWN:
                     // Usuario empezó a tocar
-                    isTouching = true;
-                    touchStartTime = 0f;  // Se actualizará en onDrawFrame
-                    chargeLevel = 0f;
                     touchX = event.getX();
                     touchY = event.getY();
-                    Log.d(TAG, String.format("👆 TOUCH DOWN en (%.0f, %.0f)", touchX, touchY));
+
+                    // Convertir coordenadas de píxeles a normalizadas (-1 a 1)
+                    float normalizedX = (touchX / screenWidth) * 2.0f - 1.0f;
+                    float normalizedY = -((touchY / screenHeight) * 2.0f - 1.0f);  // Invertir Y
+
+                    // Verificar si el toque está dentro del botón de disparo
+                    if (fireButton != null && fireButton.isTouchInside(normalizedX, normalizedY)) {
+                        // ═══════════════════════════════════════════════════════════
+                        // 🎯 TOQUE EN EL BOTÓN: DISPARO INMEDIATO DE 1 METEORITO
+                        // ═══════════════════════════════════════════════════════════
+                        if (fireButton.isReady()) {
+                            // Disparar inmediatamente 1 meteorito sin carga
+                            shootMeteor(0.3f);  // Potencia fija 30%
+                            fireButton.startCooldown();
+                            Log.d(TAG, String.format("👆🟢 BOTÓN: disparo inmediato - (%.0f, %.0f)", touchX, touchY));
+                        } else {
+                            Log.d(TAG, "👆🟡 BOTÓN en cooldown - ignorado");
+                        }
+                        // No activar sistema de carga
+                        isTouching = false;
+                    } else {
+                        // ═══════════════════════════════════════════════════════════
+                        // 🎮 TOQUE FUERA DEL BOTÓN: SISTEMA DE CARGA ORIGINAL
+                        // ═══════════════════════════════════════════════════════════
+                        isTouching = true;
+                        touchStartTime = 0f;
+                        chargeLevel = 0f;
+                        Log.d(TAG, String.format("👆🔋 CARGA iniciada - (%.0f, %.0f)", touchX, touchY));
+                    }
                     break;
 
                 case android.view.MotionEvent.ACTION_MOVE:
@@ -1626,6 +1813,11 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                 Log.d(TAG, String.format("🚀 DISPARO - Poder: %.0f%%", power * 100));
             }
 
+            // Activar cooldown del botón de disparo (evita doble tap/long press)
+            if (fireButton != null) {
+                fireButton.startCooldown();
+            }
+
         } catch (Exception e) {
             Log.e(TAG, "✗ Error disparando meteorito: " + e.getMessage());
             e.printStackTrace();
@@ -1639,10 +1831,12 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
      * @param intensity Intensidad del impacto (0.0 - 1.0)
      */
     public void triggerScreenImpact(float intensity) {
-        // Screen shake
+        // Screen shake - DESACTIVADO para apreciar mejor el efecto del sol
+        /*
         if (sharedCamera != null) {
             sharedCamera.triggerScreenShake(intensity * 0.8f, 0.3f);
         }
+        */
 
         // Flash blanco
         impactFlashAlpha = intensity * 0.6f;  // Máximo 60% de alpha para no cegar
@@ -1658,10 +1852,12 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
      * @param intensity Intensidad del impacto (0.0 - 1.0)
      */
     public void triggerScreenCrack(float screenX, float screenY, float intensity) {
-        // Screen shake MÁS FUERTE
+        // Screen shake MÁS FUERTE - DESACTIVADO para apreciar mejor el efecto del sol
+        /*
         if (sharedCamera != null) {
             sharedCamera.triggerScreenShake(intensity * 1.2f, 0.5f);
         }
+        */
 
         // Flash blanco MÁS INTENSO
         impactFlashAlpha = intensity * 0.8f;  // Máximo 80%
@@ -2027,12 +2223,12 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                         LeaderboardManager.LeaderboardEntry entry = top3.get(i);
                         if (leaderboardTexts[i] != null) {
                             String icon = entry.isBot ? "🤖" : "👤";
-                            String text = icon + " #" + entry.rank + " " + entry.displayName + "\n☀️" + entry.sunsDestroyed;
+                            String text = icon + " #" + entry.rank + " " + entry.displayName + "\n🪐" + entry.planetsDestroyed;
                             leaderboardTexts[i].setText(text);
 
                             // Color diferente para el usuario actual
                             if (!entry.isBot && playerStats != null &&
-                                entry.sunsDestroyed == playerStats.getSunsDestroyed()) {
+                                entry.planetsDestroyed == playerStats.getPlanetsDestroyed()) {
                                 leaderboardTexts[i].setColor(android.graphics.Color.rgb(255, 215, 0)); // Oro
                             } else if (entry.isBot) {
                                 leaderboardTexts[i].setColor(android.graphics.Color.rgb(100, 200, 255)); // Azul claro
@@ -2076,17 +2272,17 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         Log.d(TAG, "║                                                        ║");
         Log.d(TAG, "╚════════════════════════════════════════════════════════╝");
 
-        // ☀️ REGISTRAR SOL DESTRUIDO EN ESTADÍSTICAS (debe hacerse ANTES de actualizar contador)
+        // 🪐 REGISTRAR PLANETA DESTRUIDO EN ESTADÍSTICAS (debe hacerse ANTES de actualizar contador)
         if (playerStats != null) {
-            playerStats.onSunDestroyed();
-            Log.d(TAG, "   ☀️ Sol destruido registrado en PlayerStats");
+            playerStats.onPlanetDestroyed();
+            Log.d(TAG, "   🪐 Planeta destruido registrado en PlayerStats");
         }
 
-        // 📊 ACTUALIZAR CONTADOR DE SOLES DESTRUIDOS (ahora con el valor incrementado)
-        if (sunsDestroyedCounter != null && playerStats != null) {
-            int totalSuns = playerStats.getSunsDestroyed();
-            sunsDestroyedCounter.setText("☀️" + totalSuns);
-            Log.d(TAG, "   📊 Contador actualizado: " + totalSuns + " soles destruidos");
+        // 📊 ACTUALIZAR CONTADOR DE PLANETAS DESTRUIDOS (ahora con el valor incrementado)
+        if (planetsDestroyedCounter != null && playerStats != null) {
+            int totalPlanets = playerStats.getPlanetsDestroyed();
+            planetsDestroyedCounter.setText("🪐" + totalPlanets);
+            Log.d(TAG, "   📊 Contador actualizado: " + totalPlanets + " planetas destruidos");
         }
 
         // 🏆 FORZAR ACTUALIZACIÓN DEL LEADERBOARD

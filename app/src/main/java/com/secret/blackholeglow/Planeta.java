@@ -28,6 +28,7 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
     private final float uvScale;
     private final int textureId;
     private final float orbitRadiusX, orbitRadiusZ, orbitSpeed;
+    private final float orbitOffsetY;  // 📍 Offset vertical (para mover planetas arriba/abajo)
     private final float scaleAmplitude, instanceScale, spinSpeed;
     private final boolean useSolidColor;
     private final float[] solidColor;
@@ -120,6 +121,7 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
                    float orbitRadiusX,
                    float orbitRadiusZ,
                    float orbitSpeed,
+                   float orbitOffsetY,  // 📍 NUEVO: Offset vertical
                    float scaleAmplitude,
                    float instanceScale,
                    float spinSpeed,
@@ -134,6 +136,7 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
         this.orbitRadiusX = orbitRadiusX;
         this.orbitRadiusZ = orbitRadiusZ;
         this.orbitSpeed = orbitSpeed;
+        this.orbitOffsetY = orbitOffsetY;  // Guardar offset Y
         this.scaleAmplitude = scaleAmplitude;
         this.instanceScale = instanceScale;
         this.spinSpeed = spinSpeed;
@@ -264,8 +267,9 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
                     // Período de 1 hora exacta: usar solo minutos dentro de la hora actual
                     currentTime = minute / 60.0f + second / 3600.0f + millis / 3600000.0f;
                 } else if (realTimeOrbitPeriodHours >= 1.0f / 60.0f) {
-                    // Períodos de minutos (>= 1 minuto): usar segundos dentro del minuto actual
-                    currentTime = second / 3600.0f + millis / 3600000.0f;
+                    // Períodos de minutos (>= 1 minuto): usar minutos Y segundos dentro de la hora
+                    // 🌙 FIX: Incluir minutos para evitar saltos cuando cambia el minuto
+                    currentTime = minute / 60.0f + second / 3600.0f + millis / 3600000.0f;
                 } else {
                     // Períodos menores a 1 minuto: usar solo segundos
                     currentTime = second / 3600.0f + millis / 3600000.0f;
@@ -352,12 +356,18 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
 
             // Guardar posición orbital actual (para lunas que dependan de este planeta)
             currentOrbitalPosition[0] = ox;
-            currentOrbitalPosition[1] = 0;
+            currentOrbitalPosition[1] = orbitOffsetY;  // 📍 Incluir offset Y
             currentOrbitalPosition[2] = oz;
 
-            Matrix.translateM(model, 0, ox, 0, oz);
+            Matrix.translateM(model, 0, ox, orbitOffsetY, oz);  // 📍 Aplicar offset Y
 
             Log.v(TAG, String.format("Órbita: x=%.2f z=%.2f angle=%.2f", ox, oz, orbitAngle));
+        } else if (orbitOffsetY != 0) {
+            // Planeta fijo en el centro pero con offset Y (ej: Sol elevado)
+            Matrix.translateM(model, 0, 0, orbitOffsetY, 0);
+            currentOrbitalPosition[0] = 0;
+            currentOrbitalPosition[1] = orbitOffsetY;
+            currentOrbitalPosition[2] = 0;
         }
 
         // 2. Calcular escala final
@@ -453,7 +463,7 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
 
         // 💾 AUTO-GUARDAR HP en PlayerStats
         if (playerStats != null) {
-            playerStats.updateSunHealth(currentHealth);
+            playerStats.updatePlanetHealth(currentHealth);
         }
 
         if (currentHealth <= 0) {

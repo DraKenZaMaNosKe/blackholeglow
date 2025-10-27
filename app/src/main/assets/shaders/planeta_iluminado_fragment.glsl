@@ -54,15 +54,19 @@ void main() {
     // ============================================
 
     // 1. Luz Ambiente - siempre presente para que no quede totalmente negro
-    vec3 ambientColor = baseColor.rgb * 0.15;  // Reducido a 15% para mejor contraste
+    vec3 ambientColor = baseColor.rgb * 0.25;  // 25% para sombras más suaves
 
     // 2. Luz Difusa - iluminación principal del sol
-    float diffuseFactor = max(0.0, dot(normal, lightDir));
+    float diffuseFactor = dot(normal, lightDir);  // SIN clamp para permitir valores negativos
     vec3 sunColor = vec3(1.0, 0.95, 0.8);  // Color cálido del sol
-    vec3 diffuseColor = baseColor.rgb * sunColor * diffuseFactor * 0.9;
 
-    // 3. Sombra propia - lado oscuro más definido
-    float shadowFactor = smoothstep(-0.3, 0.4, diffuseFactor);
+    // 🌍 TERMINADOR MUY SUAVE - Transición gradual día/noche (difuminación máxima)
+    // smoothstep con rango EXTRA AMPLIO para difuminar completamente la línea divisoria
+    float shadowFactor = smoothstep(-0.7, 0.8, diffuseFactor);  // Rango AMPLIADO: -0.7 a 0.8 = 1.5 unidades de transición
+
+    // Luz difusa suavizada con transición gradual
+    float diffuseStrength = max(0.0, diffuseFactor);
+    vec3 diffuseColor = baseColor.rgb * sunColor * diffuseStrength * shadowFactor * 0.80;
 
     // ✨ 4. SPECULAR HIGHLIGHTS - Brillo del sol reflejado (MUY SUTIL)
     vec3 viewDir = normalize(vec3(0.0, 0.0, 1.0) - v_WorldPos);  // Dirección hacia cámara
@@ -77,13 +81,11 @@ void main() {
     vec3 rimColor = sunColor * rimIntensity * rimLightFactor * 0.10;  // Rim MUY tenue (reducido de 0.25 a 0.10)
 
     // ============================================
-    // COMBINAR ILUMINACIÓN
+    // COMBINAR ILUMINACIÓN CON TRANSICIÓN SUAVE
     // ============================================
 
-    vec3 finalColor = ambientColor
-                    + (diffuseColor * shadowFactor)
-                    + specularColor
-                    + rimColor;
+    // Mezclar luz ambiente y difusa con transición gradual
+    vec3 finalColor = ambientColor + diffuseColor + specularColor + rimColor;
 
     // Añadir un poco de variación con el tiempo (opcional)
     float pulse = sin(u_Time * 2.0) * 0.02 + 0.98;
@@ -92,8 +94,9 @@ void main() {
     // Asegurar que no sobrepasamos el blanco
     finalColor = clamp(finalColor, 0.0, 1.0);
 
-    // Alpha final - mantener completamente opaco para evitar agujeros
-    float finalAlpha = baseColor.a * u_Alpha;
+    // Alpha final - FORZAR OPACO para evitar problemas con canal alpha de texturas PNG
+    // IGNORAMOS baseColor.a porque causa zonas oscuras/transparentes no deseadas
+    float finalAlpha = u_Alpha;  // Solo usar u_Alpha, ignorar textura alpha
 
     // NO suavizar bordes para mantener la esfera completa
     // Los bordes los define el modelo 3D, no el shader
