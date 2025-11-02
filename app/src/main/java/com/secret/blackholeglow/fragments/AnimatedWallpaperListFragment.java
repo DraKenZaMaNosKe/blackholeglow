@@ -79,14 +79,24 @@ public class AnimatedWallpaperListFragment extends Fragment {
         // │ 🛠️ 2) Configurar RecyclerView VERTICAL (1 a la vez)│
         // └───────────────────────────────────────────────────┘
         RecyclerView recyclerView = view.findViewById(R.id.wallpaper_recycler_view);
-        // LinearLayout vertical: muestra 1 wallpaper a la vez (scroll vertical)
-        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
-        // ⚡ Optimizaciones de rendimiento
+        // LinearLayout vertical: muestra 1 wallpaper a la vez (scroll vertical)
+        LinearLayoutManager layoutManager = new LinearLayoutManager(getContext());
+        layoutManager.setInitialPrefetchItemCount(3); // Prefetch 3 items adelante
+        recyclerView.setLayoutManager(layoutManager);
+
+        // ⚡ Optimizaciones de rendimiento MEJORADAS
         recyclerView.setHasFixedSize(true); // Tamaño fijo mejora rendimiento
-        recyclerView.setItemViewCacheSize(4); // Cache de 4 items
-        recyclerView.setDrawingCacheEnabled(true);
-        recyclerView.setDrawingCacheQuality(android.view.View.DRAWING_CACHE_QUALITY_HIGH);
+        recyclerView.setItemViewCacheSize(3); // Cache de 3 items (menos que antes, pero más eficiente)
+
+        // RecycledViewPool para reutilizar vistas eficientemente
+        androidx.recyclerview.widget.RecyclerView.RecycledViewPool viewPool =
+            new androidx.recyclerview.widget.RecyclerView.RecycledViewPool();
+        viewPool.setMaxRecycledViews(0, 5); // Pool de 5 vistas del tipo 0
+        recyclerView.setRecycledViewPool(viewPool);
+
+        // Habilitar nested scrolling para mejor rendimiento
+        recyclerView.setNestedScrollingEnabled(true);
 
         // ┌───────────────────────────────────────────────────┐
         // │ 🌟 3) Cargar datos simulados                     │
@@ -130,11 +140,11 @@ public class AnimatedWallpaperListFragment extends Fragment {
         // ║  Cada tema es único con efectos OpenGL hipnotizantes     ║
         // ╚════════════════════════════════════════════════════════════╝
 
-        // 🪩 DISCO BALL - Visualizador musical interactivo ⭐ NUEVO!
+        // 🌊 OCÉANO PROFUNDO - Mundo submarino mágico ⭐ NUEVO!
         list.add(new WallpaperItem(
-                R.drawable.agujero_negro,  // Placeholder - usaremos textura oscura
-                "DiscoBall",
-                "Bola disco con cuadritos espejo que gira hipnóticamente. Reacciona a tu música con efectos pulsantes y colores rainbow. La fiesta nunca termina! 🎵✨"
+                R.drawable.universo03,  // TODO: Agregar textura ocean_background.png
+                "🌊 Océano Profundo",
+                "Sumérgete en las profundidades del océano azul. Explora un mundo submarino lleno de vida marina y luz filtrada. Una experiencia relajante y mística. 🐠💙"
         ));
 
         // 1️⃣ ESPACIO - Universo con sistema solar completo
@@ -206,6 +216,13 @@ public class AnimatedWallpaperListFragment extends Fragment {
                 "⚡ Furia Celestial",
                 "Rayos fractales iluminan nubes tormentosas. Energía pura danza en el cielo mientras relámpagos explotan. El poder elemental al máximo."
         ));
+        // 1️⃣1️⃣ BATALLA ESPACIAL - Combate galáctico automático ⭐ NUEVO!
+        list.add(new WallpaperItem(
+                R.drawable.space_battle_bg,
+                "🚀 Batalla Galáctica",
+                "Observa una épica batalla espacial automática. Una nave heroica lucha contra invasores enemigos en combate infinito. Láseres, explosiones y acción sin parar."
+        ));
+
 
         return list;
     }

@@ -162,6 +162,36 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
 
     /**
      * ╔═════════════════════════════════╗
+     * ║  🎬 PAUSAR animaciones fuera    ║
+     * ║     de pantalla (optimización)  ║
+     * ╚═════════════════════════════════╝
+     */
+    @Override
+    public void onViewAttachedToWindow(@NonNull WallpaperViewHolder holder) {
+        super.onViewAttachedToWindow(holder);
+        // Reanudar animaciones cuando la vista vuelve a pantalla
+        if (holder.animatedBorder != null) {
+            holder.animatedBorder.resumeAnimation();
+        }
+        if (holder.buttonPreview != null) {
+            holder.buttonPreview.resumeAnimation();
+        }
+    }
+
+    @Override
+    public void onViewDetachedFromWindow(@NonNull WallpaperViewHolder holder) {
+        super.onViewDetachedFromWindow(holder);
+        // Pausar animaciones cuando la vista sale de pantalla
+        if (holder.animatedBorder != null) {
+            holder.animatedBorder.pauseAnimation();
+        }
+        if (holder.buttonPreview != null) {
+            holder.buttonPreview.pauseAnimation();
+        }
+    }
+
+    /**
+     * ╔═════════════════════════════════╗
      * ║  📦 WallpaperViewHolder          ║
      * ╚═════════════════════════════════╝
      *  • Patrón ViewHolder: guarda referencias a vistas.
@@ -172,7 +202,8 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         ImageView imagePreview;
         TextView textTitle;
         TextView textDescription;
-        Button buttonPreview;
+        com.secret.blackholeglow.ui.AnimatedGlowButton buttonPreview;
+        com.secret.blackholeglow.ui.AnimatedGlowCard animatedBorder;
 
         public WallpaperViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -180,6 +211,7 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
             textTitle = itemView.findViewById(R.id.text_title);
             textDescription = itemView.findViewById(R.id.text_description);
             buttonPreview = itemView.findViewById(R.id.button_preview);
+            animatedBorder = itemView.findViewById(R.id.animated_border);
         }
     }
 }

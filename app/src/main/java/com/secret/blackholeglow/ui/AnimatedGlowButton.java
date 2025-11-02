@@ -111,7 +111,7 @@ public class AnimatedGlowButton extends AppCompatButton {
 
         // Hacer el botón completamente custom (sin fondo default)
         setBackgroundColor(Color.TRANSPARENT);
-        setLayerType(LAYER_TYPE_SOFTWARE, null); // Para sombras
+        setLayerType(LAYER_TYPE_HARDWARE, null); // Aceleración GPU para mejor rendimiento
     }
 
     @Override
@@ -152,6 +152,38 @@ public class AnimatedGlowButton extends AppCompatButton {
 
         // Dibujar texto encima
         super.onDraw(canvas);
+    }
+
+    /**
+     * Pausar animaciones (llamar cuando la vista está fuera de pantalla)
+     */
+    public void pauseAnimation() {
+        if (gradientAnimator != null && gradientAnimator.isRunning()) {
+            gradientAnimator.pause();
+        }
+        if (shimmerAnimator != null && shimmerAnimator.isRunning()) {
+            shimmerAnimator.pause();
+        }
+    }
+
+    /**
+     * Reanudar animaciones (llamar cuando la vista vuelve a pantalla)
+     */
+    public void resumeAnimation() {
+        if (gradientAnimator != null) {
+            if (gradientAnimator.isPaused()) {
+                gradientAnimator.resume();
+            } else if (!gradientAnimator.isRunning()) {
+                gradientAnimator.start();
+            }
+        }
+        if (shimmerAnimator != null) {
+            if (shimmerAnimator.isPaused()) {
+                shimmerAnimator.resume();
+            } else if (!shimmerAnimator.isRunning()) {
+                shimmerAnimator.start();
+            }
+        }
     }
 
     @Override
