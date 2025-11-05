@@ -84,6 +84,89 @@ float drawSparkle(vec2 uv, vec2 pos, float size, float brightness) {
     return core + crossGlow;
 }
 
+// ════════════════════════════════════════════════════════════════════════
+// 🌌 NÚCLEO GALÁCTICO (galaxias vivas con pulsación)
+// ════════════════════════════════════════════════════════════════════════
+vec3 drawGalacticCore(vec2 uv, vec2 pos, float time, float seed) {
+    float dist = length(uv - pos);
+    vec3 coreColor = vec3(0.0);
+
+    // ═══════════════════════════════════════════════════════════
+    // 🎨 VARIACIÓN DE COLOR SEGÚN TIPO DE GALAXIA
+    // ═══════════════════════════════════════════════════════════
+    // Usar seed para determinar el tipo de color (azul, blanco, amarillo)
+    vec3 galaxyColorCore, galaxyColorInner, galaxyColorOuter, galaxyColorGlow;
+
+    if (seed < 0.33) {
+        // Galaxia AZUL (joven, formación estelar activa)
+        galaxyColorCore = vec3(0.95, 0.97, 1.0);      // Blanco azulado
+        galaxyColorInner = vec3(0.7, 0.85, 1.0);      // Azul claro
+        galaxyColorOuter = vec3(0.5, 0.75, 1.0);      // Azul
+        galaxyColorGlow = vec3(0.6, 0.8, 1.0);        // Azul difuso
+    } else if (seed < 0.66) {
+        // Galaxia AMARILLA (madura, equilibrada)
+        galaxyColorCore = vec3(1.0, 0.98, 0.95);      // Blanco cálido
+        galaxyColorInner = vec3(1.0, 0.85, 0.5);      // Amarillo brillante
+        galaxyColorOuter = vec3(1.0, 0.7, 0.4);       // Naranja
+        galaxyColorGlow = vec3(1.0, 0.8, 0.5);        // Amarillo difuso
+    } else {
+        // Galaxia NARANJA (vieja, estrellas rojas)
+        galaxyColorCore = vec3(1.0, 0.95, 0.9);       // Blanco cálido
+        galaxyColorInner = vec3(1.0, 0.7, 0.4);       // Naranja brillante
+        galaxyColorOuter = vec3(1.0, 0.6, 0.3);       // Naranja oscuro
+        galaxyColorGlow = vec3(1.0, 0.65, 0.35);      // Naranja difuso
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // ⏱️ VELOCIDAD DE PULSACIÓN VARIABLE (cada galaxia tiene su ritmo)
+    // ═══════════════════════════════════════════════════════════
+    // Algunas pulsan más rápido (activas), otras más lento (tranquilas)
+    float pulseSpeed = 0.6 + seed * 0.5;  // Rango: 0.6 - 1.1 (varía según seed)
+    float pulse = sin(time * pulseSpeed + seed * 6.28) * 0.15 + 0.85;  // 0.7 - 1.0
+
+    // ═══════════════════════════════════════════════════════════
+    // 🔥 NÚCLEO CENTRAL MUY BRILLANTE
+    // ═══════════════════════════════════════════════════════════
+    float coreSize = 0.005;  // 🔧 TAMAÑO del núcleo
+    if (dist < coreSize) {
+        float coreIntensity = (1.0 - dist / coreSize) * pulse;
+        coreIntensity = pow(coreIntensity, 0.8);
+        coreColor += galaxyColorCore * coreIntensity * 1.5;  // 🔧 BRILLO
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // ✨ HALO INTERNO
+    // ═══════════════════════════════════════════════════════════
+    float haloSize1 = 0.012;  // 🔧 TAMAÑO del halo interno
+    if (dist < haloSize1) {
+        float haloIntensity = (1.0 - dist / haloSize1) * pulse;
+        haloIntensity = pow(haloIntensity, 1.5);
+        coreColor += galaxyColorInner * haloIntensity * 0.7;  // 🔧 BRILLO
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 🌟 HALO EXTERNO
+    // ═══════════════════════════════════════════════════════════
+    float haloSize2 = 0.0275;  // 🔧 TAMAÑO del halo externo
+    if (dist < haloSize2) {
+        float haloIntensity = (1.0 - dist / haloSize2) * pulse;
+        haloIntensity = pow(haloIntensity, 2.0);
+        coreColor += galaxyColorOuter * haloIntensity * 0.35;  // 🔧 BRILLO
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 💫 RESPLANDOR MUY DIFUSO
+    // ═══════════════════════════════════════════════════════════
+    float glowSize = 0.05;  // 🔧 TAMAÑO del resplandor difuso
+    if (dist < glowSize) {
+        float glowIntensity = (1.0 - dist / glowSize) * pulse;
+        glowIntensity = pow(glowIntensity, 3.0);
+        coreColor += galaxyColorGlow * glowIntensity * 0.15;  // 🔧 BRILLO
+    }
+
+    return coreColor;
+}
+
 void main() {
     // ========== EFECTO DE PARALLAX PARA PROFUNDIDAD ==========
     // El fondo se mueve MUY lentamente, simulando distancia infinita
@@ -284,8 +367,23 @@ void main() {
         }
     }
 
-    // Combinar: fondo + estrellas procedurales + estrellas fugaces
-    vec3 finalColor = backgroundTexture + twinklingStars + color;
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌌 NÚCLEOS GALÁCTICOS VIVOS (en las posiciones marcadas por el usuario)
+    // ═══════════════════════════════════════════════════════════════════════
+    vec3 galacticCores = vec3(0.0);
+
+    // Posiciones aproximadas basadas en la imagen (normalizadas 0-1)
+    // Ajustadas para las galaxias visibles en el fondo
+    galacticCores += drawGalacticCore(v_TexCoord, vec2(0.741, 0.477), u_Time, 0.1);  // Arriba izquierda
+    galacticCores += drawGalacticCore(v_TexCoord, vec2(0.277, 0.342), u_Time, 0.3);  // Centro izquierda
+    galacticCores += drawGalacticCore(v_TexCoord, vec2(0.130, 0.562), u_Time, 0.5);  // Centro
+    galacticCores += drawGalacticCore(v_TexCoord, vec2(0.567, 0.671), u_Time, 0.7);  // Centro derecha
+    galacticCores += drawGalacticCore(v_TexCoord, vec2(0.832, 0.721), u_Time, 0.2);  // Abajo izquierda
+    galacticCores += drawGalacticCore(v_TexCoord, vec2(0.252, 0.690), u_Time, 0.9);  // Abajo derecha
+
+
+    // Combinar: fondo + estrellas procedurales + estrellas fugaces + núcleos galácticos
+    vec3 finalColor = backgroundTexture + twinklingStars + color + galacticCores;
 
     // ========== EFECTO DE PROFUNDIDAD: VIGNETTE SUTIL ==========
     // Oscurece ligeramente los bordes para dar sensación de espacio profundo

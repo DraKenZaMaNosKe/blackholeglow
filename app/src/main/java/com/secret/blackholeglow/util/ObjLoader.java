@@ -25,9 +25,9 @@ public class ObjLoader {
         public final FloatBuffer uvBuffer;          // Buffer GPU de coords UV
         public final int vertexCount;      // Número de vértices (X,Y,Z)
         public final float[] originalVertices; // Array plano XYZ original
-        public final List<short[]> faces;           // Lista de caras (polígonos)
+        public final List<int[]> faces;             // Lista de caras (int[] para modelos grandes)
 
-        public Mesh(FloatBuffer vb, float[] verts, List<short[]> faceList,
+        public Mesh(FloatBuffer vb, float[] verts, List<int[]> faceList,
                     FloatBuffer uvb, int vCount) {
             this.vertexBuffer = vb;
             this.originalVertices = verts;
@@ -41,10 +41,10 @@ public class ObjLoader {
     // Face data structure - Stores vertex AND UV indices
     // ═══════════════════════════════════════════════════════════
     public static class Face {
-        public short[] vertexIndices;  // Indices to tmpVerts
-        public short[] uvIndices;      // Indices to tmpUVs (puede ser null)
+        public int[] vertexIndices;    // Indices to tmpVerts (int para modelos grandes >32k vértices)
+        public int[] uvIndices;        // Indices to tmpUVs (puede ser null)
 
-        public Face(short[] verts, short[] uvs) {
+        public Face(int[] verts, int[] uvs) {
             this.vertexIndices = verts;
             this.uvIndices = uvs;
         }
@@ -86,8 +86,8 @@ public class ObjLoader {
                     // ═══════════════════════════════════════════════
                     // Formato: f v1/vt1/vn1 v2/vt2/vn2 v3/vt3/vn3...
                     int nv = tokens.length - 1;
-                    short[] vertIndices = new short[nv];
-                    short[] uvIndices = new short[nv];
+                    int[] vertIndices = new int[nv];  // ✅ int[] para modelos grandes
+                    int[] uvIndices = new int[nv];    // ✅ int[] para modelos grandes
                     boolean hasUVs = true;
 
                     for (int i = 0; i < nv; i++) {
@@ -95,12 +95,12 @@ public class ObjLoader {
 
                         // Índice de vértice (siempre presente)
                         int vertIndex = Integer.parseInt(parts[0]) - 1;
-                        vertIndices[i] = (short) vertIndex;
+                        vertIndices[i] = vertIndex;  // ✅ Sin cast a short
 
                         // Índice de UV (opcional - puede ser "v//vn" o "v/vt/vn")
                         if (parts.length >= 2 && !parts[1].isEmpty()) {
                             int uvIndex = Integer.parseInt(parts[1]) - 1;
-                            uvIndices[i] = (short) uvIndex;
+                            uvIndices[i] = uvIndex;  // ✅ Sin cast a short
                         } else {
                             hasUVs = false;
                         }
@@ -218,17 +218,17 @@ public class ObjLoader {
 
         Log.d(TAG, "ObjLoader: buffers preparados (vBuf, uvBuf).");
 
-        // Convertir Face list a short[] list para compatibilidad
-        List<short[]> legacyFaceList = new ArrayList<>();
+        // Convertir Face list a int[] list
+        List<int[]> faceIndexList = new ArrayList<>();
         for (Face face : faceList) {
-            legacyFaceList.add(face.vertexIndices);
+            faceIndexList.add(face.vertexIndices);
         }
 
         Log.d(TAG, "════════════════════════════════════════════════");
         Log.d(TAG, "ObjLoader: ✓ Carga completada exitosamente");
         Log.d(TAG, "════════════════════════════════════════════════");
 
-        return new Mesh(vBuf, vertsArr, legacyFaceList, uvBuf, vCount);
+        return new Mesh(vBuf, vertsArr, faceIndexList, uvBuf, vCount);
     }
 
     /**

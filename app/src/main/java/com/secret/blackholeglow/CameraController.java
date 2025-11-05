@@ -189,17 +189,17 @@ public class CameraController {
         // Configurar parámetros según el modo
         switch (mode) {
             case PERSPECTIVE_3_4:
-                // Vista 3/4 clásica - alejada para mejor visibilidad de texturas
-                position[0] = 6f;      // Alejado 1.5x (era 4f)
-                position[1] = 4.5f;    // Alejado 1.5x (era 3f)
-                position[2] = 9f;      // Alejado 1.5x (era 6f)
-                target[0] = 0f;
+                // 🎬 Vista "Estratégica Elevada" - Tierra protagonista en el centro
+                position[0] = 5f;      // Posición X (lateral derecha)
+                position[1] = 4f;      // Posición Y (altura media-alta)
+                position[2] = 7f;      // Posición Z (profundidad cercana)
+                target[0] = 0f;        // Mirando al centro (donde está la Tierra)
                 target[1] = 0f;
                 target[2] = 0f;
                 up[0] = 0f;
                 up[1] = 1f;
                 up[2] = 0f;
-                fov = 60f;
+                fov = 60f;             // Campo de visión óptimo
                 break;
 
             case PERSPECTIVE_FRONT:

@@ -6,8 +6,13 @@ import android.opengl.Matrix;
 import android.util.Log;
 
 import com.secret.blackholeglow.util.ProceduralSphere;
+import com.secret.blackholeglow.util.ObjLoader;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 
 /**
@@ -73,6 +78,7 @@ public class Meteorito implements SceneObject, CameraAware {
     private final int aPositionLoc;
     private final int aTexCoordLoc;
     private final int uMvpLoc;
+    private final int uTextureLoc;     // ✅ NUEVO: Para la textura
     private final int uColorLoc;
     private final int uOpacityLoc;
     private final int uTimeLoc;
@@ -89,10 +95,10 @@ public class Meteorito implements SceneObject, CameraAware {
             sharedMesh = new MeteoritoMesh(context);
         }
 
-        // Crear shader program con shaders mejorados
+        // ✅ Crear shader program SIMPLE para mostrar solo la textura (sin efectos)
         programId = ShaderUtils.createProgramFromAssets(context,
             "shaders/meteorito_vertex.glsl",
-            "shaders/meteorito_fragment.glsl");
+            "shaders/meteorito_simple_fragment.glsl");
 
         if (programId == 0) {
             Log.e(TAG, "[Meteorito] Error creando shader program!");
@@ -104,6 +110,7 @@ public class Meteorito implements SceneObject, CameraAware {
         aPositionLoc = GLES20.glGetAttribLocation(programId, "a_Position");
         aTexCoordLoc = GLES20.glGetAttribLocation(programId, "a_TexCoord");
         uMvpLoc = GLES20.glGetUniformLocation(programId, "u_MVP");
+        uTextureLoc = GLES20.glGetUniformLocation(programId, "u_Texture");  // ✅ NUEVO
         uColorLoc = GLES20.glGetUniformLocation(programId, "u_Color");
         uOpacityLoc = GLES20.glGetUniformLocation(programId, "u_Opacity");
         uTimeLoc = GLES20.glGetUniformLocation(programId, "u_Time");
@@ -154,13 +161,11 @@ public class Meteorito implements SceneObject, CameraAware {
         tiempoVida = 0;
         tiempoImpacto = 0;
 
-        // Color aleatorio (variaciones de fuego)
-        float r = 0.8f + (float) Math.random() * 0.2f;
-        float g = 0.4f + (float) Math.random() * 0.3f;
-        float b = 0.1f + (float) Math.random() * 0.2f;
-        color[0] = r;
-        color[1] = g;
-        color[2] = b;
+        // ✅ Color blanco (sin tinte) para mostrar textura original del asteroide
+        // Dejamos solo la textura, sin efectos de color
+        color[0] = 1.0f;  // R = blanco
+        color[1] = 1.0f;  // G = blanco
+        color[2] = 1.0f;  // B = blanco
 
         // Limpiar la estela anterior
         trail.clear();
@@ -337,6 +342,14 @@ public class Meteorito implements SceneObject, CameraAware {
             GLES20.glUniform1f(uImpactPowerLoc, impactPower);
         }
 
+        // ✅ BIND TEXTURA DEL ASTEROIDE
+        if (uTextureLoc >= 0) {
+            GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,
+                textureManager.getTexture(R.drawable.matasteroide));
+            GLES20.glUniform1i(uTextureLoc, 0);
+        }
+
         // Dibujar el mesh
         sharedMesh.draw(aPositionLoc, aTexCoordLoc);
 
@@ -351,47 +364,93 @@ public class Meteorito implements SceneObject, CameraAware {
     public boolean estaActivo() { return estado != Estado.INACTIVO; }
 
     /**
-     * Clase interna para el mesh del meteorito (compartido)
+     * ════════════════════════════════════════════════════════════
+     * 🪨 MODELO 3D REALISTA DE ASTEROIDE (OBJ)
+     * ════════════════════════════════════════════════════════════
+     * Reemplaza esfera procedural por modelo 3D de alta calidad
+     * ════════════════════════════════════════════════════════════
      */
     private static class MeteoritoMesh {
         private final FloatBuffer vertexBuffer;
         private final FloatBuffer texCoordBuffer;
-        private final ShortBuffer indexBuffer;  // ← Añadido para ProceduralSphere
+        private final IntBuffer indexBuffer;  // INT porque el modelo puede tener >32k vértices
         private final int vertexCount;
-        private final int indexCount;  // ← Añadido para ProceduralSphere
+        private final int indexCount;
 
-        /**
-         * ════════════════════════════════════════════════════════════
-         * ✅ USAR ESFERA PROCEDURAL con UVs perfectos
-         * ════════════════════════════════════════════════════════════
-         * Reemplaza createSphereMesh manual por ProceduralSphere
-         * para UVs correctos en texturas de meteoritos
-         * ════════════════════════════════════════════════════════════
-         */
         public MeteoritoMesh(Context context) {
-            Log.d(TAG, "[Meteorito] Generando mesh con ProceduralSphere...");
+            Log.d(TAG, "[Meteorito] 🪨 Cargando modelo 3D AsteroideRealista.obj...");
 
-            // Usar LowPoly para meteoritos (son pequeños y hay muchos)
-            ProceduralSphere.Mesh mesh = ProceduralSphere.generateLowPoly(0.5f);
+            ObjLoader.Mesh mesh = null;
+            try {
+                mesh = ObjLoader.loadObj(context, "AsteroideRealista.obj");
+                Log.d(TAG, "[Meteorito] ✅ Modelo cargado: " + mesh.vertexCount + " vértices, " + mesh.faces.size() + " caras");
+            } catch (IOException e) {
+                Log.e(TAG, "[Meteorito] ❌ Error cargando modelo 3D, fallback a esfera procedural", e);
 
-            vertexBuffer = mesh.vertexBuffer;
-            texCoordBuffer = mesh.uvBuffer;
-            indexBuffer = mesh.indexBuffer;
-            vertexCount = mesh.vertexCount;
-            indexCount = mesh.indexCount;
+                // Fallback a esfera procedural si falla la carga
+                ProceduralSphere.Mesh fallbackMesh = ProceduralSphere.generateLowPoly(0.5f);
+                vertexBuffer = fallbackMesh.vertexBuffer;
+                texCoordBuffer = fallbackMesh.uvBuffer;
 
-            Log.d(TAG, "[Meteorito] ✓ Mesh creado - vértices: " + vertexCount +
+                // Convertir ShortBuffer a IntBuffer para compatibilidad
+                ShortBuffer shortBuf = fallbackMesh.indexBuffer;
+                short[] shortIndices = new short[fallbackMesh.indexCount];
+                shortBuf.position(0);
+                shortBuf.get(shortIndices);
+
+                int[] intIndices = new int[shortIndices.length];
+                for (int i = 0; i < shortIndices.length; i++) {
+                    intIndices[i] = shortIndices[i] & 0xFFFF;
+                }
+
+                indexBuffer = ByteBuffer.allocateDirect(intIndices.length * 4)
+                    .order(ByteOrder.nativeOrder())
+                    .asIntBuffer();
+                indexBuffer.put(intIndices);
+                indexBuffer.position(0);
+
+                vertexCount = fallbackMesh.vertexCount;
+                indexCount = fallbackMesh.indexCount;
+
+                Log.d(TAG, "[Meteorito] ⚠️ Usando esfera procedural fallback");
+                return;
+            }
+
+            // Usar buffers del OBJ
+            this.vertexBuffer = mesh.vertexBuffer;
+            this.texCoordBuffer = mesh.uvBuffer;
+            this.vertexCount = mesh.vertexCount;
+
+            // Construir buffer de índices con fan triangulation
+            int totalIndices = 0;
+            for (int[] face : mesh.faces) {
+                totalIndices += (face.length - 2) * 3;
+            }
+
+            int[] indices = new int[totalIndices];
+            int idx = 0;
+            for (int[] face : mesh.faces) {
+                int v0 = face[0];
+                for (int i = 1; i < face.length - 1; i++) {
+                    indices[idx++] = v0;
+                    indices[idx++] = face[i];
+                    indices[idx++] = face[i + 1];
+                }
+            }
+
+            this.indexCount = totalIndices;
+
+            // Crear IntBuffer
+            ByteBuffer ibb = ByteBuffer.allocateDirect(indices.length * 4);
+            ibb.order(ByteOrder.nativeOrder());
+            indexBuffer = ibb.asIntBuffer();
+            indexBuffer.put(indices);
+            indexBuffer.position(0);
+
+            Log.d(TAG, "[Meteorito] ✓ Modelo 3D cargado - vértices: " + vertexCount +
                        ", índices: " + indexCount);
         }
 
-        // Ya no necesitamos estos métodos manuales
-        // ProceduralSphere los reemplaza con UVs matemáticamente correctos
-
-        /**
-         * ════════════════════════════════════════════════════════════
-         * ✅ DRAW con glDrawElements (indexBuffer)
-         * ════════════════════════════════════════════════════════════
-         */
         public void draw(int positionLoc, int texCoordLoc) {
             GLES20.glEnableVertexAttribArray(positionLoc);
             GLES20.glVertexAttribPointer(positionLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
@@ -401,9 +460,9 @@ public class Meteorito implements SceneObject, CameraAware {
                 GLES20.glVertexAttribPointer(texCoordLoc, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
             }
 
-            // Usar glDrawElements con indexBuffer de ProceduralSphere
+            // Dibujar con índices INT (glDrawElements usa GL_UNSIGNED_INT)
             indexBuffer.position(0);
-            GLES20.glDrawElements(GLES20.GL_TRIANGLES, indexCount, GLES20.GL_UNSIGNED_SHORT, indexBuffer);
+            GLES20.glDrawElements(GLES20.GL_TRIANGLES, indexCount, GLES20.GL_UNSIGNED_INT, indexBuffer);
 
             GLES20.glDisableVertexAttribArray(positionLoc);
             if (texCoordLoc >= 0) {

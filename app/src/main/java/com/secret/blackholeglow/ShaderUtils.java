@@ -130,9 +130,10 @@ public class ShaderUtils {
             throw new RuntimeException("Error al generar ID de textura");
         }
 
-        // Decodificar bitmap sin escalado
+        // Decodificar bitmap sin escalado y con formato ARGB_8888 (canal alpha)
         BitmapFactory.Options opts = new BitmapFactory.Options();
         opts.inScaled = false;
+        opts.inPreferredConfig = Bitmap.Config.ARGB_8888; // FORZAR ALPHA CHANNEL
         Bitmap bmp = BitmapFactory.decodeResource(
                 context.getResources(), resourceId, opts
         );
@@ -140,6 +141,13 @@ public class ShaderUtils {
             Log.e(TAG, "No se pudo decodificar recurso: " + resourceId);
             throw new RuntimeException(
                     "No se pudo decodificar recurso: " + resourceId);
+        }
+        // Si el bitmap no es ARGB_8888, convertirlo
+        if (bmp.getConfig() != Bitmap.Config.ARGB_8888) {
+            Bitmap converted = bmp.copy(Bitmap.Config.ARGB_8888, false);
+            bmp.recycle();
+            bmp = converted;
+            Log.d(TAG, "Bitmap convertido a ARGB_8888 para soporte de transparencia");
         }
 
         // Bind y subir a GPU

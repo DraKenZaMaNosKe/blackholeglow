@@ -9,8 +9,8 @@ import android.util.Log;
  *
  * Registra TODOS los logros épicos del jugador:
  * - Meteoritos disparados
- * - Impactos en el sol/campo de fuerza
- * - Soles destruidos
+ * - Impactos en planetas/campo de fuerza
+ * - Planetas destruidos 🌍💥
  * - Combo máximo
  * - Tiempo de juego total
  * - Puntuación acumulada
@@ -24,9 +24,9 @@ public class PlayerStats {
     // Contador de eventos
     private int totalMeteorsLaunched = 0;      // Total de meteoritos disparados
     private int totalImpacts = 0;               // Total de impactos
-    private int totalSunImpacts = 0;            // Impactos al sol
+    private int totalPlanetImpacts = 0;         // Impactos al planeta 🌍
     private int totalForceFieldImpacts = 0;     // Impactos al campo de fuerza
-    private int sunsDestroyed = 0;              // Soles destruidos (HP = 0)
+    private int planetsDestroyed = 0;           // Planetas destruidos 🌍💥 (HP = 0)
 
     // Sistema de combos
     private int currentCombo = 0;               // Combo actual
@@ -46,7 +46,7 @@ public class PlayerStats {
     private static final int POINTS_PER_IMPACT = 10;
     private static final int POINTS_COMBO_2X = 25;
     private static final int POINTS_COMBO_3X = 50;
-    private static final int POINTS_SUN_DESTROYED = 1000;
+    private static final int POINTS_PLANET_DESTROYED = 1000;  // 🌍💥 Bonus por destruir planeta
 
     // Tiempo de juego
     private long totalPlayTimeMs = 0;
@@ -55,8 +55,8 @@ public class PlayerStats {
     // ═══════════════════════════════════════════════════════════════════════
     // 💾 PERSISTENCIA DE ESTADO DEL JUEGO (HP)
     // ═══════════════════════════════════════════════════════════════════════
-    private int savedSunHealth = 100;         // HP del sol (default 100, se carga al iniciar)
-    private int savedForceFieldHealth = 50;   // HP del campo de fuerza (default 50, se carga al iniciar)
+    private int savedPlanetHealth = 100;       // HP del planeta 🌍 (default 100, se carga al iniciar)
+    private int savedForceFieldHealth = 50;    // HP del campo de fuerza (default 50, se carga al iniciar)
 
     // Contexto para guardar
     private Context context;
@@ -96,14 +96,14 @@ public class PlayerStats {
 
     /**
      * 💥 REGISTRAR IMPACTO
-     * @param onSun true si impactó el sol, false si fue campo de fuerza
+     * @param onPlanet true si impactó el planeta 🌍, false si fue campo de fuerza
      * @return puntos ganados por este impacto
      */
-    public int onImpact(boolean onSun) {
+    public int onImpact(boolean onPlanet) {
         totalImpacts++;
 
-        if (onSun) {
-            totalSunImpacts++;
+        if (onPlanet) {
+            totalPlanetImpacts++;
         } else {
             totalForceFieldImpacts++;
         }
@@ -175,22 +175,22 @@ public class PlayerStats {
     }
 
     /**
-     * ☀️ REGISTRAR SOL DESTRUIDO
+     * 🌍💥 REGISTRAR PLANETA DESTRUIDO
      */
-    public void onSunDestroyed() {
-        sunsDestroyed++;
-        totalScore += POINTS_SUN_DESTROYED;
+    public void onPlanetDestroyed() {
+        planetsDestroyed++;
+        totalScore += POINTS_PLANET_DESTROYED;
 
-        Log.d(TAG, "╔═══════════════════════════════════════╗");
-        Log.d(TAG, "║  ☀️💥 SOL DESTRUIDO! BONUS: +1000 pts ║");
-        Log.d(TAG, "║  Total soles: " + sunsDestroyed + "                        ║");
-        Log.d(TAG, "╚═══════════════════════════════════════╝");
+        Log.d(TAG, "╔══════════════════════════════════════════╗");
+        Log.d(TAG, "║  🌍💥 PLANETA DESTRUIDO! BONUS: +1000 pts ║");
+        Log.d(TAG, "║  Total planetas: " + planetsDestroyed + "                       ║");
+        Log.d(TAG, "╚══════════════════════════════════════════╝");
 
         saveStats(); // Guardar inmediatamente este logro épico
 
         // 🔐 Sincronizar con Firebase (nube)
         if (firebaseManager != null) {
-            firebaseManager.incrementSunsDestroyed(sunsDestroyed);
+            firebaseManager.incrementPlanetsDestroyed(planetsDestroyed);
         }
     }
 
@@ -224,21 +224,22 @@ public class PlayerStats {
 
         editor.putInt("totalMeteorsLaunched", totalMeteorsLaunched);
         editor.putInt("totalImpacts", totalImpacts);
-        editor.putInt("totalSunImpacts", totalSunImpacts);
+        // Mantener keys antiguas para compatibilidad con datos guardados
+        editor.putInt("totalSunImpacts", totalPlanetImpacts);
         editor.putInt("totalForceFieldImpacts", totalForceFieldImpacts);
-        editor.putInt("sunsDestroyed", sunsDestroyed);
+        editor.putInt("sunsDestroyed", planetsDestroyed);
         editor.putInt("maxCombo", maxCombo);
         editor.putInt("totalScore", totalScore);
         editor.putLong("totalPlayTimeMs", totalPlayTimeMs);
 
-        // ═══ NUEVO: Guardar HP del Sol y Campo de Fuerza ═══
-        editor.putInt("savedSunHealth", savedSunHealth);
+        // ═══ Guardar HP del Planeta y Campo de Fuerza ═══
+        editor.putInt("savedSunHealth", savedPlanetHealth);  // Key antigua para compatibilidad
         editor.putInt("savedForceFieldHealth", savedForceFieldHealth);
 
         editor.apply();
 
-        Log.d(TAG, String.format("💾 Estadísticas guardadas (Sol HP: %d, Escudo HP: %d)",
-                savedSunHealth, savedForceFieldHealth));
+        Log.d(TAG, String.format("💾 Estadísticas guardadas (Planeta 🌍 HP: %d, Escudo HP: %d)",
+                savedPlanetHealth, savedForceFieldHealth));
     }
 
     /**
@@ -249,65 +250,66 @@ public class PlayerStats {
 
         totalMeteorsLaunched = prefs.getInt("totalMeteorsLaunched", 0);
         totalImpacts = prefs.getInt("totalImpacts", 0);
-        totalSunImpacts = prefs.getInt("totalSunImpacts", 0);
+        // Cargar con keys antiguas para compatibilidad
+        totalPlanetImpacts = prefs.getInt("totalSunImpacts", 0);
         totalForceFieldImpacts = prefs.getInt("totalForceFieldImpacts", 0);
-        sunsDestroyed = prefs.getInt("sunsDestroyed", 0);
+        planetsDestroyed = prefs.getInt("sunsDestroyed", 0);
         maxCombo = prefs.getInt("maxCombo", 0);
         totalScore = prefs.getInt("totalScore", 0);
         totalPlayTimeMs = prefs.getLong("totalPlayTimeMs", 0);
 
-        // ═══ NUEVO: Cargar HP del Sol y Campo de Fuerza ═══
-        savedSunHealth = prefs.getInt("savedSunHealth", 100);  // Default 100 si es primera vez
-        savedForceFieldHealth = prefs.getInt("savedForceFieldHealth", 50);  // Default 50 si es primera vez
+        // ═══ Cargar HP del Planeta y Campo de Fuerza ═══
+        savedPlanetHealth = prefs.getInt("savedSunHealth", 100);  // Key antigua, default 100
+        savedForceFieldHealth = prefs.getInt("savedForceFieldHealth", 50);  // Default 50
 
-        Log.d(TAG, String.format("📂 Estadísticas cargadas: %d pts, %d soles | Sol HP: %d, Escudo HP: %d",
-                totalScore, sunsDestroyed, savedSunHealth, savedForceFieldHealth));
+        Log.d(TAG, String.format("📂 Estadísticas cargadas: %d pts, %d planetas 🌍 | Planeta HP: %d, Escudo HP: %d",
+                totalScore, planetsDestroyed, savedPlanetHealth, savedForceFieldHealth));
     }
 
     /**
      * 📊 IMPRIMIR ESTADÍSTICAS
      */
     public void printStats() {
-        Log.d(TAG, "╔═══════════════════════════════════════════════╗");
-        Log.d(TAG, "║       🎮 ESTADÍSTICAS DEL JUGADOR 🎮         ║");
-        Log.d(TAG, "╠═══════════════════════════════════════════════╣");
-        Log.d(TAG, String.format("║ 🚀 Meteoritos disparados:  %-18d║", totalMeteorsLaunched));
-        Log.d(TAG, String.format("║ 💥 Impactos totales:       %-18d║", totalImpacts));
-        Log.d(TAG, String.format("║ ☀️  Impactos al sol:       %-18d║", totalSunImpacts));
-        Log.d(TAG, String.format("║ 🛡️  Impactos campo fuerza: %-18d║", totalForceFieldImpacts));
-        Log.d(TAG, String.format("║ 💀 Soles destruidos:       %-18d║", sunsDestroyed));
-        Log.d(TAG, String.format("║ 🔥 Combo máximo:           x%-17d║", maxCombo));
-        Log.d(TAG, String.format("║ 🏆 Puntuación total:       %-18d║", totalScore));
-        Log.d(TAG, String.format("║ ⏱️  Tiempo jugado:         %-13s seg ║", totalPlayTimeMs / 1000));
-        Log.d(TAG, "╚═══════════════════════════════════════════════╝");
+        Log.d(TAG, "╔════════════════════════════════════════════════╗");
+        Log.d(TAG, "║       🎮 ESTADÍSTICAS DEL JUGADOR 🎮          ║");
+        Log.d(TAG, "╠════════════════════════════════════════════════╣");
+        Log.d(TAG, String.format("║ 🚀 Meteoritos disparados:   %-18d║", totalMeteorsLaunched));
+        Log.d(TAG, String.format("║ 💥 Impactos totales:        %-18d║", totalImpacts));
+        Log.d(TAG, String.format("║ 🌍 Impactos al planeta:     %-18d║", totalPlanetImpacts));
+        Log.d(TAG, String.format("║ 🛡️  Impactos campo fuerza:  %-18d║", totalForceFieldImpacts));
+        Log.d(TAG, String.format("║ 🌍💥 Planetas destruidos:   %-18d║", planetsDestroyed));
+        Log.d(TAG, String.format("║ 🔥 Combo máximo:            x%-17d║", maxCombo));
+        Log.d(TAG, String.format("║ 🏆 Puntuación total:        %-18d║", totalScore));
+        Log.d(TAG, String.format("║ ⏱️  Tiempo jugado:          %-13s seg ║", totalPlayTimeMs / 1000));
+        Log.d(TAG, "╚════════════════════════════════════════════════╝");
     }
 
     // ===== GETTERS =====
     public int getTotalMeteorsLaunched() { return totalMeteorsLaunched; }
     public int getTotalImpacts() { return totalImpacts; }
-    public int getTotalSunImpacts() { return totalSunImpacts; }
+    public int getTotalPlanetImpacts() { return totalPlanetImpacts; }
     public int getTotalForceFieldImpacts() { return totalForceFieldImpacts; }
-    public int getSunsDestroyed() { return sunsDestroyed; }
+    public int getPlanetsDestroyed() { return planetsDestroyed; }
     public int getCurrentCombo() { return currentCombo; }
     public int getMaxCombo() { return maxCombo; }
     public int getTotalScore() { return totalScore; }
     public long getTotalPlayTimeMs() { return totalPlayTimeMs; }
 
-    // ═══ NUEVO: Getters/Setters para HP persistente ═══
-    public int getSavedSunHealth() { return savedSunHealth; }
+    // ═══ Getters/Setters para HP persistente ═══
+    public int getSavedPlanetHealth() { return savedPlanetHealth; }
     public int getSavedForceFieldHealth() { return savedForceFieldHealth; }
 
     /**
-     * 💾 Actualiza y GUARDA automáticamente el HP del Sol
+     * 💾 Actualiza y GUARDA automáticamente el HP del Planeta 🌍
      * Guarda localmente (SharedPreferences) y en la nube (Firebase)
      */
-    public void updateSunHealth(int health) {
-        savedSunHealth = health;
+    public void updatePlanetHealth(int health) {
+        savedPlanetHealth = health;
         saveStats();  // Auto-guardar localmente
 
         // 🔥 Guardar en Firebase (nube)
-        firebaseManager.saveGameState(savedSunHealth, savedForceFieldHealth, sunsDestroyed);
-        Log.d(TAG, "☁️ HP del Sol guardado en Firebase: " + health);
+        firebaseManager.saveGameState(savedPlanetHealth, savedForceFieldHealth, planetsDestroyed);
+        Log.d(TAG, "☁️ HP del Planeta 🌍 guardado en Firebase: " + health);
     }
 
     /**
@@ -319,7 +321,7 @@ public class PlayerStats {
         saveStats();  // Auto-guardar localmente
 
         // 🔥 Guardar en Firebase (nube)
-        firebaseManager.saveGameState(savedSunHealth, savedForceFieldHealth, sunsDestroyed);
+        firebaseManager.saveGameState(savedPlanetHealth, savedForceFieldHealth, planetsDestroyed);
         Log.d(TAG, "☁️ HP del ForceField guardado en Firebase: " + health);
     }
 
@@ -363,9 +365,9 @@ public class PlayerStats {
      * Se llama periódicamente cada minuto
      */
     private void syncStatsToFirebase() {
-        if (firebaseManager != null && sunsDestroyed > 0) {
-            firebaseManager.incrementSunsDestroyed(sunsDestroyed);
-            Log.d(TAG, "⏰ Sincronización periódica con Firebase: " + sunsDestroyed + " soles");
+        if (firebaseManager != null && planetsDestroyed > 0) {
+            firebaseManager.incrementPlanetsDestroyed(planetsDestroyed);
+            Log.d(TAG, "⏰ Sincronización periódica con Firebase: " + planetsDestroyed + " planetas 🌍");
         }
     }
 
@@ -401,26 +403,26 @@ public class PlayerStats {
 
         firebaseManager.loadGameState(new FirebaseStatsManager.GameStateCallback() {
             @Override
-            public void onSuccess(int remoteSunHP, int remoteForceFieldHP, int remoteSuns) {
+            public void onSuccess(int remotePlanetHP, int remoteForceFieldHP, int remotePlanets) {
                 Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗");
                 Log.d(TAG, "║               🔄 SINCRONIZACIÓN CON FIREBASE ☁️               ║");
                 Log.d(TAG, "╠════════════════════════════════════════════════════════════════╣");
-                Log.d(TAG, String.format("║ Sol HP:         Local=%3d  vs  Firebase=%3d              ║", savedSunHealth, remoteSunHP));
+                Log.d(TAG, String.format("║ Planeta HP:     Local=%3d  vs  Firebase=%3d              ║", savedPlanetHealth, remotePlanetHP));
                 Log.d(TAG, String.format("║ ForceField HP:  Local=%3d  vs  Firebase=%3d              ║", savedForceFieldHealth, remoteForceFieldHP));
-                Log.d(TAG, String.format("║ Soles:          Local=%3d  vs  Firebase=%3d              ║", sunsDestroyed, remoteSuns));
+                Log.d(TAG, String.format("║ Planetas:       Local=%3d  vs  Firebase=%3d              ║", planetsDestroyed, remotePlanets));
                 Log.d(TAG, "╠════════════════════════════════════════════════════════════════╣");
 
                 boolean needsUpdate = false;
 
-                // Sincronizar HP del Sol (tomar el MENOR HP = MÁS progreso)
+                // Sincronizar HP del Planeta (tomar el MENOR HP = MÁS progreso)
                 // Menos HP = más daño hecho = mejor progreso del jugador
-                if (remoteSunHP < savedSunHealth) {
-                    Log.d(TAG, "║ 📥 Firebase tiene MÁS progreso! Sol HP: " + remoteSunHP + " < " + savedSunHealth + "      ║");
-                    savedSunHealth = remoteSunHP;
+                if (remotePlanetHP < savedPlanetHealth) {
+                    Log.d(TAG, "║ 📥 Firebase tiene MÁS progreso! Planeta HP: " + remotePlanetHP + " < " + savedPlanetHealth + "      ║");
+                    savedPlanetHealth = remotePlanetHP;
                     needsUpdate = true;
-                } else if (savedSunHealth < remoteSunHP) {
-                    Log.d(TAG, "║ 📤 Local tiene MÁS progreso! Sol HP: " + savedSunHealth + " < " + remoteSunHP + "      ║");
-                    firebaseManager.saveGameState(savedSunHealth, savedForceFieldHealth, sunsDestroyed);
+                } else if (savedPlanetHealth < remotePlanetHP) {
+                    Log.d(TAG, "║ 📤 Local tiene MÁS progreso! Planeta HP: " + savedPlanetHealth + " < " + remotePlanetHP + "      ║");
+                    firebaseManager.saveGameState(savedPlanetHealth, savedForceFieldHealth, planetsDestroyed);
                 }
 
                 // Sincronizar HP del ForceField (tomar el MENOR HP = MÁS progreso)
@@ -430,17 +432,17 @@ public class PlayerStats {
                     needsUpdate = true;
                 } else if (savedForceFieldHealth < remoteForceFieldHP) {
                     Log.d(TAG, "║ 📤 Local tiene MÁS progreso! Escudo HP: " + savedForceFieldHealth + " < " + remoteForceFieldHP + "   ║");
-                    firebaseManager.saveGameState(savedSunHealth, savedForceFieldHealth, sunsDestroyed);
+                    firebaseManager.saveGameState(savedPlanetHealth, savedForceFieldHealth, planetsDestroyed);
                 }
 
-                // Sincronizar Soles Destruidos (tomar el mayor)
-                if (remoteSuns > sunsDestroyed) {
-                    Log.d(TAG, "║ 📥 Actualizando Soles desde Firebase: " + remoteSuns + " soles        ║");
-                    sunsDestroyed = remoteSuns;
+                // Sincronizar Planetas Destruidos (tomar el mayor)
+                if (remotePlanets > planetsDestroyed) {
+                    Log.d(TAG, "║ 📥 Actualizando Planetas desde Firebase: " + remotePlanets + " planetas        ║");
+                    planetsDestroyed = remotePlanets;
                     needsUpdate = true;
-                } else if (sunsDestroyed > remoteSuns) {
-                    Log.d(TAG, "║ 📤 Subiendo Soles a Firebase: " + sunsDestroyed + " soles              ║");
-                    firebaseManager.saveGameState(savedSunHealth, savedForceFieldHealth, sunsDestroyed);
+                } else if (planetsDestroyed > remotePlanets) {
+                    Log.d(TAG, "║ 📤 Subiendo Planetas a Firebase: " + planetsDestroyed + " planetas              ║");
+                    firebaseManager.saveGameState(savedPlanetHealth, savedForceFieldHealth, planetsDestroyed);
                 }
 
                 if (needsUpdate) {
@@ -463,7 +465,7 @@ public class PlayerStats {
 
     // Listener para notificar cuando la sincronización termina
     public interface SyncListener {
-        void onSyncCompleted(int sunsDestroyed);
+        void onSyncCompleted(int planetsDestroyed);
     }
 
     private SyncListener syncListener;
@@ -474,7 +476,7 @@ public class PlayerStats {
 
     private void notifySyncCompleted() {
         if (syncListener != null) {
-            syncListener.onSyncCompleted(sunsDestroyed);
+            syncListener.onSyncCompleted(planetsDestroyed);
         }
     }
 }

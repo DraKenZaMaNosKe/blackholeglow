@@ -63,7 +63,7 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
     private int currentImpactIndex = 0;
 
     // Sistema de vida
-    private static final int MAX_HEALTH = 50;  // Incrementado para que dure más
+    private static final int MAX_HEALTH = 100;  // 🛡️ Más resistente - dura el doble
     private int currentHealth = MAX_HEALTH;
     private boolean isDestroyed = false;
     private float destructionAnimation = 0f;

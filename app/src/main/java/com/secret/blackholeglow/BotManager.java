@@ -122,7 +122,7 @@ public class BotManager {
     /**
      * Inicializa un bot individual
      */
-    private void initializeBot(final String botId, final String botName, final int initialSuns, final BotInitCallback callback) {
+    private void initializeBot(final String botId, final String botName, final int initialPlanets, final BotInitCallback callback) {
         db.collection(COLLECTION_BOTS).document(botId)
             .get()
             .addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
@@ -132,7 +132,7 @@ public class BotManager {
                         DocumentSnapshot doc = task.getResult();
                         if (!doc.exists()) {
                             // Bot no existe, crearlo
-                            createBot(botId, botName, initialSuns, callback);
+                            createBot(botId, botName, initialPlanets, callback);
                         } else {
                             // Bot ya existe
                             Log.d(TAG, "🤖 " + botName + " ya existe");
@@ -148,11 +148,11 @@ public class BotManager {
     /**
      * Crea un bot nuevo en Firebase
      */
-    private void createBot(String botId, String botName, int initialSuns, final BotInitCallback callback) {
+    private void createBot(String botId, String botName, int initialPlanets, final BotInitCallback callback) {
         Map<String, Object> botData = new HashMap<>();
         botData.put("userId", botId);
         botData.put("displayName", botName);
-        botData.put("sunsDestroyed", initialSuns);
+        botData.put("sunsDestroyed", initialPlanets);  // ⚠️ Mantener nombre de campo Firebase
         botData.put("isBot", true);
         botData.put("securityHash", "bot_verified");
         botData.put("lastUpdate", FieldValue.serverTimestamp());
@@ -165,7 +165,7 @@ public class BotManager {
                 Map<String, Object> leaderboardData = new HashMap<>();
                 leaderboardData.put("userId", botId);
                 leaderboardData.put("displayName", botName);
-                leaderboardData.put("sunsDestroyed", initialSuns);
+                leaderboardData.put("sunsDestroyed", initialPlanets);  // ⚠️ Mantener nombre de campo Firebase
                 leaderboardData.put("isBot", true);
                 leaderboardData.put("lastUpdate", FieldValue.serverTimestamp());
 
@@ -200,13 +200,13 @@ public class BotManager {
         // Primero, obtener estadísticas de jugadores reales
         getAveragePlayerStats(new StatsCallback() {
             @Override
-            public void onSuccess(int avgSuns, int topPlayerSuns) {
-                Log.d(TAG, "📊 Promedio jugadores: " + avgSuns + " | Top player: " + topPlayerSuns);
+            public void onSuccess(int avgPlanets, int topPlayerPlanets) {
+                Log.d(TAG, "📊 Promedio jugadores: " + avgPlanets + " | Top player: " + topPlayerPlanets);
 
                 // Actualizar cada bot con algoritmo adaptativo
-                updateBotAdaptive(BOT1_ID, BOT1_NAME, avgSuns, topPlayerSuns, 3.0f, 5, 10);
-                updateBotAdaptive(BOT2_ID, BOT2_NAME, avgSuns, topPlayerSuns, 2.0f, 3, 7);
-                updateBotAdaptive(BOT3_ID, BOT3_NAME, avgSuns, topPlayerSuns, 1.5f, 1, 5);
+                updateBotAdaptive(BOT1_ID, BOT1_NAME, avgPlanets, topPlayerPlanets, 3.0f, 5, 10);
+                updateBotAdaptive(BOT2_ID, BOT2_NAME, avgPlanets, topPlayerPlanets, 2.0f, 3, 7);
+                updateBotAdaptive(BOT3_ID, BOT3_NAME, avgPlanets, topPlayerPlanets, 1.5f, 1, 5);
             }
 
             @Override
@@ -223,7 +223,7 @@ public class BotManager {
      * @param maxIncrement Incremento máximo
      */
     private void updateBotAdaptive(final String botId, final String botName,
-                                   final int avgSuns, final int topPlayerSuns,
+                                   final int avgPlanets, final int topPlayerPlanets,
                                    final float multiplier, final int minIncrement, final int maxIncrement) {
 
         db.collection(COLLECTION_BOTS).document(botId)
@@ -233,18 +233,18 @@ public class BotManager {
                 public void onComplete(@NonNull Task<DocumentSnapshot> task) {
                     if (task.isSuccessful() && task.getResult().exists()) {
                         DocumentSnapshot doc = task.getResult();
-                        Long currentSuns = doc.getLong("sunsDestroyed");
-                        if (currentSuns == null) currentSuns = 0L;
+                        Long currentPlanets = doc.getLong("sunsDestroyed");  // ⚠️ Mantener nombre de campo Firebase
+                        if (currentPlanets == null) currentPlanets = 0L;
 
-                        int targetSuns = (int)(avgSuns * multiplier);
+                        int targetPlanets = (int)(avgPlanets * multiplier);
 
                         // 🎯 LÓGICA ADAPTATIVA
                         int increment;
 
-                        if (currentSuns < targetSuns) {
+                        if (currentPlanets < targetPlanets) {
                             // Bot está por debajo del objetivo, crecer más rápido
                             increment = random.nextInt(maxIncrement - minIncrement + 1) + minIncrement;
-                        } else if (topPlayerSuns > currentSuns - 15) {
+                        } else if (topPlayerPlanets > currentPlanets - 15) {
                             // Jugador real está cerca, "dejarse ganar" (no crecer o crecer poco)
                             increment = random.nextInt(2); // 0 o 1
                             Log.d(TAG, "🎯 " + botName + " se está dejando alcanzar! (top player cerca)");
@@ -254,8 +254,8 @@ public class BotManager {
                         }
 
                         if (increment > 0) {
-                            int newSuns = currentSuns.intValue() + increment;
-                            updateBotSuns(botId, botName, newSuns);
+                            int newPlanets = currentPlanets.intValue() + increment;
+                            updateBotPlanets(botId, botName, newPlanets);
                         } else {
                             Log.d(TAG, "🤖 " + botName + " no crece esta ronda");
                         }
@@ -265,11 +265,11 @@ public class BotManager {
     }
 
     /**
-     * Actualiza los soles de un bot en Firebase
+     * Actualiza los planetas de un bot en Firebase
      */
-    private void updateBotSuns(String botId, String botName, int newSuns) {
+    private void updateBotPlanets(String botId, String botName, int newPlanets) {
         Map<String, Object> update = new HashMap<>();
-        update.put("sunsDestroyed", newSuns);
+        update.put("sunsDestroyed", newPlanets);  // ⚠️ Mantener nombre de campo Firebase
         update.put("lastUpdate", FieldValue.serverTimestamp());
 
         // Actualizar en player_stats
@@ -280,7 +280,7 @@ public class BotManager {
                 db.collection(COLLECTION_LEADERBOARD).document(botId)
                     .update(update)
                     .addOnSuccessListener(aVoid2 -> {
-                        Log.d(TAG, "✅ " + botName + " actualizado a " + newSuns + " soles");
+                        Log.d(TAG, "✅ " + botName + " actualizado a " + newPlanets + " planetas");
                     });
             })
             .addOnFailureListener(e -> {
@@ -307,23 +307,23 @@ public class BotManager {
                             return;
                         }
 
-                        int totalSuns = 0;
-                        int topSuns = 0;
+                        int totalPlanets = 0;
+                        int topPlanets = 0;
                         int count = 0;
 
                         for (DocumentSnapshot doc : snapshot.getDocuments()) {
-                            Long suns = doc.getLong("sunsDestroyed");
-                            if (suns != null) {
-                                totalSuns += suns;
+                            Long planets = doc.getLong("sunsDestroyed");  // ⚠️ Mantener nombre de campo Firebase
+                            if (planets != null) {
+                                totalPlanets += planets;
                                 count++;
-                                if (suns > topSuns) {
-                                    topSuns = suns.intValue();
+                                if (planets > topPlanets) {
+                                    topPlanets = planets.intValue();
                                 }
                             }
                         }
 
-                        int avgSuns = count > 0 ? totalSuns / count : 10;
-                        callback.onSuccess(avgSuns, topSuns);
+                        int avgPlanets = count > 0 ? totalPlanets / count : 10;
+                        callback.onSuccess(avgPlanets, topPlanets);
                     } else {
                         callback.onError("Error consultando stats: " + task.getException());
                     }
@@ -344,7 +344,7 @@ public class BotManager {
     }
 
     private interface StatsCallback {
-        void onSuccess(int avgSuns, int topPlayerSuns);
+        void onSuccess(int avgPlanets, int topPlayerPlanets);
         void onError(String error);
     }
 }

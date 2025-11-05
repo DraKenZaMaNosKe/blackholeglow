@@ -38,12 +38,18 @@ public class HPBar implements SceneObject {
     private float blinkTime = 0f;
     private boolean blinkVisible = true;
     private static final float BLINK_SPEED = 3.0f;  // Parpadeos por segundo
+    private final boolean enableBlinking;  // Habilitar/deshabilitar parpadeo
 
     // Label de texto
     private final String label;
 
     public HPBar(Context context, String label, float x, float y, float width, float height,
                  int maxHealth, float[] colorFull, float[] colorEmpty) {
+        this(context, label, x, y, width, height, maxHealth, colorFull, colorEmpty, true);  // Blinking enabled by default
+    }
+
+    public HPBar(Context context, String label, float x, float y, float width, float height,
+                 int maxHealth, float[] colorFull, float[] colorEmpty, boolean enableBlinking) {
         this.label = label;
         this.x = x;
         this.y = y;
@@ -54,11 +60,12 @@ public class HPBar implements SceneObject {
         this.colorFull = colorFull;
         this.colorEmpty = colorEmpty;
         this.colorBorder = new float[]{1.0f, 1.0f, 1.0f, 1.0f};  // Blanco
+        this.enableBlinking = enableBlinking;
 
         initShader(context);
         setupGeometry();
 
-        Log.d(TAG, "[HPBar] ✓ Barra HP creada: " + label + " - HP: " + maxHealth);
+        Log.d(TAG, "[HPBar] ✓ Barra HP creada: " + label + " - HP: " + maxHealth + " - Blinking: " + enableBlinking);
     }
 
     private void initShader(Context context) {
@@ -196,15 +203,22 @@ public class HPBar implements SceneObject {
     @Override
     public void update(float deltaTime) {
         // ⚠️ Parpadeo cuando HP está bajo (menos de 20% o HP = 0)
-        float hpPercent = (float) currentHealth / maxHealth;
-        if (hpPercent <= 0.2f) {  // HP bajo o destruido
-            blinkTime += deltaTime * BLINK_SPEED;
-            if (blinkTime >= 1.0f) {
+        // Solo si está habilitado el blinking
+        if (enableBlinking) {
+            float hpPercent = (float) currentHealth / maxHealth;
+            if (hpPercent <= 0.2f) {  // HP bajo o destruido
+                blinkTime += deltaTime * BLINK_SPEED;
+                if (blinkTime >= 1.0f) {
+                    blinkTime = 0f;
+                    blinkVisible = !blinkVisible;
+                }
+            } else {
+                // HP normal - siempre visible
+                blinkVisible = true;
                 blinkTime = 0f;
-                blinkVisible = !blinkVisible;
             }
         } else {
-            // HP normal - siempre visible
+            // Blinking deshabilitado - siempre visible
             blinkVisible = true;
             blinkTime = 0f;
         }

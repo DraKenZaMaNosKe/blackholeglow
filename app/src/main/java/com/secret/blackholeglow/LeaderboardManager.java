@@ -102,14 +102,14 @@ public class LeaderboardManager {
                         for (DocumentSnapshot doc : snapshot.getDocuments()) {
                             String userId = doc.getString("userId");
                             String displayName = doc.getString("displayName");
-                            Long suns = doc.getLong("sunsDestroyed");
+                            Long planets = doc.getLong("sunsDestroyed");  // ⚠️ Mantener nombre de campo Firebase
                             Boolean isBot = doc.getBoolean("isBot");
 
-                            if (userId != null && suns != null) {
+                            if (userId != null && planets != null) {
                                 LeaderboardEntry entry = new LeaderboardEntry(
                                     userId,
                                     displayName != null ? displayName : "Player",
-                                    suns.intValue(),
+                                    planets.intValue(),
                                     isBot != null && isBot,
                                     rank
                                 );
@@ -161,15 +161,15 @@ public class LeaderboardManager {
     public static class LeaderboardEntry {
         public final String userId;
         public final String displayName;
-        public final int sunsDestroyed;
+        public final int planetsDestroyed;
         public final boolean isBot;
         public final int rank;
         public Bitmap avatarBitmap;  // Se carga después
 
-        public LeaderboardEntry(String userId, String displayName, int sunsDestroyed, boolean isBot, int rank) {
+        public LeaderboardEntry(String userId, String displayName, int planetsDestroyed, boolean isBot, int rank) {
             this.userId = userId;
             this.displayName = displayName;
-            this.sunsDestroyed = sunsDestroyed;
+            this.planetsDestroyed = planetsDestroyed;
             this.isBot = isBot;
             this.rank = rank;
             this.avatarBitmap = null;
@@ -185,7 +185,7 @@ public class LeaderboardManager {
 
         @Override
         public String toString() {
-            return "#" + rank + " " + displayName + " - " + sunsDestroyed + " soles" + (isBot ? " [BOT]" : "");
+            return "#" + rank + " " + displayName + " - " + planetsDestroyed + " planetas" + (isBot ? " [BOT]" : "");
         }
     }
 

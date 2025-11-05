@@ -301,7 +301,8 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
                 orbitAngle = (orbitAngle + dt * currentOrbitSpeed) % (2f * (float)Math.PI);
             }
 
-            accumulatedTime += dt;
+            // ✅ CRÍTICO: Mantener tiempo cíclico para evitar pérdida de precisión en float
+            accumulatedTime = (accumulatedTime + dt) % 60.0f;
         }
     }
 

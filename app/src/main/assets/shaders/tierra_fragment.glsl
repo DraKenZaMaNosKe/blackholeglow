@@ -181,43 +181,32 @@ void main() {
     float diffuse = max(dot(normal, lightDir), 0.0);
 
     // ═══════════════════════════════════════════════════════════
-    // 2. GENERAR MÁSCARAS DE TERRENO
+    // 2. 🖼️ MODO HÍBRIDO: TEXTURA REAL + EFECTOS PROCEDURALES
     // ═══════════════════════════════════════════════════════════
-    float land = landMask(uv);
-    float elev = elevation(uv);
+
+    // Leer la TEXTURA REAL como base (continentes y océanos realistas)
+    vec3 realTexture = texture2D(u_Texture, v_TexCoord).rgb;
+
+    // Generar máscaras procedurales para efectos dinámicos
     float cloudMask = clouds(uv, u_Time);
 
-    // ═══════════════════════════════════════════════════════════
-    // 3. COLORES BASE (usando HSB para control intuitivo)
-    // ═══════════════════════════════════════════════════════════
+    // Detectar océanos (zonas azules en la textura) para efectos de agua
+    float isOcean = step(0.5, realTexture.b);  // Si el azul es alto, es océano
 
-    // Océanos: azul profundo con cellular noise para olas
+    // Agregar olas sutiles a los océanos (cellular noise)
     float oceanWaves = cellularNoise(uv * 10.0 + u_Time * 0.05, 5.0);
-    vec3 oceanColor = hsb2rgb(vec3(
-        0.55 + oceanWaves * 0.02,  // Hue: azul con ligera variación
-        0.7,                        // Saturation: agua intensa
-        0.4 + oceanWaves * 0.2      // Brightness: variación por olas
-    ));
+    vec3 waveEffect = vec3(oceanWaves * 0.1);  // Muy sutil
 
-    // Continentes: verde/marrón según elevación
-    // Playas (bajo) → verde (medio) → marrón/montañas (alto)
-    float landHue = mix(0.12, 0.30, elev);  // De marrón a verde
-    vec3 landColor = hsb2rgb(vec3(
-        landHue,
-        0.6,  // Saturation: tierra natural
-        0.4 + elev * 0.2  // Brightness: montañas más claras
-    ));
+    // ═══════════════════════════════════════════════════════════
+    // 3. COMBINAR TEXTURA REAL + EFECTOS DINÁMICOS
+    // ═══════════════════════════════════════════════════════════
 
-    // Nubes: blanco con sombras suaves
+    // Base: Textura real + olas sutiles en océanos
+    vec3 surfaceColor = realTexture + waveEffect * isOcean;
+
+    // Nubes procedurales blancas animadas (encima de la textura)
     vec3 cloudColor = vec3(0.95, 0.95, 1.0);  // Blanco azulado
-
-    // ═══════════════════════════════════════════════════════════
-    // 4. COMBINAR CAPAS (océano → tierra → nubes)
-    // ═══════════════════════════════════════════════════════════
-    vec3 surfaceColor = mix(oceanColor, landColor, land);
-
-    // Agregar nubes con transparencia
-    surfaceColor = mix(surfaceColor, cloudColor, cloudMask * 0.8);
+    surfaceColor = mix(surfaceColor, cloudColor, cloudMask * 0.6);  // Nubes semi-transparentes
 
     // ═══════════════════════════════════════════════════════════
     // 5. ILUMINACIÓN
@@ -227,9 +216,9 @@ void main() {
     vec3 litColor = surfaceColor * (0.3 + 0.7 * diffuse);
 
     // Especular SOLO en océanos (agua refleja el sol)
-    if (land < 0.5) {  // Es océano
-        float spec = oceanSpecular(normal, lightDir, viewDir, 0.1);
-        litColor += vec3(1.0, 0.98, 0.95) * spec * 0.5;  // Reflejo dorado del sol
+    if (isOcean > 0.5) {  // Es océano (detectado de la textura)
+        float spec = oceanSpecular(normal, lightDir, viewDir, 0.15);
+        litColor += vec3(1.0, 0.98, 0.95) * spec * 0.8;  // Reflejo brillante del sol
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -243,11 +232,12 @@ void main() {
     // 7. SOMBRA NOCTURNA (lado oscuro del planeta)
     // ═══════════════════════════════════════════════════════════
     // En el lado nocturno, agregar luces de ciudades (puntos amarillos en tierra)
-    if (diffuse < 0.2 && land > 0.5) {  // Noche en tierra
+    float isLand = 1.0 - isOcean;  // Invertir: si no es océano, es tierra
+    if (diffuse < 0.2 && isLand > 0.5) {  // Noche en tierra
         float cityLights = noise(uv * 20.0) * noise(uv * 40.0);
         cityLights = smoothstep(0.6, 0.7, cityLights);
         vec3 cityColor = vec3(1.0, 0.9, 0.6);  // Amarillo cálido
-        litColor += cityColor * cityLights * 0.3;
+        litColor += cityColor * cityLights * 0.4;  // Más visibles
     }
 
     // ═══════════════════════════════════════════════════════════

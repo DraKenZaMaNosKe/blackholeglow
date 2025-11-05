@@ -97,18 +97,18 @@ public class UniverseBackground
         texCoordBuffer = mesh.uvBuffer;
 
         // Índices para triangulación
-        List<short[]> faces = mesh.faces;
+        List<int[]> faces = mesh.faces;  // ✅ int[] para compatibilidad con modelos grandes
         int tris = 0;
-        for (short[] f : faces) tris += f.length - 2;
+        for (int[] f : faces) tris += f.length - 2;
         indexCount = tris * 3;
         ShortBuffer ib = ByteBuffer
                 .allocateDirect(indexCount * Short.BYTES)
                 .order(ByteOrder.nativeOrder())
                 .asShortBuffer();
-        for (short[] f : faces) {
-            short v0 = f[0];
+        for (int[] f : faces) {
+            short v0 = (short) f[0];  // ✅ Cast a short (plano.obj es pequeño)
             for (int k = 1; k < f.length - 1; k++) {
-                ib.put(v0).put(f[k]).put(f[k + 1]);
+                ib.put(v0).put((short) f[k]).put((short) f[k + 1]);
             }
         }
         ib.position(0);

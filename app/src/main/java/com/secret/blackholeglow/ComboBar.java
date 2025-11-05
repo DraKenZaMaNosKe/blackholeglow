@@ -27,7 +27,7 @@ public class ComboBar {
     private static final float BAR_WIDTH = 0.3f;  // Ancho de la barra (30% pantalla - más pequeña)
     private static final float BAR_HEIGHT = 0.06f; // Alto de la barra (más delgada)
     private static final float BAR_X = -0.85f;     // Posición X (borde izquierdo)
-    private static final float BAR_Y = 0.40f;       // Posición Y (centro vertical)
+    private static final float BAR_Y = 0.65f;       // Posición Y (centro vertical)
 
     // Estados del combo
     private static final int MAX_COMBO_FOR_LASER = 5;  // Combo x5 = SUPERDISPARO ÉPICO!

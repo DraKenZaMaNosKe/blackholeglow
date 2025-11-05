@@ -143,6 +143,115 @@ float fresnel(vec3 worldPos) {
 }
 
 // ============================================
+// 🔷 PATRÓN HEXAGONAL ENERGÉTICO
+// ============================================
+
+// Función para calcular distancia al borde del hexágono más cercano
+float hexagonPattern(vec2 uv, float scale) {
+    // Coordenadas hexagonales (sistema oblicuo)
+    vec2 r = vec2(1.0, 1.73);  // sqrt(3) para hexágonos regulares
+    vec2 h = r * 0.5;
+
+    vec2 a = mod(uv * scale, r) - h;
+    vec2 b = mod(uv * scale - h, r) - h;
+
+    vec2 gv = length(a) < length(b) ? a : b;
+
+    // Distancia al centro del hexágono
+    float d = length(gv);
+
+    // Calcular distancia a los bordes (6 lados del hexágono)
+    float angle = atan(gv.y, gv.x);
+    float hexRadius = 0.5;
+    float hexEdge = hexRadius * cos(3.14159 / 6.0) / cos(mod(angle, 3.14159 / 3.0) - 3.14159 / 6.0);
+
+    // Distancia normalizada al borde
+    return abs(d - hexEdge);
+}
+
+// Grid de líneas hexagonales brillantes
+float hexagonalGrid(vec2 uv, float scale, float lineWidth) {
+    float hexDist = hexagonPattern(uv, scale);
+
+    // Líneas brillantes en los bordes
+    float lines = smoothstep(lineWidth, lineWidth * 0.5, hexDist);
+
+    return lines;
+}
+
+// ============================================
+// 💥 SISTEMA DE GRIETAS (cuando está dañado)
+// ============================================
+
+float crackPattern(vec2 uv, float damage, float time) {
+    if (damage < 0.1) return 0.0;  // No hay grietas si no está dañado
+
+    float cracks = 0.0;
+
+    // Múltiples grietas radiales desde diferentes puntos
+    for (int i = 0; i < 6; i++) {
+        float seed = float(i) * 43.758;
+
+        // Punto de origen de la grieta (distribuido por la esfera)
+        vec2 origin = vec2(
+            noise(vec2(seed, 0.0)),
+            noise(vec2(0.0, seed))
+        );
+
+        // Vector desde origen hasta punto actual
+        vec2 toPoint = uv - origin;
+        float dist = length(toPoint);
+        float angle = atan(toPoint.y, toPoint.x);
+
+        // Grieta principal con ramificaciones
+        float crackWidth = 0.005 + damage * 0.01;  // Más anchas con más daño
+        float crackLength = 0.3 + damage * 0.4;     // Más largas con más daño
+
+        // Solo dibujar si está en rango
+        if (dist < crackLength) {
+            // Zigzag de la grieta
+            float zigzag = fbm(vec2(dist * 20.0, seed), time * 0.5) * 0.02;
+            float perpDist = abs(sin(angle * 3.0 + seed) * dist - zigzag);
+
+            // Intensidad de la grieta (suavizada)
+            float crackIntensity = smoothstep(crackWidth * 2.0, 0.0, perpDist);
+            crackIntensity *= smoothstep(crackLength, crackLength * 0.5, dist);
+
+            // Parpadeo sutil de las grietas
+            crackIntensity *= 0.7 + noise(vec2(time * 3.0, seed)) * 0.3;
+
+            cracks = max(cracks, crackIntensity * damage);
+        }
+    }
+
+    return cracks;
+}
+
+// ============================================
+// 🌊 PULSOS DE ENERGÍA DESDE EL CENTRO
+// ============================================
+
+float energyPulses(vec2 uv, float time) {
+    vec2 center = vec2(0.5, 0.5);
+    float dist = length(uv - center);
+
+    // Múltiples ondas que se expanden desde el centro
+    float wave1 = sin(dist * 15.0 - time * 2.0) * 0.5 + 0.5;
+    float wave2 = sin(dist * 20.0 - time * 2.5) * 0.5 + 0.5;
+
+    // Combinar ondas
+    float waves = (wave1 + wave2) * 0.5;
+
+    // Solo visible en ciertas distancias (anillos)
+    waves = pow(waves, 3.0);
+
+    // Desvanecer hacia los bordes
+    float fadeOut = smoothstep(0.7, 0.3, dist);
+
+    return waves * fadeOut * 0.3;
+}
+
+// ============================================
 // MAIN SHADER
 // ============================================
 
@@ -219,29 +328,45 @@ void main() {
         finalColor = mix(finalColor, damageColor, damage * 0.4);
     }
 
-    // ===== EFECTOS DE IMPACTO (SUTILES) =====
+    // ═══════════════════════════════════════════════════════════════
+    // 💥 EFECTOS DE IMPACTO ÉPICOS (Ondas expansivas dramáticas)
+    // ═══════════════════════════════════════════════════════════════
     vec3 impactGlow = vec3(0.0);
     float impactAlphaBoost = 0.0;
 
     for (int i = 0; i < 8; i++) {
         if (u_ImpactIntensity[i] > 0.0 && u_Health > 0.05) {  // Solo si hay vida
             float impactDist = length(v_WorldPos - u_ImpactPos[i]);
-            float impactRadius = 0.5;
+            float impactRadius = 0.9;  // Radio más grande para ondas más visibles
 
             if (impactDist < impactRadius) {
                 float impactStrength = (1.0 - (impactDist / impactRadius)) * u_ImpactIntensity[i];
-                impactStrength = pow(impactStrength, 1.5);
+                impactStrength = pow(impactStrength, 1.2);
 
-                // ═══════════════════════════════════════════════════════════
-                // ✅ ONDA EXPANSIVA MÁS VISIBLE (impactos notorios)
-                // ═══════════════════════════════════════════════════════
-                float wave = sin(impactDist * 25.0 - effectiveTime * 12.0) * 0.5 + 0.5;
-                wave = pow(wave, 2.0);  // Menos suave = más visible
+                // 🌊 MÚLTIPLES ONDAS EXPANSIVAS CONCÉNTRICAS (muy épicas)
+                float wave1 = sin(impactDist * 18.0 - effectiveTime * 18.0) * 0.5 + 0.5;
+                float wave2 = sin(impactDist * 28.0 - effectiveTime * 24.0) * 0.5 + 0.5;
+                float wave3 = sin(impactDist * 38.0 - effectiveTime * 30.0) * 0.5 + 0.5;
 
-                // Resplandor del impacto MUY BRILLANTE (blanco-amarillo)
-                vec3 impactColor = mix(vec3(1.0, 1.0, 0.8), baseColor * 2.0, 0.3);
-                impactGlow += impactColor * impactStrength * wave * 1.8;  // 2.25x más (era 0.8)
-                impactAlphaBoost += impactStrength * 0.9;  // 2.25x más (era 0.4)
+                // Combinar ondas con diferentes intensidades
+                float waves = wave1 * 0.5 + wave2 * 0.3 + wave3 * 0.2;
+                waves = pow(waves, 1.8);  // Ondas más definidas y brillantes
+
+                // ⚡ FLASH CENTRAL (epicentro del impacto MUY brillante)
+                float epicenter = smoothstep(0.2, 0.0, impactDist);
+
+                // 🔥 COLOR DEL IMPACTO: Azul-blanco eléctrico intenso
+                vec3 impactColor = mix(
+                    vec3(0.2, 0.8, 1.0),   // Azul cyan eléctrico
+                    vec3(1.0, 1.0, 1.0),   // Blanco puro brillante
+                    epicenter * 0.9        // Centro casi blanco
+                );
+
+                // Intensidad combinada (ondas + epicentro)
+                float totalImpact = (waves * 3.0 + epicenter * 4.0) * impactStrength;
+
+                impactGlow += impactColor * totalImpact;
+                impactAlphaBoost += totalImpact * 0.7;
             }
         }
     }
@@ -249,39 +374,94 @@ void main() {
     finalColor += impactGlow;
 
     // ═══════════════════════════════════════════════════════════════
-    // 🔥 GRADIENTE CÁLIDO (naranja-amarillo-rojo como el sol)
+    // 🔷 HEXÁGONOS ENERGÉTICOS (Azul eléctrico sci-fi)
     // ═══════════════════════════════════════════════════════════════
-    vec3 gradientColor = mix(
-        vec3(1.0, 0.6, 0.2),  // Naranja centro
-        vec3(1.0, 0.9, 0.3),  // Amarillo bordes
-        fresnelEffect
-    );
 
-    // Añadir toque rojizo en impactos
+    // Escala de los hexágonos (reactiva a música)
+    float hexScale = 8.0 + musicIntensity * 2.0;  // Más hexágonos con música
+
+    // Generar grid hexagonal con líneas brillantes
+    float hexGrid = hexagonalGrid(uv, hexScale, 0.08);
+
+    // Pulsación de las líneas (sutil)
+    float hexPulse = 0.6 + sin(effectiveTime * 2.0) * 0.2 + bassBoost * 0.3;
+    hexGrid *= hexPulse;
+
+    // 🔷 COLOR AZUL ELÉCTRICO BRILLANTE
+    vec3 hexColor = vec3(0.2, 0.7, 1.0);  // Azul cyan brillante
+    vec3 hexGlow = vec3(0.4, 0.9, 1.0);   // Azul claro brillante para bordes
+
+    // Líneas hexagonales brillantes
+    vec3 hexagonPattern = mix(hexColor * 0.3, hexGlow, hexGrid);
+
+    // Intensificar con música
+    hexagonPattern *= (1.0 + musicIntensity * 0.5);
+
+    // Añadir brillo extra en impactos (hexágonos se iluminan)
     if (length(impactGlow) > 0.1) {
-        gradientColor = mix(gradientColor, vec3(1.0, 0.4, 0.1), 0.3); // Rojo-naranja
+        // Los hexágonos brillan blanco-azul en impactos
+        hexagonPattern = mix(hexagonPattern, vec3(0.8, 1.0, 1.0), length(impactGlow) * 0.4);
     }
 
-    // Mezclar gradiente con el color final
-    finalColor = mix(finalColor, gradientColor, 0.6);
+    // Combinar hexágonos con el color base
+    finalColor = mix(finalColor, hexagonPattern, 0.7);
 
     // ═══════════════════════════════════════════════════════════════
-    // ✅ ALPHA FINAL - MUY TRANSPARENTE, SOLO BORDES SUTILES
+    // 💥 GRIETAS CUANDO ESTÁ DAÑADO (efecto dramático)
     // ═══════════════════════════════════════════════════════════════
-    // Base ULTRA transparente (apenas visible)
-    float finalAlpha = u_Alpha * 0.02; // Apenas 2% visible en reposo
+    float damage = 1.0 - u_Health;  // 0.0 = sin daño, 1.0 = destruido
+    float cracks = crackPattern(uv, damage, effectiveTime);
 
-    // BORDES SUTILES (efecto fresnel más suave)
-    finalAlpha += fresnelEffect * 0.20; // Bordes sutiles (20% en los bordes)
+    if (cracks > 0.0) {
+        // Grietas rojas brillantes (peligro!)
+        vec3 crackColor = vec3(1.0, 0.2, 0.1);  // Rojo-naranja intenso
+        vec3 crackGlow = vec3(1.0, 0.4, 0.2);   // Brillo naranja
 
-    // Rayos muy sutiles
-    finalAlpha += rays * 0.01;
+        // Mezclar color de grieta según intensidad
+        vec3 crackFinal = mix(crackColor, crackGlow, cracks * 0.5);
 
-    // IMPACTOS - BRILLANTES Y VISIBLES
-    finalAlpha += impactAlphaBoost * 2.5; // Impactos visibles
+        // Añadir grietas al color final (muy visibles)
+        finalColor = mix(finalColor, crackFinal * 2.0, cracks * 0.8);
+    }
 
-    // Música aumenta muy sutilmente
-    finalAlpha += musicIntensity * 0.03;
+    // ═══════════════════════════════════════════════════════════════
+    // 🌊 PULSOS DE ENERGÍA DESDE EL CENTRO (campo generándose)
+    // ═══════════════════════════════════════════════════════════════
+    float pulses = energyPulses(uv, effectiveTime);
+
+    // Pulsos más intensos con música
+    pulses *= (1.0 + musicIntensity * 0.4);
+
+    // Añadir pulsos azules brillantes
+    vec3 pulseColor = vec3(0.3, 0.9, 1.0);  // Azul cyan eléctrico
+    finalColor += pulseColor * pulses * 1.5;
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🔷 ALPHA FINAL - HEXÁGONOS VISIBLES CON TRANSPARENCIA
+    // ═══════════════════════════════════════════════════════════════
+    // Base moderadamente transparente para ver los hexágonos
+    float finalAlpha = u_Alpha * 0.15; // 15% visible base
+
+    // HEXÁGONOS - Alpha según las líneas del grid
+    finalAlpha += hexGrid * 0.35; // Líneas hexagonales visibles (35% en líneas)
+
+    // BORDES con efecto fresnel
+    finalAlpha += fresnelEffect * 0.25; // Bordes brillantes (25%)
+
+    // Rayos eléctricos sutiles
+    finalAlpha += rays * 0.02;
+
+    // 💥 GRIETAS - MUY VISIBLES cuando está dañado
+    finalAlpha += cracks * 0.6; // Grietas muy opacas (60%)
+
+    // 🌊 PULSOS DE ENERGÍA - Visibles
+    finalAlpha += pulses * 0.3; // Pulsos visibles (30%)
+
+    // IMPACTOS - SUPER BRILLANTES Y VISIBLES
+    finalAlpha += impactAlphaBoost * 3.5; // Impactos épicos
+
+    // Música aumenta visibilidad
+    finalAlpha += musicIntensity * 0.08;
 
     // ===== SALIDA =====
     finalColor = clamp(finalColor, 0.0, 3.0); // Permitir mucho brillo en impactos

@@ -342,19 +342,19 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         float vy = (dy / dist) * velocidadBase;
         float vz = (dz / dist) * velocidadBase;
 
-        // Tamaño VARIABLE (pequeños, medianos, grandes)
+        // Tamaño VARIABLE (pequeños, medianos, grandes) - ✅ REDUCIDOS
         // 50% pequeños, 30% medianos, 20% grandes
         float sizeRoll = (float) Math.random();
         float tamaño;
         if (sizeRoll < 0.5f) {
             // Pequeños (50%)
-            tamaño = 0.04f + (float) Math.random() * 0.06f;  // 0.04-0.10
+            tamaño = 0.02f + (float) Math.random() * 0.03f;  // 0.02-0.05
         } else if (sizeRoll < 0.8f) {
             // Medianos (30%)
-            tamaño = 0.10f + (float) Math.random() * 0.08f;  // 0.10-0.18
+            tamaño = 0.05f + (float) Math.random() * 0.04f;  // 0.05-0.09
         } else {
             // Grandes (20%)
-            tamaño = 0.18f + (float) Math.random() * 0.10f;  // 0.18-0.28
+            tamaño = 0.09f + (float) Math.random() * 0.05f;  // 0.09-0.14
         }
         tamaño *= (0.9f + powerBoost * 0.2f);  // Boost de batería
 
@@ -412,19 +412,19 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         float vy = (dy / dist) * velocidadBase;
         float vz = (dz / dist) * velocidadBase;
 
-        // 💪 TAMAÑO VARIABLE: Más grande con más potencia, pero con variación
+        // 💪 TAMAÑO VARIABLE: Más grande con más potencia, pero con variación - ✅ REDUCIDOS
         // 50% pequeños, 30% medianos, 20% grandes
         float sizeRoll = (float) Math.random();
         float tamaño;
         if (sizeRoll < 0.5f) {
             // Pequeños (50%)
-            tamaño = 0.08f + (float) Math.random() * 0.06f;  // 0.08-0.14
+            tamaño = 0.03f + (float) Math.random() * 0.02f;  // 0.03-0.05
         } else if (sizeRoll < 0.8f) {
             // Medianos (30%)
-            tamaño = 0.14f + (float) Math.random() * 0.08f;  // 0.14-0.22
+            tamaño = 0.05f + (float) Math.random() * 0.03f;  // 0.05-0.08
         } else {
             // Grandes (20%)
-            tamaño = 0.22f + (float) Math.random() * 0.10f;  // 0.22-0.32
+            tamaño = 0.08f + (float) Math.random() * 0.04f;  // 0.08-0.12
         }
         // Aplicar boost de potencia
         tamaño *= (0.8f + power * 0.4f);  // 80%-120% según potencia
@@ -515,19 +515,19 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         float vy = (dy / dist) * velocidadBase;
         float vz = (dz / dist) * velocidadBase;
 
-        // 💪 TAMAÑO VARIABLE: MÁS GRANDE para que sea MUY VISIBLE
+        // 💪 TAMAÑO VARIABLE: MÁS GRANDE para que sea MUY VISIBLE - ✅ REDUCIDOS
         // 50% grandes, 30% muy grandes, 20% gigantes
         float sizeRoll = (float) Math.random();
         float tamaño;
         if (sizeRoll < 0.5f) {
             // Grandes (50%)
-            tamaño = 0.25f + (float) Math.random() * 0.10f;  // 0.25-0.35
+            tamaño = 0.12f + (float) Math.random() * 0.05f;  // 0.12-0.17
         } else if (sizeRoll < 0.8f) {
             // Muy grandes (30%)
-            tamaño = 0.35f + (float) Math.random() * 0.10f;  // 0.35-0.45
+            tamaño = 0.17f + (float) Math.random() * 0.05f;  // 0.17-0.22
         } else {
             // Gigantes (20%)
-            tamaño = 0.45f + (float) Math.random() * 0.15f;  // 0.45-0.60 (¡ÉPICO!)
+            tamaño = 0.22f + (float) Math.random() * 0.08f;  // 0.22-0.30
         }
 
         // Activar el meteorito
@@ -929,8 +929,8 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         float vy = (dy / dist) * velocidadBase;
         float vz = (dz / dist) * velocidadBase;
 
-        // TAMAÑO ÉPICO - Todos son GRANDES para máximo daño
-        float tamaño = 0.25f + (float) Math.random() * 0.2f;  // 0.25-0.45 (GRANDES!)
+        // TAMAÑO ÉPICO - Todos son GRANDES para máximo daño - ✅ REDUCIDOS
+        float tamaño = 0.12f + (float) Math.random() * 0.10f;  // 0.12-0.22 (GRANDES!)
 
         m.activar(x, y, z, vx, vy, vz, tamaño);
 

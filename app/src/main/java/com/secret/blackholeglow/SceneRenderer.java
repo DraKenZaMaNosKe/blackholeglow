@@ -40,6 +40,8 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     private PlayerWeapon playerWeapon;  // 🎮 NUEVO: Arma del jugador (separada de MeteorShower)
     private FireButton fireButton;      // 🎯 Botón visual de disparo con indicador de estado
     private boolean solWasDead = false;  // Para detectar cuando respawnea
+    // 🚀 Referencia a la escena de batalla espacial (para touch interactivo)
+    private SpaceBattleScene spaceBattleScene;
 
     // Sistema de visualización musical
     private MusicVisualizer musicVisualizer;
@@ -415,13 +417,14 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         }
 
         sceneObjects.clear();
+        spaceBattleScene = null;  // Limpiar referencia de batalla espacial
 
         // ═══════════════════════════════════════════════════════════
         // 🎨 SELECTOR DE ESCENAS - 10 WALLPAPERS ÚNICOS
         // ═══════════════════════════════════════════════════════════
         switch (selectedItem) {
-            case "DiscoBall":
-                setupDiscoBallScene();
+            case "🌊 Océano Profundo":
+                setupOceanScene();
                 break;
             case "Universo":
                 setupUniverseScene();
@@ -450,8 +453,14 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             case "Jardín Zen":
                 setupZenScene();
                 break;
+            case "🌍 Tierra Live HD":
+                setupTierraLiveHDScene();
+                break;
             case "Furia Celestial":
                 setupTormentaScene();
+                break;
+            case "🚀 Batalla Galáctica":
+                setupSpaceBattleScene();
                 break;
             default:
                 Log.w(TAG, "⚠️ Escena desconocida: " + selectedItem + " - usando Universo");
@@ -478,15 +487,15 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.e(TAG, "[SceneRenderer] ✗ Error creando fondo: " + e.getMessage());
         }
 
-        // 🌍 PLANETA TIERRA EN EL CENTRO - PROTAGONISTA DE LA ESCENA
+        // 🌍 PLANETA TIERRA EN EL CENTRO - MODO HÍBRIDO: TEXTURA + SHADERS PROCEDURALES
+        // ✨ Textura realista HD como base + Nubes animadas + Atmósfera procedural + Océanos con olas
         // Nota: La variable se llama "sol" por razones históricas (sistema de HP/respawn)
-        // pero ahora representa a la TIERRA en el centro de la escena
         try {
             sol = new Planeta(
                     context, textureManager,
-                    "shaders/planeta_vertex.glsl",
-                    "shaders/planeta_iluminado_fragment.glsl",  // ✨ SHADER CON ILUMINACIÓN
-                    R.drawable.texturaplanetatierra,  // 🌍 TEXTURA DE LA TIERRA
+                    "shaders/tierra_vertex.glsl",        // Shader épico con efectos
+                    "shaders/tierra_fragment.glsl",      // 🌍 HÍBRIDO: Textura real + efectos procedurales
+                    R.drawable.texturaplanetatierra,     // ✨ TEXTURA HD REALISTA como base
                     0.8f, 0.0f,        // Posición orbital X, Z
                     0.0f,              // orbitSpeed = 0 (FIJO, sin órbita)
                     0.0f,              // 📍 orbitOffsetY = 0.0 (sin altura)
@@ -515,190 +524,61 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.d(TAG, "  ⏰ TIERRA rotación acelerada: 24h → " + (24 * 60 / 720) + " min por vuelta completa");
 
             sceneObjects.add(sol);
-            Log.d(TAG, "  ✓ 🌍 TIERRA añadida en el CENTRO - Protagonista con HP: 200");
-            Log.d(TAG, "  💥 Explosion listener connected for EPIC particle show");
-            Log.d(TAG, "  ✨ Shader con iluminación activo");
+            Log.d(TAG, "════════════════════════════════════════════════");
+            Log.d(TAG, "  ✓ 🌍 TIERRA ÉPICA añadida con shader procedural");
+            Log.d(TAG, "  ✨ Océanos animados + Continentes + Nubes + Atmósfera");
+            Log.d(TAG, "  💫 Luces de ciudades nocturnas + Reflexión solar");
+            Log.d(TAG, "  💾 HP: " + savedPlanetHP + "/200");
+            Log.d(TAG, "  💥 Explosion listener: ACTIVE");
+            Log.d(TAG, "════════════════════════════════════════════════");
         } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creating sun: " + e.getMessage());
-        }
-
-        // 🌍✨ CAPA DE EFECTOS DE LA TIERRA (compositing)
-        // Atmósfera + Nubes + Océanos + Auroras
-        try {
-            Planeta tierraEffects = new Planeta(
-                    context, textureManager,
-                    "shaders/planeta_vertex.glsl",
-                    "shaders/tierra_effects_fragment.glsl",  // 🌍 SHADER DE EFECTOS ATMOSFÉRICOS
-                    R.drawable.fondo_transparente,  // Textura dummy (el shader no la usa)
-                    0.8f, 0.0f,        // Misma posición que la Tierra
-                    0.0f,              // orbitSpeed = 0
-                    0.0f,              // orbitOffsetY = 0.0
-                    0.0f,              // scaleAmplitude = 0
-                    1.15f,             // 🌌 15% MÁS GRANDE (capa de atmósfera bien separada)
-                    80.0f,             // Misma rotación
-                    false, null, 1.0f,
-                    null, 1.0f
-            );
-            if (tierraEffects instanceof CameraAware) {
-                ((CameraAware) tierraEffects).setCameraController(sharedCamera);
-            }
-
-            // Sincronización igual a la Tierra base
-            tierraEffects.setRealTimeRotation(true);
-            tierraEffects.setRealTimeRotationPeriod(24);
-            tierraEffects.setTimeAccelerationFactor(720.0f);
-
-            sceneObjects.add(tierraEffects);
-            Log.d(TAG, "  🌍✨ CAPA DE EFECTOS DE LA TIERRA añadida (atmósfera + nubes + océanos + auroras)");
-        } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creating Earth effects layer: " + e.getMessage());
-        }
-
-        // ✨ 3 ESTRELLAS BAILARINAS - PARTÍCULAS MÁGICAS CON ESTELA ✨
-        // Casi invisibles, solo se ve la estela arcoíris de cada una
-        try {
-            // Limpiar lista anterior por si acaso
-            estrellasBailarinas.clear();
-
-            // Estrella 1 - Posición superior derecha
-            EstrellaBailarina estrella1 = new EstrellaBailarina(
-                    context, textureManager,
-                    1.8f, 0.8f, 0.5f,   // Posición inicial: arriba-derecha
-                    0.02f,              // Escala: MINÚSCULA (casi invisible, solo estela)
-                    45.0f               // Rotación: rápida
-            );
-            estrella1.setCameraController(sharedCamera);
-            sceneObjects.add(estrella1);
-            estrellasBailarinas.add(estrella1);
-
-            
-
-            // Estrella 2 - Posición izquierda
-            EstrellaBailarina estrella2 = new EstrellaBailarina(
-                    context, textureManager,
-                    -1.5f, 0.3f, -0.8f,  // Posición inicial: izquierda-atrás
-                    0.02f,               // Escala: MINÚSCULA
-                    38.0f                // Rotación: ligeramente diferente
-            );
-            estrella2.setCameraController(sharedCamera);
-            sceneObjects.add(estrella2);
-            estrellasBailarinas.add(estrella2);
-
-            // Estrella 3 - Posición abajo
-            EstrellaBailarina estrella3 = new EstrellaBailarina(
-                    context, textureManager,
-                    0.5f, -0.6f, 1.2f,   // Posición inicial: abajo-adelante
-                    0.02f,               // Escala: MINÚSCULA
-                    52.0f                // Rotación: más rápida
-            );
-            estrella3.setCameraController(sharedCamera);
-            sceneObjects.add(estrella3);
-            estrellasBailarinas.add(estrella3);
-
-            Log.d(TAG, "  ✨✨✨ 3 ESTRELLAS BAILARINAS agregadas (épico!) ✨✨✨");
-        } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creando estrellas bailarinas: " + e.getMessage());
-        }
-
-        // ☀️ SOL ARRIBA Y AL FONDO - ILUMINA LA ESCENA DESDE ARRIBA
-        // Esta variable local no se guarda en la clase (sol = la Tierra principal tiene el sistema de HP)
-        Planeta planetaSol = null;
-        try {
-            planetaSol = new Planeta(
-                    context, textureManager,
-                    "shaders/sol_vertex.glsl",         // 🔥 VERTEX CON DEFORMACIÓN PLASMA
-                    "shaders/sol_fragment.glsl",       // ☀️ FRAGMENT CON TEXTURA
-                    R.drawable.texturasolvolcanico,    // ☀️ TEXTURA DEL SOL
-                    0.5f,              // orbitRadiusX = 0 (centrado en X)
-                    -0.9f,            // orbitRadiusZ = -10 (FONDO, muy atrás)
-                    5.5f,              // orbitSpeed = 0 (FIJO, sin órbita)
-                    5.0f,              // 📍 orbitOffsetY = 5.0 (ARRIBA!)
-                    0.0f,              // scaleAmplitude = sin variación
-                    1.5f,              // ☀️ SOL GRANDE (dramático)
-                    -1.0f,            // 🔄 spinSpeed NEGATIVO = antihorario, más lento que Tierra (80.0)
-                    false, null, 1.0f,
-                    null,
-                    1.0f               // UV scale 1.0 para textura completa
-            );
-            if (planetaSol instanceof CameraAware) {
-                ((CameraAware) planetaSol).setCameraController(sharedCamera);
-            }
-
-            // ═══ ☀️ ROTACIÓN SIMPLE - USA SOLO spinSpeed ═══
-            // Sin sincronización de tiempo real, el sol rota con su spinSpeed configurado arriba
-
-            sceneObjects.add(planetaSol);
-            Log.d(TAG, "  ☀️ SOL añadido con rotación simple");
-        } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creating sun: " + e.getMessage());
+            Log.e(TAG, "  ✗ Error creating Earth: " + e.getMessage());
         }
 
         // ═══════════════════════════════════════════════════════════
-        // ✨ SEGUNDA CAPA - MISMA TEXTURA + EFECTOS VISUALES
+        // 🚫 CAPA tierraEffects REMOVIDA (causaba Z-buffer issues)
         // ═══════════════════════════════════════════════════════════
+        // El nuevo shader tierra_fragment.glsl incluye TODOS los efectos
+        // atmosféricos en un solo render pass (más eficiente + sin bugs)
+        // ═══════════════════════════════════════════════════════════
+
+        // ✨ ESTRELLAS BAILARINAS REMOVIDAS (causaban confusión visual - parecían lunas extra)
+        estrellasBailarinas.clear();
+
+        // ☀️ SOL REALISTA - MODELO 3D DETALLADO
+        // Modelo 3D de alta calidad con textura fotorealista
+        SolRealista solRealista = null;
         try {
-            Planeta solEffects = new Planeta(
-                    context, textureManager,
-                    "shaders/sol_effects_vertex.glsl",         // 🔥 MISMO DESPLAZAMIENTO QUE EL SOL
-                    "shaders/sol_effects_fragment_nuevo.glsl", // ✨ TEXTURA + EFECTOS
-                    R.drawable.texturasolvolcanico,            // ☀️ MISMA TEXTURA QUE EL SOL BASE
-                    0.5f,              // orbitRadiusX = misma posición que sol
-                    -0.9f,             // orbitRadiusZ = misma posición que sol
-                    5.5f,              // orbitSpeed = misma órbita que sol
-                    5.0f,              // orbitOffsetY = misma altura que sol
-                    0.0f,              // scaleAmplitude
-                    1.51f,             // ☀️ LIGERAMENTE MÁS GRANDE (1.51 vs 1.5) para evitar z-fighting
-                    -1.0f,             // spinSpeed = misma rotación que sol
-                    false,             // useSolidColor = false (usa textura)
-                    null,              // sin color sólido
-                    1.0f,              // alpha controlado en shader
-                    null,              // sin oscilación de escala
-                    1.0f               // UV scale
-            );
-            if (solEffects instanceof CameraAware) {
-                ((CameraAware) solEffects).setCameraController(sharedCamera);
-            }
-            sceneObjects.add(solEffects);
-            Log.d(TAG, "  ✨ Capa de efectos del sol añadida (misma textura)");
+            solRealista = new SolRealista(context, textureManager);
+            solRealista.setPosition(-33.0f, 3.5f, -45.0f);  // ☀️ Arriba-izquierda-fondo
+            solRealista.setScale(0.3f);                    // ☀️ Sol pequeño
+            solRealista.setCameraController(sharedCamera);
+
+            sceneObjects.add(solRealista);
+            Log.d(TAG, "════════════════════════════════════════════════");
+            Log.d(TAG, "  ✓ ☀️ SOL REALISTA añadido (modelo 3D)");
+            Log.d(TAG, "  📦 Modelo: Solrealista.obj (7,936 triángulos)");
+            Log.d(TAG, "  🎨 Textura: materialdelsol.png");
+            Log.d(TAG, "  ✨ Shader con gradiente + plasma + corona");
+            Log.d(TAG, "  🔄 Rotación lenta (10°/seg)");
+            Log.d(TAG, "════════════════════════════════════════════════");
         } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creating sun effects layer: " + e.getMessage());
+            Log.e(TAG, "  ✗ Error creating realistic sun: " + e.getMessage());
+            e.printStackTrace();
         }
 
-        // 🔴 PLANETA MARTE - ORBITANDO EN EL FONDO MÁS LEJANO
-        try {
-            Planeta planetaMarte = new Planeta(
-                    context, textureManager,
-                    "shaders/planeta_vertex.glsl",
-                    "shaders/planeta_iluminado_fragment.glsl",
-                    R.drawable.textura_marte,            // Textura de Marte
-                    4.5f, 4.0f,        // orbitRadiusX, orbitRadiusZ
-                    0.30f,             // 🔄 orbitSpeed POSITIVO (sentido horario - manecillas del reloj)
-                    0.0f,              // 📍 orbitOffsetY = 0.0 (sin altura)
-                    0.08f,             // scaleAmplitude
-                    0.53f,             // instanceScale - Tamaño realista proporcional a Tierra (53%)
-                    90.0f,             // spinSpeed - Rotación MUY visible
-                    false, null, 1.0f,
-                    null,
-                    1.0f
-            );
-            if (planetaMarte instanceof CameraAware) {
-                ((CameraAware) planetaMarte).setCameraController(sharedCamera);
-            }
+        // ═══════════════════════════════════════════════════════════
+        // 🚫 CAPA solEffects REMOVIDA (potencial Z-buffer issue)
+        // ═══════════════════════════════════════════════════════════
+        // El nuevo shader sol_plasma_fragment.glsl incluye TODOS los
+        // efectos en un solo render pass (plasma + manchas + corona)
+        // ═══════════════════════════════════════════════════════════
 
-            // ═══ 🕐 RELOJ ASTRONÓMICO - MARTE = CADA MINUTO (órbita rápida) ═══
-            planetaMarte.setRealTimeRotation(true);
-            planetaMarte.setRealTimeRotationPeriod(24);
-            planetaMarte.setRealTimeOrbit(true);           // Órbita = cada minuto
-            planetaMarte.setRealTimeOrbitPeriod(1.0f / 60.0f);  // 1/60 hora = 1 minuto REAL
-            planetaMarte.setTimeAccelerationFactor(1.0f);  // Sin aceleración - tiempo REAL
-            Log.d(TAG, "  🕐 MARTE configurado para órbita RÁPIDA:");
-            Log.d(TAG, "     • Órbita completa = 1 minuto REAL (60 segundos)");
+        // 🚫 VIENTOS SOLARES - REMOVIDOS (simplificación visual)
+        // Eliminado por feedback: complicaba visualmente la escena sin aportar valor
 
-            sceneObjects.add(planetaMarte);
-            Log.d(TAG, "  🔴 MARTE añadido orbitando al Sol");
-        } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creating Mars: " + e.getMessage());
-        }
+        // 🔴 PLANETA MARTE - REMOVIDO (simplificar escena)
+        // Código comentado por solicitud del usuario para simplificar la escena del universo
 
         // 🌙 LUNA - ORBITANDO LA TIERRA (SATÉLITE NATURAL)
         try {
@@ -743,6 +623,42 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.e(TAG, "  ✗ Error creating Moon: " + e.getMessage());
         }
 
+        // ☄️☄️ CINTURÓN DE ASTEROIDES - REMOVIDO (simplificar escena)
+        // Código comentado por solicitud del usuario para simplificar la escena del universo
+        Log.d(TAG, "  ☄️ Cinturón de asteroides desactivado por simplificación");
+
+        // 🪨 ASTEROIDE REALISTA - MODELO 3D DETALLADO
+        // Modelo 3D de alta calidad con textura fotorealista
+        AsteroideRealista asteroideRealista = null;
+        try {
+            asteroideRealista = new AsteroideRealista(context, textureManager);
+
+            // Posición: Flotando cerca de la escena (visible)
+            asteroideRealista.setPosition(3.0f, 1.0f, -5.0f);
+
+            // Escala: Pequeño pero visible
+            asteroideRealista.setScale(0.15f);
+
+            // Rotación inicial aleatoria
+            asteroideRealista.setRotation(45.0f, 30.0f, 60.0f);
+
+            // Velocidades de rotación (tumbling realista en 3 ejes)
+            asteroideRealista.setSpinSpeed(15.0f, 20.0f, 10.0f);
+
+            asteroideRealista.setCameraController(sharedCamera);
+            sceneObjects.add(asteroideRealista);
+
+            Log.d(TAG, "════════════════════════════════════════════════");
+            Log.d(TAG, "  ✓ 🪨 ASTEROIDE REALISTA añadido (modelo 3D)");
+            Log.d(TAG, "  📦 Modelo: AsteroideRealista.obj (600 triángulos)");
+            Log.d(TAG, "  🎨 Textura: matasteroide.png");
+            Log.d(TAG, "  🔄 Rotación tumbling en 3 ejes");
+            Log.d(TAG, "════════════════════════════════════════════════");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating realistic asteroid: " + e.getMessage());
+            e.printStackTrace();
+        }
+
         // BARRA DE PODER DE BATERÍA - UI ELEMENT
         BatteryPowerBar powerBar = null;
         try {
@@ -767,7 +683,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             forceField = new ForceField(
                     context, textureManager,
                     0.0f, 0.0f, 0.0f,   // 🎯 CENTRADO CON LA TIERRA en (0, 0, 0)
-                    1.70f,              // 🛡️ MUCHO MÁS GRANDE (envuelve atmósfera sin tocarla)
+                    1.177f,              // 🛡️ MUCHO MÁS GRANDE (envuelve atmósfera sin tocarla)
                     R.drawable.fondo_transparente,  // Textura transparente para efectos puros
                     new float[]{0.3f, 0.9f, 1.0f},  // Color azul eléctrico suave
                     0.0f,               // ✨ CASI INVISIBLE (alpha 0%, solo impactos)
@@ -1149,50 +1065,39 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
      *  - Cinematic camera movements
      *  - Audio reactive breathing
      */
-    private void setupDiscoBallScene() {
-        Log.d(TAG, "Setting up DISCO BALL scene...");
+    // ═══════════════════════════════════════════════════════════════
+    // 🌊 OCÉANO PROFUNDO - Mundo submarino mágico
+    // ═══════════════════════════════════════════════════════════════
+    private void setupOceanScene() {
+        Log.d(TAG, "Setting up OCEAN scene...");
 
         // ============================================
-        // FONDO OSCURO (club atmosphere)
+        // FONDO OCÉANO - Textura de agua azul profunda
         // ============================================
-        // Por ahora sin fondo - el clear color es negro (ya está configurado)
-        // TODO FASE B: Agregar StarryBackground o bokeh effect
-        Log.d(TAG, "  ✓ Using black clear color as background");
-
-        // ============================================
-        // BOLA DISCO CENTRAL ⭐
-        // ============================================
+        // TODO: Reemplazar universo03 con ocean_background.png cuando esté disponible
         try {
-            DiscoBall discoBall = new DiscoBall(
+            StarryBackground oceanBg = new StarryBackground(
                     context,
-                    1.0f,  // spinSpeed: 1 rad/sec (rotación suave)
-                    2.5f   // scale: bola grande y prominente
+                    textureManager,
+                    R.drawable.universo03  // PLACEHOLDER - usar textura de océano real
             );
-            discoBall.setCameraController(sharedCamera);
-            sceneObjects.add(discoBall);
-            Log.d(TAG, "  ✓ Disco ball added (spin: 1.0 rad/s, scale: 2.5)");
+            sceneObjects.add(oceanBg);
+            Log.d(TAG, "  ✓ Ocean background added (TEMPORARY - using universo03)");
+            Log.d(TAG, "  ⚠️ TODO: Add ocean_background.png to drawable folder");
         } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creating disco ball: " + e.getMessage());
-            e.printStackTrace();
+            Log.e(TAG, "  ✗ Error creating ocean background: " + e.getMessage());
         }
 
         // ============================================
-        // TODO FASE B: RAYOS LASER
+        // TODO FASE B: AGREGAR OBJETOS MARINOS
         // ============================================
-        // Agregar 4-6 laser beams rotando alrededor de la bola
-        // usando beam.obj con colores cyan, magenta, yellow
+        // - Peces nadando
+        // - Corales y plantas
+        // - Burbujas flotando
+        // - Rayos de luz (god rays)
 
-        // ============================================
-        // TODO FASE B: PARTÍCULAS DE HUMO
-        // ============================================
-        // Plano con shader de niebla sutil
-
-        // ============================================
-        // TODO FASE C: SISTEMA CINEMÁTICO
-        // ============================================
-        // CinematicSequence con 5 shots predefinidos
-
-        Log.d(TAG, "✓ Disco ball scene setup complete (FASE A - básico)");
+        Log.d(TAG, "✓ Ocean scene setup complete (FASE A - fondo básico)");
+        Log.d(TAG, "  📝 Scene ready to add marine objects");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -1515,6 +1420,88 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         Log.d(TAG, "✓ Furia Celestial scene complete");
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // 🌍✨ TIERRA LIVE HD - Planeta profesional de Sketchfab
+    // ═══════════════════════════════════════════════════════════════
+    private void setupTierraLiveHDScene() {
+        Log.d(TAG, "════════════════════════════════════════════════");
+        Log.d(TAG, "   🌍✨ SETTING UP TIERRA LIVE HD SCENE");
+        Log.d(TAG, "   Professional Low-Poly Earth Model");
+        Log.d(TAG, "════════════════════════════════════════════════");
+
+        // Color de fondo: Espacio oscuro
+        GLES20.glClearColor(0.0f, 0.0f, 0.05f, 1.0f);
+
+        // ═══════════════════════════════════════════════════════════
+        // 1. FONDO ESTRELLADO
+        // ═══════════════════════════════════════════════════════════
+        try {
+            StarryBackground starryBg = new StarryBackground(
+                    context,
+                    textureManager,
+                    R.drawable.universo03
+            );
+            sceneObjects.add(starryBg);
+            Log.d(TAG, "  ✓ Starry background added");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating background: " + e.getMessage());
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // 2. 🌍✨ TIERRA LIVE HD - Modelo Sketchfab
+        // ═══════════════════════════════════════════════════════════
+        // Modelo low-poly estilizado con vegetación, árboles, plantas, océanos
+        // ~20k triángulos, colores procedurales desde materiales MTL
+        try {
+            TierraLiveHD tierraHD = new TierraLiveHD(
+                    context,
+                    textureManager,
+                    0.35f  // ✨ Escala acercada para ver las nubes mejor
+            );
+            tierraHD.setCameraController(sharedCamera);
+
+            sceneObjects.add(tierraHD);
+            Log.d(TAG, "  ✓ 🌍✨ TIERRA LIVE HD agregada");
+            Log.d(TAG, "  🌳 Con vegetación, árboles y terreno");
+            Log.d(TAG, "  💎 Modelo low-poly estilizado (~20k tris)");
+            Log.d(TAG, "  🎨 Materiales: Grass, Sand, Tree, Water, Wood");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating Tierra Live HD: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        Log.d(TAG, "════════════════════════════════════════════════");
+        Log.d(TAG, "   ✓ TIERRA LIVE HD SCENE COMPLETE!");
+        Log.d(TAG, "   Objects: " + sceneObjects.size());
+        Log.d(TAG, "════════════════════════════════════════════════");
+    }
+
+    private void setupSpaceBattleScene() {
+        Log.d(TAG, "Setting up SPACE BATTLE scene...");
+
+        try {
+            // Crear la escena de batalla espacial
+            spaceBattleScene = new SpaceBattleScene(context, textureManager);
+            
+            // Asignar cámara
+            if (sharedCamera != null) {
+                spaceBattleScene.setCameraController(sharedCamera);
+            }
+            
+            // Inicializar la escena
+            spaceBattleScene.initialize();
+            
+            // Agregar a objetos de escena
+            sceneObjects.add(spaceBattleScene);
+            
+            Log.d(TAG, "  ✓ Space Battle scene created successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating space battle scene: " + e.getMessage(), e);
+        }
+
+        Log.d(TAG, "✓ Batalla Galáctica scene complete");
+    }
+
     public void pause() {
         paused = true;
         if (musicVisualizer != null) {
@@ -1659,6 +1646,12 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         int action = event.getAction();
 
         try {
+            // 🚀 ENRUTAMIENTO ESPECIAL: Si estamos en Batalla Espacial, enrutar eventos táctiles
+            if (spaceBattleScene != null) {
+                spaceBattleScene.handleTouch(event);
+                return;  // No procesar más eventos de touch
+            }
+
             switch (action) {
                 case android.view.MotionEvent.ACTION_DOWN:
                     // Usuario empezó a tocar

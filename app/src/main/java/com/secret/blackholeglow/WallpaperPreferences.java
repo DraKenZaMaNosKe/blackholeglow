@@ -58,10 +58,20 @@ public class WallpaperPreferences {
     // LISTA DE WALLPAPERS VÁLIDOS
     // ============================================
     public static final Set<String> VALID_WALLPAPERS = new HashSet<>(Arrays.asList(
+        "🌊 Océano Profundo",
         "Universo",
+        "🌲 Bosque Encantado",
+        "🏙️ Neo Tokyo 2099",
+        "🏖️ Paraíso Dorado",
+        "🦁 Safari Salvaje",
+        "🌧️ Lluvia Mística",
+        "🎮 Pixel Quest",
+        "🕳️ Portal Infinito",
         "Agujero Negro",
+        "🌸 Jardín Zen",
+        "⚡ Furia Celestial",
+        "🚀 Batalla Galáctica",
         "DiscoBall"
-        // Agregar aquí nuevos wallpapers en el futuro
     ));
 
     // ============================================

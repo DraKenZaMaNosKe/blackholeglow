@@ -210,13 +210,20 @@ public class AnimatedWallpaperListFragment extends Fragment {
                 "Pétalos de sakura flotan sobre un estanque tranquilo. Koi nadan en círculos mientras bambú se mece. Paz absoluta en cada fotograma."
         ));
 
-        // 🔟 TORMENTA ELÉCTRICA - Poder de la naturaleza
+        // 🔟 TIERRA LIVE HD - Planeta Tierra con vegetación y terreno ⭐ NUEVO!
+        list.add(new WallpaperItem(
+                R.drawable.texturaplanetatierra,
+                "🌍 Tierra Live HD",
+                "Un planeta Tierra estilizado con vegetación exuberante, árboles, océanos y terreno detallado. Modelo low-poly profesional que rota lentamente mostrando su belleza natural."
+        ));
+
+        // 1️⃣1️⃣ TORMENTA ELÉCTRICA - Poder de la naturaleza
         list.add(new WallpaperItem(
                 R.drawable.textura_sol,
                 "⚡ Furia Celestial",
                 "Rayos fractales iluminan nubes tormentosas. Energía pura danza en el cielo mientras relámpagos explotan. El poder elemental al máximo."
         ));
-        // 1️⃣1️⃣ BATALLA ESPACIAL - Combate galáctico automático ⭐ NUEVO!
+        // 1️⃣2️⃣ BATALLA ESPACIAL - Combate galáctico automático ⭐ NUEVO!
         list.add(new WallpaperItem(
                 R.drawable.space_battle_bg,
                 "🚀 Batalla Galáctica",
