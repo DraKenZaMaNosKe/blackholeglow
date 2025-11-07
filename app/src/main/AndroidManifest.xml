@@ -143,5 +143,38 @@
             android:label="Permiso de Audio Musical"
             android:theme="@android:style/Theme.Material.Light.Dialog" />
 
+        <!--
+          ╔═══════════════════════════════════════════════════════════════╗
+          ║   🌌 SERVICE: DAYDREAM (PROTECTOR DE PANTALLA) 🌌            ║
+          ╚═══════════════════════════════════════════════════════════════╝
+          🔋 Se activa automáticamente durante la carga del dispositivo
+          ✨ Muestra el wallpaper animado como protector de pantalla
+
+          📱 Configuración del usuario:
+          Ajustes → Pantalla → Protector de pantalla → Black Hole Glow
+
+          ⚡ Requiere permisos:
+          - android.permission.BIND_DREAM_SERVICE (automático)
+
+          🎨 Características:
+          - OpenGL ES 2.0 con escenas 3D animadas
+          - Pantalla completa inmersiva
+          - Modo interactivo habilitado
+          - Se activa durante carga o cuando el dispositivo está en reposo
+        -->
+        <service
+            android:name=".GlowDreamService"
+            android:exported="true"
+            android:label="Black Hole Glow"
+            android:permission="android.permission.BIND_DREAM_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.dream"
+                android:resource="@xml/dream_glow" />
+        </service>
+
     </application>
 </manifest>

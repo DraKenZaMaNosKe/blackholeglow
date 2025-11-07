@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║   🌌 dream_glow.xml – Configuración del Protector de Pantalla               ║
+║                                                                              ║
+║   ⚡ Metadata para el DreamService (Daydream/Screen Saver)                   ║
+║   🎨 Aparece en: Ajustes → Pantalla → Protector de pantalla                 ║
+║                                                                              ║
+║   📋 Configuración:                                                          ║
+║     • settingsActivity: Activity de configuración (opcional)                ║
+║     • Icono y descripción mostrados al usuario                              ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+-->
+<dream xmlns:android="http://schemas.android.com/apk/res/android"
+    android:settingsActivity="com.secret.blackholeglow.activities.MainActivity" />
