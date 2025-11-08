@@ -48,21 +48,35 @@ public class Spaceship3D implements SceneObject, CameraAware {
     public float scale;
     public float rotationY = 0f;
 
-    // Movimiento AI
+    // ═══════════════════════════════════════════════════════════
+    // 🛸 SISTEMA DE MOVIMIENTO AI INTELIGENTE
+    // ═══════════════════════════════════════════════════════════
     public float velocityX = 0f;
     public float velocityY = 0f;
     public float velocityZ = 0f;
-    private float moveSpeed = 0.5f;  // Velocidad de movimiento
-    private float directionChangeTimer = 0f;
-    private float directionChangeInterval = 3.0f;  // Cambiar dirección cada 3 segundos
+    private float currentSpeed = 0f;         // Velocidad actual (con aceleración)
+    private float targetSpeed = 0.8f;        // Velocidad objetivo
+    private float minSpeed = 0.3f;           // Velocidad mínima
+    private float maxSpeed = 1.5f;           // Velocidad máxima
+    private float acceleration = 0.5f;       // Aceleración
 
-    // Límites de la escena (basados en el frustum de la cámara)
-    private float minX = -2.0f;
-    private float maxX = 2.0f;
-    private float minY = -1.5f;
-    private float maxY = 1.5f;
-    private float minZ = -3.0f;
-    private float maxZ = 0.5f;
+    private float directionChangeTimer = 0f;
+    private float directionChangeInterval = 4.0f;  // Cambiar dirección cada 4 segundos
+
+    // Límites de la escena AMPLIADOS (para que vuele por todo el espacio)
+    private float minX = -5.0f;
+    private float maxX = 5.0f;
+    private float minY = -3.0f;
+    private float maxY = 3.0f;
+    private float minZ = -8.0f;   // Puede alejarse mucho
+    private float maxZ = 2.0f;    // Puede acercarse
+
+    // ═══════════════════════════════════════════════════════════
+    // 🎯 DETECCIÓN DE OBSTÁCULOS (PLANETAS)
+    // ═══════════════════════════════════════════════════════════
+    private float earthX = 0f, earthY = 0f, earthZ = 0f;  // Posición de la Tierra
+    private float earthRadius = 1.2f;                      // Radio de seguridad (incluye atmósfera)
+    private float avoidanceDistance = 2.5f;                // Distancia para empezar a esquivar
 
     // Cámara
     private CameraController camera;
@@ -410,51 +424,121 @@ public class Spaceship3D implements SceneObject, CameraAware {
 
     @Override
     public void update(float deltaTime) {
-        // IA: Cambiar dirección periódicamente
+        // ═══════════════════════════════════════════════════════════
+        // 🎯 DETECCIÓN DE OBSTÁCULOS - ESQUIVAR LA TIERRA
+        // ═══════════════════════════════════════════════════════════
+        float dx = x - earthX;
+        float dy = y - earthY;
+        float dz = z - earthZ;
+        float distanceToEarth = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        // Si está demasiado cerca de la Tierra, ESQUIVAR
+        if (distanceToEarth < avoidanceDistance) {
+            // Vector de escape (alejarse de la Tierra)
+            float escapeX = dx / distanceToEarth;
+            float escapeY = dy / distanceToEarth;
+            float escapeZ = dz / distanceToEarth;
+
+            // Aplicar fuerza de repulsión (más fuerte cuanto más cerca)
+            float repulsionForce = (avoidanceDistance - distanceToEarth) / avoidanceDistance;
+            velocityX += escapeX * repulsionForce * 2.0f * deltaTime;
+            velocityY += escapeY * repulsionForce * 2.0f * deltaTime;
+            velocityZ += escapeZ * repulsionForce * 2.0f * deltaTime;
+
+            // Acelerar para huir rápido
+            targetSpeed = maxSpeed;
+
+            Log.d(TAG, "🚨 OVNI esquivando Tierra! Distancia: " + String.format("%.2f", distanceToEarth));
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // 🎲 CAMBIO DE DIRECCIÓN PERIÓDICO (comportamiento orgánico)
+        // ═══════════════════════════════════════════════════════════
         directionChangeTimer += deltaTime;
         if (directionChangeTimer >= directionChangeInterval) {
             changeDirection();
             directionChangeTimer = 0f;
+
+            // Variar intervalo para movimiento menos predecible
+            directionChangeInterval = 3.0f + (float) (Math.random() * 3.0f);  // 3-6 segundos
         }
 
-        // Aplicar movimiento
+        // ═══════════════════════════════════════════════════════════
+        // ⚡ SISTEMA DE ACELERACIÓN/DESACELERACIÓN
+        // ═══════════════════════════════════════════════════════════
+        if (currentSpeed < targetSpeed) {
+            currentSpeed += acceleration * deltaTime;
+            if (currentSpeed > targetSpeed) currentSpeed = targetSpeed;
+        } else if (currentSpeed > targetSpeed) {
+            currentSpeed -= acceleration * deltaTime;
+            if (currentSpeed < targetSpeed) currentSpeed = targetSpeed;
+        }
+
+        // Normalizar vector de velocidad
+        float magnitude = (float) Math.sqrt(
+            velocityX * velocityX +
+            velocityY * velocityY +
+            velocityZ * velocityZ
+        );
+
+        if (magnitude > 0.001f) {
+            velocityX = (velocityX / magnitude) * currentSpeed;
+            velocityY = (velocityY / magnitude) * currentSpeed;
+            velocityZ = (velocityZ / magnitude) * currentSpeed;
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // 🚀 APLICAR MOVIMIENTO
+        // ═══════════════════════════════════════════════════════════
         x += velocityX * deltaTime;
         y += velocityY * deltaTime;
         z += velocityZ * deltaTime;
 
-        // Detectar límites y rebotar suavemente
+        // ═══════════════════════════════════════════════════════════
+        // 🔄 REBOTE SUAVE EN LÍMITES (esquinas del espacio)
+        // ═══════════════════════════════════════════════════════════
+        boolean hitBoundary = false;
+
         if (x < minX) {
             x = minX;
-            velocityX = Math.abs(velocityX);  // Invertir hacia la derecha
-            changeDirection();  // Cambiar dirección al tocar límite
+            velocityX = Math.abs(velocityX);
+            hitBoundary = true;
         } else if (x > maxX) {
             x = maxX;
-            velocityX = -Math.abs(velocityX);  // Invertir hacia la izquierda
-            changeDirection();
+            velocityX = -Math.abs(velocityX);
+            hitBoundary = true;
         }
 
         if (y < minY) {
             y = minY;
-            velocityY = Math.abs(velocityY);  // Invertir hacia arriba
-            changeDirection();
+            velocityY = Math.abs(velocityY);
+            hitBoundary = true;
         } else if (y > maxY) {
             y = maxY;
-            velocityY = -Math.abs(velocityY);  // Invertir hacia abajo
-            changeDirection();
+            velocityY = -Math.abs(velocityY);
+            hitBoundary = true;
         }
 
         if (z < minZ) {
             z = minZ;
-            velocityZ = Math.abs(velocityZ);  // Invertir hacia adelante
-            changeDirection();
+            velocityZ = Math.abs(velocityZ);
+            hitBoundary = true;
         } else if (z > maxZ) {
             z = maxZ;
-            velocityZ = -Math.abs(velocityZ);  // Invertir hacia atrás
+            velocityZ = -Math.abs(velocityZ);
+            hitBoundary = true;
+        }
+
+        // Si tocó un límite, cambiar dirección inmediatamente
+        if (hitBoundary) {
             changeDirection();
         }
 
-        // Rotar lentamente mientras se mueve
-        rotationY += 20f * deltaTime;
+        // ═══════════════════════════════════════════════════════════
+        // 🌀 ROTACIÓN DINÁMICA (más rápida cuando acelera)
+        // ═══════════════════════════════════════════════════════════
+        float rotationSpeedFactor = currentSpeed / maxSpeed;  // 0.0 a 1.0
+        rotationY += (15f + rotationSpeedFactor * 25f) * deltaTime;  // 15-40 grados/seg
     }
 
     /**
@@ -462,9 +546,9 @@ public class Spaceship3D implements SceneObject, CameraAware {
      */
     private void changeDirection() {
         // Generar dirección aleatoria
-        velocityX = (float) (Math.random() * 2.0 - 1.0) * moveSpeed;
-        velocityY = (float) (Math.random() * 2.0 - 1.0) * moveSpeed;
-        velocityZ = (float) (Math.random() * 2.0 - 1.0) * moveSpeed;
+        velocityX = (float) (Math.random() * 2.0 - 1.0) * targetSpeed;
+        velocityY = (float) (Math.random() * 2.0 - 1.0) * targetSpeed;
+        velocityZ = (float) (Math.random() * 2.0 - 1.0) * targetSpeed;
 
         // Normalizar el vector de velocidad para movimiento uniforme
         float magnitude = (float) Math.sqrt(
@@ -474,9 +558,9 @@ public class Spaceship3D implements SceneObject, CameraAware {
         );
 
         if (magnitude > 0.001f) {
-            velocityX = (velocityX / magnitude) * moveSpeed;
-            velocityY = (velocityY / magnitude) * moveSpeed;
-            velocityZ = (velocityZ / magnitude) * moveSpeed;
+            velocityX = (velocityX / magnitude) * targetSpeed;
+            velocityY = (velocityY / magnitude) * targetSpeed;
+            velocityZ = (velocityZ / magnitude) * targetSpeed;
         }
 
         Log.d(TAG, "🎯 Nueva dirección: (" +

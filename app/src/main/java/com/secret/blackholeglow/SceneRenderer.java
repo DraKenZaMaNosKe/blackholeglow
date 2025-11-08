@@ -659,6 +659,39 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             e.printStackTrace();
         }
 
+        // 🛸 NAVE ESPACIAL / OVNI - EXPLORANDO EL SISTEMA
+        // Modelo 3D de nave alienígena con movimiento AI inteligente
+        Spaceship3D ovni = null;
+        try {
+            ovni = new Spaceship3D(
+                    context,
+                    textureManager,
+                    -3.0f, 2.0f, -5.0f,  // Posición inicial (lejos, arriba-izquierda)
+                    0.05f                // Escala TINY (más pequeña que la Luna - 5% de la Tierra)
+            );
+            ovni.setCameraController(sharedCamera);
+            sceneObjects.add(ovni);
+
+            Log.d(TAG, "════════════════════════════════════════════════");
+            Log.d(TAG, "  ✓ 🛸 NAVE ESPACIAL añadida (modelo 3D)");
+            Log.d(TAG, "  📦 Modelo: Spaceships.obj");
+            Log.d(TAG, "  🎨 Textura: forerunnercentralplates");
+            Log.d(TAG, "  🤖 AI: Movimiento libre por la escena");
+            Log.d(TAG, "  ✨ Shaders épicos:");
+            Log.d(TAG, "     • Cúpula con energía alien");
+            Log.d(TAG, "     • Luces parpadeantes rotantes");
+            Log.d(TAG, "     • Haz de luz tractora inferior");
+            Log.d(TAG, "     • Anillo de energía pulsante");
+            Log.d(TAG, "  🎯 Comportamiento:");
+            Log.d(TAG, "     • Cambia dirección cada 3 segundos");
+            Log.d(TAG, "     • Rebota en límites de la escena");
+            Log.d(TAG, "     • Nunca igual, movimiento orgánico");
+            Log.d(TAG, "════════════════════════════════════════════════");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating spaceship: " + e.getMessage());
+            e.printStackTrace();
+        }
+
         // BARRA DE PODER DE BATERÍA - UI ELEMENT
         BatteryPowerBar powerBar = null;
         try {
