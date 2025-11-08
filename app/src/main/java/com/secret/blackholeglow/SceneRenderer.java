@@ -797,10 +797,10 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
 
             musicIndicator = new MusicIndicator(
                     context,
-                    -0.15f,   // X: Centrado (ligeramente a la izquierda del centro)
-                    0.75f,    // Y: Parte superior de la pantalla
-                    0.30f,    // Ancho: HORIZONTAL (más ancho que alto)
-                    0.08f     // Alto: Delgado y compacto
+                    -0.35f,   // X: Centrado (ligeramente a la izquierda del centro)
+                    0.55f,    // Y: Parte superior de la pantalla
+                    0.50f,    // Ancho: HORIZONTAL (más ancho que alto)
+                    0.10f     // Alto: Delgado y compacto
             );
             sceneObjects.add(musicIndicator);
             Log.d(TAG, "  🎵✓ INDICADOR DE MÚSICA agregado - CENTRADO, ARRIBA del sol");

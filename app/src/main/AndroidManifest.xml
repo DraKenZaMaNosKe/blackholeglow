@@ -35,6 +35,17 @@
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
 
     <!--
+      ╔═══════════════════════════════════════════════╗
+      ║    👏 PERMISOS PARA ENCONTRAR CON APLAUSO 👏  ║
+      ╚═══════════════════════════════════════════════╝
+      📱 FOREGROUND_SERVICE: Permite servicio en primer plano
+      🎤 RECORD_AUDIO: Ya declarado arriba para detección de aplausos
+      📳 VIBRATE: Ya declarado arriba para vibración de respuesta
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
+
+    <!--
       ╔══════════════════════════════════════════════╗
       ║     🪄 OPENGL ES 2.0 – MAGIA ACTIVADA 🪄    ║
       ╚══════════════════════════════════════════════╝
@@ -174,6 +185,34 @@
             <meta-data
                 android:name="android.service.dream"
                 android:resource="@xml/dream_glow" />
+        </service>
+
+        <!--
+          ╔═════════════════════════════════════════════════════════╗
+          ║   👏 SERVICIO: ENCONTRAR CON APLAUSO 👏                 ║
+          ╚═════════════════════════════════════════════════════════╝
+          Servicio en primer plano que escucha aplausos continuamente
+
+          🎤 Funcionalidad:
+          - Detecta patrón de doble aplauso
+          - Responde con sonido (gatito o voz "¡Aquí toy!")
+          - Vibra el dispositivo
+          - Activa efectos visuales en el wallpaper
+
+          🔒 Permisos requeridos:
+          - RECORD_AUDIO (para escuchar micrófono)
+          - FOREGROUND_SERVICE (para ejecutar en segundo plano)
+          - VIBRATE (para vibración)
+
+          ⚙️ Configuración:
+          - Se activa/desactiva desde MainActivity
+          - Notificación persistente mientras está activo
+        -->
+        <service
+            android:name=".ClapDetectorService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="microphone">
         </service>
 
     </application>

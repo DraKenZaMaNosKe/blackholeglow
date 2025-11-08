@@ -1,16 +1,25 @@
 package com.secret.blackholeglow.fragments;
 
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.SwitchCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.secret.blackholeglow.ClapDetectorService;
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.adapters.WallpaperAdapter;
 import com.secret.blackholeglow.models.WallpaperItem;
@@ -43,6 +52,13 @@ public class AnimatedWallpaperListFragment extends Fragment {
      *     el RecyclerView.
      */
     private List<WallpaperItem> wallpaperItems;
+
+    // ╔════════════════════════════════════════════════════════╗
+    // ║ 👏 Variables del Detector de Aplausos                  ║
+    // ╚════════════════════════════════════════════════════════╝
+    private SwitchCompat clapSwitch;
+    private TextView clapStatusText;
+    private static final int MICROPHONE_PERMISSION_REQUEST = 100;
 
     // ╔════════════════════════════════════════════════════════╗
     // ║ ⚙️ onCreateView: Inflar y Configurar UI                ║
@@ -117,9 +133,119 @@ public class AnimatedWallpaperListFragment extends Fragment {
         recyclerView.setAdapter(adapter);
 
         // ┌───────────────────────────────────────────────────┐
-        // │ ✅ 5) Retornar vista configurada                  │
+        // │ 👏 5) Configurar Detector de Aplausos             │
+        // └───────────────────────────────────────────────────┘
+        setupClapDetector(view);
+
+        // ┌───────────────────────────────────────────────────┐
+        // │ ✅ 6) Retornar vista configurada                  │
         // └───────────────────────────────────────────────────┘
         return view;
+    }
+
+    // ╔════════════════════════════════════════════════════════╗
+    // ║ 👏 setupClapDetector: Configurar UI y lógica          ║
+    // ╚════════════════════════════════════════════════════════╝
+    private void setupClapDetector(View view) {
+        clapSwitch = view.findViewById(R.id.switch_clap_detector);
+        clapStatusText = view.findViewById(R.id.text_clap_status);
+
+        // Configurar listener del switch
+        clapSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                // Usuario quiere activar: verificar permisos
+                if (checkMicrophonePermission()) {
+                    startClapDetectorService();
+                } else {
+                    requestMicrophonePermission();
+                    clapSwitch.setChecked(false); // Desmarcar hasta obtener permiso
+                }
+            } else {
+                // Usuario quiere desactivar
+                stopClapDetectorService();
+            }
+        });
+    }
+
+    // ╔════════════════════════════════════════════════════════╗
+    // ║ 🎤 Verificar permiso de micrófono                      ║
+    // ╚════════════════════════════════════════════════════════╝
+    private boolean checkMicrophonePermission() {
+        return ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    // ╔════════════════════════════════════════════════════════╗
+    // ║ 🎤 Solicitar permiso de micrófono                      ║
+    // ╚════════════════════════════════════════════════════════╝
+    private void requestMicrophonePermission() {
+        requestPermissions(
+                new String[]{Manifest.permission.RECORD_AUDIO},
+                MICROPHONE_PERMISSION_REQUEST
+        );
+    }
+
+    // ╔════════════════════════════════════════════════════════╗
+    // ║ 🎤 Resultado de solicitud de permisos                 ║
+    // ╚════════════════════════════════════════════════════════╝
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == MICROPHONE_PERMISSION_REQUEST) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permiso concedido: activar servicio
+                clapSwitch.setChecked(true);
+                startClapDetectorService();
+                Toast.makeText(requireContext(),
+                        "✅ Permiso concedido. ¡Aplaude 4 veces rápido para probar!",
+                        Toast.LENGTH_LONG).show();
+            } else {
+                // Permiso denegado
+                Toast.makeText(requireContext(),
+                        "⚠️ Se necesita permiso de micrófono para detectar aplausos",
+                        Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    // ╔════════════════════════════════════════════════════════╗
+    // ║ 🚀 Iniciar servicio de detección                      ║
+    // ╚════════════════════════════════════════════════════════╝
+    private void startClapDetectorService() {
+        Intent serviceIntent = new Intent(requireContext(), ClapDetectorService.class);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            requireContext().startForegroundService(serviceIntent);
+        } else {
+            requireContext().startService(serviceIntent);
+        }
+
+        clapStatusText.setText("🟢 Servicio activo - Escuchando aplausos...");
+        clapStatusText.setTextColor(0xFF4CAF50); // Verde
+
+        Toast.makeText(requireContext(),
+                "👏 Detector activado! Aplaude 4 veces rápido para probar 🔊",
+                Toast.LENGTH_LONG).show();
+    }
+
+    // ╔════════════════════════════════════════════════════════╗
+    // ║ 🛑 Detener servicio de detección                      ║
+    // ╚════════════════════════════════════════════════════════╝
+    private void stopClapDetectorService() {
+        Intent serviceIntent = new Intent(requireContext(), ClapDetectorService.class);
+        requireContext().stopService(serviceIntent);
+
+        clapStatusText.setText("⚪ Servicio desactivado");
+        clapStatusText.setTextColor(0xFF808080); // Gris
+
+        Toast.makeText(requireContext(),
+                "Detector de aplausos desactivado",
+                Toast.LENGTH_SHORT).show();
     }
 
     // ╔════════════════════════════════════════════════════════╗

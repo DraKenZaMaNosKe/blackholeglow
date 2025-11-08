@@ -7,32 +7,24 @@ import android.util.Log;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Random;
 
 /**
+ * ╔════════════════════════════════════════════════════════════════════════╗
+ * ║  🎵 RESPALDO - ESTILO WINAMP LED BARS (7 BARRAS)                      ║
+ * ║  Para volver a usar: renombrar a MusicIndicator.java                  ║
+ * ╚════════════════════════════════════════════════════════════════════════╝
+ *
  * Indicador visual de música en tiempo real - ESTILO LED BARS
  * Muestra múltiples barras verticales con gradiente de color (rojo→amarillo→verde)
  * Similar a ecualizadores LED profesionales
  */
-public class MusicIndicator implements SceneObject {
+public class MusicIndicatorWinamp implements SceneObject {
     private static final String TAG = "depurar";
 
     // Configuración del ecualizador - 7 BARRAS POR RANGOS DE FRECUENCIA
     private static final int NUM_BARRAS = 7;  // 7 barras para visualización óptima (equilibrio perfecto)
     private static final int LEDS_POR_BARRA = 12;  // 12 LEDs por barra (estilo retro)
     private static final float SMOOTHING_FACTOR = 0.6f;  // Factor de suavizado (0.0 = sin suavizado, 0.9 = muy suave)
-
-    // ════════════════════════════════════════════════════════════════════════
-    // CONFIGURACIÓN DE CHISPAS MÁGICAS ✨
-    // ════════════════════════════════════════════════════════════════════════
-    private static final float SPARK_THRESHOLD = 0.25f;  // 25% de altura para emitir chispas
-    private static final float SPARK_SPEED = 0.3f;       // Velocidad de subida (NDC/segundo)
-    private static final float SPARK_LIFETIME = 1.5f;    // Duración en segundos
-    private static final float SPARK_SIZE = 0.006f;      // Tamaño de chispa
-    private static final float SPARK_COOLDOWN = 0.3f;    // Segundos entre emisiones por barra
-    private static final int MAX_SPARKS_PER_TRIGGER = 2; // Máximo 2 chispas por trigger
 
     private int programId;
 
@@ -70,22 +62,7 @@ public class MusicIndicator implements SceneObject {
     // Contador de frames para logs
     private int frameCount = 0;
 
-    // ════════════════════════════════════════════════════════════════════════
-    // SISTEMA DE PARTÍCULAS (CHISPAS MÁGICAS) ✨
-    // ════════════════════════════════════════════════════════════════════════
-    private static class Spark {
-        float x, y;           // Posición actual
-        float vx, vy;         // Velocidad
-        float[] color;        // Color RGBA
-        float age;            // Edad en segundos
-        float lifetime;       // Duración total
-    }
-
-    private ArrayList<Spark> sparks = new ArrayList<>();
-    private float[] barCooldowns = new float[NUM_BARRAS];  // Cooldown por barra
-    private Random random = new Random();
-
-    public MusicIndicator(Context context, float x, float y, float width, float height) {
+    public MusicIndicatorWinamp(Context context, float x, float y, float width, float height) {
         Log.d(TAG, "╔══════════════════════════════════════════════╗");
         Log.d(TAG, "║      CREANDO LED MUSIC EQUALIZER            ║");
         Log.d(TAG, "╚══════════════════════════════════════════════╝");
@@ -220,79 +197,6 @@ public class MusicIndicator implements SceneObject {
         for (int i = 0; i < NUM_BARRAS; i++) {
             smoothedLevels[i] = smoothedLevels[i] * SMOOTHING_FACTOR + barLevels[i] * (1f - SMOOTHING_FACTOR);
         }
-
-        // ════════════════════════════════════════════════════════════════════════
-        // SISTEMA DE CHISPAS MÁGICAS ✨
-        // ════════════════════════════════════════════════════════════════════════
-
-        // Actualizar cooldowns
-        for (int i = 0; i < NUM_BARRAS; i++) {
-            if (barCooldowns[i] > 0) {
-                barCooldowns[i] -= deltaTime;
-            }
-        }
-
-        // Generar nuevas chispas si las barras alcanzan el umbral
-        float barWidth = width / NUM_BARRAS;
-        float ledHeight = height / LEDS_POR_BARRA;
-
-        for (int barIndex = 0; barIndex < NUM_BARRAS; barIndex++) {
-            float level = smoothedLevels[barIndex];
-
-            // Si la barra alcanza 25% Y el cooldown terminó
-            if (level >= SPARK_THRESHOLD && barCooldowns[barIndex] <= 0) {
-                // Emitir 1-2 chispas
-                int numSparks = random.nextInt(MAX_SPARKS_PER_TRIGGER) + 1;
-
-                for (int s = 0; s < numSparks; s++) {
-                    Spark spark = new Spark();
-
-                    // Posición: tope de la barra actual
-                    float barX = x + barIndex * barWidth;
-                    int ledsEncendidos = (int)(level * LEDS_POR_BARRA);
-                    float topLedY = y + ledsEncendidos * ledHeight;
-
-                    spark.x = barX + barWidth * 0.5f + (random.nextFloat() - 0.5f) * barWidth * 0.3f;
-                    spark.y = topLedY;
-
-                    // Velocidad: sube lentamente con ligera variación horizontal
-                    spark.vx = (random.nextFloat() - 0.5f) * 0.05f;  // Movimiento horizontal suave
-                    spark.vy = SPARK_SPEED + random.nextFloat() * 0.1f;
-
-                    // Color: mismo que el LED superior de esta barra
-                    int topLedIndex = Math.min(ledsEncendidos - 1, LEDS_POR_BARRA - 1);
-                    spark.color = getLedColor(topLedIndex, LEDS_POR_BARRA, true);
-
-                    spark.age = 0f;
-                    spark.lifetime = SPARK_LIFETIME;
-
-                    sparks.add(spark);
-                }
-
-                // Reiniciar cooldown
-                barCooldowns[barIndex] = SPARK_COOLDOWN;
-            }
-        }
-
-        // Actualizar partículas existentes
-        Iterator<Spark> iterator = sparks.iterator();
-        while (iterator.hasNext()) {
-            Spark spark = iterator.next();
-            spark.age += deltaTime;
-
-            // Mover la chispa
-            spark.x += spark.vx * deltaTime;
-            spark.y += spark.vy * deltaTime;
-
-            // Desvanecimiento (fade out)
-            float fadeProgress = spark.age / spark.lifetime;
-            spark.color[3] = (1.0f - fadeProgress) * 0.8f;  // Alpha disminuye con el tiempo
-
-            // Remover si terminó su vida
-            if (spark.age >= spark.lifetime) {
-                iterator.remove();
-            }
-        }
     }
 
     @Override
@@ -333,13 +237,6 @@ public class MusicIndicator implements SceneObject {
                        barWidth - gap, ledHeight - gap,
                        ledColor);
             }
-        }
-
-        // ════════════════════════════════════════════════════════════════════════
-        // DIBUJAR CHISPAS MÁGICAS ✨
-        // ════════════════════════════════════════════════════════════════════════
-        for (Spark spark : sparks) {
-            drawSpark(spark);
         }
 
         // Restaurar estados
@@ -452,30 +349,5 @@ public class MusicIndicator implements SceneObject {
         // Limpiar
         GLES20.glDisableVertexAttribArray(aPositionLoc);
         GLES20.glDisableVertexAttribArray(aColorLoc);
-    }
-
-    /**
-     * Dibuja una chispa mágica (partícula pequeña brillante) ✨
-     */
-    private void drawSpark(Spark spark) {
-        // Dibujar la chispa como un cuadradito pequeño brillante
-        float halfSize = SPARK_SIZE * 0.5f;
-
-        float[] vertices = {
-            spark.x - halfSize, spark.y - halfSize,  // Bottom-left
-            spark.x + halfSize, spark.y - halfSize,  // Bottom-right
-            spark.x - halfSize, spark.y + halfSize,  // Top-left
-            spark.x + halfSize, spark.y + halfSize   // Top-right
-        };
-
-        // Usar el color de la chispa con fade out
-        float[] colors = {
-            spark.color[0], spark.color[1], spark.color[2], spark.color[3],
-            spark.color[0], spark.color[1], spark.color[2], spark.color[3],
-            spark.color[0], spark.color[1], spark.color[2], spark.color[3],
-            spark.color[0], spark.color[1], spark.color[2], spark.color[3]
-        };
-
-        drawQuad(vertices, colors);
     }
 }

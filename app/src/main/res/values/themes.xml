@@ -47,4 +47,11 @@
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">50%</item>
     </style>
+
+    <!-- Estilo para Switch del detector de aplausos -->
+    <style name="SwitchTheme" parent="Theme.AppCompat.Light">
+        <item name="colorControlActivated">#4CAF50</item> <!-- Verde cuando está ON -->
+        <item name="colorSwitchThumbNormal">#FFFFFF</item> <!-- Blanco cuando está OFF -->
+        <item name="android:colorForeground">#808080</item> <!-- Gris para fondo OFF -->
+    </style>
 </resources>
