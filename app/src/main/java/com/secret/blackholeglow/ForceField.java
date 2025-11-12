@@ -56,8 +56,8 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
     private final float[] baseColor;
     private float baseAlpha;
 
-    // Sistema de impactos (hasta 8 impactos simultáneos)
-    private static final int MAX_IMPACTS = 8;
+    // Sistema de impactos (hasta 16 impactos simultáneos - aumentado para evitar saturación)
+    private static final int MAX_IMPACTS = 16;
     private final float[] impactPositions = new float[MAX_IMPACTS * 3];  // x, y, z
     private final float[] impactIntensities = new float[MAX_IMPACTS];
     private int currentImpactIndex = 0;
@@ -186,17 +186,32 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
             playerStats.updateForceFieldHealth(currentHealth);
         }
 
-        // Registrar posición del impacto
+        // Convertir coordenadas mundiales a coordenadas locales del objeto
+        // (restar la posición del centro del ForceField)
+        float localX = worldX - position[0];
+        float localY = worldY - position[1];
+        float localZ = worldZ - position[2];
+
+        // Normalizar a la superficie de la esfera (radio = 1.0 en espacio local)
+        float dist = (float)Math.sqrt(localX*localX + localY*localY + localZ*localZ);
+        if (dist > 0.001f) {
+            localX /= dist;
+            localY /= dist;
+            localZ /= dist;
+        }
+
+        // Registrar posición del impacto en espacio local
         int idx = currentImpactIndex % MAX_IMPACTS;
-        impactPositions[idx * 3] = worldX;
-        impactPositions[idx * 3 + 1] = worldY;
-        impactPositions[idx * 3 + 2] = worldZ;
+        impactPositions[idx * 3] = localX;
+        impactPositions[idx * 3 + 1] = localY;
+        impactPositions[idx * 3 + 2] = localZ;
         impactIntensities[idx] = 1.0f;  // Intensidad máxima
 
         currentImpactIndex++;
 
         Log.d(TAG, "[ForceField] ¡IMPACTO! Health: " + currentHealth + "/" + MAX_HEALTH +
-                   " en (" + worldX + ", " + worldY + ", " + worldZ + ")");
+                   " mundo(" + worldX + "," + worldY + "," + worldZ + ") -> local(" +
+                   localX + "," + localY + "," + localZ + ")");
 
         // Verificar destrucción
         if (currentHealth <= 0) {
@@ -269,10 +284,10 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
     public void update(float deltaTime) {
         rotationAngle += rotationSpeed * deltaTime;
 
-        // Decrementar intensidades de impactos (fade out)
+        // Decrementar intensidades de impactos (fade out más rápido)
         for (int i = 0; i < MAX_IMPACTS; i++) {
             if (impactIntensities[i] > 0) {
-                impactIntensities[i] -= deltaTime * 0.8f;  // Fade en ~1.25 segundos
+                impactIntensities[i] -= deltaTime * 1.2f;  // Fade en ~0.83 segundos (más rápido)
                 if (impactIntensities[i] < 0) impactIntensities[i] = 0;
             }
         }

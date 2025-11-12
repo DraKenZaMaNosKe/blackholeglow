@@ -1,21 +1,27 @@
-// Vertex shader simple y funcional para meteoritos
-#ifdef GL_ES
-precision mediump float;
-#endif
+/**
+ * Vertex shader para Asteroide
+ * Pasa normales y posición mundial para iluminación
+ */
+
+attribute vec4 a_Position;
+attribute vec2 a_TexCoord;
 
 uniform mat4 u_MVP;
 
-attribute vec3 a_Position;
-attribute vec2 a_TexCoord;
-
 varying vec2 v_TexCoord;
-varying vec3 v_Position;
+varying vec3 v_Normal;
+varying vec3 v_WorldPos;
 
 void main() {
-    // Posición sin modificaciones complejas
-    gl_Position = u_MVP * vec4(a_Position, 1.0);
+    // Posición en clip space
+    gl_Position = u_MVP * a_Position;
 
-    // Pasar datos al fragment shader
+    // Pasar coordenadas UV
     v_TexCoord = a_TexCoord;
-    v_Position = a_Position;
+
+    // Para esfera/asteroide, la normal es la posición normalizada
+    v_Normal = normalize(a_Position.xyz);
+
+    // Posición en espacio mundo
+    v_WorldPos = a_Position.xyz;
 }

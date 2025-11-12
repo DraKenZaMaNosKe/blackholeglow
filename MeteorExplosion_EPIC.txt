@@ -10,16 +10,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Sistema de explosión de meteoritos SIMPLE
- * Genera fragmentos pequeños que salen disparados en todas direcciones al impactar
- * SIN efectos visuales complejos - solo fragmentos físicos
+ * Sistema de explosión de meteoritos
+ * Genera fragmentos que salen expulsados en todas direcciones al impactar
  */
 public class MeteorExplosion {
     private static final String TAG = "depurar";
 
     // Configuración
-    private static final int MAX_FRAGMENTOS = 15;  // Número de fragmentos por explosión
-    private static final float DURACION_EXPLOSION = 3.0f;  // Duración total en segundos
+    private static final int MAX_FRAGMENTOS = 20;  // Número de fragmentos por explosión
+    private static final float DURACION_EXPLOSION = 2.0f;  // Duración total en segundos
 
     // Lista de fragmentos activos
     private final List<Fragmento> fragmentos = new ArrayList<>();
@@ -69,17 +68,17 @@ public class MeteorExplosion {
             float dirZ = (float) Math.cos(phi);
 
             // Velocidad variable (algunos fragmentos más rápidos que otros)
-            float velocidad = 0.8f + (float) (Math.random() * 1.2f);  // 0.8-2.0 unidades/seg
+            float velocidad = 1.5f + (float) (Math.random() * 2.5f);  // 1.5-4.0 unidades/seg
 
             float velX = dirX * velocidad;
             float velY = dirY * velocidad;
             float velZ = dirZ * velocidad;
 
-            // Tamaño variable de fragmentos (pequeños)
-            float tamañoFragmento = tamaño * (0.05f + (float) Math.random() * 0.08f);  // 5%-13% del original
+            // Tamaño variable de fragmentos (más pequeños que el meteorito original)
+            float tamañoFragmento = tamaño * (0.1f + (float) Math.random() * 0.15f);  // 10%-25% del original
 
             // Velocidad de rotación aleatoria
-            float velocidadRot = 100f + (float) (Math.random() * 200f);  // 100-300 deg/seg
+            float velocidadRot = 200f + (float) (Math.random() * 400f);  // 200-600 deg/seg
 
             f.activar(x, y, z, velX, velY, velZ, tamañoFragmento, velocidadRot, color);
         }
@@ -112,15 +111,21 @@ public class MeteorExplosion {
 
         GLES20.glUseProgram(shaderProgram);
 
-        // Habilitar blending normal (sin efectos de brillo)
+        // Habilitar blending
         GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);  // Aditivo para brillo
+
+        // Desactivar depth write (pero mantener depth test)
+        GLES20.glDepthMask(false);
 
         // Dibujar cada fragmento
         for (Fragmento f : fragmentos) {
             f.draw(camera, shaderProgram, aPositionLoc, uMvpLoc, uColorLoc, uAlphaLoc);
         }
 
+        // Restaurar estado
+        GLES20.glDepthMask(true);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
     }
 
     /**
@@ -214,20 +219,31 @@ public class MeteorExplosion {
         public void update(float deltaTime) {
             edad += deltaTime;
 
-            // Actualizar posición - solo movimiento lineal simple
+            // Actualizar posición con física
             posicion[0] += velocidad[0] * deltaTime;
             posicion[1] += velocidad[1] * deltaTime;
             posicion[2] += velocidad[2] * deltaTime;
 
+            // Aplicar "gravedad" suave hacia abajo
+            velocidad[1] -= 0.5f * deltaTime;
+
+            // Fricción del aire (desacelerar)
+            velocidad[0] *= 0.98f;
+            velocidad[1] *= 0.98f;
+            velocidad[2] *= 0.98f;
+
             // Actualizar rotación
             rotacion += velocidadRotacion * deltaTime;
 
-            // Desaparecer al final de la duración
-            if (edad > DURACION_EXPLOSION * 0.7f) {
-                float tiempoRestante = DURACION_EXPLOSION - edad;
-                alpha = tiempoRestante / (DURACION_EXPLOSION * 0.3f);
-                alpha = Math.max(0f, Math.min(1f, alpha));
+            // Fade-out GRADUAL
+            // Empieza a desaparecer después de 1 segundo, termina en 2 segundos
+            if (edad > 1.0f) {
+                alpha = 1.0f - ((edad - 1.0f) / 1.0f);  // De 1.0 a 0.0 en el segundo restante
+                alpha = Math.max(0f, alpha);
             }
+
+            // Reducir tamaño gradualmente
+            tamaño *= 0.99f;
         }
 
         public void draw(CameraController camera, int program, int posLoc, int mvpLoc,

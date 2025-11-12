@@ -53,14 +53,17 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
     private float spinSpeedZ = 10.0f;
 
     public AsteroideRealista(Context context, TextureManager textureManager) {
-        super(context, "shaders/sol_vertex.glsl", "shaders/sol_lava_fragment.glsl");
+        super(context, "shaders/asteroide_vertex.glsl", "shaders/asteroide_textured_fragment.glsl");
 
         Log.d(TAG, "═══════════════════════════════════════════════");
         Log.d(TAG, "🪨 Cargando Asteroide Realista desde assets");
         Log.d(TAG, "═══════════════════════════════════════════════");
 
-        // Cargar textura
-        textureId = textureManager.getTexture(R.drawable.matasteroide);
+        // Cargar textura (nombre del archivo: matasteroide.png sin 'r')
+        int textureResourceId = R.drawable.matasteroide;
+        Log.d(TAG, "📦 Intentando cargar textura - Resource ID: " + textureResourceId);
+        textureId = textureManager.getTexture(textureResourceId);
+        Log.d(TAG, "✓ Textura cargada - Texture ID OpenGL: " + textureId);
 
         // Cargar modelo OBJ
         ObjLoader.Mesh mesh = null;
@@ -182,10 +185,19 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
         // Pasar tiempo
         setTime((System.currentTimeMillis() % 60000) / 1000.0f);
 
+        // Pasar alpha (opaco)
+        int uAlphaLoc = GLES20.glGetUniformLocation(programId, "u_Alpha");
+        GLES20.glUniform1f(uAlphaLoc, 1.0f);
+
         // Activar textura
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
         GLES20.glUniform1i(uTexLoc, 0);
+
+        // Debug: Log texture binding cada 60 frames (~1 segundo)
+        if (System.currentTimeMillis() % 1000 < 17) {
+            Log.d(TAG, "🎨 Dibujando asteroide - TextureID: " + textureId + " | uTexLoc: " + uTexLoc);
+        }
 
         // Configurar atributos
         GLES20.glEnableVertexAttribArray(aPosLoc);

@@ -654,43 +654,48 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
             }
         }
 
-        // PRIORIDAD 2: Colisión con el sol (si existe y no está muerto)
+        // PRIORIDAD 2: Colisión con la TIERRA (si existe y no está muerta)
         if (sol != null && !sol.isDead()) {
-            float[] posSol = {0, 0, 0};  // El sol está CENTRADO en el origen
-            float radioSol = 0.4f;       // Tamaño reducido del sol
+            float[] posTierra = {0, 0, 0};  // La Tierra está CENTRADA en el origen
+            float radioTierra = 0.5f;       // Tamaño de la Tierra (1.0 de escala)
 
-            float distancia = calcularDistancia(posMeteorito, posSol);
+            float distancia = calcularDistancia(posMeteorito, posTierra);
 
-            if (distancia < (radioMeteorito + radioSol)) {
-                // ¡IMPACTO CON EL SOL!
+            if (distancia < (radioMeteorito + radioTierra)) {
+                // ¡IMPACTO CON LA TIERRA!
                 m.impactar();
                 crearEfectoImpacto(posMeteorito[0], posMeteorito[1], posMeteorito[2], true);
 
-                // CAUSAR DAÑO AL SOL
+                // 🌍💥 ACTIVAR EFECTO ÉPICO DE IMPACTO EN LA TIERRA
+                if (sceneRenderer != null) {
+                    sceneRenderer.triggerEarthImpact(posMeteorito[0], posMeteorito[1], posMeteorito[2]);
+                }
+
+                // CAUSAR DAÑO A LA TIERRA
                 sol.damage(1);  // 1 punto de daño por meteorito
 
-                // ACTUALIZAR HP BAR del sol
+                // ACTUALIZAR HP BAR de la Tierra
                 if (hpBarSun != null) {
                     hpBarSun.setHealth(sol.getCurrentHealth());
                 }
 
-                // 🎮 REGISTRAR IMPACTO EN ESTADÍSTICAS (sol directo)
+                // 🎮 REGISTRAR IMPACTO EN ESTADÍSTICAS (Tierra directa)
                 int points = playerStats.onImpact(true);
 
-                // 🔥 VERIFICAR SI EL SOL FUE DESTRUIDO
-                // NOTA: El incremento de soles destruidos se hace en SceneRenderer.onExplosion()
+                // 🔥 VERIFICAR SI LA TIERRA FUE DESTRUIDA
+                // NOTA: El incremento de planetas destruidos se hace en SceneRenderer.onExplosion()
                 // para mantener la sincronización con la actualización del contador visual
 
-                // 💥💥 EFECTO DE IMPACTO EN PANTALLA (SOL) - MÁS SUTIL
-                // Intensidad basada en tamaño del meteorito (0.05-0.20 → 0.2-0.4)
+                // 💥💥 EFECTO DE IMPACTO EN PANTALLA (TIERRA) - MÁS INTENSO
+                // Intensidad basada en tamaño del meteorito (0.05-0.20 → 0.3-0.5)
                 if (sceneRenderer != null) {
-                    float intensity = 0.2f + (radioMeteorito / 0.20f) * 0.2f;
-                    intensity = Math.min(0.4f, Math.max(0.2f, intensity));  // Clamp 0.2-0.4
+                    float intensity = 0.3f + (radioMeteorito / 0.20f) * 0.2f;
+                    intensity = Math.min(0.5f, Math.max(0.3f, intensity));  // Clamp 0.3-0.5
                     sceneRenderer.triggerScreenImpact(intensity);
                 }
 
                 totalImpactos++;
-                Log.d(TAG, "[MeteorShower] ¡¡IMPACTO EN EL SOL!! HP: " +
+                Log.d(TAG, "[MeteorShower] 🌍💥 ¡¡IMPACTO EN LA TIERRA!! HP: " +
                            sol.getCurrentHealth() + "/" + sol.getMaxHealth() +
                            " | +" + points + " pts | Combo: x" + playerStats.getCurrentCombo());
                 return;

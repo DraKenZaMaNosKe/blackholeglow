@@ -252,6 +252,22 @@ float energyPulses(vec2 uv, float time) {
 }
 
 // ============================================
+// FUNCIÓN PARA VERIFICAR MISMO LADO
+// ============================================
+
+// Verificar si el punto está del mismo lado de la esfera que el impacto
+float sameSide(vec3 worldPos, vec3 impactPos) {
+    vec3 worldNormal = normalize(worldPos);
+    vec3 impactNormal = normalize(impactPos);
+
+    // Producto punto: >0.5 = mismo lado, <0 = lado opuesto
+    float dotProduct = dot(worldNormal, impactNormal);
+
+    // Solo mostrar efectos si está en el mismo hemisferio (umbral: 0.3)
+    return smoothstep(0.0, 0.3, dotProduct);
+}
+
+// ============================================
 // MAIN SHADER
 // ============================================
 
@@ -336,37 +352,42 @@ void main() {
 
     for (int i = 0; i < 8; i++) {
         if (u_ImpactIntensity[i] > 0.0 && u_Health > 0.05) {  // Solo si hay vida
-            float impactDist = length(v_WorldPos - u_ImpactPos[i]);
-            float impactRadius = 0.9;  // Radio más grande para ondas más visibles
+            // ✅ VERIFICAR QUE ESTÉ EN EL MISMO LADO DE LA ESFERA
+            float sideMask = sameSide(v_WorldPos, u_ImpactPos[i]);
 
-            if (impactDist < impactRadius) {
-                float impactStrength = (1.0 - (impactDist / impactRadius)) * u_ImpactIntensity[i];
-                impactStrength = pow(impactStrength, 1.2);
+            if (sideMask > 0.01) {  // Solo procesar si está del mismo lado
+                float impactDist = length(v_WorldPos - u_ImpactPos[i]);
+                float impactRadius = 0.9;  // Radio más grande para ondas más visibles
 
-                // 🌊 MÚLTIPLES ONDAS EXPANSIVAS CONCÉNTRICAS (muy épicas)
-                float wave1 = sin(impactDist * 18.0 - effectiveTime * 18.0) * 0.5 + 0.5;
-                float wave2 = sin(impactDist * 28.0 - effectiveTime * 24.0) * 0.5 + 0.5;
-                float wave3 = sin(impactDist * 38.0 - effectiveTime * 30.0) * 0.5 + 0.5;
+                if (impactDist < impactRadius) {
+                    float impactStrength = (1.0 - (impactDist / impactRadius)) * u_ImpactIntensity[i];
+                    impactStrength = pow(impactStrength, 1.2);
 
-                // Combinar ondas con diferentes intensidades
-                float waves = wave1 * 0.5 + wave2 * 0.3 + wave3 * 0.2;
-                waves = pow(waves, 1.8);  // Ondas más definidas y brillantes
+                    // 🌊 MÚLTIPLES ONDAS EXPANSIVAS CONCÉNTRICAS (muy épicas)
+                    float wave1 = sin(impactDist * 18.0 - effectiveTime * 18.0) * 0.5 + 0.5;
+                    float wave2 = sin(impactDist * 28.0 - effectiveTime * 24.0) * 0.5 + 0.5;
+                    float wave3 = sin(impactDist * 38.0 - effectiveTime * 30.0) * 0.5 + 0.5;
 
-                // ⚡ FLASH CENTRAL (epicentro del impacto MUY brillante)
-                float epicenter = smoothstep(0.2, 0.0, impactDist);
+                    // Combinar ondas con diferentes intensidades
+                    float waves = wave1 * 0.5 + wave2 * 0.3 + wave3 * 0.2;
+                    waves = pow(waves, 1.8);  // Ondas más definidas y brillantes
 
-                // 🔥 COLOR DEL IMPACTO: Azul-blanco eléctrico intenso
-                vec3 impactColor = mix(
-                    vec3(0.2, 0.8, 1.0),   // Azul cyan eléctrico
-                    vec3(1.0, 1.0, 1.0),   // Blanco puro brillante
-                    epicenter * 0.9        // Centro casi blanco
-                );
+                    // ⚡ FLASH CENTRAL (epicentro del impacto MUY brillante)
+                    float epicenter = smoothstep(0.2, 0.0, impactDist);
 
-                // Intensidad combinada (ondas + epicentro)
-                float totalImpact = (waves * 3.0 + epicenter * 4.0) * impactStrength;
+                    // 🔥 COLOR DEL IMPACTO: Azul-blanco eléctrico intenso
+                    vec3 impactColor = mix(
+                        vec3(0.2, 0.8, 1.0),   // Azul cyan eléctrico
+                        vec3(1.0, 1.0, 1.0),   // Blanco puro brillante
+                        epicenter * 0.9        // Centro casi blanco
+                    );
 
-                impactGlow += impactColor * totalImpact;
-                impactAlphaBoost += totalImpact * 0.7;
+                    // Intensidad combinada (ondas + epicentro) * MÁSCARA DE LADO
+                    float totalImpact = (waves * 3.0 + epicenter * 4.0) * impactStrength * sideMask;
+
+                    impactGlow += impactColor * totalImpact;
+                    impactAlphaBoost += totalImpact * 0.7;
+                }
             }
         }
     }

@@ -6,7 +6,6 @@ import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.os.Build;
 import android.util.Log;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,7 +32,9 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
 
     // Referencias para el sistema de HP y respawn
     private Planeta sol;
+    private Planeta planetaTierra;  // 🌍 Referencia a la Tierra para detectar impactos
     private ForceField forceField;
+    private EarthShield earthShield;  // 🌍🛡️ Escudo invisible de la Tierra para mostrar impactos
     private HPBar hpBarSun;
     private HPBar hpBarForceField;
     private MeteorShower meteorShower;
@@ -380,12 +381,12 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         // 🎨 RENDERIZADO EN CAPAS - FireButton siempre encima
         // ═══════════════════════════════════════════════════════════
 
-        // Actualizar TODOS los objetos primero
+        // Actualizar TODOS los objetos primero (incluye EarthShield)
         for (SceneObject obj : sceneObjects) {
             obj.update(dt);
         }
 
-        // Dibujar objetos del JUEGO (excepto FireButton)
+        // Dibujar objetos del JUEGO (excepto FireButton) - incluye EarthShield
         for (SceneObject obj : sceneObjects) {
             if (!(obj instanceof FireButton)) {
                 obj.draw();
@@ -524,6 +525,10 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.d(TAG, "  ⏰ TIERRA rotación acelerada: 24h → " + (24 * 60 / 720) + " min por vuelta completa");
 
             sceneObjects.add(sol);
+
+            // 🌍 Guardar referencia para detección de impactos
+            planetaTierra = sol;
+
             Log.d(TAG, "════════════════════════════════════════════════");
             Log.d(TAG, "  ✓ 🌍 TIERRA ÉPICA añadida con shader procedural");
             Log.d(TAG, "  ✨ Océanos animados + Continentes + Nubes + Atmósfera");
@@ -534,6 +539,19 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creating Earth: " + e.getMessage());
         }
+
+        // 🌍🛡️ CREAR ESCUDO INVISIBLE DE LA TIERRA (para mostrar impactos)
+        // Radio: 0.58 (Tierra = 0.5, shield MÁS SEPARADO para evitar Z-fighting)
+        earthShield = new EarthShield(
+            context, textureManager,
+            0.0f, 0.0f, 0.0f,  // Centrado con la Tierra
+            1.05f               // Radio mayor que la Tierra para evitar solapamiento
+        );
+        if (earthShield instanceof CameraAware) {
+            ((CameraAware) earthShield).setCameraController(sharedCamera);
+        }
+        sceneObjects.add(earthShield);
+        Log.d(TAG, "  🌍🛡️ Escudo invisible de la Tierra creado (solo muestra impactos)");
 
         // ═══════════════════════════════════════════════════════════
         // 🚫 CAPA tierraEffects REMOVIDA (causaba Z-buffer issues)
@@ -634,10 +652,10 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             asteroideRealista = new AsteroideRealista(context, textureManager);
 
             // Posición: Flotando cerca de la escena (visible)
-            asteroideRealista.setPosition(3.0f, 1.0f, -5.0f);
+            asteroideRealista.setPosition(2.0f, 0.5f, -4.0f);
 
             // Escala: Pequeño pero visible
-            asteroideRealista.setScale(0.15f);
+            asteroideRealista.setScale(0.5f);
 
             // Rotación inicial aleatoria
             asteroideRealista.setRotation(45.0f, 30.0f, 60.0f);
@@ -716,12 +734,12 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             forceField = new ForceField(
                     context, textureManager,
                     0.0f, 0.0f, 0.0f,   // 🎯 CENTRADO CON LA TIERRA en (0, 0, 0)
-                    1.177f,              // 🛡️ MUCHO MÁS GRANDE (envuelve atmósfera sin tocarla)
+                    1.230f,              // 🛡️ MUCHO MÁS GRANDE (envuelve atmósfera sin tocarla)
                     R.drawable.fondo_transparente,  // Textura transparente para efectos puros
                     new float[]{0.3f, 0.9f, 1.0f},  // Color azul eléctrico suave
-                    0.0f,               // ✨ CASI INVISIBLE (alpha 0%, solo impactos)
-                    0.03f,              // Pulsación ULTRA sutil (3% de variación)
-                    0.3f                // Pulsación ULTRA LENTA
+                    0.0125f,               // ✨ CASI INVISIBLE (alpha 0%, solo impactos)
+                    0.028f,              // Pulsación ULTRA sutil (3% de variación)
+                    0.240f                // Pulsación ULTRA LENTA
             );
             forceField.setCameraController(sharedCamera);
 
@@ -1856,6 +1874,31 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
      * Activa efecto de impacto en pantalla (screen shake + flash blanco)
      * @param intensity Intensidad del impacto (0.0 - 1.0)
      */
+    /**
+     * 🌍💥 Activa efecto de IMPACTO EN LA TIERRA
+     * Muestra impactos naranja/rojo en el escudo invisible
+     */
+    public void triggerEarthImpact(float x, float y, float z) {
+        if (earthShield != null) {
+            earthShield.registerImpact(x, y, z);
+            Log.d(TAG, String.format("🌍💥 IMPACTO EN LA TIERRA! Posición: (%.2f, %.2f, %.2f)", x, y, z));
+        }
+    }
+
+    /**
+     * @return Referencia al escudo invisible de la Tierra
+     */
+    public EarthShield getEarthShield() {
+        return earthShield;
+    }
+
+    /**
+     * @return Referencia a la Tierra para detección de colisiones
+     */
+    public Planeta getEarth() {
+        return planetaTierra;
+    }
+
     public void triggerScreenImpact(float intensity) {
         // Screen shake - DESACTIVADO para apreciar mejor el efecto del sol
         /*
