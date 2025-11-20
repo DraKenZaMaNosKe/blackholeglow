@@ -560,8 +560,49 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         // atmosféricos en un solo render pass (más eficiente + sin bugs)
         // ═══════════════════════════════════════════════════════════
 
-        // ✨ ESTRELLAS BAILARINAS REMOVIDAS (causaban confusión visual - parecían lunas extra)
-        estrellasBailarinas.clear();
+        // ✨ 3 ESTRELLAS BAILARINAS - PARTÍCULAS MÁGICAS CON ESTELA ✨
+        // Casi invisibles, solo se ve la estela arcoíris de cada una
+        try {
+            // Limpiar lista anterior por si acaso
+            estrellasBailarinas.clear();
+
+            // Estrella 1 - Posición superior derecha
+            EstrellaBailarina estrella1 = new EstrellaBailarina(
+                    context, textureManager,
+                    1.8f, 0.8f, 0.5f,   // Posición inicial: arriba-derecha
+                    0.02f,              // Escala: MINÚSCULA (casi invisible, solo estela)
+                    45.0f               // Rotación: rápida
+            );
+            estrella1.setCameraController(sharedCamera);
+            sceneObjects.add(estrella1);
+            estrellasBailarinas.add(estrella1);
+
+            // Estrella 2 - Posición izquierda
+            EstrellaBailarina estrella2 = new EstrellaBailarina(
+                    context, textureManager,
+                    -1.5f, 0.3f, -0.8f,  // Posición inicial: izquierda-atrás
+                    0.02f,               // Escala: MINÚSCULA
+                    38.0f                // Rotación: ligeramente diferente
+            );
+            estrella2.setCameraController(sharedCamera);
+            sceneObjects.add(estrella2);
+            estrellasBailarinas.add(estrella2);
+
+            // Estrella 3 - Posición abajo
+            EstrellaBailarina estrella3 = new EstrellaBailarina(
+                    context, textureManager,
+                    0.5f, -0.6f, 1.2f,   // Posición inicial: abajo-adelante
+                    0.02f,               // Escala: MINÚSCULA
+                    52.0f                // Rotación: más rápida
+            );
+            estrella3.setCameraController(sharedCamera);
+            sceneObjects.add(estrella3);
+            estrellasBailarinas.add(estrella3);
+
+            Log.d(TAG, "  ✨✨✨ 3 ESTRELLAS BAILARINAS agregadas (épico!) ✨✨✨");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creando estrellas bailarinas: " + e.getMessage());
+        }
 
         // ☀️ SOL REALISTA - MODELO 3D DETALLADO
         // Modelo 3D de alta calidad con textura fotorealista
@@ -645,37 +686,10 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         // Código comentado por solicitud del usuario para simplificar la escena del universo
         Log.d(TAG, "  ☄️ Cinturón de asteroides desactivado por simplificación");
 
-        // 🪨 ASTEROIDE REALISTA - MODELO 3D DETALLADO
-        // Modelo 3D de alta calidad con textura fotorealista
-        AsteroideRealista asteroideRealista = null;
-        try {
-            asteroideRealista = new AsteroideRealista(context, textureManager);
-
-            // Posición: Flotando cerca de la escena (visible)
-            asteroideRealista.setPosition(2.0f, 0.5f, -4.0f);
-
-            // Escala: Pequeño pero visible
-            asteroideRealista.setScale(0.5f);
-
-            // Rotación inicial aleatoria
-            asteroideRealista.setRotation(45.0f, 30.0f, 60.0f);
-
-            // Velocidades de rotación (tumbling realista en 3 ejes)
-            asteroideRealista.setSpinSpeed(15.0f, 20.0f, 10.0f);
-
-            asteroideRealista.setCameraController(sharedCamera);
-            sceneObjects.add(asteroideRealista);
-
-            Log.d(TAG, "════════════════════════════════════════════════");
-            Log.d(TAG, "  ✓ 🪨 ASTEROIDE REALISTA añadido (modelo 3D)");
-            Log.d(TAG, "  📦 Modelo: AsteroideRealista.obj (600 triángulos)");
-            Log.d(TAG, "  🎨 Textura: matasteroide.png");
-            Log.d(TAG, "  🔄 Rotación tumbling en 3 ejes");
-            Log.d(TAG, "════════════════════════════════════════════════");
-        } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creating realistic asteroid: " + e.getMessage());
-            e.printStackTrace();
-        }
+        // 🪨 ASTEROIDE REALISTA ESTÁTICO - AHORA MANEJADO POR METEORSHOWER
+        // El AsteroideRealista ahora es usado por MeteorShower como sistema dinámico
+        // (reemplazó a Meteorito por preferencia visual del usuario)
+        Log.d(TAG, "  🪨 Asteroide estático removido - ahora manejado por MeteorShower");
 
         // 🛸 NAVE ESPACIAL / OVNI - EXPLORANDO EL SISTEMA
         // Modelo 3D de nave alienígena con movimiento AI inteligente
@@ -898,10 +912,14 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.d(TAG, "╚════════════════════════════════════════╝");
 
             // Inicializar managers
-            botManager = BotManager.getInstance();
+            // BOTS DESHABILITADOS - No se crearán ni actualizarán bots en Firebase
+            // botManager = BotManager.getInstance();
             leaderboardManager = LeaderboardManager.getInstance();
 
-            // Inicializar bots (solo primera vez)
+            // ⚠️ BOTS DESHABILITADOS PARA RELEASE EN PLAY STORE
+            // Los bots fueron utilizados durante desarrollo para simular competencia
+            // Ahora solo aparecerán jugadores reales en el leaderboard
+            /*
             botManager.initializeBots(new BotManager.InitCallback() {
                 @Override
                 public void onComplete() {
@@ -910,6 +928,10 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     updateLeaderboardUI();
                 }
             });
+            */
+
+            // Actualizar leaderboard directamente (sin esperar bots)
+            updateLeaderboardUI();
 
             // Crear textos para Top 3 (VERTICAL, de arriba a abajo, en la parte inferior izquierda)
             float x = -0.99f;        // X fija en el borde izquierdo (alineado con barras HP)
@@ -2315,10 +2337,10 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             });
         }
 
-        // También actualizar bots si es necesario
-        if (botManager != null) {
-            botManager.updateBotsIfNeeded();
-        }
+        // ⚠️ BOTS DESHABILITADOS - No se actualizarán automáticamente
+        // if (botManager != null) {
+        //     botManager.updateBotsIfNeeded();
+        // }
     }
 
     // ===== 💥💥💥 EXPLOSIÓN ÉPICA DEL SOL 💥💥💥 =====

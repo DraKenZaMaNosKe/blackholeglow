@@ -249,10 +249,19 @@ public class FirebaseStatsManager {
      * 🏆 Actualiza el leaderboard global
      */
     private void updateLeaderboard(String userId, int planetsDestroyed) {
+        // Obtener el nombre del usuario desde Firebase Auth
+        FirebaseUser currentUser = auth.getCurrentUser();
+        String displayName = "Player"; // Valor por defecto
+        if (currentUser != null && currentUser.getDisplayName() != null) {
+            displayName = currentUser.getDisplayName();
+        }
+
         Map<String, Object> leaderboardEntry = new HashMap<>();
         leaderboardEntry.put("userId", userId);
+        leaderboardEntry.put("displayName", displayName);  // ✅ Nombre del usuario
         leaderboardEntry.put("sunsDestroyed", planetsDestroyed);  // ⚠️ Mantener nombre de campo Firebase
         leaderboardEntry.put("lastUpdate", FieldValue.serverTimestamp());
+        leaderboardEntry.put("isBot", false);  // ✅ Indicar que es un jugador real
 
         db.collection(COLLECTION_LEADERBOARD).document(userId)
                 .set(leaderboardEntry, SetOptions.merge())

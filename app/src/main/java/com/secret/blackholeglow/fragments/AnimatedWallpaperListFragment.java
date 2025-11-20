@@ -135,7 +135,8 @@ public class AnimatedWallpaperListFragment extends Fragment {
         // ┌───────────────────────────────────────────────────┐
         // │ 👏 5) Configurar Detector de Aplausos             │
         // └───────────────────────────────────────────────────┘
-        setupClapDetector(view);
+        // DESHABILITADO TEMPORALMENTE - Funcionalidad para versión futura
+        // setupClapDetector(view);
 
         // ┌───────────────────────────────────────────────────┐
         // │ ✅ 6) Retornar vista configurada                  │
@@ -262,98 +263,23 @@ public class AnimatedWallpaperListFragment extends Fragment {
         List<WallpaperItem> list = new ArrayList<>();
 
         // ╔════════════════════════════════════════════════════════════╗
-        // ║  🎨 11 WALLPAPERS TEMÁTICOS - CATÁLOGO VISUAL ÉPICO      ║
-        // ║  Cada tema es único con efectos OpenGL hipnotizantes     ║
+        // ║  🎨 CATÁLOGO DE WALLPAPERS - UNIVERSO INFINITO           ║
+        // ║  Experiencias visuales hipnotizantes en OpenGL           ║
         // ╚════════════════════════════════════════════════════════════╝
 
-        // 🌊 OCÉANO PROFUNDO - Mundo submarino mágico ⭐ NUEVO!
-        list.add(new WallpaperItem(
-                R.drawable.universo03,  // TODO: Agregar textura ocean_background.png
-                "🌊 Océano Profundo",
-                "Sumérgete en las profundidades del océano azul. Explora un mundo submarino lleno de vida marina y luz filtrada. Una experiencia relajante y mística. 🐠💙"
-        ));
-
-        // 1️⃣ ESPACIO - Universo con sistema solar completo
+        // 1️⃣ ESPACIO - Universo con sistema solar completo ⭐ DISPONIBLE
         list.add(new WallpaperItem(
                 R.drawable.universo03,
                 "Universo",
                 "Flota entre planetas orbitantes y estrellas danzantes en un universo infinito. Tu avatar explora el cosmos en tiempo real con efectos de brillo pulsante."
         ));
 
-        // 2️⃣ BOSQUE MÁGICO - Naturaleza encantada con luciérnagas
-        list.add(new WallpaperItem(
-                R.drawable.textura_roninplaneta,
-                "🌲 Bosque Encantado",
-                "Árboles místicos brillan con luciérnagas danzantes. Neblina mágica flota entre las ramas mientras la luna ilumina el camino. Efecto: partículas de luz flotando."
-        ));
-
-        // 3️⃣ CIUDAD CYBERPUNK - Metrópolis futurista nocturna
+        // 2️⃣ PRÓXIMAMENTE - Nuevas experiencias cósmicas en desarrollo ✨
         list.add(new WallpaperItem(
                 R.drawable.agujero_negro,
-                "🏙️ Neo Tokyo 2099",
-                "Rascacielos neón se elevan al cielo nocturno. Luces holográficas parpadean y vehículos vuelan entre edificios. Atmósfera: lluvia cyberpunk con reflejos."
-        ));
-
-        // 4️⃣ PLAYA TROPICAL - Atardecer en paraíso
-        list.add(new WallpaperItem(
-                R.drawable.textura_sol,
-                "🏖️ Paraíso Dorado",
-                "El sol se funde con el océano en un atardecer de ensueño. Olas brillantes acarician la arena mientras palmeras se mecen. Colores cálidos que hipnotizan."
-        ));
-
-        // 5️⃣ SAFARI SALVAJE - Animalitos en movimiento
-        list.add(new WallpaperItem(
-                R.drawable.textura_asteroide,
-                "🦁 Safari Salvaje",
-                "Leones, elefantes y jirafas deambulan bajo el sol africano. Siluetas de animales se mueven grácilmente en la sabana dorada. Vida en cada píxel."
-        ));
-
-        // 6️⃣ LLUVIA NOCTURNA - Bosque con tormenta
-        list.add(new WallpaperItem(
-                R.drawable.universo03,
-                "🌧️ Lluvia Mística",
-                "Gotas de lluvia caen entre árboles oscuros. Relámpagos iluminan el cielo mientras truenos resuenan. Ambiente: tormentoso y relajante a la vez."
-        ));
-
-        // 7️⃣ MUNDO RETRO - Videojuegos pixel art 8-bit
-        list.add(new WallpaperItem(
-                R.drawable.fondo_transparente,
-                "🎮 Pixel Quest",
-                "Personajes de 8-bit saltan y corren en un mundo retro. Monedas giran, bloques parpadean y enemigos patrullan. Nostalgia gaming en movimiento."
-        ));
-
-        // 8️⃣ AGUJERO NEGRO - Portal al vacío cósmico
-        list.add(new WallpaperItem(
-                R.drawable.agujero_negro,
-                "🕳️ Portal Infinito",
-                "Un agujero negro devora la luz con su disco de acreción brillante. El espacio-tiempo se curva ante tus ojos. Efecto: distorsión gravitacional hipnótica."
-        ));
-
-        // 9️⃣ JARDÍN ZEN - Serenidad con flores de cerezo
-        list.add(new WallpaperItem(
-                R.drawable.textura_roninplaneta,
-                "🌸 Jardín Zen",
-                "Pétalos de sakura flotan sobre un estanque tranquilo. Koi nadan en círculos mientras bambú se mece. Paz absoluta en cada fotograma."
-        ));
-
-        // 🔟 TIERRA LIVE HD - Planeta Tierra con vegetación y terreno ⭐ NUEVO!
-        list.add(new WallpaperItem(
-                R.drawable.texturaplanetatierra,
-                "🌍 Tierra Live HD",
-                "Un planeta Tierra estilizado con vegetación exuberante, árboles, océanos y terreno detallado. Modelo low-poly profesional que rota lentamente mostrando su belleza natural."
-        ));
-
-        // 1️⃣1️⃣ TORMENTA ELÉCTRICA - Poder de la naturaleza
-        list.add(new WallpaperItem(
-                R.drawable.textura_sol,
-                "⚡ Furia Celestial",
-                "Rayos fractales iluminan nubes tormentosas. Energía pura danza en el cielo mientras relámpagos explotan. El poder elemental al máximo."
-        ));
-        // 1️⃣2️⃣ BATALLA ESPACIAL - Combate galáctico automático ⭐ NUEVO!
-        list.add(new WallpaperItem(
-                R.drawable.space_battle_bg,
-                "🚀 Batalla Galáctica",
-                "Observa una épica batalla espacial automática. Una nave heroica lucha contra invasores enemigos en combate infinito. Láseres, explosiones y acción sin parar."
+                "✨ Próximamente",
+                "Estamos creando nuevas dimensiones visuales para ti. Mundos épicos, efectos hipnóticos y experiencias inmersivas que desafiarán tu imaginación. ¡Mantente atento a las actualizaciones! 🚀🌌",
+                false  // ❌ NO DISPONIBLE - Botón deshabilitado
         ));
 
 

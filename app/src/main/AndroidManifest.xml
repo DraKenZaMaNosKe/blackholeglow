@@ -38,12 +38,12 @@
       ╔═══════════════════════════════════════════════╗
       ║    👏 PERMISOS PARA ENCONTRAR CON APLAUSO 👏  ║
       ╚═══════════════════════════════════════════════╝
-      📱 FOREGROUND_SERVICE: Permite servicio en primer plano
-      🎤 RECORD_AUDIO: Ya declarado arriba para detección de aplausos
-      📳 VIBRATE: Ya declarado arriba para vibración de respuesta
+      DESHABILITADO - Funcionalidad removida para release
     -->
+    <!-- COMENTADO: Permisos de servicio de aplausos deshabilitados
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
+    -->
 
     <!--
       ╔══════════════════════════════════════════════╗
@@ -191,29 +191,18 @@
           ╔═════════════════════════════════════════════════════════╗
           ║   👏 SERVICIO: ENCONTRAR CON APLAUSO 👏                 ║
           ╚═════════════════════════════════════════════════════════╝
-          Servicio en primer plano que escucha aplausos continuamente
+          DESHABILITADO PARA RELEASE - Funcionalidad removida
 
-          🎤 Funcionalidad:
-          - Detecta patrón de doble aplauso
-          - Responde con sonido (gatito o voz "¡Aquí toy!")
-          - Vibra el dispositivo
-          - Activa efectos visuales en el wallpaper
-
-          🔒 Permisos requeridos:
-          - RECORD_AUDIO (para escuchar micrófono)
-          - FOREGROUND_SERVICE (para ejecutar en segundo plano)
-          - VIBRATE (para vibración)
-
-          ⚙️ Configuración:
-          - Se activa/desactiva desde MainActivity
-          - Notificación persistente mientras está activo
+          COMENTADO: Servicio de detección de aplausos deshabilitado
         -->
+        <!--
         <service
             android:name=".ClapDetectorService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="microphone">
         </service>
+        -->
 
     </application>
 </manifest>

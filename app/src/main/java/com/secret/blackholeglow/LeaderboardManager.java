@@ -84,9 +84,11 @@ public class LeaderboardManager {
         }
 
         // Consultar Firebase
-        Log.d(TAG, "🔄 Consultando Top 3 desde Firebase...");
+        Log.d(TAG, "🔄 Consultando Top 3 desde Firebase (solo jugadores reales)...");
 
+        // ⚠️ FILTRAR BOTS - Solo mostrar jugadores reales en el leaderboard
         db.collection(COLLECTION_LEADERBOARD)
+            .whereEqualTo("isBot", false)  // ✅ SOLO JUGADORES REALES
             .orderBy("sunsDestroyed", Query.Direction.DESCENDING)
             .limit(3)  // Solo Top 3
             .get()

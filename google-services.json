@@ -38,6 +38,14 @@
           }
         },
         {
+          "client_id": "615188090674-r36hap1mj9kmrphnvn9gtrq3vpvm24st.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.secret.blackholeglow",
+            "certificate_hash": "564bb5b7d8db41d9cc09f1c3bba788310dd07df3"
+          }
+        },
+        {
           "client_id": "615188090674-sh5258hdqdbajt0avgmglii3ldckkg7i.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

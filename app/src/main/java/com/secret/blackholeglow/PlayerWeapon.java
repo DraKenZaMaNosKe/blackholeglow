@@ -27,9 +27,9 @@ public class PlayerWeapon implements SceneObject, CameraAware {
     private static final int MAX_METEORITOS = 15;  // Pool suficiente para disparo épico
     private static final int EPIC_SHOT_COUNT = 7;  // 7 meteoritos en disparo épico
 
-    // Pool de meteoritos del jugador
-    private final List<Meteorito> poolMeteorites = new ArrayList<>();
-    private final List<Meteorito> meteoritosActivos = new ArrayList<>();
+    // Pool de asteroides del jugador
+    private final List<AsteroideRealista> poolMeteorites = new ArrayList<>();
+    private final List<AsteroideRealista> meteoritosActivos = new ArrayList<>();
 
     // Referencias
     private final Context context;
@@ -53,13 +53,13 @@ public class PlayerWeapon implements SceneObject, CameraAware {
         // Inicializar sistema de estadísticas
         this.playerStats = PlayerStats.getInstance(context);
 
-        // Inicializar pool de meteoritos
+        // Inicializar pool de asteroides
         for (int i = 0; i < MAX_METEORITOS; i++) {
-            Meteorito m = new Meteorito(context, textureManager);
+            AsteroideRealista m = new AsteroideRealista(context, textureManager);
             poolMeteorites.add(m);
         }
 
-        Log.d(TAG, "[PlayerWeapon] ✓ Inicializado con pool de " + MAX_METEORITOS + " meteoritos");
+        Log.d(TAG, "[PlayerWeapon] ✓ Inicializado con pool de " + MAX_METEORITOS + " asteroides");
     }
 
     /**
@@ -73,27 +73,27 @@ public class PlayerWeapon implements SceneObject, CameraAware {
     @Override
     public void setCameraController(CameraController camera) {
         this.camera = camera;
-        // Asignar cámara a todos los meteoritos
-        for (Meteorito m : poolMeteorites) {
+        // Asignar cámara a todos los asteroides
+        for (AsteroideRealista m : poolMeteorites) {
             m.setCameraController(camera);
         }
     }
 
     /**
      * 🚀 DISPARO ÚNICO - Toque normal en pantalla
-     * Lanza UN meteorito desde la parte inferior hacia el centro
+     * Lanza UN asteroide desde la parte inferior hacia el centro
      * @param power Potencia del disparo (0.0 - 1.0)
      */
     public void shootSingle(float power) {
         if (poolMeteorites.isEmpty()) {
-            Log.w(TAG, "[PlayerWeapon] ⚠️ Pool vacío - esperando reciclar meteorito");
+            Log.w(TAG, "[PlayerWeapon] ⚠️ Pool vacío - esperando reciclar asteroide");
             return;
         }
 
         // Validar poder
         power = Math.max(0.0f, Math.min(1.0f, power));
 
-        Meteorito m = poolMeteorites.remove(0);
+        AsteroideRealista m = poolMeteorites.remove(0);
 
         // Posición inicial: parte inferior-frontal de la pantalla
         float x = 0.0f;           // Centro horizontal
@@ -117,17 +117,18 @@ public class PlayerWeapon implements SceneObject, CameraAware {
         float vy = (dy / dist) * velocidadBase;
         float vz = (dz / dist) * velocidadBase;
 
-        // Tamaño variable según potencia
+        // Tamaño variable según potencia - ✅ MÁS PEQUEÑOS QUE LA LUNA
+        // Luna = 0.27, asteroides MAX = 0.20
         float sizeRoll = (float) Math.random();
         float tamaño;
         if (sizeRoll < 0.5f) {
-            tamaño = 0.08f + (float) Math.random() * 0.06f;  // 0.08-0.14
+            tamaño = 0.05f + (float) Math.random() * 0.04f;  // 0.05-0.09
         } else if (sizeRoll < 0.8f) {
-            tamaño = 0.14f + (float) Math.random() * 0.08f;  // 0.14-0.22
+            tamaño = 0.09f + (float) Math.random() * 0.05f;  // 0.09-0.14
         } else {
-            tamaño = 0.22f + (float) Math.random() * 0.10f;  // 0.22-0.32
+            tamaño = 0.14f + (float) Math.random() * 0.04f;  // 0.14-0.18
         }
-        tamaño *= (0.8f + power * 0.4f);  // Boost de potencia
+        tamaño *= (0.8f + power * 0.4f);  // Boost de potencia (MAX ~0.22)
 
         m.activar(x, y, z, vx, vy, vz, tamaño);
 
@@ -161,13 +162,13 @@ public class PlayerWeapon implements SceneObject, CameraAware {
         Log.d(TAG, "║                                                        ║");
         Log.d(TAG, "║  🌟💥 DISPARO ÉPICO ACTIVADO! 💥🌟                   ║");
         Log.d(TAG, "║  ¡COMBO x10 ALCANZADO!                                 ║");
-        Log.d(TAG, String.format("║  Lanzando %d meteoritos simultáneos...                 ║", meteoritosALanzar));
+        Log.d(TAG, String.format("║  Lanzando %d asteroides simultáneos...                 ║", meteoritosALanzar));
         Log.d(TAG, "║                                                        ║");
         Log.d(TAG, "╚════════════════════════════════════════════════════════╝");
 
-        // Lanzar meteoritos desde diferentes ángulos
+        // Lanzar asteroides desde diferentes ángulos
         for (int i = 0; i < meteoritosALanzar; i++) {
-            Meteorito m = poolMeteorites.remove(0);
+            AsteroideRealista m = poolMeteorites.remove(0);
 
             // POSICIONES VARIADAS: Desde un semicírculo alrededor del jugador
             // Ángulo entre -90° y +90° (semicírculo frontal)
@@ -198,19 +199,20 @@ public class PlayerWeapon implements SceneObject, CameraAware {
             float vy = (dy / dist) * velocidadBase;
             float vz = (dz / dist) * velocidadBase;
 
-            // Tamaños VARIADOS: Mezcla de pequeños, medianos y grandes
+            // Tamaños VARIADOS: Mezcla de pequeños, medianos y grandes - ✅ MÁS PEQUEÑOS QUE LA LUNA
+            // Luna = 0.27, asteroides MAX = 0.25
             float tamaño;
             float sizeType = i / (float) meteoritosALanzar;  // 0.0 a 1.0
 
             if (sizeType < 0.3f) {
                 // 30% pequeños
-                tamaño = 0.12f + (float) Math.random() * 0.06f;  // 0.12-0.18
+                tamaño = 0.08f + (float) Math.random() * 0.04f;  // 0.08-0.12
             } else if (sizeType < 0.7f) {
                 // 40% medianos
-                tamaño = 0.18f + (float) Math.random() * 0.10f;  // 0.18-0.28
+                tamaño = 0.12f + (float) Math.random() * 0.06f;  // 0.12-0.18
             } else {
                 // 30% grandes
-                tamaño = 0.28f + (float) Math.random() * 0.12f;  // 0.28-0.40
+                tamaño = 0.18f + (float) Math.random() * 0.07f;  // 0.18-0.25
             }
 
             m.activar(x, y, z, vx, vy, vz, tamaño);
@@ -223,7 +225,7 @@ public class PlayerWeapon implements SceneObject, CameraAware {
             totalShotsFired++;
             playerStats.onMeteorLaunched();
 
-            Log.d(TAG, String.format("  🌟 Meteorito épico %d/%d | Ángulo: %.0f° | Tamaño: %.3f | Velocidad: %.1f",
+            Log.d(TAG, String.format("  🌟 Asteroide épico %d/%d | Ángulo: %.0f° | Tamaño: %.3f | Velocidad: %.1f",
                     i + 1, meteoritosALanzar, Math.toDegrees(angulo), tamaño, velocidadBase));
         }
 
@@ -237,14 +239,14 @@ public class PlayerWeapon implements SceneObject, CameraAware {
     @Override
     public void update(float deltaTime) {
         // ⚠️ THREAD-SAFE: Usar índice descendente para evitar ConcurrentModificationException
-        // Esto permite que otros threads agreguen meteoritos mientras iteramos
+        // Esto permite que otros threads agreguen asteroides mientras iteramos
         synchronized (meteoritosActivos) {
             for (int i = meteoritosActivos.size() - 1; i >= 0; i--) {
-                Meteorito m = meteoritosActivos.get(i);
+                AsteroideRealista m = meteoritosActivos.get(i);
                 m.update(deltaTime);
 
                 // Verificar colisiones delegando a MeteorShower
-                if (meteorShower != null && m.getEstado() == Meteorito.Estado.CAYENDO) {
+                if (meteorShower != null && m.getEstado() == AsteroideRealista.Estado.ACTIVO) {
                     meteorShower.verificarColisionMeteorito(m);
                 }
 
@@ -259,9 +261,9 @@ public class PlayerWeapon implements SceneObject, CameraAware {
 
     @Override
     public void draw() {
-        // ⚠️ THREAD-SAFE: Sincronizar al dibujar meteoritos
+        // ⚠️ THREAD-SAFE: Sincronizar al dibujar asteroides
         synchronized (meteoritosActivos) {
-            // Dibujar meteoritos activos
+            // Dibujar asteroides activos
             for (int i = 0; i < meteoritosActivos.size(); i++) {
                 try {
                     meteoritosActivos.get(i).draw();
@@ -277,7 +279,7 @@ public class PlayerWeapon implements SceneObject, CameraAware {
      * Obtiene la lista de meteoritos activos del jugador
      * Para que MeteorShower pueda verificar colisiones
      */
-    public List<Meteorito> getMeteoritosActivos() {
+    public List<AsteroideRealista> getMeteoritosActivos() {
         return meteoritosActivos;
     }
 
@@ -290,7 +292,7 @@ public class PlayerWeapon implements SceneObject, CameraAware {
         Log.d(TAG, "╠════════════════════════════════════════╣");
         Log.d(TAG, String.format("║ 🚀 Disparos totales:     %-12d║", totalShotsFired));
         Log.d(TAG, String.format("║ 🌟 Disparos épicos:      %-12d║", epicShotsFired));
-        Log.d(TAG, String.format("║ 💥 Meteoritos activos:   %-12d║", meteoritosActivos.size()));
+        Log.d(TAG, String.format("║ 💥 Asteroides activos:   %-12d║", meteoritosActivos.size()));
         Log.d(TAG, String.format("║ 🔄 Pool disponible:      %-12d║", poolMeteorites.size()));
         Log.d(TAG, "╚════════════════════════════════════════╝");
     }

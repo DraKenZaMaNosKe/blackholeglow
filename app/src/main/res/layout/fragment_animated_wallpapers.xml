@@ -28,10 +28,12 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <!-- 👏 CARD DETECTOR DE APLAUSOS -->
+        <!-- 👏 CARD DETECTOR DE APLAUSOS - DESHABILITADO -->
+        <!-- COMENTADO: Funcionalidad de "Encontrar con Aplauso" deshabilitada para release
         <include
             android:id="@+id/card_clap_detector"
             layout="@layout/card_clap_detector"/>
+        -->
 
         <!-- 📱 RECYCLERVIEW - Lista de wallpapers -->
         <androidx.recyclerview.widget.RecyclerView

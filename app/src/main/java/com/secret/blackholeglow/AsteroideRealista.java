@@ -42,6 +42,13 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
     private final float[] modelMatrix = new float[16];
     private final float[] mvpMatrix = new float[16];
 
+    // Estado del asteroide
+    public enum Estado {
+        INACTIVO,      // En el pool, esperando ser usado
+        ACTIVO         // Viajando por el espacio
+    }
+    private Estado estado = Estado.INACTIVO;
+
     // Transformaciones
     private float posX = 0f, posY = 0f, posZ = 0f;
     private float scale = 1.0f;
@@ -51,6 +58,11 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
     private float spinSpeedX = 15.0f;
     private float spinSpeedY = 20.0f;
     private float spinSpeedZ = 10.0f;
+
+    // Movimiento
+    private float velocityX = 0f;
+    private float velocityY = 0f;
+    private float velocityZ = 0f;
 
     public AsteroideRealista(Context context, TextureManager textureManager) {
         super(context, "shaders/asteroide_vertex.glsl", "shaders/asteroide_textured_fragment.glsl");
@@ -146,8 +158,77 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
         this.camera = camera;
     }
 
+    /**
+     * Activa el asteroide con parámetros específicos (compatible con MeteorShower)
+     */
+    public void activar(float x, float y, float z, float vx, float vy, float vz, float size) {
+        estado = Estado.ACTIVO;
+
+        posX = x;
+        posY = y;
+        posZ = z;
+
+        velocityX = vx;
+        velocityY = vy;
+        velocityZ = vz;
+
+        scale = size;
+
+        // Rotación aleatoria
+        rotationX = (float)(Math.random() * 360);
+        rotationY = (float)(Math.random() * 360);
+        rotationZ = (float)(Math.random() * 360);
+
+        spinSpeedX = (float)(Math.random() * 40 + 20);  // 20-60 deg/s
+        spinSpeedY = (float)(Math.random() * 40 + 20);
+        spinSpeedZ = (float)(Math.random() * 40 + 20);
+
+        Log.d(TAG, "[AsteroideRealista] Activado en pos(" + x + "," + y + "," + z + "), vel(" + vx + "," + vy + "," + vz + ")");
+    }
+
+    /**
+     * Desactiva y devuelve al pool
+     */
+    public void desactivar() {
+        estado = Estado.INACTIVO;
+    }
+
+    /**
+     * Inicia el impacto (simplemente desactiva)
+     */
+    public void impactar() {
+        if (estado == Estado.ACTIVO) {
+            desactivar();
+            Log.d(TAG, "[AsteroideRealista] ¡IMPACTO! Asteroide desaparece");
+        }
+    }
+
+    // Getters para el sistema de colisiones
+    public float[] getPosicion() {
+        return new float[]{posX, posY, posZ};
+    }
+
+    public float getTamaño() {
+        return scale;
+    }
+
+    public Estado getEstado() {
+        return estado;
+    }
+
+    public boolean estaActivo() {
+        return estado != Estado.INACTIVO;
+    }
+
     @Override
     public void update(float dt) {
+        if (estado == Estado.INACTIVO) return;
+
+        // Actualizar posición con velocidad
+        posX += velocityX * dt;
+        posY += velocityY * dt;
+        posZ += velocityZ * dt;
+
         // Rotación en múltiples ejes para efecto tumbling realista
         rotationX += spinSpeedX * dt;
         rotationY += spinSpeedY * dt;
@@ -156,12 +237,26 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
         if (rotationX > 360f) rotationX -= 360f;
         if (rotationY > 360f) rotationY -= 360f;
         if (rotationZ > 360f) rotationZ -= 360f;
+
+        // Añadir algo de gravedad hacia el centro (0,0,0)
+        float distCentro = (float) Math.sqrt(posX * posX + posY * posY + posZ * posZ);
+
+        if (distCentro > 0.1f) {
+            float gravedad = 2.0f / (distCentro * distCentro);
+            velocityX += -posX * gravedad * dt;
+            velocityY += -posY * gravedad * dt;
+            velocityZ += -posZ * gravedad * dt;
+        }
+
+        // Desactivar si sale muy lejos o llega muy cerca del centro
+        if (distCentro > 20.0f || distCentro < 0.1f) {
+            desactivar();
+        }
     }
 
     @Override
     public void draw() {
-        if (camera == null) {
-            Log.w(TAG, "⚠️ Camera no asignada");
+        if (estado == Estado.INACTIVO || camera == null) {
             return;
         }
 

@@ -95,36 +95,40 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         holder.textDescription.setText(item.getDescripcion());
 
         // ╔═════════════════════════════════════════════════════════╗
-        // ║  🎨 ASIGNAR GRADIENTE ÚNICO POR TEMA                   ║
+        // ║  🎨 ASIGNAR IMAGEN DE PREVIEW ÚNICA POR WALLPAPER      ║
         // ╚═════════════════════════════════════════════════════════╝
-        int gradientResource;
+        int previewResource;
         switch (position) {
-            case 0: gradientResource = R.drawable.preview_space; break;
-            case 1: gradientResource = R.drawable.preview_forest; break;
-            case 2: gradientResource = R.drawable.preview_cyberpunk; break;
-            case 3: gradientResource = R.drawable.preview_beach; break;
-            case 4: gradientResource = R.drawable.preview_safari; break;
-            case 5: gradientResource = R.drawable.preview_rain; break;
-            case 6: gradientResource = R.drawable.preview_retro; break;
-            case 7: gradientResource = R.drawable.preview_blackhole; break;
-            case 8: gradientResource = R.drawable.preview_zen; break;
-            case 9: gradientResource = R.drawable.preview_storm; break;
-            default: gradientResource = R.drawable.preview_space; break;
+            case 0: previewResource = R.drawable.preview_universo; break;  // Captura real del wallpaper
+            case 1: previewResource = R.drawable.preview_blackhole; break; // Proximamente
+            default: previewResource = R.drawable.preview_space; break;
         }
-        holder.imagePreview.setImageResource(gradientResource);
+        holder.imagePreview.setImageResource(previewResource);
 
         // ╔═════════════════════════════════════════════════════════╗
         // ║  🎯 BOTÓN "VER WALLPAPER" - Va a preview              ║
         // ╚═════════════════════════════════════════════════════════╝
-        holder.buttonPreview.setOnClickListener(v -> {
-            // Ir directamente a WallpaperPreviewActivity
-            Intent intent = new Intent(context, com.secret.blackholeglow.activities.WallpaperPreviewActivity.class);
 
-            // ✨ USAR EL NOMBRE DEL ITEM (ahora cada wallpaper pasa su propio nombre)
-            intent.putExtra("WALLPAPER_PREVIEW_ID", item.getResourceIdPreview());
-            intent.putExtra("WALLPAPER_ID", item.getNombre());  // "DiscoBall", "Universo", etc.
-            context.startActivity(intent);
-        });
+        // Verificar si el wallpaper está disponible
+        if (item.isAvailable()) {
+            // Wallpaper disponible - botón habilitado
+            holder.buttonPreview.setEnabled(true);
+            holder.buttonPreview.setAlpha(1.0f);
+            holder.buttonPreview.setOnClickListener(v -> {
+                // Ir directamente a WallpaperPreviewActivity
+                Intent intent = new Intent(context, com.secret.blackholeglow.activities.WallpaperPreviewActivity.class);
+
+                // ✨ USAR EL NOMBRE DEL ITEM (ahora cada wallpaper pasa su propio nombre)
+                intent.putExtra("WALLPAPER_PREVIEW_ID", item.getResourceIdPreview());
+                intent.putExtra("WALLPAPER_ID", item.getNombre());  // "DiscoBall", "Universo", etc.
+                context.startActivity(intent);
+            });
+        } else {
+            // Wallpaper NO disponible - botón deshabilitado
+            holder.buttonPreview.setEnabled(false);
+            holder.buttonPreview.setAlpha(0.4f);
+            holder.buttonPreview.setOnClickListener(null);
+        }
     }
 
     /**

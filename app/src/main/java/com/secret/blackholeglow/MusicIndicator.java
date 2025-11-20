@@ -27,12 +27,12 @@ public class MusicIndicator implements SceneObject {
     // ════════════════════════════════════════════════════════════════════════
     // CONFIGURACIÓN DE CHISPAS MÁGICAS ✨
     // ════════════════════════════════════════════════════════════════════════
-    private static final float SPARK_THRESHOLD = 0.25f;  // 25% de altura para emitir chispas
+    private static final float SPARK_THRESHOLD = 0.10f;  // 10% de altura para emitir chispas (TODAS las barras activas!)
     private static final float SPARK_SPEED = 0.3f;       // Velocidad de subida (NDC/segundo)
     private static final float SPARK_LIFETIME = 1.5f;    // Duración en segundos
     private static final float SPARK_SIZE = 0.006f;      // Tamaño de chispa
-    private static final float SPARK_COOLDOWN = 0.3f;    // Segundos entre emisiones por barra
-    private static final int MAX_SPARKS_PER_TRIGGER = 2; // Máximo 2 chispas por trigger
+    private static final float SPARK_COOLDOWN = 0.2f;    // Segundos entre emisiones por barra (más frecuente!)
+    private static final int MAX_SPARKS_PER_TRIGGER = 3; // Máximo 3 chispas por trigger (más espectacular!)
 
     private int programId;
 
