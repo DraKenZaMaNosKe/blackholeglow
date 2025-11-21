@@ -18,7 +18,8 @@
       "Bash(where magick:*)",
       "Bash(where convert:*)",
       "Bash(pip install:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\n🪨 Intercambio Meteorito → AsteroideRealista + Reducción de Tamaños\n\nCAMBIOS PRINCIPALES:\n- Convertir AsteroideRealista en sistema dinámico con pool\n- Sistema de estados (INACTIVO/ACTIVO) y movimiento físico\n- Actualizar MeteorShower y PlayerWeapon para usar AsteroideRealista\n- Reducir tamaños de asteroides (ninguno > Luna 0.27)\n- Remover AsteroideRealista estático de SceneRenderer\n\nMEJORAS ADICIONALES:\n- Simplificar wallpaper list a 2 items (Universo + Próximamente)\n- Equalizer: threshold 10% para que todas las barras emitan partículas\n- Restaurar 3 estrellas bailarinas desde commit anterior\n- Preview image para wallpaper Universo\n\nARCHIVOS MODIFICADOS:\n- AsteroideRealista.java: agregado pooling y física\n- MeteorShower.java: Meteorito → AsteroideRealista\n- PlayerWeapon.java: Meteorito → AsteroideRealista\n- SceneRenderer.java: removido asteroide estático\n- MusicIndicator.java: threshold 25% → 10%\n- WallpaperAdapter.java: sistema de disponibilidad\n- AnimatedWallpaperListFragment.java: solo 2 items\n\nDOCUMENTACIÓN:\n+ SESION_20_NOV_2024_ASTEROIDES_REALISTAS.md\n+ SESION_19_NOV_2025_DESACTIVAR_BOTS.md\n+ INSTRUCCIONES_RESETEO_PUNTAJES.md\n\n🤖 Generated with Claude Code\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []

@@ -85,6 +85,105 @@ float drawSparkle(vec2 uv, vec2 pos, float size, float brightness) {
 }
 
 // ════════════════════════════════════════════════════════════════════════
+// 🌸 ESTRELLA MÁGICA - Rosa con pulsación + cambio de color gradual
+// ════════════════════════════════════════════════════════════════════════
+vec3 drawMagicalStarSimple(vec2 uv, vec2 pos, float time) {
+    float dist = length(uv - pos);
+    vec3 magicColor = vec3(0.0);
+
+    // ═══════════════════════════════════════════════════════════
+    // 🌈 CAMBIO DE COLOR GRADUAL (rosa → púrpura → azul → rosa)
+    // ═══════════════════════════════════════════════════════════
+    // Ciclo MÁS RÁPIDO y MÁS VISIBLE
+    float colorPhase = time * 0.8;  // Velocidad más rápida (ciclo cada 8 seg)
+
+    // Tres colores MUCHO MÁS INTENSOS y saturados
+    vec3 colorRosa = vec3(1.0, 0.0, 0.5);       // ROSA MAGENTA INTENSO
+    vec3 colorPurpura = vec3(0.8, 0.0, 1.0);    // PÚRPURA MUY BRILLANTE
+    vec3 colorAzul = vec3(0.0, 0.5, 1.0);       // AZUL CYAN INTENSO
+
+    // Interpolación suave entre los 3 colores
+    float transition = sin(colorPhase) * 0.5 + 0.5;  // 0.0 - 1.0
+
+    vec3 colorCore, colorGlow;
+
+    // Transición en 3 fases
+    float phase = mod(colorPhase, 6.28);  // 0 a 2π
+
+    if (phase < 2.09) {
+        // Fase 1: Rosa → Púrpura
+        float t = phase / 2.09;
+        colorCore = mix(colorRosa, colorPurpura, t);
+        colorGlow = colorCore;  // Mismo color para que sea más visible
+    } else if (phase < 4.18) {
+        // Fase 2: Púrpura → Azul
+        float t = (phase - 2.09) / 2.09;
+        colorCore = mix(colorPurpura, colorAzul, t);
+        colorGlow = colorCore;  // Mismo color para que sea más visible
+    } else {
+        // Fase 3: Azul → Rosa
+        float t = (phase - 4.18) / 2.10;
+        colorCore = mix(colorAzul, colorRosa, t);
+        colorGlow = colorCore;  // Mismo color para que sea más visible
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 💓 PULSACIÓN ORGÁNICA (respiración suave)
+    // ═══════════════════════════════════════════════════════════
+    // Dos ondas de pulsación combinadas para efecto natural
+    float pulse1 = sin(time * 0.8) * 0.5 + 0.5;  // Onda lenta
+    float pulse2 = sin(time * 1.2) * 0.5 + 0.5;  // Onda media
+    float breathe = mix(pulse1, pulse2, 0.5);    // Mezcla suave
+    breathe = 0.75 + breathe * 0.25;             // Rango: 0.75 - 1.0
+
+    // ═══════════════════════════════════════════════════════════
+    // ✨ DESTELLO OCASIONAL (cada 9 segundos)
+    // ═══════════════════════════════════════════════════════════
+    float sparkleInterval = 9.0;  // Intervalo entre destellos
+    float sparkleTime = mod(time + 2.0, sparkleInterval);  // Desfase único
+    float sparkle = 1.0;  // Sin destello por defecto
+
+    // Destello dura 0.4 segundos
+    if (sparkleTime < 0.4) {
+        // Fade in rápido y fade out rápido
+        float t = sparkleTime / 0.4;
+        sparkle = 1.0 + sin(t * 3.14159) * 1.8;  // Pico de 2.8x brillo
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 💎 NÚCLEO CENTRAL ROSA (crece y se encoge)
+    // ═══════════════════════════════════════════════════════════
+    float coreSize = 0.010 * breathe;  // Tamaño varía con la respiración
+
+    if (dist < coreSize) {
+        float coreIntensity = 1.0 - (dist / coreSize);
+        coreIntensity = pow(coreIntensity, 0.8);
+
+        // Brillo también pulsa + DESTELLO
+        float coreBrightness = 0.9 + breathe * 0.3;
+
+        magicColor += colorCore * coreIntensity * coreBrightness * sparkle;
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 🌟 HALO PÚRPURA SUAVE (también respira)
+    // ═══════════════════════════════════════════════════════════
+    float haloSize = 0.030 * breathe;  // Halo también crece/decrece
+
+    if (dist < haloSize) {
+        float glowIntensity = 1.0 - (dist / haloSize);
+        glowIntensity = pow(glowIntensity, 2.5);
+
+        // Brillo del halo pulsa suavemente + DESTELLO
+        float haloBrightness = 0.3 + breathe * 0.15;
+
+        magicColor += colorGlow * glowIntensity * haloBrightness * sparkle;
+    }
+
+    return magicColor;
+}
+
+// ════════════════════════════════════════════════════════════════════════
 // 🌌 NÚCLEO GALÁCTICO (galaxias vivas con pulsación)
 // ════════════════════════════════════════════════════════════════════════
 vec3 drawGalacticCore(vec2 uv, vec2 pos, float time, float seed) {
@@ -92,30 +191,63 @@ vec3 drawGalacticCore(vec2 uv, vec2 pos, float time, float seed) {
     vec3 coreColor = vec3(0.0);
 
     // ═══════════════════════════════════════════════════════════
-    // 🎨 VARIACIÓN DE COLOR SEGÚN TIPO DE GALAXIA
+    // 🌈 CAMBIO DE COLOR GRADUAL PARA CADA ESTRELLA
     // ═══════════════════════════════════════════════════════════
-    // Usar seed para determinar el tipo de color (azul, blanco, amarillo)
-    vec3 galaxyColorCore, galaxyColorInner, galaxyColorOuter, galaxyColorGlow;
+    // Cada estrella tiene su propia paleta de 3 colores que van cambiando
+    float colorPhase = time * 0.8;  // Velocidad rápida (ciclo cada 8 seg)
 
-    if (seed < 0.33) {
-        // Galaxia AZUL (joven, formación estelar activa)
-        galaxyColorCore = vec3(0.95, 0.97, 1.0);      // Blanco azulado
-        galaxyColorInner = vec3(0.7, 0.85, 1.0);      // Azul claro
-        galaxyColorOuter = vec3(0.5, 0.75, 1.0);      // Azul
-        galaxyColorGlow = vec3(0.6, 0.8, 1.0);        // Azul difuso
-    } else if (seed < 0.66) {
-        // Galaxia AMARILLA (madura, equilibrada)
-        galaxyColorCore = vec3(1.0, 0.98, 0.95);      // Blanco cálido
-        galaxyColorInner = vec3(1.0, 0.85, 0.5);      // Amarillo brillante
-        galaxyColorOuter = vec3(1.0, 0.7, 0.4);       // Naranja
-        galaxyColorGlow = vec3(1.0, 0.8, 0.5);        // Amarillo difuso
+    // Definir 3 colores según el seed (cada estrella tiene colores únicos)
+    vec3 color1, color2, color3;
+
+    if (seed < 0.15) {
+        // Estrella #1 (seed 0.1): Verde → Amarillo → Naranja
+        color1 = vec3(0.0, 1.0, 0.3);       // Verde brillante
+        color2 = vec3(1.0, 1.0, 0.0);       // Amarillo puro
+        color3 = vec3(1.0, 0.5, 0.0);       // Naranja intenso
+    } else if (seed < 0.25) {
+        // Estrella #5 (seed 0.2): Naranja → Rojo → Magenta
+        color1 = vec3(1.0, 0.5, 0.0);       // Naranja
+        color2 = vec3(1.0, 0.0, 0.0);       // Rojo puro
+        color3 = vec3(1.0, 0.0, 0.6);       // Magenta rosado
+    } else if (seed < 0.55) {
+        // Estrella #3 (seed 0.5): Rojo → Naranja → Amarillo
+        color1 = vec3(1.0, 0.0, 0.2);       // Rojo intenso
+        color2 = vec3(1.0, 0.6, 0.0);       // Naranja fuego
+        color3 = vec3(1.0, 1.0, 0.2);       // Amarillo dorado
+    } else if (seed < 0.75) {
+        // Estrella #4 (seed 0.7): Azul → Cyan → Verde
+        color1 = vec3(0.0, 0.3, 1.0);       // Azul eléctrico
+        color2 = vec3(0.0, 1.0, 1.0);       // Cyan brillante
+        color3 = vec3(0.2, 1.0, 0.5);       // Verde aqua
     } else {
-        // Galaxia NARANJA (vieja, estrellas rojas)
-        galaxyColorCore = vec3(1.0, 0.95, 0.9);       // Blanco cálido
-        galaxyColorInner = vec3(1.0, 0.7, 0.4);       // Naranja brillante
-        galaxyColorOuter = vec3(1.0, 0.6, 0.3);       // Naranja oscuro
-        galaxyColorGlow = vec3(1.0, 0.65, 0.35);      // Naranja difuso
+        // Estrella #6 (seed 0.9): Verde → Cyan → Azul
+        color1 = vec3(0.3, 1.0, 0.5);       // Verde lima
+        color2 = vec3(0.0, 1.0, 0.8);       // Cyan verdoso
+        color3 = vec3(0.2, 0.6, 1.0);       // Azul cielo
     }
+
+    // Interpolación suave entre los 3 colores (igual que la estrella mágica)
+    vec3 galaxyColorCore, galaxyColorInner, galaxyColorOuter, galaxyColorGlow;
+    float phase = mod(colorPhase + seed * 2.0, 6.28);  // Desfase único por estrella
+
+    if (phase < 2.09) {
+        // Fase 1: Color1 → Color2
+        float t = phase / 2.09;
+        galaxyColorCore = mix(color1, color2, t);
+    } else if (phase < 4.18) {
+        // Fase 2: Color2 → Color3
+        float t = (phase - 2.09) / 2.09;
+        galaxyColorCore = mix(color2, color3, t);
+    } else {
+        // Fase 3: Color3 → Color1
+        float t = (phase - 4.18) / 2.10;
+        galaxyColorCore = mix(color3, color1, t);
+    }
+
+    // Todos los halos usan el mismo color para máxima visibilidad
+    galaxyColorInner = galaxyColorCore;
+    galaxyColorOuter = galaxyColorCore;
+    galaxyColorGlow = galaxyColorCore;
 
     // ═══════════════════════════════════════════════════════════
     // ⏱️ VELOCIDAD DE PULSACIÓN VARIABLE (cada galaxia tiene su ritmo)
@@ -125,13 +257,27 @@ vec3 drawGalacticCore(vec2 uv, vec2 pos, float time, float seed) {
     float pulse = sin(time * pulseSpeed + seed * 6.28) * 0.15 + 0.85;  // 0.7 - 1.0
 
     // ═══════════════════════════════════════════════════════════
+    // ✨ DESTELLO OCASIONAL (cada 9 segundos, desfasado por seed)
+    // ═══════════════════════════════════════════════════════════
+    float sparkleInterval = 9.0;  // Intervalo entre destellos
+    float sparkleTime = mod(time + seed * 5.0, sparkleInterval);  // Desfase único por estrella
+    float sparkle = 1.0;  // Sin destello por defecto
+
+    // Destello dura 0.4 segundos
+    if (sparkleTime < 0.4) {
+        // Fade in rápido y fade out rápido
+        float t = sparkleTime / 0.4;
+        sparkle = 1.0 + sin(t * 3.14159) * 1.8;  // Pico de 2.8x brillo
+    }
+
+    // ═══════════════════════════════════════════════════════════
     // 🔥 NÚCLEO CENTRAL MUY BRILLANTE
     // ═══════════════════════════════════════════════════════════
     float coreSize = 0.005;  // 🔧 TAMAÑO del núcleo
     if (dist < coreSize) {
         float coreIntensity = (1.0 - dist / coreSize) * pulse;
         coreIntensity = pow(coreIntensity, 0.8);
-        coreColor += galaxyColorCore * coreIntensity * 1.5;  // 🔧 BRILLO
+        coreColor += galaxyColorCore * coreIntensity * 1.5 * sparkle;  // 🔧 BRILLO + DESTELLO
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -141,7 +287,7 @@ vec3 drawGalacticCore(vec2 uv, vec2 pos, float time, float seed) {
     if (dist < haloSize1) {
         float haloIntensity = (1.0 - dist / haloSize1) * pulse;
         haloIntensity = pow(haloIntensity, 1.5);
-        coreColor += galaxyColorInner * haloIntensity * 0.7;  // 🔧 BRILLO
+        coreColor += galaxyColorInner * haloIntensity * 0.7 * sparkle;  // 🔧 BRILLO + DESTELLO
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -151,7 +297,7 @@ vec3 drawGalacticCore(vec2 uv, vec2 pos, float time, float seed) {
     if (dist < haloSize2) {
         float haloIntensity = (1.0 - dist / haloSize2) * pulse;
         haloIntensity = pow(haloIntensity, 2.0);
-        coreColor += galaxyColorOuter * haloIntensity * 0.35;  // 🔧 BRILLO
+        coreColor += galaxyColorOuter * haloIntensity * 0.35 * sparkle;  // 🔧 BRILLO + DESTELLO
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -161,7 +307,7 @@ vec3 drawGalacticCore(vec2 uv, vec2 pos, float time, float seed) {
     if (dist < glowSize) {
         float glowIntensity = (1.0 - dist / glowSize) * pulse;
         glowIntensity = pow(glowIntensity, 3.0);
-        coreColor += galaxyColorGlow * glowIntensity * 0.15;  // 🔧 BRILLO
+        coreColor += galaxyColorGlow * glowIntensity * 0.15 * sparkle;  // 🔧 BRILLO + DESTELLO
     }
 
     return coreColor;
@@ -374,12 +520,12 @@ void main() {
 
     // Posiciones aproximadas basadas en la imagen (normalizadas 0-1)
     // Ajustadas para las galaxias visibles en el fondo
-    galacticCores += drawGalacticCore(v_TexCoord, vec2(0.741, 0.477), u_Time, 0.1);  // Arriba izquierda
-    galacticCores += drawGalacticCore(v_TexCoord, vec2(0.277, 0.342), u_Time, 0.3);  // Centro izquierda
-    galacticCores += drawGalacticCore(v_TexCoord, vec2(0.130, 0.562), u_Time, 0.5);  // Centro
-    galacticCores += drawGalacticCore(v_TexCoord, vec2(0.567, 0.671), u_Time, 0.7);  // Centro derecha
-    galacticCores += drawGalacticCore(v_TexCoord, vec2(0.832, 0.721), u_Time, 0.2);  // Abajo izquierda
-    galacticCores += drawGalacticCore(v_TexCoord, vec2(0.252, 0.690), u_Time, 0.9);  // Abajo derecha
+    galacticCores += drawGalacticCore(v_TexCoord, vec2(0.737, 0.483), u_Time, 0.1);  // #1 Arriba izquierda
+    galacticCores += drawMagicalStarSimple(v_TexCoord, vec2(0.277, 0.342), u_Time);  // #2 ✨ ESTRELLA MÁGICA
+    galacticCores += drawGalacticCore(v_TexCoord, vec2(0.125, 0.560), u_Time, 0.5);  // #3 Centro
+    galacticCores += drawGalacticCore(v_TexCoord, vec2(0.567, 0.671), u_Time, 0.7);  // #4 Centro derecha
+    galacticCores += drawGalacticCore(v_TexCoord, vec2(0.832, 0.721), u_Time, 0.2);  // #5 Abajo izquierda
+    galacticCores += drawGalacticCore(v_TexCoord, vec2(0.252, 0.690), u_Time, 0.9);  // #6 Abajo derecha
 
 
     // Combinar: fondo + estrellas procedurales + estrellas fugaces + núcleos galácticos
