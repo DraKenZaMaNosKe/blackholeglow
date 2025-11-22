@@ -12,6 +12,15 @@ import java.util.List;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
+// 🎵 Sistema de compartir canciones
+import com.secret.blackholeglow.sharing.HeartParticleSystem;
+import com.secret.blackholeglow.sharing.LikeButton;
+import com.secret.blackholeglow.sharing.MusicNotificationListener;
+import com.secret.blackholeglow.sharing.SharedSong;
+import com.secret.blackholeglow.sharing.SongNotification;
+import com.secret.blackholeglow.sharing.SongSharingManager;
+import com.secret.blackholeglow.sharing.UserAvatar;
+
 /**
  * SceneRenderer con sistema de logging detallado para desarrollo
  */
@@ -106,6 +115,15 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     private SimpleTextRenderer[] leaderboardTexts = new SimpleTextRenderer[3];  // Textos para Top 3
     private long lastLeaderboardUpdate = 0;
     private static final long LEADERBOARD_UPDATE_INTERVAL = 30000; // 30 segundos
+
+    // 🎵 SISTEMA DE COMPARTIR CANCIONES
+    private LikeButton likeButton;
+    private HeartParticleSystem heartParticles;
+    private UserAvatar userAvatar;
+    private SongNotification songNotification;
+    private SongSharingManager songSharingManager;
+    private SimpleTextRenderer songNotificationUserText;   // Nombre del usuario
+    private SimpleTextRenderer songNotificationSongText;   // Título de la canción
 
     public SceneRenderer(Context ctx, String initialItem) {
         this.context = ctx;
@@ -403,9 +421,79 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             drawScreenCracks();
         }
 
+        // 🎵 DIBUJAR SISTEMA DE COMPARTIR CANCIONES
+        drawSongSharingUI();
+
         // 🎯 DIBUJAR FIREBUTTON AL FINAL - SIEMPRE VISIBLE ENCIMA DE TODO
         if (fireButton != null) {
             fireButton.draw();
+        }
+    }
+
+    /**
+     * 🎵 Dibuja el botón de like y las notificaciones de canciones
+     */
+    private void drawSongSharingUI() {
+        // Matriz de identidad para UI 2D
+        float[] identityMatrix = new float[16];
+        android.opengl.Matrix.setIdentityM(identityMatrix, 0);
+
+        float time = (System.currentTimeMillis() % 100000) / 1000f;
+
+        // Dibujar botón de Like
+        if (likeButton != null) {
+            likeButton.setCooldown(!songSharingManager.canShare());
+            likeButton.draw(identityMatrix, time);
+        }
+
+        // 💖 Actualizar y dibujar partículas de corazones
+        if (heartParticles != null) {
+            // Usar deltaTime aproximado (~60 FPS = 0.016s)
+            float particleDeltaTime = 0.016f;
+            heartParticles.update(particleDeltaTime);
+            heartParticles.draw(identityMatrix);
+        }
+
+        // Dibujar notificación de canción
+        if (songNotification != null) {
+            // LOG para debug
+            if (frameCount % 300 == 0) {
+                Log.d(TAG, "🎵 SongNotification: isVisible=" + songNotification.isVisible() +
+                      ", user=" + songNotification.getUserNameText() +
+                      ", song=" + songNotification.getSongTitleText());
+            }
+
+            if (songNotification.isVisible()) {
+                songNotification.draw(identityMatrix);
+            }
+
+            // 🎵✨ Mostrar "usuario: canción" con efectos de color animado
+            if (songNotificationUserText != null) {
+                String userName = songNotification.getUserNameText();
+                String songTitle = songNotification.getSongTitleText();
+
+                // Mostrar si hay datos
+                if (userName != null && !userName.isEmpty() && songTitle != null && !songTitle.isEmpty()) {
+                    // 👤 Dibujar avatar del usuario primero
+                    if (userAvatar != null) {
+                        userAvatar.draw(identityMatrix);
+                    }
+
+                    // ✨ EFECTO DE COLOR ARCOÍRIS SUAVE (rosa → cyan → rosa)
+                    float colorTime = time * 0.3f;  // Velocidad del cambio de color
+                    float hue = 0.85f + (float)Math.sin(colorTime) * 0.15f;  // Oscila entre rosa y cyan
+                    if (hue > 1.0f) hue -= 1.0f;
+
+                    // Convertir HSV a RGB para colores vibrantes
+                    float[] hsv = {hue * 360f, 0.5f, 1.0f};  // Saturación media, brillo máximo
+                    int animatedColor = android.graphics.Color.HSVToColor(255, hsv);
+
+                    // Aplicar color animado
+                    songNotificationUserText.setColor(animatedColor);
+                    songNotificationUserText.setText(userName + ": " + songTitle);
+                    songNotificationUserText.draw();
+                }
+            }
         }
     }
 
@@ -950,6 +1038,73 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.d(TAG, "  🏆✓ LEADERBOARD UI creado - 3 posiciones");
         } catch (Exception e) {
             Log.e(TAG, "  ✗✗✗ ERROR CRÍTICO creando leaderboard: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        // 🎵 SISTEMA DE COMPARTIR CANCIONES
+        try {
+            Log.d(TAG, "╔════════════════════════════════════════╗");
+            Log.d(TAG, "║   INICIALIZANDO SONG SHARING           ║");
+            Log.d(TAG, "╚════════════════════════════════════════╝");
+
+            // Inicializar componentes
+            likeButton = new LikeButton();
+            likeButton.init();
+            likeButton.setPosition(0.80f, -0.45f);  // Esquina derecha, arriba de barra del sistema
+            likeButton.setSize(0.10f);
+
+            // 💖 Sistema de partículas de corazones
+            heartParticles = new HeartParticleSystem();
+            heartParticles.init();
+
+            // 👤 Avatar del usuario que comparte
+            userAvatar = new UserAvatar();
+            userAvatar.init();
+            userAvatar.setPosition(-0.78f, -0.45f);  // A la izquierda del texto
+            userAvatar.setSize(0.09f);
+
+            songNotification = new SongNotification();
+            songNotification.init();
+
+            songSharingManager = SongSharingManager.getInstance(context);
+
+            // Inicializar texto para la notificación - DESPUÉS del avatar
+            // Avatar está en x=-0.78, texto empieza a su derecha
+            songNotificationUserText = new SimpleTextRenderer(context, -0.60f, -0.45f, 1.0f, 0.040f);
+            songNotificationUserText.setColor(0xFFFFFFFF);  // Blanco brillante
+
+            // songNotificationSongText ya no se usa (solo mostramos el título)
+            songNotificationSongText = null;
+
+            // Escuchar nuevas canciones compartidas
+            songSharingManager.startListening(new SongSharingManager.OnNewSongListener() {
+                @Override
+                public void onNewSong(SharedSong song) {
+                    Log.d(TAG, "╔═══════════════════════════════════════════════════╗");
+                    Log.d(TAG, "║   🎵🎵🎵 NUEVA CANCIÓN RECIBIDA 🎵🎵🎵           ║");
+                    Log.d(TAG, "╚═══════════════════════════════════════════════════╝");
+                    Log.d(TAG, "👤 Usuario: " + song.getUserName());
+                    Log.d(TAG, "🎶 Canción: " + song.getSongTitle());
+
+                    // Mostrar notificación
+                    if (songNotification != null) {
+                        songNotification.show(song);
+                        Log.d(TAG, "✅ songNotification.show() llamado");
+                    } else {
+                        Log.e(TAG, "❌ songNotification es NULL!");
+                    }
+
+                    // 👤 Actualizar avatar del usuario
+                    if (userAvatar != null) {
+                        userAvatar.setUser(song.getUserName(), song.getUserPhotoUrl());
+                        Log.d(TAG, "👤 Avatar actualizado: " + song.getUserName());
+                    }
+                }
+            });
+
+            Log.d(TAG, "[SceneRenderer] ✓ Sistema de compartir canciones inicializado");
+        } catch (Exception e) {
+            Log.e(TAG, "[SceneRenderer] ✗ Error inicializando song sharing: " + e.getMessage());
             e.printStackTrace();
         }
 
@@ -1719,6 +1874,26 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         int action = event.getAction();
 
         try {
+            // 🎵 VERIFICAR LIKE BUTTON PRIMERO (funciona en TODAS las escenas)
+            if (action == android.view.MotionEvent.ACTION_DOWN) {
+                float tx = event.getX();
+                float ty = event.getY();
+                float nx = (tx / screenWidth) * 2.0f - 1.0f;
+                float ny = -((ty / screenHeight) * 2.0f - 1.0f);
+
+                if (likeButton != null && likeButton.isTouched(nx, ny)) {
+                    Log.d(TAG, "🎵 LikeButton tocado en (" + nx + ", " + ny + ")");
+                    likeButton.onPress();
+                    handleLikeButtonPress();
+                    return;  // No procesar más
+                }
+            }
+            if (action == android.view.MotionEvent.ACTION_UP) {
+                if (likeButton != null) {
+                    likeButton.onRelease();
+                }
+            }
+
             // 🚀 ENRUTAMIENTO ESPECIAL: Si estamos en Batalla Espacial, enrutar eventos táctiles
             if (spaceBattleScene != null) {
                 spaceBattleScene.handleTouch(event);
@@ -1734,6 +1909,8 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     // Convertir coordenadas de píxeles a normalizadas (-1 a 1)
                     float normalizedX = (touchX / screenWidth) * 2.0f - 1.0f;
                     float normalizedY = -((touchY / screenHeight) * 2.0f - 1.0f);  // Invertir Y
+
+                    // (LikeButton ya verificado arriba)
 
                     // Verificar si el toque está dentro del botón de disparo
                     if (fireButton != null && fireButton.isTouchInside(normalizedX, normalizedY)) {
@@ -1770,6 +1947,8 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     break;
 
                 case android.view.MotionEvent.ACTION_UP:
+                    // (likeButton.onRelease() ya manejado arriba)
+
                     // Usuario soltó el dedo - DISPARAR METEORITO
                     if (isTouching && chargeLevel > 0.1f) {  // Mínimo 10% de carga
                         shootMeteor(chargeLevel);
@@ -1792,6 +1971,76 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.e(TAG, "✗ Error en onTouchEvent: " + e.getMessage());
             isTouching = false;
             chargeLevel = 0f;
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🎵 SISTEMA DE COMPARTIR CANCIONES - LIKE BUTTON
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * 🎵 Maneja el evento de presionar el botón de Like
+     *
+     * FASE 1: Prototipo manual - comparte una canción de prueba
+     * FASE 2: Captura automática de la canción que está reproduciendo
+     */
+    private void handleLikeButtonPress() {
+        try {
+            if (songSharingManager == null) {
+                Log.e(TAG, "❌ SongSharingManager no inicializado");
+                return;
+            }
+
+            // Verificar si el usuario puede compartir (rate limiting)
+            if (!songSharingManager.canShare()) {
+                long remaining = songSharingManager.getRemainingCooldown();
+                Log.w(TAG, "⏱️ Cooldown activo: espera " + remaining + "s");
+                return;
+            }
+
+            // Verificar si el usuario está autenticado
+            if (!songSharingManager.isUserLoggedIn()) {
+                Log.w(TAG, "👤 Usuario no autenticado - no se puede compartir");
+                return;
+            }
+
+            // FASE 2: Capturar canción REAL que está reproduciendo
+            String songToShare;
+            if (MusicNotificationListener.isMusicPlaying()) {
+                songToShare = MusicNotificationListener.getFormattedSong();
+                Log.d(TAG, "🎵 Música detectada: " + songToShare);
+            } else {
+                // Si no hay música, usar texto genérico
+                songToShare = "♫ Escuchando música";
+                Log.w(TAG, "⚠️ No hay música reproduciéndose");
+            }
+
+            Log.d(TAG, "🎵 Intentando compartir: " + songToShare);
+
+            // Compartir canción
+            songSharingManager.shareSong(songToShare, new SongSharingManager.ShareCallback() {
+                @Override
+                public void onSuccess() {
+                    Log.d(TAG, "✅ Canción compartida exitosamente!");
+                    // El botón entrará en cooldown automáticamente
+                    if (likeButton != null) {
+                        likeButton.setCooldown(true);
+
+                        // 💖 Emitir partículas de corazones
+                        if (heartParticles != null) {
+                            heartParticles.emit(likeButton.getX(), likeButton.getY(), 15);
+                        }
+                    }
+                }
+
+                @Override
+                public void onError(String error) {
+                    Log.e(TAG, "❌ Error al compartir: " + error);
+                }
+            });
+
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error en handleLikeButtonPress: " + e.getMessage());
         }
     }
 

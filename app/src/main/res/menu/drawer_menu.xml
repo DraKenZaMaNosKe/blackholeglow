@@ -12,6 +12,11 @@
         android:title="MiCuenta" />
 
     <item
+        android:id="@+id/nav_notifications"
+        android:icon="@android:drawable/ic_popup_reminder"
+        android:title="Configurar Música" />
+
+    <item
         android:id="@+id/nav_logout"
         android:icon="@android:drawable/ic_lock_power_off"
         android:title="Cerrar sesión" />

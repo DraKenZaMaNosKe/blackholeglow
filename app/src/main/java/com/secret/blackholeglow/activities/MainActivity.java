@@ -233,6 +233,11 @@ public class MainActivity extends AppCompatActivity
                     )
                     .commit();
 
+        } else if (id == R.id.nav_notifications) {
+            // 🎵 Abrir configuración de acceso a notificaciones para detectar música
+            openNotificationListenerSettings();
+            return true;
+
         } else if (id == R.id.nav_logout) {
             // Cerrar sesión
             showLogoutDialog();
@@ -337,6 +342,134 @@ public class MainActivity extends AppCompatActivity
     // ╔═════════════════════════════════════════════════════════════════════╗
     // ║ 🚪 Método showLogoutDialog: Muestra diálogo de cerrar sesión        ║
     // ╚═════════════════════════════════════════════════════════════════════╝
+    /**
+     * 🎵 Abre la configuración de acceso a notificaciones
+     * Necesario para detectar la música que está reproduciendo el usuario
+     *
+     * COMPATIBLE CON:
+     * - Samsung, Huawei, Xiaomi, Oppo, Vivo, OnePlus, Google Pixel
+     * - Android 5.0+ (API 21+)
+     */
+    private void openNotificationListenerSettings() {
+        // Cerrar el drawer primero
+        drawerLayout.closeDrawer(GravityCompat.START);
+
+        // Verificar si ya tiene el permiso
+        boolean hasPermission = isNotificationListenerEnabled();
+
+        String title, message;
+        if (hasPermission) {
+            title = "✅ Detección de Música Activa";
+            message = "¡Ya tienes la detección de música activada!\n\n" +
+                    "Cuando reproduzcas música en Spotify, YouTube Music u otra app, " +
+                    "podrás compartirla tocando el corazón ♥ en el wallpaper.\n\n" +
+                    "¿Deseas abrir la configuración de todos modos?";
+        } else {
+            title = "🎵 Configurar Detección de Música";
+            message = "Para compartir la canción que estás escuchando, necesitamos acceso a las notificaciones.\n\n" +
+                    "📱 En la siguiente pantalla:\n" +
+                    "1. Busca \"Orbix iA Fondos de Pantalla\"\n" +
+                    "2. Activa el interruptor\n" +
+                    "3. Confirma en el diálogo que aparece";
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setMessage(message)
+                .setPositiveButton(hasPermission ? "Abrir Config" : "Configurar", (dialog, which) -> {
+                    openNotificationAccessSettings();
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
+    /**
+     * 🔍 Verifica si el permiso de NotificationListener está habilitado
+     */
+    private boolean isNotificationListenerEnabled() {
+        String packageName = getPackageName();
+        String flat = android.provider.Settings.Secure.getString(
+                getContentResolver(), "enabled_notification_listeners");
+
+        if (flat != null && !flat.isEmpty()) {
+            String[] listeners = flat.split(":");
+            for (String listener : listeners) {
+                if (listener.contains(packageName)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 📱 Abre la configuración de acceso a notificaciones
+     * Con fallbacks para diferentes dispositivos y versiones de Android
+     */
+    private void openNotificationAccessSettings() {
+        // Intentar abrir la configuración de notification listeners
+        try {
+            android.content.Intent intent = new android.content.Intent(
+                    android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            return;
+        } catch (android.content.ActivityNotFoundException e) {
+            android.util.Log.w("MainActivity", "ACTION_NOTIFICATION_LISTENER_SETTINGS no disponible");
+        }
+
+        // Fallback 1: Intentar abrir configuración de notificaciones de la app
+        try {
+            android.content.Intent intent = new android.content.Intent();
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                intent.setAction(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                intent.putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, getPackageName());
+            } else {
+                intent.setAction("android.settings.APP_NOTIFICATION_SETTINGS");
+                intent.putExtra("app_package", getPackageName());
+                intent.putExtra("app_uid", getApplicationInfo().uid);
+            }
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            return;
+        } catch (android.content.ActivityNotFoundException e) {
+            android.util.Log.w("MainActivity", "APP_NOTIFICATION_SETTINGS no disponible");
+        }
+
+        // Fallback 2: Abrir configuración general de la aplicación
+        try {
+            android.content.Intent intent = new android.content.Intent(
+                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(android.net.Uri.parse("package:" + getPackageName()));
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+
+            // Mostrar instrucciones adicionales
+            android.widget.Toast.makeText(this,
+                    "Busca 'Notificaciones' o 'Acceso a notificaciones' en esta pantalla",
+                    android.widget.Toast.LENGTH_LONG).show();
+            return;
+        } catch (android.content.ActivityNotFoundException e) {
+            android.util.Log.w("MainActivity", "APPLICATION_DETAILS_SETTINGS no disponible");
+        }
+
+        // Fallback 3: Abrir configuración general del sistema
+        try {
+            android.content.Intent intent = new android.content.Intent(
+                    android.provider.Settings.ACTION_SETTINGS);
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+
+            android.widget.Toast.makeText(this,
+                    "Ve a Apps → Orbix iA → Notificaciones → Acceso a notificaciones",
+                    android.widget.Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            android.widget.Toast.makeText(this,
+                    "No se pudo abrir la configuración. Por favor, hazlo manualmente desde Ajustes.",
+                    android.widget.Toast.LENGTH_LONG).show();
+        }
+    }
+
     /**
      * Muestra un diálogo de confirmación antes de cerrar sesión.
      */

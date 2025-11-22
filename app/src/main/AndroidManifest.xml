@@ -204,5 +204,17 @@
         </service>
         -->
 
+        <!-- 🎵 LISTENER DE MÚSICA - Captura canciones en reproducción -->
+        <service
+            android:name=".sharing.MusicNotificationListener"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
+
     </application>
 </manifest>
