@@ -1,5 +1,6 @@
 package com.secret.blackholeglow;
 
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.util.Log;
@@ -35,6 +36,8 @@ import java.util.Map;
  * - Cache local con TTL de 30 segundos
  * - Queries limitados (solo Top 3)
  * - Actualización asíncrona (no bloquea render)
+ * - Verificación de conectividad antes de consultar Firebase
+ * - Funciona OFFLINE con cache antiguo
  */
 public class LeaderboardManager {
     private static final String TAG = "LeaderboardManager";
@@ -42,6 +45,7 @@ public class LeaderboardManager {
 
     private final FirebaseFirestore db;
     private final FirebaseAuth auth;
+    private final Context context;
     private static LeaderboardManager instance;
 
     // Cache con TTL de 30 segundos
@@ -52,17 +56,29 @@ public class LeaderboardManager {
     // Listener para cambios en el leaderboard
     private LeaderboardListener listener;
 
-    private LeaderboardManager() {
+    private LeaderboardManager(Context context) {
+        this.context = context.getApplicationContext();
         this.db = FirebaseFirestore.getInstance();
         this.auth = FirebaseAuth.getInstance();
         Log.d(TAG, "🏆 LeaderboardManager inicializado");
     }
 
-    public static LeaderboardManager getInstance() {
+    public static LeaderboardManager getInstance(Context context) {
         if (instance == null) {
-            instance = new LeaderboardManager();
+            instance = new LeaderboardManager(context);
         }
         return instance;
+    }
+
+    /**
+     * @deprecated Use getInstance(Context) instead
+     */
+    @Deprecated
+    public static LeaderboardManager getInstance() {
+        if (instance != null) {
+            return instance;
+        }
+        throw new IllegalStateException("LeaderboardManager no inicializado. Usa getInstance(Context) primero.");
     }
 
     public void setListener(LeaderboardListener listener) {
@@ -72,18 +88,35 @@ public class LeaderboardManager {
     /**
      * 🔝 Obtiene el Top 3 del leaderboard
      * Incluye cache para optimizar rendimiento
+     * ✅ VERIFICA CONEXIÓN - No se traba sin internet
      */
     public void getTop3(final Top3Callback callback) {
         long now = System.currentTimeMillis();
 
-        // Verificar cache
+        // Verificar cache válido
         if (cachedTop3 != null && (now - lastUpdate) < CACHE_TTL) {
-            Log.d(TAG, "📦 Usando cache del leaderboard");
+            Log.d(TAG, "📦 Usando cache del leaderboard (válido)");
             callback.onSuccess(cachedTop3);
             return;
         }
 
-        // Consultar Firebase
+        // ⚡ VERIFICAR CONECTIVIDAD ANTES DE CONSULTAR FIREBASE
+        if (!NetworkUtils.isNetworkAvailable(context)) {
+            Log.w(TAG, "📡 Sin conexión a internet - Usando cache antiguo o lista vacía");
+
+            // Si hay cache (aunque sea viejo), usarlo
+            if (cachedTop3 != null) {
+                Log.d(TAG, "📦 Usando cache antiguo (sin internet)");
+                callback.onSuccess(cachedTop3);
+            } else {
+                // Sin cache, retornar lista vacía
+                Log.d(TAG, "📦 Sin cache disponible - Retornando lista vacía");
+                callback.onSuccess(new ArrayList<LeaderboardEntry>());
+            }
+            return;
+        }
+
+        // Consultar Firebase (CON INTERNET)
         Log.d(TAG, "🔄 Consultando Top 3 desde Firebase (solo jugadores reales)...");
 
         // ⚠️ FILTRAR BOTS - Solo mostrar jugadores reales en el leaderboard

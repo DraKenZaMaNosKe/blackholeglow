@@ -73,9 +73,9 @@ public class PlayerStats {
 
     private PlayerStats(Context context) {
         this.context = context.getApplicationContext();
-        this.firebaseManager = FirebaseStatsManager.getInstance();
+        this.firebaseManager = FirebaseStatsManager.getInstance(context);
         loadStats();
-        syncWithFirebase();  // Sincronizar al iniciar
+        syncWithFirebase();  // Sincronizar al iniciar (ahora verifica conexión)
         lastFirebaseSync = System.currentTimeMillis();
     }
 

@@ -313,6 +313,68 @@ vec3 drawGalacticCore(vec2 uv, vec2 pos, float time, float seed) {
     return coreColor;
 }
 
+// ════════════════════════════════════════════════════════════════════════
+// 🔍 DETECCIÓN DE BORDES (Edge Detection) - Filtro Sobel
+// ════════════════════════════════════════════════════════════════════════
+// Detecta los contornos de las galaxias y nebulosas del fondo
+// Retorna la intensidad del borde detectado (0.0 = sin borde, 1.0 = borde fuerte)
+
+float detectEdges(sampler2D tex, vec2 uv, vec2 resolution) {
+    // Tamaño de 1 píxel en coordenadas UV
+    vec2 texelSize = 1.0 / resolution;
+
+    // ═══════════════════════════════════════════════════════════
+    // 📐 MUESTREAR 9 PÍXELES (3x3 grid) ALREDEDOR DEL PÍXEL ACTUAL
+    // ═══════════════════════════════════════════════════════════
+    // Layout del grid:
+    // [tl] [tc] [tr]    (top-left, top-center, top-right)
+    // [ml] [mc] [mr]    (middle-left, middle-center, middle-right)
+    // [bl] [bc] [br]    (bottom-left, bottom-center, bottom-right)
+
+    vec3 tl = texture2D(tex, uv + vec2(-texelSize.x,  texelSize.y)).rgb;  // Top-left
+    vec3 tc = texture2D(tex, uv + vec2(0.0,           texelSize.y)).rgb;  // Top-center
+    vec3 tr = texture2D(tex, uv + vec2( texelSize.x,  texelSize.y)).rgb;  // Top-right
+
+    vec3 ml = texture2D(tex, uv + vec2(-texelSize.x,  0.0)).rgb;          // Middle-left
+    vec3 mr = texture2D(tex, uv + vec2( texelSize.x,  0.0)).rgb;          // Middle-right
+
+    vec3 bl = texture2D(tex, uv + vec2(-texelSize.x, -texelSize.y)).rgb;  // Bottom-left
+    vec3 bc = texture2D(tex, uv + vec2(0.0,          -texelSize.y)).rgb;  // Bottom-center
+    vec3 br = texture2D(tex, uv + vec2( texelSize.x, -texelSize.y)).rgb;  // Bottom-right
+
+    // ═══════════════════════════════════════════════════════════
+    // 🧮 OPERADORES SOBEL (detectan cambios de brillo)
+    // ═══════════════════════════════════════════════════════════
+    // Sobel X (gradiente horizontal):
+    // [-1  0  +1]
+    // [-2  0  +2]
+    // [-1  0  +1]
+
+    vec3 sobelX = -tl + tr - 2.0*ml + 2.0*mr - bl + br;
+
+    // Sobel Y (gradiente vertical):
+    // [-1 -2 -1]
+    // [ 0  0  0]
+    // [+1 +2 +1]
+
+    vec3 sobelY = -tl - 2.0*tc - tr + bl + 2.0*bc + br;
+
+    // ═══════════════════════════════════════════════════════════
+    // 📊 CALCULAR MAGNITUD DEL GRADIENTE (intensidad del borde)
+    // ═══════════════════════════════════════════════════════════
+    // Combinamos gradientes horizontal y vertical
+    vec3 edgeVector = sqrt(sobelX * sobelX + sobelY * sobelY);
+
+    // Convertir a escala de grises (luminancia)
+    float edgeStrength = dot(edgeVector, vec3(0.299, 0.587, 0.114));
+
+    // FILTRO MÁS ESTRICTO - Solo detectar bordes GRANDES (galaxias, no estrellas)
+    // Threshold más alto = ignora detalles pequeños
+    edgeStrength = smoothstep(0.2, 0.5, edgeStrength);  // Solo bordes muy pronunciados
+
+    return edgeStrength;
+}
+
 void main() {
     // ========== EFECTO DE PARALLAX PARA PROFUNDIDAD ==========
     // El fondo se mueve MUY lentamente, simulando distancia infinita
@@ -440,6 +502,24 @@ void main() {
     // ═══════════════════════════════════════════════════════════════════════
 
     vec3 backgroundTexture = texture2D(u_Texture, v_TexCoord).rgb;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ✨ EDGE GLOW - Resaltar bordes de galaxias y nebulosas
+    // ═══════════════════════════════════════════════════════════════════════
+    // Detectar bordes de la imagen de fondo usando filtro Sobel
+    float edgeIntensity = detectEdges(u_Texture, v_TexCoord, u_Resolution);
+
+    // Color del glow: AZUL-BLANCO BRILLANTE con transparencia
+    vec3 edgeColor = vec3(0.85, 0.95, 1.0);  // Azul-blanco eléctrico brillante
+
+    // Crear glow con intensidad reducida (50% menos)
+    vec3 edgeGlow = edgeColor * edgeIntensity * 0.11;  // 11% de intensidad (50% reducido)
+
+    // Agregar el glow con TRANSPARENCIA (mezcla suave en vez de suma directa)
+    // mix() crea un efecto de overlay translúcido
+    float edgeOpacity = edgeIntensity * 0.3;  // Opacidad basada en intensidad del borde
+    backgroundTexture = mix(backgroundTexture, backgroundTexture + edgeGlow, edgeOpacity);
+
     vec3 twinklingStars = vec3(0.0);
 
     // Grid de 20x20 para generar estrellas de forma consistente
@@ -520,7 +600,7 @@ void main() {
 
     // Posiciones aproximadas basadas en la imagen (normalizadas 0-1)
     // Ajustadas para las galaxias visibles en el fondo
-    galacticCores += drawGalacticCore(v_TexCoord, vec2(0.737, 0.483), u_Time, 0.1);  // #1 Arriba izquierda
+    galacticCores += drawGalacticCore(v_TexCoord, vec2(0.737, 0.485), u_Time, 0.1);  // #1 Arriba izquierda
     galacticCores += drawMagicalStarSimple(v_TexCoord, vec2(0.277, 0.342), u_Time);  // #2 ✨ ESTRELLA MÁGICA
     galacticCores += drawGalacticCore(v_TexCoord, vec2(0.125, 0.560), u_Time, 0.5);  // #3 Centro
     galacticCores += drawGalacticCore(v_TexCoord, vec2(0.567, 0.671), u_Time, 0.7);  // #4 Centro derecha

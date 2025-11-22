@@ -1,5 +1,6 @@
 package com.secret.blackholeglow;
 
+import android.content.Context;
 import android.util.Log;
 import androidx.annotation.NonNull;
 
@@ -43,6 +44,7 @@ public class FirebaseStatsManager {
 
     private final FirebaseFirestore db;
     private final FirebaseAuth auth;
+    private final Context context;
     private static FirebaseStatsManager instance;
 
     // Listener para cambios en las estadísticas
@@ -53,17 +55,29 @@ public class FirebaseStatsManager {
 
     private StatsListener listener;
 
-    private FirebaseStatsManager() {
+    private FirebaseStatsManager(Context context) {
+        this.context = context.getApplicationContext();
         this.db = FirebaseFirestore.getInstance();
         this.auth = FirebaseAuth.getInstance();
         Log.d(TAG, "🔐 FirebaseStatsManager inicializado");
     }
 
-    public static FirebaseStatsManager getInstance() {
+    public static FirebaseStatsManager getInstance(Context context) {
         if (instance == null) {
-            instance = new FirebaseStatsManager();
+            instance = new FirebaseStatsManager(context);
         }
         return instance;
+    }
+
+    /**
+     * @deprecated Use getInstance(Context) instead
+     */
+    @Deprecated
+    public static FirebaseStatsManager getInstance() {
+        if (instance != null) {
+            return instance;
+        }
+        throw new IllegalStateException("FirebaseStatsManager no inicializado. Usa getInstance(Context) primero.");
     }
 
     public void setListener(StatsListener listener) {
@@ -116,6 +130,12 @@ public class FirebaseStatsManager {
             return;
         }
 
+        // ⚡ VERIFICAR CONECTIVIDAD - No bloquear si no hay internet
+        if (!NetworkUtils.isNetworkAvailable(context)) {
+            Log.w(TAG, "📡 Sin internet - Estado del juego NO guardado en Firebase (solo local)");
+            return;
+        }
+
         String securityHash = generateSecurityHash(userId, planetsDestroyed);
 
         Map<String, Object> gameState = new HashMap<>();
@@ -158,6 +178,12 @@ public class FirebaseStatsManager {
             if (listener != null) {
                 listener.onError("Usuario no autenticado");
             }
+            return;
+        }
+
+        // ⚡ VERIFICAR CONECTIVIDAD - No bloquear si no hay internet
+        if (!NetworkUtils.isNetworkAvailable(context)) {
+            Log.w(TAG, "📡 Sin internet - Planetas destruidos NO guardados en Firebase (solo local)");
             return;
         }
 
@@ -383,6 +409,13 @@ public class FirebaseStatsManager {
         String userId = getUserId();
         if (userId == null) {
             callback.onError("Usuario no autenticado");
+            return;
+        }
+
+        // ⚡ VERIFICAR CONECTIVIDAD - No bloquear si no hay internet
+        if (!NetworkUtils.isNetworkAvailable(context)) {
+            Log.w(TAG, "📡 Sin internet - No se puede cargar estado desde Firebase");
+            callback.onError("Sin conexión a internet");
             return;
         }
 

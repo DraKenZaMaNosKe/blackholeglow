@@ -480,7 +480,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             StarryBackground starryBg = new StarryBackground(
                     context,
                     textureManager,
-                    R.drawable.universo03
+                    R.drawable.universo001
             );
             sceneObjects.add(starryBg);
             Log.d(TAG, "[SceneRenderer] ✓ Fondo con textura + estrellas agregado");
@@ -914,7 +914,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             // Inicializar managers
             // BOTS DESHABILITADOS - No se crearán ni actualizarán bots en Firebase
             // botManager = BotManager.getInstance();
-            leaderboardManager = LeaderboardManager.getInstance();
+            leaderboardManager = LeaderboardManager.getInstance(context);
 
             // ⚠️ BOTS DESHABILITADOS PARA RELEASE EN PLAY STORE
             // Los bots fueron utilizados durante desarrollo para simular competencia
