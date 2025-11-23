@@ -94,6 +94,20 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
     private int orbitDebugCounter = 0;
     private static final int ORBIT_DEBUG_INTERVAL = 60;  // Log cada 60 frames (~1 segundo a 60fps)
 
+    // ===== ⚡ OPTIMIZACIÓN: Caché de tiempo para evitar Calendar.getInstance() cada frame =====
+    private static java.util.Calendar cachedCalendar = java.util.Calendar.getInstance();
+    private static long lastCalendarUpdate = 0;
+    private static final long CALENDAR_UPDATE_INTERVAL = 100; // Actualizar cada 100ms (10 FPS para tiempo)
+    private static int cachedHour = 0;
+    private static int cachedMinute = 0;
+    private static int cachedSecond = 0;
+    private static int cachedMillis = 0;
+    private static int cachedDayOfYear = 0;
+
+    // ⚡ OPTIMIZACIÓN: Arrays reutilizables para evitar allocaciones en draw()
+    private float[] reusableFinalColor = new float[4];
+    private float[] reusableParentPos = new float[3];  // Para órbitas relativas (lunas)
+
     // Constantes mejoradas
     private static final float BASE_SCALE = 1.0f; // Escala base más grande
     private static final float SCALE_OSC_FREQ = 0.2f;
@@ -169,10 +183,12 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
         // ════════════════════════════════════════════════════════════
 
         Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        Log.d(TAG, "✨ Usando ESFERA PROCEDURAL (UVs perfectos)");
+        Log.d(TAG, "✨ Usando ESFERA PROCEDURAL OPTIMIZADA (576 tri)");
         Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
-        ProceduralSphere.Mesh mesh = ProceduralSphere.generateMedium(1.0f);
+        // ⚡ OPTIMIZACIÓN: Nivel intermedio (576 tri vs 256 LowPoly vs 1024 Medium)
+        // Balance perfecto: se ve redonda pero sigue siendo eficiente
+        ProceduralSphere.Mesh mesh = ProceduralSphere.generateOptimized(1.0f);
 
         vertexBuffer = mesh.vertexBuffer;
         texCoordBuffer = mesh.uvBuffer;
@@ -203,6 +219,23 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
         Log.d(TAG, "CameraController asignado al planeta");
     }
 
+    /**
+     * ⚡ OPTIMIZACIÓN: Actualiza el caché de tiempo solo cuando es necesario
+     * Evita llamar Calendar.getInstance() 60 veces por segundo
+     */
+    private static void updateTimeCache() {
+        long now = System.currentTimeMillis();
+        if (now - lastCalendarUpdate >= CALENDAR_UPDATE_INTERVAL) {
+            cachedCalendar.setTimeInMillis(now);
+            cachedHour = cachedCalendar.get(java.util.Calendar.HOUR_OF_DAY);
+            cachedMinute = cachedCalendar.get(java.util.Calendar.MINUTE);
+            cachedSecond = cachedCalendar.get(java.util.Calendar.SECOND);
+            cachedMillis = cachedCalendar.get(java.util.Calendar.MILLISECOND);
+            cachedDayOfYear = cachedCalendar.get(java.util.Calendar.DAY_OF_YEAR);
+            lastCalendarUpdate = now;
+        }
+    }
+
     @Override
     public void update(float dt) {
         // Manejar respawn si está muerto
@@ -218,17 +251,14 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
                 criticalFlashTimer += dt * 3.0f;  // Parpadea moderado (3x velocidad - menos acelerado)
             }
 
+            // ⚡ OPTIMIZACIÓN: Actualizar caché de tiempo UNA VEZ (compartido entre todos los planetas)
+            updateTimeCache();
+
             // ===== 🌍 ROTACIÓN - Sincronizada con tiempo real o animada =====
             if (useRealTimeRotation) {
-                // MODO TIEMPO REAL ACELERADO: Calcular ángulo basado en la hora actual
-                java.util.Calendar calendar = java.util.Calendar.getInstance();
-                int hour = calendar.get(java.util.Calendar.HOUR_OF_DAY);
-                int minute = calendar.get(java.util.Calendar.MINUTE);
-                int second = calendar.get(java.util.Calendar.SECOND);
-                int millis = calendar.get(java.util.Calendar.MILLISECOND);
-
+                // MODO TIEMPO REAL ACELERADO: Usar valores cacheados
                 // Calcular fracción del día (0.0 a 1.0) con precisión de milisegundos
-                float dayFraction = (hour + minute / 60.0f + second / 3600.0f + millis / 3600000.0f) / realTimeRotationPeriodHours;
+                float dayFraction = (cachedHour + cachedMinute / 60.0f + cachedSecond / 3600.0f + cachedMillis / 3600000.0f) / realTimeRotationPeriodHours;
 
                 // Aplicar aceleración de tiempo (120x = 1 minuto real = 1 hora simulada)
                 dayFraction = (dayFraction * timeAccelerationFactor) % 1.0f;
@@ -246,33 +276,26 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
 
             // ===== 🪐 ÓRBITA - Sincronizada con tiempo real o animada =====
             if (useRealTimeOrbit && orbitRadiusX > 0 && orbitRadiusZ > 0) {
-                // MODO TIEMPO REAL: Calcular ángulo basado en el tiempo actual
-                java.util.Calendar calendar = java.util.Calendar.getInstance();
-                int hour = calendar.get(java.util.Calendar.HOUR_OF_DAY);
-                int minute = calendar.get(java.util.Calendar.MINUTE);
-                int second = calendar.get(java.util.Calendar.SECOND);
-                int millis = calendar.get(java.util.Calendar.MILLISECOND);
+                // ⚡ OPTIMIZACIÓN: Usar valores cacheados (ya actualizados arriba)
 
                 // Calcular tiempo actual según el período orbital
                 float currentTime = 0;
 
                 if (realTimeOrbitPeriodHours >= 24.0f) {
                     // Períodos de días (>= 24 horas): usar día del año
-                    int dayOfYear = calendar.get(java.util.Calendar.DAY_OF_YEAR);
-                    currentTime = (dayOfYear - 1) * 24.0f + hour + minute / 60.0f + second / 3600.0f + millis / 3600000.0f;
+                    currentTime = (cachedDayOfYear - 1) * 24.0f + cachedHour + cachedMinute / 60.0f + cachedSecond / 3600.0f + cachedMillis / 3600000.0f;
                 } else if (realTimeOrbitPeriodHours > 1.0f) {
                     // Períodos de múltiples horas (> 1 hora): usar horas del día
-                    currentTime = hour + minute / 60.0f + second / 3600.0f + millis / 3600000.0f;
+                    currentTime = cachedHour + cachedMinute / 60.0f + cachedSecond / 3600.0f + cachedMillis / 3600000.0f;
                 } else if (realTimeOrbitPeriodHours == 1.0f) {
                     // Período de 1 hora exacta: usar solo minutos dentro de la hora actual
-                    currentTime = minute / 60.0f + second / 3600.0f + millis / 3600000.0f;
+                    currentTime = cachedMinute / 60.0f + cachedSecond / 3600.0f + cachedMillis / 3600000.0f;
                 } else if (realTimeOrbitPeriodHours >= 1.0f / 60.0f) {
                     // Períodos de minutos (>= 1 minuto): usar minutos Y segundos dentro de la hora
-                    // 🌙 FIX: Incluir minutos para evitar saltos cuando cambia el minuto
-                    currentTime = minute / 60.0f + second / 3600.0f + millis / 3600000.0f;
+                    currentTime = cachedMinute / 60.0f + cachedSecond / 3600.0f + cachedMillis / 3600000.0f;
                 } else {
                     // Períodos menores a 1 minuto: usar solo segundos
-                    currentTime = second / 3600.0f + millis / 3600000.0f;
+                    currentTime = cachedSecond / 3600.0f + cachedMillis / 3600000.0f;
                 }
 
                 // Calcular fracción de órbita (0.0 a 1.0) basada en período configurado
@@ -405,25 +428,28 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
         GLES20.glUniform1i(uTexLoc, 0);
 
         // 🔥 CONFIGURAR COLOR CON EFECTOS CRÍTICOS
-        float[] finalColor = solidColor.clone();
+        // ⚡ OPTIMIZACIÓN: Usar array reutilizable en lugar de .clone()
+        reusableFinalColor[0] = solidColor[0];
+        reusableFinalColor[1] = solidColor[1];
+        reusableFinalColor[2] = solidColor[2];
+        reusableFinalColor[3] = solidColor[3];
         float finalAlpha = alpha;
 
         if (isCritical) {
             // Parpadeo de advertencia (oscila entre normal y rojo intenso)
             float flashValue = (float)Math.sin(criticalFlashTimer) * 0.5f + 0.5f;  // 0.0 - 1.0
 
-            // Mezclar con rojo peligroso
-            float[] dangerColor = new float[]{1.0f, 0.2f, 0.0f, 1.0f};  // Rojo-naranja intenso
-            finalColor[0] = solidColor[0] * (1 - flashValue) + dangerColor[0] * flashValue;
-            finalColor[1] = solidColor[1] * (1 - flashValue) + dangerColor[1] * flashValue;
-            finalColor[2] = solidColor[2] * (1 - flashValue) + dangerColor[2] * flashValue;
+            // Mezclar con rojo peligroso (constantes inline para evitar allocación)
+            reusableFinalColor[0] = solidColor[0] * (1 - flashValue) + 1.0f * flashValue;
+            reusableFinalColor[1] = solidColor[1] * (1 - flashValue) + 0.2f * flashValue;
+            reusableFinalColor[2] = solidColor[2] * (1 - flashValue) + 0.0f * flashValue;
 
             // ✨ ALPHA SIEMPRE OPACO (sin transparencia, más realista)
             finalAlpha = 1.0f;  // El sol NO se hace transparente
         }
 
         GLES20.glUniform1i(uUseSolidColorLoc, useSolidColor ? 1 : 0);
-        GLES20.glUniform4fv(uSolidColorLoc, 1, finalColor, 0);
+        GLES20.glUniform4fv(uSolidColorLoc, 1, reusableFinalColor, 0);
         GLES20.glUniform1f(uAlphaLoc, finalAlpha);
 
         // Configurar atributos de vértices
@@ -664,9 +690,20 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
     /**
      * Obtiene la posición orbital actual del planeta en coordenadas del mundo
      * Útil para que otros objetos (lunas) puedan orbitar alrededor de este planeta
-     * @return Array {x, y, z} con la posición actual
+     * ⚡ OPTIMIZACIÓN: Copia valores a array destino en lugar de crear uno nuevo
+     * @param dest Array destino donde copiar {x, y, z} (debe tener al menos 3 elementos)
+     */
+    public void getCurrentOrbitalPosition(float[] dest) {
+        dest[0] = currentOrbitalPosition[0];
+        dest[1] = currentOrbitalPosition[1];
+        dest[2] = currentOrbitalPosition[2];
+    }
+
+    /**
+     * ⚠️ DEPRECATED: Usa getCurrentOrbitalPosition(float[] dest) para evitar allocaciones
+     * @return Array {x, y, z} con la posición actual (CREA NUEVO ARRAY - evitar en render loop)
      */
     public float[] getCurrentOrbitalPosition() {
-        return currentOrbitalPosition.clone();
+        return new float[]{currentOrbitalPosition[0], currentOrbitalPosition[1], currentOrbitalPosition[2]};
     }
 }

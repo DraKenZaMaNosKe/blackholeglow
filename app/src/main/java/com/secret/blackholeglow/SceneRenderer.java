@@ -467,8 +467,8 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                 songNotification.draw(identityMatrix);
             }
 
-            // 🎵✨ Mostrar "usuario: canción" con efectos de color animado
-            if (songNotificationUserText != null) {
+            // 🎵✨ Mostrar nombre y canción en DOS LÍNEAS con efectos de color
+            if (songNotificationUserText != null && songNotificationSongText != null) {
                 String userName = songNotification.getUserNameText();
                 String songTitle = songNotification.getSongTitleText();
 
@@ -488,10 +488,20 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     float[] hsv = {hue * 360f, 0.5f, 1.0f};  // Saturación media, brillo máximo
                     int animatedColor = android.graphics.Color.HSVToColor(255, hsv);
 
-                    // Aplicar color animado
+                    // 📝 LÍNEA 1: Nombre del usuario (más pequeño, arriba)
                     songNotificationUserText.setColor(animatedColor);
-                    songNotificationUserText.setText(userName + ": " + songTitle);
+                    songNotificationUserText.setText(userName + ":");
                     songNotificationUserText.draw();
+
+                    // 🎵 LÍNEA 2: Título de la canción (más grande, abajo)
+                    // Color ligeramente diferente para variedad visual
+                    float hue2 = 0.55f + (float)Math.sin(colorTime + 1.5f) * 0.15f;  // Cyan → verde
+                    float[] hsv2 = {hue2 * 360f, 0.6f, 1.0f};
+                    int songColor = android.graphics.Color.HSVToColor(255, hsv2);
+
+                    songNotificationSongText.setColor(songColor);
+                    songNotificationSongText.setText(songTitle);
+                    songNotificationSongText.draw();
                 }
             }
         }
@@ -590,7 +600,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     0.0f,              // 📍 orbitOffsetY = 0.0 (sin altura)
                     0.0f,              // scaleAmplitude = sin variación
                     1.0f,              // 🌎 TAMAÑO PROTAGONISTA (planeta principal)
-                    80.0f,             // spinSpeed = rotación visible (24h reales aceleradas)
+                    12.0f,             // spinSpeed = rotación SUAVE y relajante
                     false, null, 1.0f,
                     null, 1.0f
             );
@@ -606,11 +616,11 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             sol.setHealth(savedPlanetHP);  // Cargar HP guardado
             Log.d(TAG, "  💾 TIERRA HP cargado: " + savedPlanetHP + "/200");
 
-            // ═══ 🌍 SINCRONIZACIÓN CON TIEMPO REAL - ROTACIÓN TERRESTRE (ACELERADA VISUALMENTE) ═══
-            sol.setRealTimeRotation(true);           // Rotación sincronizada con tiempo real
-            sol.setRealTimeRotationPeriod(24);       // Tierra rota cada 24 horas (base real)
-            sol.setTimeAccelerationFactor(720.0f);   // Acelerar 720x para rotación VISIBLE (2 min por vuelta)
-            Log.d(TAG, "  ⏰ TIERRA rotación acelerada: 24h → " + (24 * 60 / 720) + " min por vuelta completa");
+            // ═══ ⚡ OPTIMIZACIÓN: ROTACIÓN ANIMADA SIMPLE (sin Calendar) ═══
+            // Desactivado tiempo real para mejor rendimiento en dispositivos de gama baja
+            sol.setRealTimeRotation(false);  // ⚡ DESACTIVADO - usa rotación animada simple
+            // spinSpeed ya está configurado en 80.0f para rotación visible
+            Log.d(TAG, "  ⚡ TIERRA rotación SIMPLE (spinSpeed=80, sin Calendar)");
 
             sceneObjects.add(sol);
 
@@ -649,16 +659,14 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         // ═══════════════════════════════════════════════════════════
 
         // ✨ 3 ESTRELLAS BAILARINAS - PARTÍCULAS MÁGICAS CON ESTELA ✨
-        // Casi invisibles, solo se ve la estela arcoíris de cada una
         try {
-            // Limpiar lista anterior por si acaso
             estrellasBailarinas.clear();
 
             // Estrella 1 - Posición superior derecha
             EstrellaBailarina estrella1 = new EstrellaBailarina(
                     context, textureManager,
                     1.8f, 0.8f, 0.5f,   // Posición inicial: arriba-derecha
-                    0.02f,              // Escala: MINÚSCULA (casi invisible, solo estela)
+                    0.02f,              // Escala: MINÚSCULA
                     45.0f               // Rotación: rápida
             );
             estrella1.setCameraController(sharedCamera);
@@ -687,30 +695,23 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             sceneObjects.add(estrella3);
             estrellasBailarinas.add(estrella3);
 
-            Log.d(TAG, "  ✨✨✨ 3 ESTRELLAS BAILARINAS agregadas (épico!) ✨✨✨");
+            Log.d(TAG, "  ✨ 3 Estrellas bailarinas añadidas");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creando estrellas bailarinas: " + e.getMessage());
         }
 
-        // ☀️ SOL REALISTA - MODELO 3D DETALLADO
-        // Modelo 3D de alta calidad con textura fotorealista
-        SolRealista solRealista = null;
+        // ☀️ SOL PROCEDURAL - VERSIÓN OPTIMIZADA (576 tri vs 7,936)
+        SolProcedural solProcedural = null;
         try {
-            solRealista = new SolRealista(context, textureManager);
-            solRealista.setPosition(-33.0f, 3.5f, -45.0f);  // ☀️ Arriba-izquierda-fondo
-            solRealista.setScale(0.3f);                    // ☀️ Sol pequeño
-            solRealista.setCameraController(sharedCamera);
+            solProcedural = new SolProcedural(context, textureManager);
+            solProcedural.setPosition(-8.0f, 4.0f, -15.0f);   // ☀️ Más cerca y visible
+            solProcedural.setScale(1.5f);                     // ☀️ Sol GRANDE y visible
+            solProcedural.setCameraController(sharedCamera);
 
-            sceneObjects.add(solRealista);
-            Log.d(TAG, "════════════════════════════════════════════════");
-            Log.d(TAG, "  ✓ ☀️ SOL REALISTA añadido (modelo 3D)");
-            Log.d(TAG, "  📦 Modelo: Solrealista.obj (7,936 triángulos)");
-            Log.d(TAG, "  🎨 Textura: materialdelsol.png");
-            Log.d(TAG, "  ✨ Shader con gradiente + plasma + corona");
-            Log.d(TAG, "  🔄 Rotación lenta (10°/seg)");
-            Log.d(TAG, "════════════════════════════════════════════════");
+            sceneObjects.add(solProcedural);
+            Log.d(TAG, "  ✓ ☀️ SOL PROCEDURAL añadido (576 tri - 14x más eficiente)");
         } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creating realistic sun: " + e.getMessage());
+            Log.e(TAG, "  ✗ Error creating procedural sun: " + e.getMessage());
             e.printStackTrace();
         }
 
@@ -727,48 +728,9 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         // 🔴 PLANETA MARTE - REMOVIDO (simplificar escena)
         // Código comentado por solicitud del usuario para simplificar la escena del universo
 
-        // 🌙 LUNA - ORBITANDO LA TIERRA (SATÉLITE NATURAL)
-        try {
-            Planeta planetaLuna = new Planeta(
-                    context, textureManager,
-                    "shaders/planeta_vertex.glsl",
-                    "shaders/planeta_iluminado_fragment.glsl",
-                    R.drawable.textura_luna,             // Textura de la Luna
-                    1.8f, 1.5f,          // orbitRadiusX, orbitRadiusZ
-                    0.65f,               // 🌙 orbitSpeed MÁS LENTO (menos sincronizada con Tierra)
-                    0.0f,                // 📍 orbitOffsetY = 0.0 (sin altura)
-                    0.05f,               // scaleAmplitude - Muy poca variación
-                    0.27f,               // instanceScale - Proporción realista con Tierra (27% del tamaño)
-                    20.0f,               // spinSpeed - Rotación visible
-                    false, null, 1.0f,
-                    null,
-                    1.0f
-            );
-            if (planetaLuna instanceof CameraAware) {
-                ((CameraAware) planetaLuna).setCameraController(sharedCamera);
-            }
-
-            // ═══ 🕐 RELOJ ASTRONÓMICO - LUNA = SEGUNDOS (40 segundos por órbita - más rápida) ═══
-            // La Luna orbita la Tierra (variable "sol" = Tierra en el centro)
-            if (sol != null) {
-                planetaLuna.setParentPlanet(sol);  // sol = Tierra en el centro
-                Log.d(TAG, "     • Luna configurada para orbitar la Tierra (variable sol)");
-            }
-
-            planetaLuna.setRealTimeRotation(true);
-            planetaLuna.setRealTimeRotationPeriod(27.3f);  // Luna rota sincrónicamente (27.3 días = periodo orbital real)
-            planetaLuna.setRealTimeOrbit(true);            // Órbita alrededor de la Tierra
-            planetaLuna.setRealTimeOrbitPeriod(1.5f / 60.0f);  // 🌙 1.5 minutos por órbita (más lenta)
-            planetaLuna.setTimeAccelerationFactor(1.0f);   // Sin aceleración adicional
-            Log.d(TAG, "  🕐 LUNA configurada con órbita VISIBLE:");
-            Log.d(TAG, "     • Órbita completa = 60 segundos (1 minuto real)");
-            Log.d(TAG, "     • Orbita alrededor de la TIERRA (no del Sol)");
-
-            sceneObjects.add(planetaLuna);
-            Log.d(TAG, "  🌙 LUNA añadida orbitando a la Tierra");
-        } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creating Moon: " + e.getMessage());
-        }
+        // 🌙 LUNA - DESACTIVADA PARA OPTIMIZACIÓN
+        // ⚡ OPTIMIZACIÓN: Luna desactivada para mejor rendimiento en dispositivos de gama baja
+        Log.d(TAG, "  ⚡ Luna DESACTIVADA (optimización)");
 
         // ☄️☄️ CINTURÓN DE ASTEROIDES - REMOVIDO (simplificar escena)
         // Código comentado por solicitud del usuario para simplificar la escena del universo
@@ -779,8 +741,9 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         // (reemplazó a Meteorito por preferencia visual del usuario)
         Log.d(TAG, "  🪨 Asteroide estático removido - ahora manejado por MeteorShower");
 
-        // 🛸 NAVE ESPACIAL / OVNI - EXPLORANDO EL SISTEMA
-        // Modelo 3D de nave alienígena con movimiento AI inteligente
+        // 🛸 NAVE ESPACIAL / OVNI - DESACTIVADO PARA OPTIMIZACIÓN
+        // ⚡ OPTIMIZACIÓN: Modelo 3D pesado desactivado para dispositivos de gama baja
+        /*
         Spaceship3D ovni = null;
         try {
             ovni = new Spaceship3D(
@@ -794,23 +757,13 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
 
             Log.d(TAG, "════════════════════════════════════════════════");
             Log.d(TAG, "  ✓ 🛸 NAVE ESPACIAL añadida (modelo 3D)");
-            Log.d(TAG, "  📦 Modelo: Spaceships.obj");
-            Log.d(TAG, "  🎨 Textura: forerunnercentralplates");
-            Log.d(TAG, "  🤖 AI: Movimiento libre por la escena");
-            Log.d(TAG, "  ✨ Shaders épicos:");
-            Log.d(TAG, "     • Cúpula con energía alien");
-            Log.d(TAG, "     • Luces parpadeantes rotantes");
-            Log.d(TAG, "     • Haz de luz tractora inferior");
-            Log.d(TAG, "     • Anillo de energía pulsante");
-            Log.d(TAG, "  🎯 Comportamiento:");
-            Log.d(TAG, "     • Cambia dirección cada 3 segundos");
-            Log.d(TAG, "     • Rebota en límites de la escena");
-            Log.d(TAG, "     • Nunca igual, movimiento orgánico");
             Log.d(TAG, "════════════════════════════════════════════════");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creating spaceship: " + e.getMessage());
             e.printStackTrace();
         }
+        */
+        Log.d(TAG, "  ⚡ OVNI DESACTIVADO (optimización)");
 
         // BARRA DE PODER DE BATERÍA - UI ELEMENT
         BatteryPowerBar powerBar = null;
@@ -831,7 +784,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.e(TAG, "  ✗ Error creating greeting text: " + e.getMessage());
         }
 
-        // 🛡️ CAMPO DE FUERZA DE LA TIERRA - DEFENSA PLANETARIA
+        // 🛡️ CAMPO DE FUERZA - ESCUDO DE LA TIERRA
         try {
             forceField = new ForceField(
                     context, textureManager,
@@ -852,7 +805,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.d(TAG, "  💾 ForceField HP cargado: " + savedForceFieldHP + "/50");
 
             sceneObjects.add(forceField);
-            Log.d(TAG, "[SceneRenderer] ✓ Campo de fuerza interactivo agregado");
+            Log.d(TAG, "  🛡️ Campo de fuerza ACTIVADO");
         } catch (Exception e) {
             Log.e(TAG, "[SceneRenderer] ✗ Error creando campo de fuerza: " + e.getMessage());
         }
@@ -1068,13 +1021,14 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
 
             songSharingManager = SongSharingManager.getInstance(context);
 
-            // Inicializar texto para la notificación - DESPUÉS del avatar
-            // Avatar está en x=-0.78, texto empieza a su derecha
-            songNotificationUserText = new SimpleTextRenderer(context, -0.60f, -0.45f, 1.0f, 0.040f);
+            // Inicializar texto para la notificación - DOS LÍNEAS
+            // Línea 1: Nombre del usuario (arriba)
+            songNotificationUserText = new SimpleTextRenderer(context, -0.60f, -0.38f, 1.0f, 0.050f);
             songNotificationUserText.setColor(0xFFFFFFFF);  // Blanco brillante
 
-            // songNotificationSongText ya no se usa (solo mostramos el título)
-            songNotificationSongText = null;
+            // Línea 2: Título de la canción (abajo, más grande)
+            songNotificationSongText = new SimpleTextRenderer(context, -0.60f, -0.455f, 1.0f, 0.055f);
+            songNotificationSongText.setColor(0xFFFFFFFF);  // Blanco brillante
 
             // Escuchar nuevas canciones compartidas
             songSharingManager.startListening(new SongSharingManager.OnNewSongListener() {

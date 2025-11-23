@@ -14,10 +14,10 @@ import java.util.List;
 public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     private static final String TAG = "depurar";
 
-    // Configuración OPTIMIZADA para máximo rendimiento
-    private static final int MAX_METEORITOS = 3;  // Pool de 3 meteoritos (performance)
-    private static final int METEORITOS_ACTIVOS_MAX = 2;  // Máximo 2 activos simultáneos
-    private static final float SPAWN_INTERVAL = 2.5f;  // Spawn cada 2.5 segundos
+    // Configuración ULTRA OPTIMIZADA para dispositivos de gama baja
+    private static final int MAX_METEORITOS = 2;  // Pool de 2 meteoritos (ULTRA performance)
+    private static final int METEORITOS_ACTIVOS_MAX = 1;  // Máximo 1 activo (ULTRA optimizado)
+    private static final float SPAWN_INTERVAL = 4.0f;  // Spawn cada 4 segundos (más lento)
     private static final float SPAWN_DISTANCE = 12.0f;  // Distancia de spawn
 
     // Pool de asteroides realistas

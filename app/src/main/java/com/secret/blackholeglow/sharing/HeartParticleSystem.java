@@ -42,6 +42,11 @@ public class HeartParticleSystem {
     private List<HeartParticle> particles = new ArrayList<>();
     private Random random = new Random();
 
+    // ⚡ OPTIMIZACIÓN: Matrices reutilizables (evita allocations cada frame)
+    private float[] reusableModelMatrix = new float[16];
+    private float[] reusableFinalMatrix = new float[16];
+    private float[] reusableColor = new float[4];
+
     // Shaders
     private static final String VERTEX_SHADER =
             "attribute vec4 a_Position;\n" +
@@ -185,6 +190,7 @@ public class HeartParticleSystem {
 
     /**
      * 🎬 Dibuja todas las partículas
+     * ⚡ OPTIMIZADO: Reutiliza matrices y colores (no crea nuevos cada frame)
      */
     public void draw(float[] mvpMatrix) {
         if (!isInitialized || particles.isEmpty()) return;
@@ -195,30 +201,34 @@ public class HeartParticleSystem {
         GLES20.glEnable(GLES20.GL_BLEND);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
 
+        // Habilitar atributos UNA VEZ para todas las partículas
+        GLES20.glEnableVertexAttribArray(positionHandle);
+        GLES20.glVertexAttribPointer(positionHandle, 2, GLES20.GL_FLOAT, false, 0, heartBuffer);
+
         for (HeartParticle p : particles) {
-            // Matriz de transformación
-            float[] modelMatrix = new float[16];
-            android.opengl.Matrix.setIdentityM(modelMatrix, 0);
-            android.opengl.Matrix.translateM(modelMatrix, 0, p.x, p.y, 0);
-            android.opengl.Matrix.rotateM(modelMatrix, 0, p.rotation, 0, 0, 1);
-            android.opengl.Matrix.scaleM(modelMatrix, 0, p.size, p.size, 1);
+            // ⚡ OPTIMIZADO: Usar matrices reutilizables
+            android.opengl.Matrix.setIdentityM(reusableModelMatrix, 0);
+            android.opengl.Matrix.translateM(reusableModelMatrix, 0, p.x, p.y, 0);
+            android.opengl.Matrix.rotateM(reusableModelMatrix, 0, p.rotation, 0, 0, 1);
+            android.opengl.Matrix.scaleM(reusableModelMatrix, 0, p.size, p.size, 1);
 
-            float[] finalMatrix = new float[16];
-            android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+            android.opengl.Matrix.multiplyMM(reusableFinalMatrix, 0, mvpMatrix, 0, reusableModelMatrix, 0);
 
-            GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrix, 0);
+            GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, reusableFinalMatrix, 0);
 
-            // Color con alpha basado en vida
-            float[] color = heartColors[p.colorIndex].clone();
-            color[3] = p.life;  // Alpha = vida restante
-            GLES20.glUniform4fv(colorHandle, 1, color, 0);
+            // ⚡ OPTIMIZADO: Usar color reutilizable (no clone())
+            float[] baseColor = heartColors[p.colorIndex];
+            reusableColor[0] = baseColor[0];
+            reusableColor[1] = baseColor[1];
+            reusableColor[2] = baseColor[2];
+            reusableColor[3] = p.life;  // Alpha = vida restante
+            GLES20.glUniform4fv(colorHandle, 1, reusableColor, 0);
 
             // Dibujar corazón
-            GLES20.glEnableVertexAttribArray(positionHandle);
-            GLES20.glVertexAttribPointer(positionHandle, 2, GLES20.GL_FLOAT, false, 0, heartBuffer);
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 34);
-            GLES20.glDisableVertexAttribArray(positionHandle);
         }
+
+        GLES20.glDisableVertexAttribArray(positionHandle);
     }
 
     /**

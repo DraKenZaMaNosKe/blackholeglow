@@ -249,6 +249,14 @@ public class ProceduralSphere {
     }
 
     /**
+     * ⚡ Esfera OPTIMIZADA - Balance perfecto entre calidad visual y rendimiento
+     * 12 lat × 24 lon = 576 triángulos (vs 256 LowPoly, vs 1024 Medium)
+     */
+    public static Mesh generateOptimized(float radius) {
+        return generate(radius, 12, 24);
+    }
+
+    /**
      * Esfera de alta resolución (para objetos grandes o con texturas detalladas)
      */
     public static Mesh generateHigh(float radius) {

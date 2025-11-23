@@ -21,7 +21,7 @@ public class MusicIndicator implements SceneObject {
 
     // Configuración del ecualizador - 7 BARRAS POR RANGOS DE FRECUENCIA
     private static final int NUM_BARRAS = 7;  // 7 barras para visualización óptima (equilibrio perfecto)
-    private static final int LEDS_POR_BARRA = 12;  // 12 LEDs por barra (estilo retro)
+    private static final int LEDS_POR_BARRA = 4;  // 4 LEDs por barra (ULTRA OPTIMIZADO - era 12)
     private static final float SMOOTHING_FACTOR = 0.6f;  // Factor de suavizado (0.0 = sin suavizado, 0.9 = muy suave)
 
     // ════════════════════════════════════════════════════════════════════════
@@ -38,6 +38,14 @@ public class MusicIndicator implements SceneObject {
 
     private int aPositionLoc;
     private int aColorLoc;
+
+    // ════════════════════════════════════════════════════════════════════════
+    // BUFFERS REUTILIZABLES (OPTIMIZACIÓN - evita allocations cada frame)
+    // ════════════════════════════════════════════════════════════════════════
+    private FloatBuffer reusableVertexBuffer;
+    private FloatBuffer reusableColorBuffer;
+    private float[] tempVertices = new float[8];   // 4 vértices × 2 coords
+    private float[] tempColors = new float[16];    // 4 vértices × 4 RGBA
 
     // Posición y tamaño del indicador (coordenadas NDC 2D)
     private final float x;
@@ -99,9 +107,18 @@ public class MusicIndicator implements SceneObject {
         Log.d(TAG, "[MusicIndicator] Tamaño: " + width + " x " + height);
         Log.d(TAG, "[MusicIndicator] Barras: " + NUM_BARRAS + " x " + LEDS_POR_BARRA + " LEDs");
 
+        // OPTIMIZACIÓN: Crear buffers reutilizables UNA SOLA VEZ
+        ByteBuffer vbb = ByteBuffer.allocateDirect(8 * 4);  // 8 floats × 4 bytes
+        vbb.order(ByteOrder.nativeOrder());
+        reusableVertexBuffer = vbb.asFloatBuffer();
+
+        ByteBuffer cbb = ByteBuffer.allocateDirect(16 * 4); // 16 floats × 4 bytes
+        cbb.order(ByteOrder.nativeOrder());
+        reusableColorBuffer = cbb.asFloatBuffer();
+
         initShader(context);
 
-        Log.d(TAG, "[MusicIndicator] ✓ Constructor completado");
+        Log.d(TAG, "[MusicIndicator] ✓ Constructor completado (OPTIMIZADO)");
     }
 
     private void initShader(Context context) {
@@ -424,27 +441,24 @@ public class MusicIndicator implements SceneObject {
 
     /**
      * Dibuja un quad (rectángulo) usando 2 triángulos
+     * OPTIMIZADO: Reutiliza buffers en lugar de crear nuevos cada frame
      */
     private void drawQuad(float[] vertices, float[] colors) {
-        // Crear buffers
-        ByteBuffer vbb = ByteBuffer.allocateDirect(vertices.length * 4);
-        vbb.order(ByteOrder.nativeOrder());
-        FloatBuffer vb = vbb.asFloatBuffer();
-        vb.put(vertices);
-        vb.position(0);
+        // OPTIMIZACIÓN: Reutilizar buffers existentes (NO crear nuevos)
+        reusableVertexBuffer.clear();
+        reusableVertexBuffer.put(vertices);
+        reusableVertexBuffer.position(0);
 
-        ByteBuffer cbb = ByteBuffer.allocateDirect(colors.length * 4);
-        cbb.order(ByteOrder.nativeOrder());
-        FloatBuffer cb = cbb.asFloatBuffer();
-        cb.put(colors);
-        cb.position(0);
+        reusableColorBuffer.clear();
+        reusableColorBuffer.put(colors);
+        reusableColorBuffer.position(0);
 
         // Configurar atributos
         GLES20.glEnableVertexAttribArray(aPositionLoc);
-        GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 0, vb);
+        GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 0, reusableVertexBuffer);
 
         GLES20.glEnableVertexAttribArray(aColorLoc);
-        GLES20.glVertexAttribPointer(aColorLoc, 4, GLES20.GL_FLOAT, false, 0, cb);
+        GLES20.glVertexAttribPointer(aColorLoc, 4, GLES20.GL_FLOAT, false, 0, reusableColorBuffer);
 
         // Dibujar usando TRIANGLE_STRIP (4 vértices = 2 triángulos)
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);

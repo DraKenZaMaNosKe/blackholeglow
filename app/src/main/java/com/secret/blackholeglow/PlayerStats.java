@@ -71,6 +71,11 @@ public class PlayerStats {
     private long lastFirebaseSync = 0;
     private static final long FIREBASE_SYNC_INTERVAL = 60000; // 1 minuto en ms
 
+    // ⚡ OPTIMIZACIÓN: Throttle para guardar HP (evita guardar cada frame)
+    private long lastHealthSaveTime = 0;
+    private static final long HEALTH_SAVE_THROTTLE = 5000; // Solo guardar cada 5 segundos
+    private boolean pendingHealthSave = false;
+
     private PlayerStats(Context context) {
         this.context = context.getApplicationContext();
         this.firebaseManager = FirebaseStatsManager.getInstance(context);
@@ -300,29 +305,38 @@ public class PlayerStats {
     public int getSavedForceFieldHealth() { return savedForceFieldHealth; }
 
     /**
-     * 💾 Actualiza y GUARDA automáticamente el HP del Planeta 🌍
-     * Guarda localmente (SharedPreferences) y en la nube (Firebase)
+     * 💾 Actualiza el HP del Planeta 🌍
+     * ⚡ OPTIMIZADO: Solo guarda en Firebase cada 5 segundos (no cada cambio)
      */
     public void updatePlanetHealth(int health) {
         savedPlanetHealth = health;
-        saveStats();  // Auto-guardar localmente
-
-        // 🔥 Guardar en Firebase (nube)
-        firebaseManager.saveGameState(savedPlanetHealth, savedForceFieldHealth, planetsDestroyed);
-        Log.d(TAG, "☁️ HP del Planeta 🌍 guardado en Firebase: " + health);
+        pendingHealthSave = true;  // Marcar que hay cambios pendientes
+        throttledSaveToFirebase();
     }
 
     /**
-     * 💾 Actualiza y GUARDA automáticamente el HP del Campo de Fuerza
-     * Guarda localmente (SharedPreferences) y en la nube (Firebase)
+     * 💾 Actualiza el HP del Campo de Fuerza
+     * ⚡ OPTIMIZADO: Solo guarda en Firebase cada 5 segundos (no cada cambio)
      */
     public void updateForceFieldHealth(int health) {
         savedForceFieldHealth = health;
-        saveStats();  // Auto-guardar localmente
+        pendingHealthSave = true;  // Marcar que hay cambios pendientes
+        throttledSaveToFirebase();
+    }
 
-        // 🔥 Guardar en Firebase (nube)
-        firebaseManager.saveGameState(savedPlanetHealth, savedForceFieldHealth, planetsDestroyed);
-        Log.d(TAG, "☁️ HP del ForceField guardado en Firebase: " + health);
+    /**
+     * ⚡ OPTIMIZACIÓN: Guarda en Firebase con throttle (máximo cada 5 segundos)
+     * Evita llamadas excesivas durante combate
+     */
+    private void throttledSaveToFirebase() {
+        long now = System.currentTimeMillis();
+        if (now - lastHealthSaveTime >= HEALTH_SAVE_THROTTLE && pendingHealthSave) {
+            saveStats();  // Guardar localmente
+            firebaseManager.saveGameState(savedPlanetHealth, savedForceFieldHealth, planetsDestroyed);
+            lastHealthSaveTime = now;
+            pendingHealthSave = false;
+            Log.d(TAG, "☁️ HP guardado (throttled): Planeta=" + savedPlanetHealth + ", Escudo=" + savedForceFieldHealth);
+        }
     }
 
     /**
