@@ -741,29 +741,36 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         // (reemplazó a Meteorito por preferencia visual del usuario)
         Log.d(TAG, "  🪨 Asteroide estático removido - ahora manejado por MeteorShower");
 
-        // 🛸 NAVE ESPACIAL / OVNI - DESACTIVADO PARA OPTIMIZACIÓN
-        // ⚡ OPTIMIZACIÓN: Modelo 3D pesado desactivado para dispositivos de gama baja
-        /*
+        // 🛸 NAVE ESPACIAL / OVNI - EXPLORACIÓN LIBRE CON IA
         Spaceship3D ovni = null;
         try {
             ovni = new Spaceship3D(
                     context,
                     textureManager,
-                    -3.0f, 2.0f, -5.0f,  // Posición inicial (lejos, arriba-izquierda)
-                    0.05f                // Escala TINY (más pequeña que la Luna - 5% de la Tierra)
+                    1.8f, 1.5f, -1.0f,    // Posición inicial: arriba-derecha, visible
+                    0.07f                  // Escala visible
             );
             ovni.setCameraController(sharedCamera);
+
+            // 🌍 Configurar posición de la Tierra para ESQUIVARLA
+            ovni.setEarthPosition(0f, 0f, 0f);
+            ovni.setOrbitParams(
+                1.5f,   // Distancia segura al planeta (no acercarse más)
+                0.35f,  // Velocidad de exploración
+                0.0f    // (no usado en modo exploración)
+            );
+
             sceneObjects.add(ovni);
 
             Log.d(TAG, "════════════════════════════════════════════════");
-            Log.d(TAG, "  ✓ 🛸 NAVE ESPACIAL añadida (modelo 3D)");
+            Log.d(TAG, "  ✓ 🛸 OVNI EXPLORADOR con IA inteligente");
+            Log.d(TAG, "  🌍 Esquiva automáticamente la Tierra");
+            Log.d(TAG, "  📐 Radio de exploración amplio");
             Log.d(TAG, "════════════════════════════════════════════════");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creating spaceship: " + e.getMessage());
             e.printStackTrace();
         }
-        */
-        Log.d(TAG, "  ⚡ OVNI DESACTIVADO (optimización)");
 
         // BARRA DE PODER DE BATERÍA - UI ELEMENT
         BatteryPowerBar powerBar = null;
@@ -881,6 +888,8 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         }
 
         // 💥 BARRA DE COUNTDOWN PARA METEORITO DE PANTALLA 💥
+        // ⚠️ OCULTA: Funcionalidad activa pero sin visualización
+        /*
         MeteorCountdownBar meteorCountdownBar = null;
         try {
             meteorCountdownBar = new MeteorCountdownBar(
@@ -893,6 +902,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         } catch (Exception e) {
             Log.e(TAG, "  ✗ ERROR creando barra de countdown: " + e.getMessage());
         }
+        */
 
         // 🎵 INDICADOR VISUAL DE MÚSICA 🎵
         // Muestra 3 barras (BASS, MID, TREBLE) CENTRADAS, ARRIBA DEL SOL
@@ -903,8 +913,8 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
 
             musicIndicator = new MusicIndicator(
                     context,
-                    -0.35f,   // X: Centrado (ligeramente a la izquierda del centro)
-                    0.55f,    // Y: Parte superior de la pantalla
+                    -0.250f,   // X: Centrado (ligeramente a la izquierda del centro)
+                    0.2660f,    // Y: Parte superior de la pantalla
                     0.50f,    // Ancho: HORIZONTAL (más ancho que alto)
                     0.10f     // Alto: Delgado y compacto
             );
@@ -1006,7 +1016,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             likeButton.setPosition(0.80f, -0.45f);  // Esquina derecha, arriba de barra del sistema
             likeButton.setSize(0.10f);
 
-            // 💖 Sistema de partículas de corazones
+            // 💖 Sistema de partículas e corazones
             heartParticles = new HeartParticleSystem();
             heartParticles.init();
 
@@ -1082,10 +1092,13 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             meteorShower.setSceneRenderer(this);
 
             // 💥 Conectar barra de countdown de meteorito
+            // ⚠️ OCULTA: Barra de countdown desactivada visualmente
+            /*
             if (meteorCountdownBar != null) {
                 meteorShower.setCountdownBar(meteorCountdownBar);
                 Log.d(TAG, "[SceneRenderer] ✓ Barra de countdown conectada con MeteorShower");
             }
+            */
 
             // Registrar el sol, planeta Y campo de fuerza para colisiones
             for (SceneObject obj : sceneObjects) {

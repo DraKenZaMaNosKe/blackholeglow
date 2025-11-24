@@ -14,6 +14,7 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
 import java.util.List;
+import java.util.Random;
 
 /**
  * Spaceship3D - Nave espacial 3D cargada desde Spaceships.obj
@@ -49,34 +50,34 @@ public class Spaceship3D implements SceneObject, CameraAware {
     public float rotationY = 0f;
 
     // ═══════════════════════════════════════════════════════════
-    // 🛸 SISTEMA DE MOVIMIENTO AI INTELIGENTE
+    // 🛸 SISTEMA DE EXPLORACIÓN LIBRE CON IA
     // ═══════════════════════════════════════════════════════════
-    public float velocityX = 0f;
-    public float velocityY = 0f;
-    public float velocityZ = 0f;
-    private float currentSpeed = 0f;         // Velocidad actual (con aceleración)
-    private float targetSpeed = 0.8f;        // Velocidad objetivo
-    private float minSpeed = 0.3f;           // Velocidad mínima
-    private float maxSpeed = 1.5f;           // Velocidad máxima
-    private float acceleration = 0.5f;       // Aceleración
 
+    // Velocidad y dirección
+    private float velocityX = 0.3f;
+    private float velocityY = 0.1f;
+    private float velocityZ = -0.2f;
+    private float currentSpeed = 0.4f;
+    private float maxSpeed = 0.6f;
+    private float minSpeed = 0.2f;
+
+    // Comportamiento orgánico
     private float directionChangeTimer = 0f;
-    private float directionChangeInterval = 4.0f;  // Cambiar dirección cada 4 segundos
+    private float directionChangeInterval = 3.0f;
+    private float wanderAngle = 0f;             // Ángulo de deambulación suave
 
-    // Límites de la escena AMPLIADOS (para que vuele por todo el espacio)
-    private float minX = -5.0f;
-    private float maxX = 5.0f;
-    private float minY = -3.0f;
-    private float maxY = 3.0f;
-    private float minZ = -8.0f;   // Puede alejarse mucho
-    private float maxZ = 2.0f;    // Puede acercarse
+    // 🌍 LÍMITES VISIBLES (para pantalla portrait)
+    private float minX = -2.0f;
+    private float maxX = 2.0f;
+    private float minY = -1.8f;
+    private float maxY = 2.5f;
+    private float minZ = -3.0f;
+    private float maxZ = 2.0f;
 
-    // ═══════════════════════════════════════════════════════════
-    // 🎯 DETECCIÓN DE OBSTÁCULOS (PLANETAS)
-    // ═══════════════════════════════════════════════════════════
-    private float earthX = 0f, earthY = 0f, earthZ = 0f;  // Posición de la Tierra
-    private float earthRadius = 1.2f;                      // Radio de seguridad (incluye atmósfera)
-    private float avoidanceDistance = 2.5f;                // Distancia para empezar a esquivar
+    // 🌍 POSICIÓN DE LA TIERRA (para esquivarla)
+    private float earthX = 0f, earthY = 0f, earthZ = 0f;
+    private float earthRadius = 1.2f;           // Radio de seguridad de la Tierra
+    private float safeDistance = 1.8f;          // Distancia mínima al planeta
 
     // Cámara
     private CameraController camera;
@@ -87,6 +88,11 @@ public class Spaceship3D implements SceneObject, CameraAware {
 
     // ✅ CRÍTICO: Tiempo relativo para evitar overflow
     private final long startTime = System.currentTimeMillis();
+
+    // ⚡ OPTIMIZACIÓN: Random reutilizable (evita Math.random() costoso)
+    private final Random random = new Random();
+    private float randomCache1 = 0f, randomCache2 = 0f;  // Cache de valores random
+    private int frameCounter = 0;  // Para actualizar random cada N frames
 
     /**
      * Constructor
@@ -425,148 +431,119 @@ public class Spaceship3D implements SceneObject, CameraAware {
     @Override
     public void update(float deltaTime) {
         // ═══════════════════════════════════════════════════════════
-        // 🎯 DETECCIÓN DE OBSTÁCULOS - ESQUIVAR LA TIERRA
+        // 🛸 EXPLORACIÓN LIBRE CON IA INTELIGENTE (OPTIMIZADO)
         // ═══════════════════════════════════════════════════════════
+
+        // ⚡ OPTIMIZACIÓN: Actualizar cache de random cada 10 frames
+        frameCounter++;
+        if (frameCounter >= 10) {
+            frameCounter = 0;
+            randomCache1 = random.nextFloat() - 0.5f;
+            randomCache2 = random.nextFloat() - 0.5f;
+        }
+
+        // 1️⃣ DEAMBULACIÓN ORGÁNICA (cambio gradual de dirección)
+        wanderAngle += randomCache1 * 2.0f * deltaTime;
+        velocityX += (float) Math.cos(wanderAngle) * 0.1f * deltaTime;
+        velocityZ += (float) Math.sin(wanderAngle) * 0.1f * deltaTime;
+        velocityY += randomCache2 * 0.05f * deltaTime;
+
+        // 2️⃣ CAMBIO DE DIRECCIÓN PERIÓDICO
+        directionChangeTimer += deltaTime;
+        if (directionChangeTimer >= directionChangeInterval) {
+            // Nueva dirección aleatoria (solo aquí usamos random fresco)
+            float angle = random.nextFloat() * (float) (Math.PI * 2);
+            float elevation = (random.nextFloat() - 0.5f) * 0.5f;
+            velocityX = (float) Math.cos(angle) * currentSpeed;
+            velocityZ = (float) Math.sin(angle) * currentSpeed;
+            velocityY = elevation * currentSpeed;
+
+            directionChangeTimer = 0f;
+            directionChangeInterval = 2.0f + random.nextFloat() * 3.0f;
+        }
+
+        // 3️⃣ 🌍 ESQUIVAR LA TIERRA (CRÍTICO - nunca atravesar)
         float dx = x - earthX;
         float dy = y - earthY;
         float dz = z - earthZ;
-        float distanceToEarth = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+        float distToEarth = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-        // Si está demasiado cerca de la Tierra, ESQUIVAR
-        if (distanceToEarth < avoidanceDistance) {
-            // Vector de escape (alejarse de la Tierra)
-            float escapeX = dx / distanceToEarth;
-            float escapeY = dy / distanceToEarth;
-            float escapeZ = dz / distanceToEarth;
+        if (distToEarth < safeDistance) {
+            // ¡Muy cerca! Alejarse del planeta
+            float escapeForce = (safeDistance - distToEarth) / safeDistance;
+            escapeForce = escapeForce * escapeForce * 3.0f;  // Fuerza cuadrática
 
-            // Aplicar fuerza de repulsión (más fuerte cuanto más cerca)
-            float repulsionForce = (avoidanceDistance - distanceToEarth) / avoidanceDistance;
-            velocityX += escapeX * repulsionForce * 2.0f * deltaTime;
-            velocityY += escapeY * repulsionForce * 2.0f * deltaTime;
-            velocityZ += escapeZ * repulsionForce * 2.0f * deltaTime;
+            // Normalizar vector de escape
+            if (distToEarth > 0.01f) {
+                velocityX += (dx / distToEarth) * escapeForce;
+                velocityY += (dy / distToEarth) * escapeForce;
+                velocityZ += (dz / distToEarth) * escapeForce;
+            }
 
-            // Acelerar para huir rápido
-            targetSpeed = maxSpeed;
-
-            Log.d(TAG, "🚨 OVNI esquivando Tierra! Distancia: " + String.format("%.2f", distanceToEarth));
+            // Si está MUY cerca, teletransportar a distancia segura
+            if (distToEarth < earthRadius + 0.3f) {
+                float safeRadius = safeDistance + 0.5f;
+                x = earthX + (dx / distToEarth) * safeRadius;
+                y = earthY + (dy / distToEarth) * safeRadius;
+                z = earthZ + (dz / distToEarth) * safeRadius;
+            }
         }
 
-        // ═══════════════════════════════════════════════════════════
-        // 🎲 CAMBIO DE DIRECCIÓN PERIÓDICO (comportamiento orgánico)
-        // ═══════════════════════════════════════════════════════════
-        directionChangeTimer += deltaTime;
-        if (directionChangeTimer >= directionChangeInterval) {
-            changeDirection();
-            directionChangeTimer = 0f;
-
-            // Variar intervalo para movimiento menos predecible
-            directionChangeInterval = 3.0f + (float) (Math.random() * 3.0f);  // 3-6 segundos
+        // 4️⃣ NORMALIZAR VELOCIDAD
+        float speed = (float) Math.sqrt(velocityX * velocityX + velocityY * velocityY + velocityZ * velocityZ);
+        if (speed > maxSpeed) {
+            velocityX = (velocityX / speed) * maxSpeed;
+            velocityY = (velocityY / speed) * maxSpeed;
+            velocityZ = (velocityZ / speed) * maxSpeed;
+        } else if (speed < minSpeed && speed > 0.01f) {
+            velocityX = (velocityX / speed) * minSpeed;
+            velocityY = (velocityY / speed) * minSpeed;
+            velocityZ = (velocityZ / speed) * minSpeed;
         }
 
-        // ═══════════════════════════════════════════════════════════
-        // ⚡ SISTEMA DE ACELERACIÓN/DESACELERACIÓN
-        // ═══════════════════════════════════════════════════════════
-        if (currentSpeed < targetSpeed) {
-            currentSpeed += acceleration * deltaTime;
-            if (currentSpeed > targetSpeed) currentSpeed = targetSpeed;
-        } else if (currentSpeed > targetSpeed) {
-            currentSpeed -= acceleration * deltaTime;
-            if (currentSpeed < targetSpeed) currentSpeed = targetSpeed;
-        }
-
-        // Normalizar vector de velocidad
-        float magnitude = (float) Math.sqrt(
-            velocityX * velocityX +
-            velocityY * velocityY +
-            velocityZ * velocityZ
-        );
-
-        if (magnitude > 0.001f) {
-            velocityX = (velocityX / magnitude) * currentSpeed;
-            velocityY = (velocityY / magnitude) * currentSpeed;
-            velocityZ = (velocityZ / magnitude) * currentSpeed;
-        }
-
-        // ═══════════════════════════════════════════════════════════
-        // 🚀 APLICAR MOVIMIENTO
-        // ═══════════════════════════════════════════════════════════
+        // 5️⃣ APLICAR MOVIMIENTO
         x += velocityX * deltaTime;
         y += velocityY * deltaTime;
         z += velocityZ * deltaTime;
 
-        // ═══════════════════════════════════════════════════════════
-        // 🔄 REBOTE SUAVE EN LÍMITES (esquinas del espacio)
-        // ═══════════════════════════════════════════════════════════
-        boolean hitBoundary = false;
+        // 6️⃣ REBOTE SUAVE EN LÍMITES DE PANTALLA
+        if (x < minX) { x = minX; velocityX = Math.abs(velocityX) * 0.8f; }
+        if (x > maxX) { x = maxX; velocityX = -Math.abs(velocityX) * 0.8f; }
+        if (y < minY) { y = minY; velocityY = Math.abs(velocityY) * 0.8f; }
+        if (y > maxY) { y = maxY; velocityY = -Math.abs(velocityY) * 0.8f; }
+        if (z < minZ) { z = minZ; velocityZ = Math.abs(velocityZ) * 0.8f; }
+        if (z > maxZ) { z = maxZ; velocityZ = -Math.abs(velocityZ) * 0.8f; }
 
-        if (x < minX) {
-            x = minX;
-            velocityX = Math.abs(velocityX);
-            hitBoundary = true;
-        } else if (x > maxX) {
-            x = maxX;
-            velocityX = -Math.abs(velocityX);
-            hitBoundary = true;
+        // 7️⃣ ROTACIÓN - Mira hacia donde va
+        if (speed > 0.01f) {
+            float targetRotation = (float) Math.toDegrees(Math.atan2(velocityX, velocityZ));
+            // Interpolación suave de rotación
+            float rotDiff = targetRotation - rotationY;
+            while (rotDiff > 180) rotDiff -= 360;
+            while (rotDiff < -180) rotDiff += 360;
+            rotationY += rotDiff * 2.0f * deltaTime;
         }
-
-        if (y < minY) {
-            y = minY;
-            velocityY = Math.abs(velocityY);
-            hitBoundary = true;
-        } else if (y > maxY) {
-            y = maxY;
-            velocityY = -Math.abs(velocityY);
-            hitBoundary = true;
-        }
-
-        if (z < minZ) {
-            z = minZ;
-            velocityZ = Math.abs(velocityZ);
-            hitBoundary = true;
-        } else if (z > maxZ) {
-            z = maxZ;
-            velocityZ = -Math.abs(velocityZ);
-            hitBoundary = true;
-        }
-
-        // Si tocó un límite, cambiar dirección inmediatamente
-        if (hitBoundary) {
-            changeDirection();
-        }
-
-        // ═══════════════════════════════════════════════════════════
-        // 🌀 ROTACIÓN DINÁMICA (más rápida cuando acelera)
-        // ═══════════════════════════════════════════════════════════
-        float rotationSpeedFactor = currentSpeed / maxSpeed;  // 0.0 a 1.0
-        rotationY += (15f + rotationSpeedFactor * 25f) * deltaTime;  // 15-40 grados/seg
     }
 
     /**
-     * Cambia la dirección de movimiento aleatoriamente
+     * 🌍 Establece la posición de la Tierra (para esquivarla)
      */
-    private void changeDirection() {
-        // Generar dirección aleatoria
-        velocityX = (float) (Math.random() * 2.0 - 1.0) * targetSpeed;
-        velocityY = (float) (Math.random() * 2.0 - 1.0) * targetSpeed;
-        velocityZ = (float) (Math.random() * 2.0 - 1.0) * targetSpeed;
+    public void setEarthPosition(float ex, float ey, float ez) {
+        this.earthX = ex;
+        this.earthY = ey;
+        this.earthZ = ez;
+        Log.d(TAG, "🌍 Posición de Tierra para esquivar: (" + ex + ", " + ey + ", " + ez + ")");
+    }
 
-        // Normalizar el vector de velocidad para movimiento uniforme
-        float magnitude = (float) Math.sqrt(
-            velocityX * velocityX +
-            velocityY * velocityY +
-            velocityZ * velocityZ
-        );
-
-        if (magnitude > 0.001f) {
-            velocityX = (velocityX / magnitude) * targetSpeed;
-            velocityY = (velocityY / magnitude) * targetSpeed;
-            velocityZ = (velocityZ / magnitude) * targetSpeed;
-        }
-
-        Log.d(TAG, "🎯 Nueva dirección: (" +
-            String.format("%.2f", velocityX) + ", " +
-            String.format("%.2f", velocityY) + ", " +
-            String.format("%.2f", velocityZ) + ")");
+    /**
+     * ⚙️ Configurar parámetros de exploración
+     */
+    public void setOrbitParams(float radius, float speed, float height) {
+        // Convertido a parámetros de exploración
+        this.safeDistance = radius + 0.5f;  // Distancia segura al planeta
+        this.maxSpeed = speed * 2.0f;
+        this.currentSpeed = speed;
+        Log.d(TAG, "🛸 Exploración configurada: safeDistance=" + safeDistance + ", speed=" + speed);
     }
 
     @Override
