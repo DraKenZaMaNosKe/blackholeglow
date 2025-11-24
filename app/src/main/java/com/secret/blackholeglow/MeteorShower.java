@@ -50,6 +50,16 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     private SceneRenderer sceneRenderer;  // Para efectos de impacto en pantalla
     private MeteorCountdownBar countdownBar;  // Barra visual de countdown
 
+    // 🛸 REFERENCIA AL OVNI (para colisiones)
+    private Spaceship3D ovniRef = null;
+
+    // ⚡ OPTIMIZACIÓN: Lista reutilizable para evitar allocaciones en update()
+    private final List<AsteroideRealista> paraRemover = new ArrayList<>();
+
+    // ⚡ OPTIMIZACIÓN: Arrays estáticos para verificarColisiones (evita allocaciones)
+    private static final float[] POS_TIERRA = {0f, 0f, 0f};
+    private static final float[] POS_PLANETA_ORBITANTE = {3.2f, 0f, 0f};
+
     // Estadísticas
     private int totalMeteoritosLanzados = 0;
     private int totalImpactos = 0;
@@ -130,6 +140,14 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     public void setCountdownBar(MeteorCountdownBar bar) {
         this.countdownBar = bar;
         Log.d(TAG, "[MeteorShower] 💥 Barra de countdown conectada");
+    }
+
+    /**
+     * 🛸 Conecta el OVNI para detección de colisiones
+     */
+    public void setOvni(Spaceship3D ovni) {
+        this.ovniRef = ovni;
+        Log.d(TAG, "[MeteorShower] 🛸 OVNI conectado para colisiones");
     }
 
     /**
@@ -253,7 +271,8 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         }
 
         // Actualizar asteroides activos
-        List<AsteroideRealista> paraRemover = new ArrayList<>();
+        // ⚡ OPTIMIZACIÓN: Reutilizar lista en vez de crear nueva cada frame
+        paraRemover.clear();
 
         for (AsteroideRealista m : meteoritosActivos) {
             m.update(deltaTime);
@@ -270,6 +289,17 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
             // Verificar colisiones solo si está activo
             if (m.getEstado() == AsteroideRealista.Estado.ACTIVO) {
                 verificarColisiones(m);
+
+                // 🛸 VERIFICAR COLISIÓN CON OVNI
+                if (ovniRef != null && !ovniRef.isDestroyed()) {
+                    float[] pos = m.getPosicion();
+                    float meteorRadius = m.getTamaño() * 0.5f;
+                    if (ovniRef.checkMeteorCollision(pos[0], pos[1], pos[2], meteorRadius)) {
+                        ovniRef.takeDamage();
+                        m.desactivar();  // Desactivar el meteorito
+                        Log.d(TAG, "🛸💥 Meteorito impactó al OVNI!");
+                    }
+                }
             }
 
             // Si está inactivo, devolverlo al pool
@@ -659,10 +689,10 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
 
         // PRIORIDAD 2: Colisión con la TIERRA (si existe y no está muerta)
         if (sol != null && !sol.isDead()) {
-            float[] posTierra = {0, 0, 0};  // La Tierra está CENTRADA en el origen
+            // ⚡ OPTIMIZACIÓN: Usa array estático en vez de crear nuevo
             float radioTierra = 0.5f;       // Tamaño de la Tierra (1.0 de escala)
 
-            float distancia = calcularDistancia(posMeteorito, posTierra);
+            float distancia = calcularDistancia(posMeteorito, POS_TIERRA);
 
             if (distancia < (radioMeteorito + radioTierra)) {
                 // ¡IMPACTO CON LA TIERRA!
@@ -708,8 +738,8 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         // PRIORIDAD 3: Colisión con planeta orbitante
         if (planetaOrbitante != null) {
             // Aquí necesitaríamos obtener la posición actual del planeta
-            // Por ahora simplificamos con órbita ampliada
-            float distanciaPlaneta = calcularDistancia(posMeteorito, new float[]{3.2f, 0, 0});
+            // ⚡ OPTIMIZACIÓN: Usa array estático en vez de crear nuevo
+            float distanciaPlaneta = calcularDistancia(posMeteorito, POS_PLANETA_ORBITANTE);
             if (distanciaPlaneta < (radioMeteorito + 0.18f)) {
                 m.impactar();
                 crearEfectoImpacto(posMeteorito[0], posMeteorito[1], posMeteorito[2], false);

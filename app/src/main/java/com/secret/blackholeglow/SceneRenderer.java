@@ -47,6 +47,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     private HPBar hpBarSun;
     private HPBar hpBarForceField;
     private MeteorShower meteorShower;
+    private Spaceship3D ovni;  // 🛸 OVNI con IA + armas láser
     private PlayerWeapon playerWeapon;  // 🎮 NUEVO: Arma del jugador (separada de MeteorShower)
     private FireButton fireButton;      // 🎯 Botón visual de disparo con indicador de estado
     private boolean solWasDead = false;  // Para detectar cuando respawnea
@@ -742,7 +743,6 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         Log.d(TAG, "  🪨 Asteroide estático removido - ahora manejado por MeteorShower");
 
         // 🛸 NAVE ESPACIAL / OVNI - EXPLORACIÓN LIBRE CON IA
-        Spaceship3D ovni = null;
         try {
             ovni = new Spaceship3D(
                     context,
@@ -1111,6 +1111,12 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                 if (obj instanceof Planeta || obj instanceof ForceField) {
                     meteorShower.registrarObjetoColisionable(obj);
                 }
+            }
+
+            // 🛸 Conectar OVNI con MeteorShower para colisiones
+            if (ovni != null) {
+                meteorShower.setOvni(ovni);
+                Log.d(TAG, "[SceneRenderer] 🛸 OVNI conectado con MeteorShower para colisiones");
             }
 
             sceneObjects.add(meteorShower);

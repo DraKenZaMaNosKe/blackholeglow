@@ -1,215 +1,214 @@
-# 📝 Notas de Sesión - Black Hole Glow
-**Fecha:** 25 de Octubre, 2025
-**Versión:** 4.0.0
+# Black Hole Glow - Notas de Sesion
 
-## 🎯 Trabajo Realizado en esta Sesión
-
-### 1. Sistema de Saludo Personalizado
-**Archivo Nuevo:** `app/src/main/java/com/secret/blackholeglow/GreetingText.java`
-
-- ✅ Saludo basado en hora del día:
-  - 6:00-12:00: "Buenos días"
-  - 12:00-20:00: "Buenas tardes"
-  - 20:00-6:00: "Buenas noches"
-- ✅ Muestra nombre del usuario de Firebase Auth (o parte del email si no hay displayName)
-- ✅ Animación de fade in/out cada 30 segundos
-- ✅ Posición: x=0.08f, y=0.8f (parte superior izquierda)
-- ✅ Color dorado (RGB 255,215,0) con sombra negra
-- ✅ Ciclo: aparece 1s → visible 5s → desaparece 1s → espera 30s
-
-**Integración en SceneRenderer.java (líneas 673-680)**
+## Fecha: Noviembre 24, 2024
+## Version: 4.0.0
+## Branch: version-4.0.0
 
 ---
 
-### 2. Mejoras de Iluminación Realista
+## Resumen de la Sesion
 
-**Archivo:** `app/src/main/assets/shaders/planeta_iluminado_fragment.glsl`
-
-#### Cambios Implementados:
-- ✅ Luz Ambiente: 15% (reducida de 20%)
-- ✅ Luz Difusa: 90% (aumentada de 80%)
-- ✅ Specular Highlights: 0.15 (reducida de 0.4) - Brillo del sol reflejado
-- ✅ Rim Lighting: 0.10 (reducida de 0.25) - Contorno luminoso en bordes
-- ✅ Sombra propia más definida con smoothstep
-- ✅ Shininess: 32 (calidad media)
-
-**Resultado:** Planetas con lado iluminado realista y lado oscuro visible, sin efectos demasiado bruscos.
+Esta sesion se enfoco en implementar el sistema de armas del OVNI, optimizar el rendimiento del wallpaper, y preparar documentacion para exportar a Android TV.
 
 ---
 
-### 3. Ajustes de Reactividad Musical
+## Caracteristicas Implementadas
 
-**Archivo:** `app/src/main/java/com/secret/blackholeglow/Planeta.java` (línea 99)
+### 1. Sistema de Armas Laser del OVNI
 
-```java
-// Antes:
-private static final float MUSIC_SCALE_FACTOR = 0.3f;  // 30%
+**Archivo:** `UfoLaser.java` (NUEVO)
 
-// Después:
-private static final float MUSIC_SCALE_FACTOR = 0.10f; // 10% - más sutil
-```
+- Rayos laser verde/cyan con efecto de glow pulsante
+- Viajan automaticamente desde el OVNI hacia la Tierra
+- Detectan impacto con la Tierra y activan efectos en EarthShield
+- Tiempo de vida maximo: 3 segundos
+- Velocidad: 4 unidades/segundo
 
-**Motivo:** Los planetas reaccionaban muy bruscamente a los impactos de meteoritos.
+**Caracteristicas tecnicas:**
+- Shader estatico compartido (compilado una sola vez para todas las instancias)
+- FloatBuffer estatico reutilizable
+- Sin allocaciones en runtime (update/draw)
+- Usa distancia al cuadrado para colisiones (evita sqrt)
 
----
+### 2. Sistema de Disparo Automatico del OVNI
 
-### 4. Configuración Orbital Final (ÚLTIMO CAMBIO)
+**Archivo:** `Spaceship3D.java` (MODIFICADO)
 
-**Archivo:** `app/src/main/java/com/secret/blackholeglow/SceneRenderer.java`
+- Disparo automatico cada 3-7 segundos (intervalo aleatorio)
+- Los laseres apuntan automaticamente a la Tierra
+- Conexion con EarthShield para efectos de impacto
 
-#### 🌟 Sol (líneas 472-477)
-```java
-- Posición: Centro (0, 0)
-- Tamaño: 0.45 (estrella principal)
-- Rotación: 35.0 (muy visible)
-- Sin órbita (es el centro del sistema)
-```
+### 3. Sistema de Vida del OVNI
 
-#### 🌍 Planeta Tierra (líneas 561-564)
-```java
-- Órbita: 2.4 × 2.0 (más cercana al Sol)
-- Tamaño: 0.15 (realista, más pequeña que el Sol)
-- Rotación: 80.0 (muy perceptible)
-- Velocidad orbital: 0.25
-- Textura: texturaplanetatierra
-```
+**Archivo:** `Spaceship3D.java` (MODIFICADO)
 
-#### 🌙 Luna (línea 629)
-```java
-- Órbita alrededor de Tierra: 0.6 × 0.5 (más cercana)
-- Tamaño: 0.06 (pequeña, proporción realista)
-- Rotación: 20.0 (visible)
-- Periodo orbital: 40 segundos (1/90 hora)
-- Textura: textura_luna
-```
+- **HP:** 3 puntos de vida
+- **Dano:** Meteoritos causan 1 HP de dano
+- **Invencibilidad:** 1.5 segundos despues de recibir dano (con parpadeo visual)
+- **Destruccion:** Al llegar a 0 HP, el OVNI explota
+- **Respawn:** Reaparece despues de 8 segundos en posicion aleatoria segura
 
-#### 🔴 Planeta Marte (líneas 595-598, 611)
-```java
-- Órbita: 3.2 × 2.7 (ligeramente más cercana)
-- Tamaño: 0.12 (más pequeño que Tierra)
-- Rotación: 90.0 (muy rápida, casi el doble)
-- Periodo orbital: 1 minuto REAL (1/60 hora)
-- Textura: textura_marte
-```
+### 4. Colision OVNI-Meteoritos
 
----
+**Archivo:** `MeteorShower.java` (MODIFICADO)
 
-### 5. Historial de Ajustes Orbitales
+- Detecta colisiones entre meteoritos activos y el OVNI
+- Cuando un meteorito impacta al OVNI, causa dano y se desactiva
+- Metodo `setOvni(Spaceship3D)` para conectar el sistema
 
-#### Iteración 1 - Luna más rápida
-- Luna: 60s → 40s por órbita
+### 5. Documentacion para Android TV
 
-#### Iteración 2 - Más espacio
-- Luna: 0.5×0.4 → 0.8×0.65
-- Sol: 0.55 → 0.32
-- Tierra: 2.2×1.8 → 2.8×2.3
-- Marte: 3.0×2.5 → 3.6×3.0
+**Archivo:** `exportTv.md` (NUEVO)
 
-#### Iteración 3 - Escala realista
-- Sol: 0.32 → 0.45
-- Tierra: 0.24 → 0.15
-- Luna: 0.10 → 0.06
-- Marte: 0.18 → 0.12
-
-#### Iteración 4 - Rotaciones visibles
-- Sol: 7.0 → 15.0 → 35.0
-- Tierra: 30.0 → 50.0 → 80.0
-- Luna: 10.0 → 20.0
-- Marte: 25.0 → 45.0 → 90.0
-- Marte orbital: 60 min → 1 min
-
-#### Iteración 5 - ACTUAL (Más cercanos)
-- Tierra: 2.8×2.3 → 2.4×2.0
-- Luna: 0.8×0.65 → 0.6×0.5
-- Marte: 3.6×3.0 → 3.2×2.7
+Guia completa para integrar el wallpaper en Android TV:
+- Lista de archivos Java a copiar
+- Shaders necesarios
+- Texturas y modelos 3D
+- Configuracion de DreamService
+- Adaptaciones para pantalla landscape
+- Checklist de integracion
 
 ---
 
-## 🔋 Próximo Trabajo - Optimización de Batería
+## Optimizaciones de Rendimiento
 
-**Problema reportado:** La batería se consume muy rápido
+### UfoLaser.java
+- Shader estatico compartido (compilado 1 vez)
+- FloatBuffer estatico (sin allocaciones por instancia)
+- Array de vertices estatico reutilizable
+- Colisiones con distancia al cuadrado (sin sqrt)
 
-### Posibles Causas:
-1. **Tasa de refresco OpenGL** - ¿60 FPS constantes?
-2. **Shaders complejos** - Iluminación Phong + efectos
-3. **Firebase** - Actualizaciones en tiempo real
-4. **Música/Audio** - Análisis de frecuencias
-5. **Depth test + Blending** - Operaciones costosas
+### Spaceship3D.java
+- `laserMvp[]` y `identityModel[]` como campos de instancia
+- `checkMeteorCollision()` usa distancia al cuadrado
+- Cache de valores random cada 10 frames (ya existia)
 
-### Estrategias a Investigar:
-- [ ] Limitar FPS a 30 en modo wallpaper
-- [ ] Simplificar shaders cuando batería < 20%
-- [ ] Pausar efectos cuando pantalla apagada
-- [ ] Optimizar draw calls (batching)
-- [ ] Verificar logcat para wakelocks
-- [ ] Revisar uso de `GLES20.glFinish()` innecesarios
+### MeteorShower.java
+- `paraRemover` es campo de instancia con `.clear()` (evita crear ArrayList cada frame)
+- `POS_TIERRA[]` y `POS_PLANETA_ORBITANTE[]` son arrays estaticos finales
+- Elimina `new float[]{}` en cada verificacion de colision
 
-### Comandos para Diagnóstico:
+---
+
+## Archivos Modificados/Creados
+
+| Archivo | Estado | Descripcion |
+|---------|--------|-------------|
+| `UfoLaser.java` | NUEVO | Clase de proyectiles laser optimizada |
+| `Spaceship3D.java` | MODIFICADO | Sistema de armas, HP, respawn, optimizaciones |
+| `MeteorShower.java` | MODIFICADO | Colisiones con OVNI, optimizaciones de memoria |
+| `SceneRenderer.java` | MODIFICADO | Conexion OVNI con EarthShield y MeteorShower |
+| `exportTv.md` | NUEVO | Documentacion para Android TV |
+
+---
+
+## Estado Actual del OVNI (Spaceship3D)
+
+```
+Exploracion IA:
+- Deambulacion organica con cambio gradual de direccion
+- Esquiva automaticamente la Tierra (nunca atraviesa)
+- Limites de pantalla portrait: X(-2,2), Y(-1.8,2.5), Z(-3,2)
+- Distancia segura de la Tierra: 1.8 unidades
+
+Sistema de Armas:
+- Disparo automatico: cada 3-7 segundos
+- Proyectiles: UfoLaser (verde/cyan con glow)
+- Objetivo: Centro de la Tierra (0,0,0)
+
+Sistema de Vida:
+- HP: 3
+- Invencibilidad post-dano: 1.5 segundos
+- Respawn delay: 8 segundos
+```
+
+---
+
+## FPS Observados
+
+- **Rango:** 36-43 FPS
+- **Estado:** Aceptable para live wallpaper 3D
+- **Optimizaciones aplicadas:** Si (buffers estaticos, cache de random, distancias al cuadrado)
+
+---
+
+## Pendiente / Ideas Futuras
+
+1. **Explosion visual del OVNI** - Actualmente solo desaparece, podria tener efecto de explosion
+2. **Sonidos** - Efectos de sonido para disparos e impactos
+3. **Mas armas** - Diferentes tipos de proyectiles
+4. **Ajustes para Android TV** - Limites mas amplios para pantalla landscape
+5. **Dificultad progresiva** - Mas meteoritos con el tiempo
+
+---
+
+## Como Continuar
+
+### Para retomar el desarrollo:
+
+1. **Leer este archivo** para contexto
+2. **Revisar `CLAUDE.md`** para instrucciones generales del proyecto
+3. **Revisar `exportTv.md`** si se trabaja en version TV
+
+### Comandos utiles:
+
 ```bash
-# Ver consumo de batería
-adb shell dumpsys batterystats com.secret.blackholeglow
+# Compilar
+./gradlew assembleDebug
 
-# Ver wakelocks
-adb shell dumpsys power | grep -i wake
+# Instalar en dispositivo
+adb install -r app/build/outputs/apk/debug/app-debug.apk
 
-# Ver uso de CPU/GPU
-adb shell top | grep blackholeglow
-
-# Logcat para frame timing
-adb logcat -s SceneRenderer:D | grep FPS
+# Ver logs del OVNI
+adb logcat -s Spaceship3D:D MeteorShower:D
 ```
 
----
+### Archivos clave a revisar:
 
-## 📂 Archivos Modificados en esta Sesión
-
-1. **SceneRenderer.java** (líneas 472, 477, 561, 564, 595, 598, 611, 629, 651, 673-680)
-   - Configuración orbital Sol/Tierra/Luna/Marte
-   - Integración de GreetingText
-
-2. **planeta_iluminado_fragment.glsl** (líneas 57, 62, 71, 77)
-   - Sistema de iluminación Phong mejorado
-   - Specular y Rim lighting sutiles
-
-3. **Planeta.java** (línea 99)
-   - Reducción de MUSIC_SCALE_FACTOR a 10%
-
-4. **GreetingText.java** (ARCHIVO NUEVO)
-   - Sistema completo de saludo personalizado
+- `Spaceship3D.java` - IA del OVNI, armas, vida
+- `UfoLaser.java` - Proyectiles laser
+- `MeteorShower.java` - Sistema de meteoritos y colisiones
+- `SceneRenderer.java` - Configuracion de la escena Universo
+- `EarthShield.java` - Escudo de la Tierra (efectos de impacto)
 
 ---
 
-## ✅ Estado Actual del Build
+## Notas Tecnicas
 
-- **Última compilación:** Exitosa
-- **APK instalado:** Sí (con cambios orbitales más cercanos)
-- **App funcionando:** Sí
-- **Pendiente:** Optimización de batería
+### Conexiones entre sistemas:
 
----
-
-## 🎓 Notas del Usuario
-
-> "voy a comenzar mi clase de reparacion de laptops, y quiero volver a seguir trabajando en lo que nos quedamos, voy a ver porque se consume la pila tan rapido"
-
-**Contexto de clase:** Reparación de laptops
-**Próxima tarea:** Investigar consumo excesivo de batería
-
----
-
-## 🚀 Para Retomar la Sesión
-
-1. El APK actual está instalado con todos los cambios
-2. Los planetas están configurados con órbitas más cercanas
-3. El sistema de saludo funciona correctamente
-4. La iluminación es realista pero sutil
-5. **SIGUIENTE:** Optimizar consumo de batería
-
-### Comando para Reinstalar (si necesario):
-```bash
-D:/adb/platform-tools/adb.exe install -r /d/Orbix/blackholeglow/app/build/outputs/apk/debug/app-debug.apk && D:/adb/platform-tools/adb.exe shell am force-stop com.secret.blackholeglow && D:/adb/platform-tools/adb.exe shell am start -n com.secret.blackholeglow/.LoginActivity
+```
+SceneRenderer
+    |
+    +-- Spaceship3D (OVNI)
+    |       +-- UfoLaser[] (proyectiles)
+    |       +-- -> EarthShield (para impactos de laser)
+    |
+    +-- MeteorShower
+    |       +-- -> Spaceship3D (para colisiones OVNI-meteorito)
+    |
+    +-- EarthShield
+            +-- registerImpact() (llamado por UfoLaser y MeteorShower)
 ```
 
+### Flujo de disparo:
+
+1. `Spaceship3D.update()` incrementa `shootTimer`
+2. Cuando `shootTimer >= shootInterval`, llama `shootLaser()`
+3. `shootLaser()` crea nuevo `UfoLaser` apuntando a la Tierra
+4. `UfoLaser.update()` mueve el laser y detecta colision
+5. Si `hitTarget == true`, `Spaceship3D` llama `earthShieldRef.registerImpact()`
+
+### Flujo de dano al OVNI:
+
+1. `MeteorShower.update()` detecta colision meteorito-OVNI
+2. Llama `ovniRef.checkMeteorCollision()`
+3. Si colisiona, llama `ovniRef.takeDamage()`
+4. `takeDamage()` reduce HP y activa invencibilidad
+5. Si HP <= 0, marca `destroyed = true`
+6. Despues de `respawnDelay`, llama `respawn()`
+
 ---
 
-**Fin de Sesión** 🌌
+**Ultima actualizacion:** Noviembre 24, 2024
+**Autor:** Claude Code + Usuario

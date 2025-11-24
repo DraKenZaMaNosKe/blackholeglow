@@ -110,6 +110,10 @@ public class Spaceship3D implements SceneObject, CameraAware {
     private float[] modelMatrix = new float[16];
     private float[] mvpMatrix = new float[16];
 
+    // ⚡ OPTIMIZACIÓN: Matrices estáticas para láseres (evita allocaciones en draw)
+    private final float[] laserMvp = new float[16];
+    private final float[] identityModel = new float[16];
+
     // ✅ CRÍTICO: Tiempo relativo para evitar overflow
     private final long startTime = System.currentTimeMillis();
 
@@ -634,8 +638,8 @@ public class Spaceship3D implements SceneObject, CameraAware {
     }
 
     /**
-     * 📍 Verificar colisión con un meteorito
-     * Llamar desde MeteorShower para cada meteorito
+     * 📍 Verificar colisión con un meteorito (OPTIMIZADO)
+     * ⚡ Usa distancia al cuadrado para evitar sqrt
      */
     public boolean checkMeteorCollision(float mx, float my, float mz, float mRadius) {
         if (destroyed || invincibilityTimer > 0) return false;
@@ -643,10 +647,11 @@ public class Spaceship3D implements SceneObject, CameraAware {
         float dx = x - mx;
         float dy = y - my;
         float dz = z - mz;
-        float dist = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+        float distSq = dx * dx + dy * dy + dz * dz;
 
-        // Colisión si distancia < radio del meteoro + radio del OVNI
-        return dist < (mRadius + scale * 0.5f);
+        // ⚡ Comparar distancias al cuadrado (evita sqrt)
+        float collisionRadius = mRadius + scale * 0.5f;
+        return distSq < (collisionRadius * collisionRadius);
     }
 
     /**
@@ -699,8 +704,7 @@ public class Spaceship3D implements SceneObject, CameraAware {
         this.cameraRef = camera;
 
         // 🔫 DIBUJAR LÁSERES (siempre, incluso si OVNI destruido)
-        float[] laserMvp = new float[16];
-        float[] identityModel = new float[16];
+        // ⚡ OPTIMIZACIÓN: Usa matrices de instancia (sin allocaciones)
         Matrix.setIdentityM(identityModel, 0);
         camera.computeMvp(identityModel, laserMvp);
 
