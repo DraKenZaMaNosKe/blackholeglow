@@ -760,12 +760,18 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                 0.0f    // (no usado en modo exploración)
             );
 
+            // 🛡️ Conectar con EarthShield para mostrar impactos de láser
+            if (earthShield != null) {
+                ovni.setEarthShield(earthShield);
+            }
+
             sceneObjects.add(ovni);
 
             Log.d(TAG, "════════════════════════════════════════════════");
-            Log.d(TAG, "  ✓ 🛸 OVNI EXPLORADOR con IA inteligente");
+            Log.d(TAG, "  ✓ 🛸 OVNI EXPLORADOR con IA + ARMAS LÁSER");
             Log.d(TAG, "  🌍 Esquiva automáticamente la Tierra");
-            Log.d(TAG, "  📐 Radio de exploración amplio");
+            Log.d(TAG, "  🔫 Disparo automático cada 3-7 segundos");
+            Log.d(TAG, "  💔 HP: 3 (destruido por meteoritos)");
             Log.d(TAG, "════════════════════════════════════════════════");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creating spaceship: " + e.getMessage());

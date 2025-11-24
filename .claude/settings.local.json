@@ -7,7 +7,8 @@
       "Bash(timeout 35 D:/adb/platform-tools/adb.exe:*)",
       "Bash(timeout 25 D:/adb/platform-tools/adb.exe:*)",
       "Bash(timeout 20 D:/adb/platform-tools/adb.exe:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\n🛸 OVNI con IA Inteligente + Optimizaciones de Rendimiento\n\n- Spaceship3D: Sistema de exploración libre con deambulación orgánica\n- OVNI esquiva automáticamente la Tierra (nunca atraviesa)\n- Optimización: Cache de random cada 10 frames (reduce llamadas Math.random)\n- MusicIndicator: Mejoras en ecualizador visual\n- SceneRenderer: OVNI habilitado, barra countdown oculta\n- CLAUDE.md actualizado con notas de sesión Nov 23, 2024\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []

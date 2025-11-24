@@ -74,10 +74,34 @@ public class Spaceship3D implements SceneObject, CameraAware {
     private float minZ = -3.0f;
     private float maxZ = 2.0f;
 
-    // 🌍 POSICIÓN DE LA TIERRA (para esquivarla)
+    // 🌍 POSICIÓN DE LA TIERRA (para esquivarla y dispararle)
     private float earthX = 0f, earthY = 0f, earthZ = 0f;
     private float earthRadius = 1.2f;           // Radio de seguridad de la Tierra
     private float safeDistance = 1.8f;          // Distancia mínima al planeta
+
+    // 🔫 SISTEMA DE ARMAS
+    private java.util.ArrayList<UfoLaser> lasers = new java.util.ArrayList<>();
+    private float shootTimer = 0f;
+    private float shootInterval = 4.0f;         // Disparar cada 4 segundos (varía)
+    private float minShootInterval = 3.0f;
+    private float maxShootInterval = 7.0f;
+    private CameraController cameraRef;         // Para pasar MVP a láseres
+
+    // 💔 SISTEMA DE VIDA
+    private int health = 3;                     // 3 golpes = destruido
+    private boolean destroyed = false;
+    private float respawnTimer = 0f;
+    private float respawnDelay = 8.0f;          // Reaparece después de 8 segundos
+    private float invincibilityTimer = 0f;      // Invencibilidad después de golpe
+    private float invincibilityDuration = 1.5f;
+
+    // 💥 EXPLOSIÓN
+    private boolean exploding = false;
+    private float explosionTimer = 0f;
+    private float explosionDuration = 1.0f;
+
+    // 🌍 Referencia al escudo para impactos
+    private EarthShield earthShieldRef;
 
     // Cámara
     private CameraController camera;
@@ -523,6 +547,127 @@ public class Spaceship3D implements SceneObject, CameraAware {
             while (rotDiff < -180) rotDiff += 360;
             rotationY += rotDiff * 2.0f * deltaTime;
         }
+
+        // 8️⃣ 🔫 SISTEMA DE DISPARO AUTOMÁTICO
+        shootTimer += deltaTime;
+        if (shootTimer >= shootInterval) {
+            shootLaser();
+            shootTimer = 0f;
+            // Intervalo aleatorio para siguiente disparo
+            shootInterval = minShootInterval + random.nextFloat() * (maxShootInterval - minShootInterval);
+        }
+
+        // 9️⃣ ACTUALIZAR LÁSERES
+        for (int i = lasers.size() - 1; i >= 0; i--) {
+            UfoLaser laser = lasers.get(i);
+            laser.update(deltaTime, earthX, earthY, earthZ, earthRadius);
+
+            // Si el láser impactó la Tierra, notificar al escudo
+            if (laser.hitTarget && earthShieldRef != null) {
+                earthShieldRef.registerImpact(laser.x, laser.y, laser.z);
+            }
+
+            // Remover láseres inactivos
+            if (!laser.active) {
+                lasers.remove(i);
+            }
+        }
+
+        // 🔟 INVENCIBILIDAD POST-GOLPE
+        if (invincibilityTimer > 0) {
+            invincibilityTimer -= deltaTime;
+        }
+    }
+
+    /**
+     * 🔫 Disparar láser hacia la Tierra
+     */
+    private void shootLaser() {
+        if (destroyed) return;
+
+        // Crear láser desde la posición actual hacia la Tierra
+        UfoLaser laser = new UfoLaser(x, y - 0.05f, z, earthX, earthY, earthZ);
+        lasers.add(laser);
+        Log.d(TAG, "🔫 OVNI disparó láser! Total activos: " + lasers.size());
+    }
+
+    /**
+     * 💔 Recibir daño de meteorito
+     */
+    public void takeDamage() {
+        if (destroyed || invincibilityTimer > 0) return;
+
+        health--;
+        invincibilityTimer = invincibilityDuration;
+        Log.d(TAG, "💔 OVNI golpeado! HP restante: " + health);
+
+        if (health <= 0) {
+            destroyed = true;
+            exploding = true;
+            explosionTimer = 0f;
+            Log.d(TAG, "💥 OVNI DESTRUIDO!");
+        }
+    }
+
+    /**
+     * 🔄 Reaparcer OVNI después de destrucción
+     */
+    public void respawn() {
+        destroyed = false;
+        exploding = false;
+        health = 3;
+        invincibilityTimer = invincibilityDuration;
+
+        // Posición aleatoria segura
+        x = (random.nextFloat() - 0.5f) * 3f;
+        y = 1.5f + random.nextFloat();
+        z = -1f + random.nextFloat();
+
+        Log.d(TAG, "🛸 OVNI reapareció con 3 HP");
+    }
+
+    /**
+     * 🌍 Establecer referencia al escudo de la Tierra
+     */
+    public void setEarthShield(EarthShield shield) {
+        this.earthShieldRef = shield;
+    }
+
+    /**
+     * 📍 Verificar colisión con un meteorito
+     * Llamar desde MeteorShower para cada meteorito
+     */
+    public boolean checkMeteorCollision(float mx, float my, float mz, float mRadius) {
+        if (destroyed || invincibilityTimer > 0) return false;
+
+        float dx = x - mx;
+        float dy = y - my;
+        float dz = z - mz;
+        float dist = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        // Colisión si distancia < radio del meteoro + radio del OVNI
+        return dist < (mRadius + scale * 0.5f);
+    }
+
+    /**
+     * 🎯 Obtener láseres activos para dibujar
+     */
+    public java.util.ArrayList<UfoLaser> getLasers() {
+        return lasers;
+    }
+
+    /**
+     * ❓ Verificar si el OVNI está destruido
+     */
+    public boolean isDestroyed() {
+        return destroyed;
+    }
+
+    /**
+     * ❓ Verificar si el OVNI está explotando
+     */
+    public boolean isExploding() {
+        return exploding;
     }
 
     /**
@@ -549,6 +694,30 @@ public class Spaceship3D implements SceneObject, CameraAware {
     @Override
     public void draw() {
         if (camera == null) return;
+
+        // Guardar referencia a la cámara para los láseres
+        this.cameraRef = camera;
+
+        // 🔫 DIBUJAR LÁSERES (siempre, incluso si OVNI destruido)
+        float[] laserMvp = new float[16];
+        float[] identityModel = new float[16];
+        Matrix.setIdentityM(identityModel, 0);
+        camera.computeMvp(identityModel, laserMvp);
+
+        for (UfoLaser laser : lasers) {
+            if (laser.active) {
+                laser.draw(laserMvp);
+            }
+        }
+
+        // No dibujar OVNI si está destruido
+        if (destroyed) return;
+
+        // Parpadeo durante invencibilidad
+        if (invincibilityTimer > 0) {
+            // Parpadear rápido (no dibujar en frames alternos)
+            if ((int)(invincibilityTimer * 10) % 2 == 0) return;
+        }
 
         // Deshabilitar face culling (para ver todas las caras)
         GLES20.glDisable(GLES20.GL_CULL_FACE);
