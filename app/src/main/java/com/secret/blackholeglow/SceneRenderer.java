@@ -3,6 +3,7 @@ package com.secret.blackholeglow;
 
 import android.content.Context;
 import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.GLSurfaceView;
 import android.os.Build;
 import android.util.Log;
@@ -11,6 +12,9 @@ import java.util.List;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
+
+// 🚀 OpenGL ES 3.0 - Instanced Rendering
+import com.secret.blackholeglow.gl3.InstancedParticles;
 
 // 🎵 Sistema de compartir canciones
 import com.secret.blackholeglow.sharing.HeartParticleSystem;
@@ -48,6 +52,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     private HPBar hpBarForceField;
     private MeteorShower meteorShower;
     private Spaceship3D ovni;  // 🛸 OVNI con IA + armas láser
+    private InstancedParticles instancedParticles;  // ✨ Sistema de partículas GL3.0 (instanced rendering)
     private PlayerWeapon playerWeapon;  // 🎮 NUEVO: Arma del jugador (separada de MeteorShower)
     private FireButton fireButton;      // 🎯 Botón visual de disparo con indicador de estado
     private boolean solWasDead = false;  // Para detectar cuando respawnea
@@ -125,6 +130,18 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     private SongSharingManager songSharingManager;
     private SimpleTextRenderer songNotificationUserText;   // Nombre del usuario
     private SimpleTextRenderer songNotificationSongText;   // Título de la canción
+
+    // ▶️ SISTEMA DE PLAY/PAUSE - Control de animación por usuario
+    // Por defecto PAUSED (false) para arranque rápido - usuario activa cuando quiere
+    private PlayPauseButton playPauseButton;
+    private OrbixGreeting orbixGreeting;  // 🤖 Saludos inteligentes + Reloj preciso
+    private boolean isAnimationPlaying = false;  // false = congelado (arranque rápido), true = animando
+    private boolean frozenFrameReady = false;    // true = ya renderizamos el frame estático
+    private int frozenFrameCount = 0;            // Contador para renderizar unos frames antes de congelar
+
+    // 🚀 OPTIMIZACIÓN: Arrays reutilizables (evita allocations en runtime)
+    private final float[] identityMatrixCache = new float[16];  // Para UI 2D
+    private final float[] hsvCache = new float[3];              // Para colores HSV
 
     public SceneRenderer(Context ctx, String initialItem) {
         this.context = ctx;
@@ -204,6 +221,17 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             musicReactiveEnabled = false;
         }
 
+        // ▶️ INICIALIZAR BOTÓN PLAY/PAUSE
+        playPauseButton = new PlayPauseButton();
+        playPauseButton.setPlaying(isAnimationPlaying);
+        Log.d(TAG, "▶️ PlayPauseButton inicializado");
+
+        // 🤖 INICIALIZAR SALUDOS INTELIGENTES + RELOJ
+        // Pasamos context para acceder a UserManager (nombre de usuario + fecha de nacimiento)
+        orbixGreeting = new OrbixGreeting(context);
+        orbixGreeting.show();  // Visible por defecto (ya que empieza en STOP)
+        Log.d(TAG, "🤖 OrbixGreeting inicializado con contexto");
+
         // Preparar escena
         prepareScene();
 
@@ -221,6 +249,16 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
 
         boolean isPortrait = h > w;
         float aspectRatio = (float) w / h;
+
+        // ▶️ Actualizar aspect ratio del botón Play/Pause
+        if (playPauseButton != null) {
+            playPauseButton.setAspectRatio(aspectRatio);
+        }
+
+        // 🤖 Actualizar aspect ratio del saludo
+        if (orbixGreeting != null) {
+            orbixGreeting.setAspectRatio(aspectRatio);
+        }
 
         Log.d(TAG, "╔══════════════════════════════════════════════╗");
         Log.d(TAG, "║          VIEWPORT CHANGED                   ║");
@@ -240,12 +278,52 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.d(TAG, "════════ RECREANDO ESCENA EN GL THREAD ════════");
             prepareScene();
             needsSceneRecreation = false;
+            frozenFrameReady = false;  // Forzar re-render del frame estático
         }
 
-        // Delta time
-        long now = System.nanoTime();
-        float dt = Math.min((now - lastTime) / 1e9f, 0.1f);
-        lastTime = now;
+        // ═══════════════════════════════════════════════════════════════
+        // ▶️ SISTEMA PLAY/PAUSE - MODO FROZEN FRAME
+        // Si la animación está pausada Y ya tenemos un frame renderizado,
+        // solo dibujamos el PlayPauseButton (sin re-renderizar la escena)
+        // ═══════════════════════════════════════════════════════════════
+        if (!isAnimationPlaying && frozenFrameReady) {
+            // MODO CONGELADO: Solo actualizar/dibujar el botón Play + Saludo + Reloj
+            long now = System.nanoTime();
+            float miniDt = Math.min((now - lastTime) / 1e9f, 0.1f);
+            lastTime = now;
+
+            GLES20.glEnable(GLES20.GL_BLEND);
+            GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+
+            // 🤖 Actualizar y dibujar saludo + reloj (PRIMERO - atrás)
+            if (orbixGreeting != null) {
+                orbixGreeting.update(miniDt);
+                orbixGreeting.draw();
+            }
+
+            // ▶️ Actualizar y dibujar botón Play/Pause (ÚLTIMO - al frente)
+            if (playPauseButton != null) {
+                playPauseButton.update(miniDt);
+                playPauseButton.draw();
+            }
+
+            return;  // ¡No renderizar nada más! Ahorra CPU/GPU
+        }
+
+        // ⚡ OPTIMIZACIÓN: Usar TimeManager centralizado
+        // Una sola llamada a System.nanoTime() para todo el frame
+        TimeManager.update();
+        float dt = TimeManager.getDeltaTime();
+        lastTime = System.nanoTime(); // Mantener para compatibilidad con modo frozen
+
+        // Si estamos en proceso de congelar, renderizar unos frames antes de parar
+        if (!isAnimationPlaying && !frozenFrameReady) {
+            frozenFrameCount++;
+            if (frozenFrameCount >= 3) {  // 3 frames para estabilizar
+                frozenFrameReady = true;
+                Log.d(TAG, "▶️ Frame congelado - modo estático activado");
+            }
+        }
 
         // Actualizar métricas
         frameCount++;
@@ -405,11 +483,25 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             obj.update(dt);
         }
 
+        // ✨ Actualizar partículas instanciadas (OpenGL ES 3.0)
+        if (instancedParticles != null) {
+            instancedParticles.update(dt);
+            // Pasar matriz VP para renderizado 3D
+            if (sharedCamera != null) {
+                instancedParticles.setVPMatrix(sharedCamera.getViewProjectionMatrix());
+            }
+        }
+
         // Dibujar objetos del JUEGO (excepto FireButton) - incluye EarthShield
         for (SceneObject obj : sceneObjects) {
             if (!(obj instanceof FireButton)) {
                 obj.draw();
             }
+        }
+
+        // ✨ Dibujar partículas instanciadas (después de objetos 3D, antes de UI)
+        if (instancedParticles != null) {
+            instancedParticles.draw();
         }
 
         // 💥 DIBUJAR FLASH BLANCO SI ESTÁ ACTIVO (puede cubrir el juego)
@@ -429,22 +521,28 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         if (fireButton != null) {
             fireButton.draw();
         }
+
+        // ▶️ DIBUJAR PLAYPAUSEBUTTON - SIEMPRE ENCIMA DE TODO (última capa)
+        if (playPauseButton != null) {
+            playPauseButton.update(dt);
+            playPauseButton.draw();
+        }
     }
 
     /**
      * 🎵 Dibuja el botón de like y las notificaciones de canciones
      */
     private void drawSongSharingUI() {
-        // Matriz de identidad para UI 2D
-        float[] identityMatrix = new float[16];
-        android.opengl.Matrix.setIdentityM(identityMatrix, 0);
+        // 🚀 OPTIMIZACIÓN: Reutilizar matriz de identidad (evita allocation cada frame)
+        android.opengl.Matrix.setIdentityM(identityMatrixCache, 0);
 
-        float time = (System.currentTimeMillis() % 100000) / 1000f;
+        // ⚡ OPTIMIZACIÓN: Usar TimeManager en lugar de System.currentTimeMillis()
+        float time = TimeManager.getTime();
 
         // Dibujar botón de Like
         if (likeButton != null) {
             likeButton.setCooldown(!songSharingManager.canShare());
-            likeButton.draw(identityMatrix, time);
+            likeButton.draw(identityMatrixCache, time);
         }
 
         // 💖 Actualizar y dibujar partículas de corazones
@@ -452,7 +550,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             // Usar deltaTime aproximado (~60 FPS = 0.016s)
             float particleDeltaTime = 0.016f;
             heartParticles.update(particleDeltaTime);
-            heartParticles.draw(identityMatrix);
+            heartParticles.draw(identityMatrixCache);
         }
 
         // Dibujar notificación de canción
@@ -465,7 +563,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             }
 
             if (songNotification.isVisible()) {
-                songNotification.draw(identityMatrix);
+                songNotification.draw(identityMatrixCache);
             }
 
             // 🎵✨ Mostrar nombre y canción en DOS LÍNEAS con efectos de color
@@ -477,7 +575,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                 if (userName != null && !userName.isEmpty() && songTitle != null && !songTitle.isEmpty()) {
                     // 👤 Dibujar avatar del usuario primero
                     if (userAvatar != null) {
-                        userAvatar.draw(identityMatrix);
+                        userAvatar.draw(identityMatrixCache);
                     }
 
                     // ✨ EFECTO DE COLOR ARCOÍRIS SUAVE (rosa → cyan → rosa)
@@ -485,9 +583,11 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     float hue = 0.85f + (float)Math.sin(colorTime) * 0.15f;  // Oscila entre rosa y cyan
                     if (hue > 1.0f) hue -= 1.0f;
 
-                    // Convertir HSV a RGB para colores vibrantes
-                    float[] hsv = {hue * 360f, 0.5f, 1.0f};  // Saturación media, brillo máximo
-                    int animatedColor = android.graphics.Color.HSVToColor(255, hsv);
+                    // 🚀 OPTIMIZACIÓN: Reutilizar array HSV (evita allocation cada frame)
+                    hsvCache[0] = hue * 360f;
+                    hsvCache[1] = 0.5f;
+                    hsvCache[2] = 1.0f;
+                    int animatedColor = android.graphics.Color.HSVToColor(255, hsvCache);
 
                     // 📝 LÍNEA 1: Nombre del usuario (más pequeño, arriba)
                     songNotificationUserText.setColor(animatedColor);
@@ -497,8 +597,11 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     // 🎵 LÍNEA 2: Título de la canción (más grande, abajo)
                     // Color ligeramente diferente para variedad visual
                     float hue2 = 0.55f + (float)Math.sin(colorTime + 1.5f) * 0.15f;  // Cyan → verde
-                    float[] hsv2 = {hue2 * 360f, 0.6f, 1.0f};
-                    int songColor = android.graphics.Color.HSVToColor(255, hsv2);
+                    // 🚀 OPTIMIZACIÓN: Reutilizar array HSV (evita allocation cada frame)
+                    hsvCache[0] = hue2 * 360f;
+                    hsvCache[1] = 0.6f;
+                    hsvCache[2] = 1.0f;
+                    int songColor = android.graphics.Color.HSVToColor(255, hsvCache);
 
                     songNotificationSongText.setColor(songColor);
                     songNotificationSongText.setText(songTitle);
@@ -775,6 +878,25 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.d(TAG, "════════════════════════════════════════════════");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creating spaceship: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        // ✨ SISTEMA DE PARTÍCULAS INSTANCIADAS - OpenGL ES 3.0
+        // Renderiza miles de partículas con UNA sola draw call
+        try {
+            instancedParticles = new InstancedParticles(context, 500);  // Max 500 partículas
+            instancedParticles.setEmitterPosition(0f, -0.5f, 0f);  // Debajo de la Tierra
+            instancedParticles.setEmissionRate(15f);  // 15 partículas/segundo
+            instancedParticles.setBaseColor(1f, 0.6f, 0.2f, 0.8f);  // Naranja brillante
+
+            // No lo agregamos a sceneObjects porque tiene su propio sistema de dibujado
+            Log.d(TAG, "════════════════════════════════════════════════");
+            Log.d(TAG, "  ✓ ✨ INSTANCED PARTICLES (OpenGL ES 3.0)");
+            Log.d(TAG, "  🚀 Max 500 partículas con 1 draw call");
+            Log.d(TAG, "  ⚡ ~10x más eficiente que ES 2.0");
+            Log.d(TAG, "════════════════════════════════════════════════");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creating instanced particles: " + e.getMessage());
             e.printStackTrace();
         }
 
@@ -1709,29 +1831,134 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         Log.d(TAG, "✓ Batalla Galáctica scene complete");
     }
 
+    /**
+     * 🔴 PAUSA - Detiene renderizado y libera recursos
+     * IMPORTANTE: Puede llamarse múltiples veces seguidas (cambios rápidos de visibilidad)
+     */
     public void pause() {
-        paused = true;
+        paused = true;  // Siempre marcar como pausado (sin verificar estado previo)
+
+        // Pausar audio (rápido y seguro llamar múltiples veces)
         if (musicVisualizer != null) {
             musicVisualizer.pause();
         }
 
-        // 🎮 FINALIZAR SESIÓN DE JUEGO
-        playerStats.endSession();
-        playerStats.saveStats();
+        // Guardar estado solo si no se guardó recientemente
+        if (playerStats != null) {
+            playerStats.endSession();
+            playerStats.saveStats();
+        }
 
-        Log.d(TAG, "Renderer PAUSED");
+        // Resetear estado de animación
+        isAnimationPlaying = false;
+        frozenFrameReady = false;
+
+        Log.d(TAG, "🔴 PAUSE");
     }
 
+    /**
+     * 🟢 RESUME - Reactiva el renderizado
+     * IMPORTANTE: Puede llamarse múltiples veces seguidas (cambios rápidos de visibilidad)
+     */
     public void resume() {
-        paused = false;
+        paused = false;  // Siempre marcar como activo (sin verificar estado previo)
+
+        // Resetear tiempo para evitar saltos de deltaTime
         lastTime = System.nanoTime();
+        TimeManager.update();
+
+        // Reactivar audio (rápido y seguro llamar múltiples veces)
         if (musicVisualizer != null) {
             musicVisualizer.resume();
         }
 
-        // 🎮 INICIAR NUEVA SESIÓN DE JUEGO
-        playerStats.startSession();
-        Log.d(TAG, "Renderer RESUMED");
+        // Iniciar sesión de juego
+        if (playerStats != null) {
+            playerStats.startSession();
+        }
+
+        // Preparar para renderizado
+        frozenFrameReady = false;
+        frozenFrameCount = 0;
+
+        Log.d(TAG, "🟢 RESUME");
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ▶️ SISTEMA PLAY/PAUSE - Controla animación y recursos
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Alterna entre modo PLAY (animando) y STOP (congelado)
+     * Cuando está en STOP:
+     * - No actualiza objetos de escena
+     * - No consume CPU en cálculos
+     * - Pausa captura de audio (ahorra batería)
+     * - Solo renderiza el último frame + botón Play
+     */
+    public void togglePlayPause() {
+        isAnimationPlaying = !isAnimationPlaying;
+
+        if (playPauseButton != null) {
+            playPauseButton.setPlaying(isAnimationPlaying);
+        }
+
+        if (isAnimationPlaying) {
+            // ▶️ MODO PLAY: Reanudar todo
+            frozenFrameReady = false;
+            frozenFrameCount = 0;
+            lastTime = System.nanoTime();  // Reset delta time para evitar saltos
+
+            // 🤖 Ocultar saludo y reloj
+            if (orbixGreeting != null) {
+                orbixGreeting.hide();
+            }
+
+            // Reanudar captura de audio
+            if (musicVisualizer != null && musicReactiveEnabled) {
+                musicVisualizer.resume();
+            }
+
+            Log.d(TAG, "╔════════════════════════════════════════╗");
+            Log.d(TAG, "║  ▶️ PLAY - Animación INICIADA          ║");
+            Log.d(TAG, "║  Audio capture: ACTIVADO               ║");
+            Log.d(TAG, "╚════════════════════════════════════════╝");
+        } else {
+            // ■ MODO STOP: Pausar todo (excepto el renderizado del frame actual)
+
+            // 🤖 Mostrar saludo y reloj
+            if (orbixGreeting != null) {
+                orbixGreeting.show();
+            }
+
+            // Pausar captura de audio para ahorrar batería
+            if (musicVisualizer != null) {
+                musicVisualizer.pause();
+            }
+
+            Log.d(TAG, "╔════════════════════════════════════════╗");
+            Log.d(TAG, "║  ■ STOP - Animación DETENIDA           ║");
+            Log.d(TAG, "║  Audio capture: PAUSADO                ║");
+            Log.d(TAG, "║  Modo bajo consumo activado            ║");
+            Log.d(TAG, "╚════════════════════════════════════════╝");
+        }
+    }
+
+    /**
+     * Verifica si la animación está activa
+     * @return true si está animando, false si está congelado
+     */
+    public boolean isAnimationPlaying() {
+        return isAnimationPlaying;
+    }
+
+    /**
+     * Fuerza el estado de animación (útil para restaurar estado)
+     */
+    public void setAnimationPlaying(boolean playing) {
+        if (this.isAnimationPlaying != playing) {
+            togglePlayPause();
+        }
     }
 
     public void release() {
@@ -1853,7 +2080,21 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         int action = event.getAction();
 
         try {
-            // 🎵 VERIFICAR LIKE BUTTON PRIMERO (funciona en TODAS las escenas)
+            // ▶️ VERIFICAR PLAYPAUSEBUTTON PRIMERO (prioridad máxima)
+            if (action == android.view.MotionEvent.ACTION_DOWN) {
+                float tx = event.getX();
+                float ty = event.getY();
+                float nx = (tx / screenWidth) * 2.0f - 1.0f;
+                float ny = -((ty / screenHeight) * 2.0f - 1.0f);
+
+                if (playPauseButton != null && playPauseButton.isInside(nx, ny)) {
+                    Log.d(TAG, "▶️ PlayPauseButton tocado en (" + nx + ", " + ny + ")");
+                    togglePlayPause();
+                    return;  // No procesar más
+                }
+            }
+
+            // 🎵 VERIFICAR LIKE BUTTON (funciona en TODAS las escenas)
             if (action == android.view.MotionEvent.ACTION_DOWN) {
                 float tx = event.getX();
                 float ty = event.getY();

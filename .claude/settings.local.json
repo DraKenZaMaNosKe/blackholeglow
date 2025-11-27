@@ -8,7 +8,13 @@
       "Bash(timeout 25 D:/adb/platform-tools/adb.exe:*)",
       "Bash(timeout 20 D:/adb/platform-tools/adb.exe:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\n🛸 OVNI con IA Inteligente + Optimizaciones de Rendimiento\n\n- Spaceship3D: Sistema de exploración libre con deambulación orgánica\n- OVNI esquiva automáticamente la Tierra (nunca atraviesa)\n- Optimización: Cache de random cada 10 frames (reduce llamadas Math.random)\n- MusicIndicator: Mejoras en ecualizador visual\n- SceneRenderer: OVNI habilitado, barra countdown oculta\n- CLAUDE.md actualizado con notas de sesión Nov 23, 2024\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(git commit -m \"$(cat <<''EOF''\n🛸 OVNI con IA Inteligente + Optimizaciones de Rendimiento\n\n- Spaceship3D: Sistema de exploración libre con deambulación orgánica\n- OVNI esquiva automáticamente la Tierra (nunca atraviesa)\n- Optimización: Cache de random cada 10 frames (reduce llamadas Math.random)\n- MusicIndicator: Mejoras en ecualizador visual\n- SceneRenderer: OVNI habilitado, barra countdown oculta\n- CLAUDE.md actualizado con notas de sesión Nov 23, 2024\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git commit -m \"$(cat <<''EOF''\n🔫 Sistema de Armas Láser del OVNI + Documentación TV\n\nNUEVO: UfoLaser.java\n- Rayos láser verde/cyan con efecto glow\n- Viajan hacia la Tierra automáticamente\n- Impactan y activan efectos en EarthShield\n\nMEJORADO: Spaceship3D.java\n- Disparo automático cada 3-7 segundos\n- Sistema de vida (3 HP)\n- Parpadeo durante invencibilidad\n- Respawn después de 8 segundos\n- Métodos para colisión con meteoritos\n\nACTUALIZADO: SceneRenderer.java\n- OVNI conectado con EarthShield para impactos\n\nNUEVO: exportTv.md\n- Guía completa para integrar en Android TV\n- Lista de archivos a copiar\n- Configuración de DreamService\n- Adaptaciones para pantalla landscape\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git commit:*)",
+      "Bash(keytool -list -v -keystore:*)",
+      "Bash(findstr:*)",
+      "Bash(timeout 5:*)",
+      "WebFetch(domain:generativelanguage.googleapis.com)"
     ],
     "deny": [],
     "ask": []

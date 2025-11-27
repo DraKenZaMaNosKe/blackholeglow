@@ -47,11 +47,12 @@
 
     <!--
       ╔══════════════════════════════════════════════╗
-      ║     🪄 OPENGL ES 2.0 – MAGIA ACTIVADA 🪄    ║
+      ║     🚀 OPENGL ES 3.0 – PODER MÁXIMO 🚀      ║
       ╚══════════════════════════════════════════════╝
-      Requerimos OpenGL ES 2.0 para todos los efectos en SceneRenderer, shaders, etc.
+      OpenGL ES 3.0 para: Instancing, VAOs, GLSL 300 es
+      Requiere Android 4.3+ (API 18+) - 95%+ dispositivos
     -->
-    <uses-feature android:glEsVersion="0x00020000" android:required="true" />
+    <uses-feature android:glEsVersion="0x00030000" android:required="true" />
 
     <!--
       ╔════════════════════════════════════════════════════════╗
@@ -140,6 +141,19 @@
         <activity
             android:name=".activities.MainActivity"
             android:exported="true" />
+
+        <!--
+          ╔═══════════════════════════════════════════════╗
+          ║   🤖 ACTIVITY: CHAT CON GEMINI AI 🤖          ║
+          ╚═══════════════════════════════════════════════╝
+          Chat flotante con Orbix (Gemini AI)
+          Se muestra como overlay sobre el wallpaper
+        -->
+        <activity
+            android:name=".activities.GeminiChatActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.Blackholeglow.ChatOverlay" />
 
         <!--
           ╔═══════════════════════════════════════════╗

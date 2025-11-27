@@ -434,11 +434,11 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
         }
 
         // Log periódico de reactividad (cada 4 segundos)
-        long now = System.currentTimeMillis();
-        if (now - lastMusicLogTime > 4000 && musicEnergyBoost > 0.1f) {
+        // ⚡ OPTIMIZACIÓN: Usar TimeManager.hasElapsed()
+        if (TimeManager.hasElapsed(lastMusicLogTime, 4000) && musicEnergyBoost > 0.1f) {
             Log.d(TAG, String.format("⚡ [ForceField Reactivo] Treble:%.2f Energy:%.2f Brightness:%.0f%%",
                     musicTrebleIntensity, musicEnergyBoost, (musicTrebleIntensity * 50 + musicBeatFlash * 100)));
-            lastMusicLogTime = now;
+            lastMusicLogTime = TimeManager.getMillis();
         }
     }
 

@@ -160,6 +160,19 @@ public class CameraController {
         Matrix.multiplyMM(outMvp, 0, projMatrix, 0, tempMatrix, 0);
     }
 
+    // Cache para VP matrix (evita allocation cada frame)
+    private final float[] vpMatrixCache = new float[16];
+
+    /**
+     * Obtiene la matriz View-Projection (VP = P * V)
+     * Útil para instanced rendering donde solo pasamos VP al shader
+     * @return Array de 16 floats con la matriz VP
+     */
+    public float[] getViewProjectionMatrix() {
+        Matrix.multiplyMM(vpMatrixCache, 0, projMatrix, 0, viewMatrix, 0);
+        return vpMatrixCache;
+    }
+
     /**
      * Establecer objetivo de la cámara
      */

@@ -94,15 +94,8 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
     private int orbitDebugCounter = 0;
     private static final int ORBIT_DEBUG_INTERVAL = 60;  // Log cada 60 frames (~1 segundo a 60fps)
 
-    // ===== ⚡ OPTIMIZACIÓN: Caché de tiempo para evitar Calendar.getInstance() cada frame =====
-    private static java.util.Calendar cachedCalendar = java.util.Calendar.getInstance();
-    private static long lastCalendarUpdate = 0;
-    private static final long CALENDAR_UPDATE_INTERVAL = 100; // Actualizar cada 100ms (10 FPS para tiempo)
-    private static int cachedHour = 0;
-    private static int cachedMinute = 0;
-    private static int cachedSecond = 0;
-    private static int cachedMillis = 0;
-    private static int cachedDayOfYear = 0;
+    // ⚡ OPTIMIZACIÓN: Ahora usamos TimeManager centralizado en lugar de caché local
+    // Esto elimina Calendar.getInstance() completamente de esta clase
 
     // ⚡ OPTIMIZACIÓN: Arrays reutilizables para evitar allocaciones en draw()
     private float[] reusableFinalColor = new float[4];
@@ -219,23 +212,6 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
         Log.d(TAG, "CameraController asignado al planeta");
     }
 
-    /**
-     * ⚡ OPTIMIZACIÓN: Actualiza el caché de tiempo solo cuando es necesario
-     * Evita llamar Calendar.getInstance() 60 veces por segundo
-     */
-    private static void updateTimeCache() {
-        long now = System.currentTimeMillis();
-        if (now - lastCalendarUpdate >= CALENDAR_UPDATE_INTERVAL) {
-            cachedCalendar.setTimeInMillis(now);
-            cachedHour = cachedCalendar.get(java.util.Calendar.HOUR_OF_DAY);
-            cachedMinute = cachedCalendar.get(java.util.Calendar.MINUTE);
-            cachedSecond = cachedCalendar.get(java.util.Calendar.SECOND);
-            cachedMillis = cachedCalendar.get(java.util.Calendar.MILLISECOND);
-            cachedDayOfYear = cachedCalendar.get(java.util.Calendar.DAY_OF_YEAR);
-            lastCalendarUpdate = now;
-        }
-    }
-
     @Override
     public void update(float dt) {
         // Manejar respawn si está muerto
@@ -246,24 +222,16 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
             float healthPercent = (float)currentHealth / maxHealth;
             isCritical = healthPercent < 0.3f && maxHealth > 0;
 
-            // 🔥 ACTUALIZAR PARPADEO DE ADVERTENCIA (más lento, no acelerado)
+            // 🔥 ACTUALIZAR PARPADEO DE ADVERTENCIA
             if (isCritical) {
-                criticalFlashTimer += dt * 3.0f;  // Parpadea moderado (3x velocidad - menos acelerado)
+                criticalFlashTimer += dt * 3.0f;
             }
-
-            // ⚡ OPTIMIZACIÓN: Actualizar caché de tiempo UNA VEZ (compartido entre todos los planetas)
-            updateTimeCache();
 
             // ===== 🌍 ROTACIÓN - Sincronizada con tiempo real o animada =====
             if (useRealTimeRotation) {
-                // MODO TIEMPO REAL ACELERADO: Usar valores cacheados
-                // Calcular fracción del día (0.0 a 1.0) con precisión de milisegundos
-                float dayFraction = (cachedHour + cachedMinute / 60.0f + cachedSecond / 3600.0f + cachedMillis / 3600000.0f) / realTimeRotationPeriodHours;
-
-                // Aplicar aceleración de tiempo (120x = 1 minuto real = 1 hora simulada)
+                // ⚡ OPTIMIZACIÓN: Usar TimeManager en lugar de Calendar
+                float dayFraction = TimeManager.getDayFraction() * 24.0f / realTimeRotationPeriodHours;
                 dayFraction = (dayFraction * timeAccelerationFactor) % 1.0f;
-
-                // Convertir a ángulo (0 a 360 grados)
                 rotation = (dayFraction * 360.0f) % 360f;
             } else {
                 // MODO ANIMADO: Rotación continua normal
@@ -276,45 +244,29 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
 
             // ===== 🪐 ÓRBITA - Sincronizada con tiempo real o animada =====
             if (useRealTimeOrbit && orbitRadiusX > 0 && orbitRadiusZ > 0) {
-                // ⚡ OPTIMIZACIÓN: Usar valores cacheados (ya actualizados arriba)
+                // ⚡ OPTIMIZACIÓN: Usar TimeManager centralizado
+                int hour = TimeManager.getHour();
+                int minute = TimeManager.getMinute();
+                int second = TimeManager.getSecond();
+                int millis = TimeManager.getMillisOfSecond();
+                int dayOfYear = TimeManager.getDayOfYear();
 
-                // Calcular tiempo actual según el período orbital
-                float currentTime = 0;
-
+                float currentTime;
                 if (realTimeOrbitPeriodHours >= 24.0f) {
-                    // Períodos de días (>= 24 horas): usar día del año
-                    currentTime = (cachedDayOfYear - 1) * 24.0f + cachedHour + cachedMinute / 60.0f + cachedSecond / 3600.0f + cachedMillis / 3600000.0f;
+                    currentTime = (dayOfYear - 1) * 24.0f + hour + minute / 60.0f + second / 3600.0f + millis / 3600000.0f;
                 } else if (realTimeOrbitPeriodHours > 1.0f) {
-                    // Períodos de múltiples horas (> 1 hora): usar horas del día
-                    currentTime = cachedHour + cachedMinute / 60.0f + cachedSecond / 3600.0f + cachedMillis / 3600000.0f;
+                    currentTime = hour + minute / 60.0f + second / 3600.0f + millis / 3600000.0f;
                 } else if (realTimeOrbitPeriodHours == 1.0f) {
-                    // Período de 1 hora exacta: usar solo minutos dentro de la hora actual
-                    currentTime = cachedMinute / 60.0f + cachedSecond / 3600.0f + cachedMillis / 3600000.0f;
+                    currentTime = minute / 60.0f + second / 3600.0f + millis / 3600000.0f;
                 } else if (realTimeOrbitPeriodHours >= 1.0f / 60.0f) {
-                    // Períodos de minutos (>= 1 minuto): usar minutos Y segundos dentro de la hora
-                    currentTime = cachedMinute / 60.0f + cachedSecond / 3600.0f + cachedMillis / 3600000.0f;
+                    currentTime = minute / 60.0f + second / 3600.0f + millis / 3600000.0f;
                 } else {
-                    // Períodos menores a 1 minuto: usar solo segundos
-                    currentTime = cachedSecond / 3600.0f + cachedMillis / 3600000.0f;
+                    currentTime = second / 3600.0f + millis / 3600000.0f;
                 }
 
-                // Calcular fracción de órbita (0.0 a 1.0) basada en período configurado
                 float orbitFraction = (currentTime * timeAccelerationFactor / realTimeOrbitPeriodHours) % 1.0f;
-
-                // Convertir a ángulo (0 a 2π)
-                // IMPORTANTE: Negativo para movimiento en sentido de las manecillas del reloj
                 orbitAngle = -orbitFraction * 2f * (float)Math.PI;
 
-                // 🔍 DEBUG: Log periódico de cálculos orbitales (para verificar que Marte se mueve)
-                orbitDebugCounter++;
-                if (orbitDebugCounter >= ORBIT_DEBUG_INTERVAL) {
-                    orbitDebugCounter = 0;
-                    if (realTimeOrbitPeriodHours <= 24.0f) {  // Solo para planetas del reloj astronómico
-                        Log.d(TAG, String.format("⏰ ÓRBITA [Período=%.2fh] Time=%.4f, Fraction=%.4f, Angle=%.2f° (%.3frad)",
-                            realTimeOrbitPeriodHours, currentTime, orbitFraction,
-                            Math.toDegrees(orbitAngle), orbitAngle));
-                    }
-                }
             } else if (orbitRadiusX > 0 && orbitRadiusZ > 0 && orbitSpeed > 0) {
                 // MODO ANIMADO: Órbita continua normal
                 float currentOrbitSpeed = orbitSpeed;
@@ -324,8 +276,8 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
                 orbitAngle = (orbitAngle + dt * currentOrbitSpeed) % (2f * (float)Math.PI);
             }
 
-            // ✅ CRÍTICO: Mantener tiempo cíclico para evitar pérdida de precisión en float
-            accumulatedTime = (accumulatedTime + dt) % 60.0f;
+            // ⚡ OPTIMIZACIÓN: Usar TimeManager.getTime() en lugar de acumular
+            accumulatedTime = TimeManager.getTime() % 60.0f;
         }
     }
 
@@ -371,11 +323,11 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
 
             // 🌙 Si tiene planeta padre, orbitar alrededor de él en lugar del Sol
             if (parentPlanet != null) {
-                float[] parentPos = parentPlanet.getCurrentOrbitalPosition();
-                ox += parentPos[0];  // Sumar posición X del padre
-                oz += parentPos[2];  // Sumar posición Z del padre
-                Log.v(TAG, String.format("🌙 Órbita relativa: parent=(%.2f, %.2f) local=(%.2f, %.2f)",
-                    parentPos[0], parentPos[2], ox, oz));
+                // ⚡ OPTIMIZACIÓN: Reutilizar array en lugar de crear nuevo
+                parentPlanet.getCurrentOrbitalPosition(reusableParentPos);
+                ox += reusableParentPos[0];  // Sumar posición X del padre
+                oz += reusableParentPos[2];  // Sumar posición Z del padre
+                // Log removido - muy costoso cada frame
             }
 
             // Guardar posición orbital actual (para lunas que dependan de este planeta)
@@ -385,7 +337,9 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
 
             Matrix.translateM(model, 0, ox, orbitOffsetY, oz);  // 📍 Aplicar offset Y
 
-            Log.v(TAG, String.format("Órbita: x=%.2f z=%.2f angle=%.2f", ox, oz, orbitAngle));
+            // ⚡ OPTIMIZACIÓN: Log removido - era MUY costoso (String.format cada frame)
+            // Si necesitas debug, descomenta:
+            // if (orbitDebugCounter == 0) Log.v(TAG, String.format("Órbita: x=%.2f z=%.2f angle=%.2f", ox, oz, orbitAngle));
         } else if (orbitOffsetY != 0) {
             // Planeta fijo en el centro pero con offset Y (ej: Sol elevado)
             Matrix.translateM(model, 0, 0, orbitOffsetY, 0);
@@ -399,7 +353,8 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
 
         // Añadir variación dinámica si está configurada
         if (scaleOscPercent != null) {
-            float s = 0.5f + 0.5f * (float)Math.sin(accumulatedTime * SCALE_OSC_FREQ * 2f * Math.PI);
+            // ⚡ OPTIMIZACIÓN: Usar TimeManager.sin() pre-calculado cuando es posible
+            float s = 0.5f + 0.5f * TimeManager.sin(SCALE_OSC_FREQ * 2f * (float)Math.PI);
             float osc = scaleOscPercent + (1f - scaleOscPercent) * s;
             finalScale *= osc;
         }

@@ -1,124 +1,101 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
-import android.os.SystemClock;
+import android.opengl.GLES30;
 import android.util.Log;
+
+import com.secret.blackholeglow.gl3.ShaderProgram3;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
 /**
- * StarryBackground - Fondo de estrellas procedurales
- * Dibuja estrellas brillantes usando shaders sin necesidad de geometría 3D
- * Se renderiza como un quad fullscreen en espacio de pantalla
+ * ╔═══════════════════════════════════════════════════════════════════╗
+ * ║   ✨ StarryBackground - OpenGL ES 3.0 con VAO/VBO ✨              ║
+ * ╚═══════════════════════════════════════════════════════════════════╝
+ *
+ * Fondo de estrellas procedurales optimizado para OpenGL ES 3.0.
+ * Usa VAO para guardar estado de atributos (menos llamadas GL por frame).
  */
 public class StarryBackground implements SceneObject {
-    private static final String TAG = "depurar";
+    private static final String TAG = "StarryBackground";
 
-    // Shader program
-    private int programId;
-
-    // Buffers
-    private FloatBuffer vertexBuffer;
-    private FloatBuffer texCoordBuffer;
-
-    // Uniform locations
-    private int uTimeLoc;
-    private int uResolutionLoc;
-    private int uAspectRatioLoc;
-    private int uTextureLoc;
-
-    // Attribute locations
-    private int aPositionLoc;
-    private int aTexCoordLoc;
+    // OpenGL ES 3.0
+    private int vaoId;
+    private int vboId;
+    private ShaderProgram3 shader;
 
     // Texture
     private final int textureId;
     private final float timeOffset;
-    private final Context context;
+
+    // Cache para evitar cálculos repetidos
+    private float cachedAspectRatio = 1.0f;
 
     public StarryBackground(Context context, TextureManager textureManager, int textureResourceId) {
-        Log.d(TAG, "[StarryBackground] ========================================");
-        Log.d(TAG, "[StarryBackground] INICIANDO CREACIÓN DE FONDO ESTRELLADO");
-        Log.d(TAG, "[StarryBackground] ========================================");
+        Log.d(TAG, "╔════════════════════════════════════════╗");
+        Log.d(TAG, "║   ✨ STARRY BACKGROUND GL3.0 ✨        ║");
+        Log.d(TAG, "╚════════════════════════════════════════╝");
 
-        this.context = context;
-        this.timeOffset = SystemClock.uptimeMillis() * 0.001f;
+        this.timeOffset = TimeManager.getTime();
         this.textureId = textureManager.getTexture(textureResourceId);
 
-        // Crear shader program desde archivos
-        programId = ShaderUtils.createProgramFromAssets(context,
-            "shaders/starry_vertex.glsl",
-            "shaders/starry_fragment.glsl");
+        // ═══ CREAR SHADER GLSL 300 es ═══
+        shader = new ShaderProgram3(context,
+                "shaders/gl3/starry_vertex.glsl",
+                "shaders/gl3/starry_fragment.glsl");
 
-        if (programId == 0) {
-            Log.e(TAG, "[StarryBackground] ✗✗✗ ERROR: Shader NO se creó!");
-
-            // Intentar obtener log de errores
-            int[] shaders = new int[2];
-            GLES20.glGetAttachedShaders(programId, 2, null, 0, shaders, 0);
-
-            throw new RuntimeException("Error creating shader program");
+        if (!shader.isValid()) {
+            Log.e(TAG, "Error creando shader GL3, intentando fallback ES 2.0...");
+            // Fallback a shaders ES 2.0 si falla
+            shader = new ShaderProgram3(context,
+                    "shaders/starry_vertex.glsl",
+                    "shaders/starry_fragment.glsl");
         }
 
-        Log.d(TAG, "[StarryBackground] ✓ Shader creado, programId=" + programId);
+        // ═══ CREAR VAO ═══
+        int[] vaoArray = new int[1];
+        GLES30.glGenVertexArrays(1, vaoArray, 0);
+        vaoId = vaoArray[0];
+        GLES30.glBindVertexArray(vaoId);
 
-        // Verificar que el programa está linkeado correctamente
-        int[] linkStatus = new int[1];
-        GLES20.glGetProgramiv(programId, GLES20.GL_LINK_STATUS, linkStatus, 0);
-        if (linkStatus[0] == 0) {
-            String log = GLES20.glGetProgramInfoLog(programId);
-            Log.e(TAG, "[StarryBackground] ✗ Shader link error: " + log);
-        } else {
-            Log.d(TAG, "[StarryBackground] ✓ Shader linkeado correctamente");
-        }
-
-        // Obtener locations
-        aPositionLoc = GLES20.glGetAttribLocation(programId, "a_Position");
-        aTexCoordLoc = GLES20.glGetAttribLocation(programId, "a_TexCoord");
-        uTimeLoc = GLES20.glGetUniformLocation(programId, "u_Time");
-        uResolutionLoc = GLES20.glGetUniformLocation(programId, "u_Resolution");
-        uAspectRatioLoc = GLES20.glGetUniformLocation(programId, "u_AspectRatio");
-        uTextureLoc = GLES20.glGetUniformLocation(programId, "u_Texture");
-
-        Log.d(TAG, "[StarryBackground] Shader locations - Pos:" + aPositionLoc +
-                   " Tex:" + aTexCoordLoc + " Time:" + uTimeLoc +
-                   " Res:" + uResolutionLoc + " Aspect:" + uAspectRatioLoc +
-                   " Texture:" + uTextureLoc);
-
-        // Verificar locations críticos
-        if (aPositionLoc == -1) Log.e(TAG, "[StarryBackground] ✗ a_Position NO encontrado!");
-        if (aTexCoordLoc == -1) Log.e(TAG, "[StarryBackground] ✗ a_TexCoord NO encontrado!");
-        if (uTimeLoc == -1) Log.w(TAG, "[StarryBackground] ⚠ u_Time NO encontrado!");
-        if (uResolutionLoc == -1) Log.w(TAG, "[StarryBackground] ⚠ u_Resolution NO encontrado!");
-        if (uAspectRatioLoc == -1) Log.w(TAG, "[StarryBackground] ⚠ u_AspectRatio NO encontrado!");
-
-        // Crear quad fullscreen (-1 a 1 en espacio NDC)
-        float[] vertices = {
-            -1.0f, -1.0f,  // Bottom left
-             1.0f, -1.0f,  // Bottom right
-            -1.0f,  1.0f,  // Top left
-             1.0f,  1.0f   // Top right
+        // ═══ CREAR VBO CON DATOS INTERLEAVED ═══
+        // Layout: pos(2) + uv(2) = 4 floats por vértice
+        float[] vertexData = {
+            // Posición      // UV
+            -1.0f, -1.0f,    0.0f, 1.0f,  // Bottom-left
+             1.0f, -1.0f,    1.0f, 1.0f,  // Bottom-right
+            -1.0f,  1.0f,    0.0f, 0.0f,  // Top-left
+             1.0f,  1.0f,    1.0f, 0.0f   // Top-right
         };
 
-        // UV coordinates (0 a 1)
-        float[] texCoords = {
-            0.0f, 1.0f,  // Bottom left
-            1.0f, 1.0f,  // Bottom right
-            0.0f, 0.0f,  // Top left
-            1.0f, 0.0f   // Top right
-        };
+        int[] vboArray = new int[1];
+        GLES30.glGenBuffers(1, vboArray, 0);
+        vboId = vboArray[0];
 
-        // Crear buffers
-        vertexBuffer = createFloatBuffer(vertices);
-        texCoordBuffer = createFloatBuffer(texCoords);
+        FloatBuffer buffer = createFloatBuffer(vertexData);
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, vboId);
+        GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER,
+                vertexData.length * 4, buffer, GLES30.GL_STATIC_DRAW);
 
-        Log.d(TAG, "[StarryBackground] ✓ Buffers creados");
-        Log.d(TAG, "[StarryBackground] ========================================");
-        Log.d(TAG, "[StarryBackground] ✓✓✓ FONDO ESTRELLADO INICIALIZADO");
-        Log.d(TAG, "[StarryBackground] ========================================");
+        // ═══ CONFIGURAR ATRIBUTOS (se guarda en el VAO) ═══
+        int stride = 4 * 4;  // 4 floats * 4 bytes
+
+        // location 0: a_Position (vec2)
+        GLES30.glVertexAttribPointer(0, 2, GLES30.GL_FLOAT, false, stride, 0);
+        GLES30.glEnableVertexAttribArray(0);
+
+        // location 1: a_TexCoord (vec2)
+        GLES30.glVertexAttribPointer(1, 2, GLES30.GL_FLOAT, false, stride, 2 * 4);
+        GLES30.glEnableVertexAttribArray(1);
+
+        // Unbind
+        GLES30.glBindVertexArray(0);
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, 0);
+
+        Log.d(TAG, "✓ VAO=" + vaoId + ", VBO=" + vboId + ", Texture=" + textureId);
+        Log.d(TAG, "✓ Shader válido: " + shader.isValid());
     }
 
     private FloatBuffer createFloatBuffer(float[] data) {
@@ -132,87 +109,67 @@ public class StarryBackground implements SceneObject {
 
     @Override
     public void update(float deltaTime) {
-        // No animation in model space
+        // Actualizar aspect ratio si cambió la pantalla
+        float w = SceneRenderer.screenWidth;
+        float h = SceneRenderer.screenHeight;
+        if (h > 0) {
+            cachedAspectRatio = w / h;
+        }
     }
-
-    private static int drawCallCount = 0;
 
     @Override
     public void draw() {
-        drawCallCount++;
-
-        if (drawCallCount % 300 == 0) {
-            Log.d(TAG, "[StarryBackground] ========================================");
-            Log.d(TAG, "[StarryBackground] draw() llamado, frame #" + drawCallCount);
-            Log.d(TAG, "[StarryBackground] programId=" + programId);
-        }
-
-        // Verificar si el shader es válido
-        if (!GLES20.glIsProgram(programId)) {
-            if (drawCallCount % 60 == 0) {
-                Log.e(TAG, "[StarryBackground] ✗ programId no es válido!");
-            }
+        if (!shader.isValid()) {
             return;
         }
 
-        // Usar nuestro programa
-        GLES20.glUseProgram(programId);
+        // ═══ USAR SHADER ═══
+        shader.use();
 
-        // ========== CONFIGURACIÓN PROFESIONAL DE SKYBOX ==========
-        // El fondo se renderiza con Z=0.9999 (infinitamente lejos)
-        // Activamos depth test pero NO escribimos en depth buffer
-        // Esto asegura que TODOS los objetos 3D se dibujen DELANTE del fondo
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-        GLES20.glDepthFunc(GLES20.GL_LEQUAL);  // <= permite dibujar en Z=0.9999
-        GLES20.glDepthMask(false);  // NO escribir profundidad (fondo no bloquea nada)
+        // ═══ CONFIGURACIÓN DE SKYBOX ═══
+        // Renderizar en Z=0.9999 (infinitamente lejos)
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+        GLES30.glDepthFunc(GLES30.GL_LEQUAL);
+        GLES30.glDepthMask(false);  // No escribir en depth buffer
 
-        // Configurar uniforms
-        float time = (SystemClock.uptimeMillis() * 0.001f - timeOffset) % 100.0f;
-        GLES20.glUniform1f(uTimeLoc, time);
+        // ═══ CONFIGURAR UNIFORMS ═══
+        float time = (TimeManager.getTime() - timeOffset) % 100.0f;
+        shader.setUniform("u_Time", time);
+        shader.setUniform("u_Resolution", SceneRenderer.screenWidth, SceneRenderer.screenHeight);
+        shader.setUniform("u_AspectRatio", cachedAspectRatio);
 
-        float screenWidth = SceneRenderer.screenWidth;
-        float screenHeight = SceneRenderer.screenHeight;
-        GLES20.glUniform2f(uResolutionLoc, screenWidth, screenHeight);
-        GLES20.glUniform1f(uAspectRatioLoc, screenWidth / screenHeight);
+        // ═══ CONFIGURAR TEXTURA ═══
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
+        shader.setUniform("u_Texture", 0);
 
-        // Configurar textura
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-        GLES20.glUniform1i(uTextureLoc, 0);
+        // ═══ DIBUJAR CON VAO ═══
+        // Solo 1 llamada para bind, el estado de atributos ya está guardado
+        GLES30.glBindVertexArray(vaoId);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
+        GLES30.glBindVertexArray(0);
 
-        if (drawCallCount % 300 == 0) {
-            Log.d(TAG, "[StarryBackground] ✓ Uniforms configurados - time:" + time +
-                       " resolution:" + screenWidth + "x" + screenHeight +
-                       " texture:" + textureId);
+        // ═══ RESTAURAR ESTADO ═══
+        GLES30.glDepthMask(true);
+        GLES30.glDepthFunc(GLES30.GL_LESS);
+    }
+
+    /**
+     * Libera recursos OpenGL
+     */
+    public void dispose() {
+        if (vaoId != 0) {
+            GLES30.glDeleteVertexArrays(1, new int[]{vaoId}, 0);
+            vaoId = 0;
         }
-
-        // Configurar atributos
-        GLES20.glEnableVertexAttribArray(aPositionLoc);
-        GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
-
-        GLES20.glEnableVertexAttribArray(aTexCoordLoc);
-        GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
-
-        // Dibujar como triangle strip
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
-
-        // Verificar errores GL
-        int error = GLES20.glGetError();
-        if (error != GLES20.GL_NO_ERROR && drawCallCount % 300 == 0) {
-            Log.e(TAG, "[StarryBackground] ✗ Error GL: " + error);
+        if (vboId != 0) {
+            GLES30.glDeleteBuffers(1, new int[]{vboId}, 0);
+            vboId = 0;
         }
-
-        // Limpiar
-        GLES20.glDisableVertexAttribArray(aPositionLoc);
-        GLES20.glDisableVertexAttribArray(aTexCoordLoc);
-
-        // Restaurar configuración de depth para objetos 3D
-        GLES20.glDepthMask(true);  // Objetos 3D SÍ escriben profundidad
-        GLES20.glDepthFunc(GLES20.GL_LESS);  // Comparación normal para 3D
-
-        if (drawCallCount % 300 == 0) {
-            Log.d(TAG, "[StarryBackground] ✓ Frame completado");
-            Log.d(TAG, "[StarryBackground] ========================================");
+        if (shader != null) {
+            shader.dispose();
+            shader = null;
         }
+        Log.d(TAG, "Recursos liberados");
     }
 }

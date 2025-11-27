@@ -337,13 +337,14 @@ public class MusicVisualizer {
 
     /**
      * Pausa la captura de audio
+     * Optimizado para pausas frecuentes (sistema Play/Stop del wallpaper)
      */
     public void pause() {
         if (visualizer != null && isEnabled) {
             try {
                 visualizer.setEnabled(false);
                 isEnabled = false;
-                Log.d(TAG, "[MusicVisualizer] Pausado");
+                Log.d(TAG, "[MusicVisualizer] Pausado (ahorrando batería)");
             } catch (IllegalStateException e) {
                 Log.w(TAG, "[MusicVisualizer] Error al pausar (ya estaba pausado): " + e.getMessage());
                 isEnabled = false;
@@ -353,16 +354,40 @@ public class MusicVisualizer {
 
     /**
      * Reanuda la captura de audio
+     * Optimizado para reanudaciones frecuentes con reconexión automática si falla
      */
     public void resume() {
-        if (visualizer != null && !isEnabled) {
+        if (visualizer == null) {
+            // Visualizer fue liberado, reinicializar
+            Log.d(TAG, "[MusicVisualizer] Reinicializando visualizer...");
+            initialize();
+            return;
+        }
+
+        if (!isEnabled) {
             try {
                 visualizer.setEnabled(true);
                 isEnabled = true;
+                // Reset timestamps para evitar falsos positivos de "sin audio"
+                lastAudioDataTime = System.currentTimeMillis();
                 Log.d(TAG, "[MusicVisualizer] Reanudado");
             } catch (IllegalStateException e) {
-                Log.w(TAG, "[MusicVisualizer] Error al reanudar: " + e.getMessage());
+                Log.w(TAG, "[MusicVisualizer] Error al reanudar, intentando reconectar: " + e.getMessage());
+                // El visualizer puede estar en estado inválido, reconectar
+                reconnect();
             }
         }
+    }
+
+    /**
+     * Resetea los valores de audio a cero (útil al pausar para evitar valores residuales)
+     */
+    public void resetLevels() {
+        smoothedBass = 0f;
+        smoothedMid = 0f;
+        smoothedTreble = 0f;
+        smoothedVolume = 0f;
+        beatIntensity = 0f;
+        isBeat = false;
     }
 }

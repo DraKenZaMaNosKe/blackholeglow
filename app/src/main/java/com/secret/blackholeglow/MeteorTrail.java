@@ -379,7 +379,8 @@ public class MeteorTrail {
         GLES20.glUniformMatrix4fv(uMvpLoc, 1, false, mvpMatrix, 0);
 
         // Configurar uniforms para efectos animados
-        float time = (float)(System.currentTimeMillis() % 10000) / 1000.0f;
+        // ⚡ OPTIMIZACIÓN: Usar TimeManager
+        float time = TimeManager.getTime() % 10.0f;
         GLES20.glUniform1f(uTimeLoc, time);
 
         // Tipo de estela (0 = fuego, 0.5 = plasma, 1 = arcoíris)

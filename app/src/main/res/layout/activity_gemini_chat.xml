@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="24dp"
+    app:cardBackgroundColor="#EE111122"
+    app:cardCornerRadius="24dp"
+    app:cardElevation="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <!-- Header con título y botón cerrar -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:id="@+id/tv_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:text="Chat con Orbix"
+                android:textColor="#00FFFF"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <ImageButton
+                android:id="@+id/btn_close"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:contentDescription="Cerrar"
+                app:tint="#00FFFF" />
+
+        </RelativeLayout>
+
+        <!-- Mensaje del usuario (si ya escribió algo) -->
+        <TextView
+            android:id="@+id/tv_user_message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#FF88FF"
+            android:textSize="14sp"
+            android:textStyle="italic"
+            android:gravity="end"
+            android:padding="12dp"
+            android:background="@drawable/chat_bubble_user"
+            android:layout_marginBottom="12dp"
+            android:visibility="gone" />
+
+        <!-- Contenedor de respuesta -->
+        <LinearLayout
+            android:id="@+id/chat_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:minHeight="80dp"
+            android:layout_marginBottom="16dp">
+
+            <!-- Loading -->
+            <ProgressBar
+                android:id="@+id/progress_bar"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:indeterminateTint="#00FFFF"
+                android:visibility="gone" />
+
+            <!-- Respuesta de Orbix -->
+            <TextView
+                android:id="@+id/tv_response"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:gravity="center"
+                android:padding="16dp"
+                android:background="@drawable/chat_bubble_orbix"
+                android:lineSpacingExtra="4dp" />
+
+        </LinearLayout>
+
+        <!-- Input -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/chat_input_bg"
+            android:padding="6dp">
+
+            <EditText
+                android:id="@+id/et_message"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:hint="Escribe algo..."
+                android:textColor="#FFFFFF"
+                android:textColorHint="#888888"
+                android:background="@android:color/transparent"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:inputType="text"
+                android:imeOptions="actionSend"
+                android:maxLines="1"
+                android:textSize="14sp" />
+
+            <ImageButton
+                android:id="@+id/btn_send"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/btn_send_bg"
+                android:src="@android:drawable/ic_menu_send"
+                android:contentDescription="Enviar"
+                android:padding="10dp"
+                app:tint="#000000" />
+
+        </LinearLayout>
+
+        <!-- Subtítulo -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Powered by Gemini AI"
+            android:textColor="#666666"
+            android:textSize="10sp"
+            android:gravity="center"
+            android:layout_marginTop="8dp" />
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>

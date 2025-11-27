@@ -674,8 +674,8 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
         p.life = p.maxLife;
 
         // Color arcoíris inicial (similar a la estela)
-        // Usar el tiempo para variar el color
-        float hue = (System.currentTimeMillis() % 10000) / 10000.0f * (float)Math.PI * 6.0f;
+        // ⚡ OPTIMIZACIÓN: Usar TimeManager en lugar de System.currentTimeMillis()
+        float hue = (TimeManager.getTime() % 10.0f) / 10.0f * (float)Math.PI * 6.0f;
         p.color[0] = (float)Math.sin(hue) * 0.5f + 0.5f;
         p.color[1] = (float)Math.sin(hue + 2.0f) * 0.5f + 0.5f;
         p.color[2] = (float)Math.sin(hue + 4.0f) * 0.5f + 0.5f;
@@ -1015,11 +1015,11 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
         }
 
         // Log periódico de estado musical (cada 3 segundos)
-        long now = System.currentTimeMillis();
-        if (now - lastMusicLogTime > 3000 && musicEnergy > 0.1f) {
+        // ⚡ OPTIMIZACIÓN: Usar TimeManager.hasElapsed()
+        if (TimeManager.hasElapsed(lastMusicLogTime, 3000) && musicEnergy > 0.1f) {
             Log.d(TAG, String.format("✨🎵 [BAILANDO] Speed:%.1fx Wave:%.1fx Energy:%.2f",
                     musicSpeedMultiplier, musicWaveIntensity, musicEnergy));
-            lastMusicLogTime = now;
+            lastMusicLogTime = TimeManager.getMillis();
         }
     }
 

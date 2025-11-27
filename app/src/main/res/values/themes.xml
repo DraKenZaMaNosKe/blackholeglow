@@ -54,4 +54,21 @@
         <item name="colorSwitchThumbNormal">#FFFFFF</item> <!-- Blanco cuando está OFF -->
         <item name="android:colorForeground">#808080</item> <!-- Gris para fondo OFF -->
     </style>
+
+    <!--
+      ╔════════════════════════════════════════════════════════════╗
+      ║  🤖 CHAT OVERLAY THEME - Tema para chat flotante Gemini   ║
+      ║  Se muestra como diálogo transparente sobre el wallpaper  ║
+      ╚════════════════════════════════════════════════════════════╝
+    -->
+    <style name="Theme.Blackholeglow.ChatOverlay" parent="Theme.AppCompat.Dialog">
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:backgroundDimAmount">0.6</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.Dialog</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
 </resources>

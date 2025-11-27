@@ -327,15 +327,25 @@ public class PlayerStats {
     /**
      * ⚡ OPTIMIZACIÓN: Guarda en Firebase con throttle (máximo cada 5 segundos)
      * Evita llamadas excesivas durante combate
+     * ⚡ MEJORADO: Ahora ejecuta Firebase en BackgroundWorker para no bloquear GL Thread
      */
     private void throttledSaveToFirebase() {
         long now = System.currentTimeMillis();
         if (now - lastHealthSaveTime >= HEALTH_SAVE_THROTTLE && pendingHealthSave) {
-            saveStats();  // Guardar localmente
-            firebaseManager.saveGameState(savedPlanetHealth, savedForceFieldHealth, planetsDestroyed);
+            saveStats();  // Guardar localmente (rápido)
+
+            // ⚡ OPTIMIZACIÓN: Ejecutar Firebase en background thread
+            final int planetHP = savedPlanetHealth;
+            final int shieldHP = savedForceFieldHealth;
+            final int destroyed = planetsDestroyed;
+
+            BackgroundWorker.postFirebaseTask(() -> {
+                firebaseManager.saveGameState(planetHP, shieldHP, destroyed);
+                Log.d(TAG, "☁️ HP guardado (background): Planeta=" + planetHP + ", Escudo=" + shieldHP);
+            });
+
             lastHealthSaveTime = now;
             pendingHealthSave = false;
-            Log.d(TAG, "☁️ HP guardado (throttled): Planeta=" + savedPlanetHealth + ", Escudo=" + savedForceFieldHealth);
         }
     }
 
@@ -377,11 +387,15 @@ public class PlayerStats {
     /**
      * 📤 Sincroniza estadísticas a Firebase (sin callback)
      * Se llama periódicamente cada minuto
+     * ⚡ OPTIMIZACIÓN: Ejecuta en background thread
      */
     private void syncStatsToFirebase() {
         if (firebaseManager != null && planetsDestroyed > 0) {
-            firebaseManager.incrementPlanetsDestroyed(planetsDestroyed);
-            Log.d(TAG, "⏰ Sincronización periódica con Firebase: " + planetsDestroyed + " planetas 🌍");
+            final int destroyed = planetsDestroyed;
+            BackgroundWorker.postFirebaseTask(() -> {
+                firebaseManager.incrementPlanetsDestroyed(destroyed);
+                Log.d(TAG, "⏰ Sincronización periódica (background): " + destroyed + " planetas 🌍");
+            });
         }
     }
 

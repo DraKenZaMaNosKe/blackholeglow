@@ -23,11 +23,20 @@ import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.common.api.Scope;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 /**
  * LoginActivity - Pantalla de inicio de sesión con Google
@@ -39,9 +48,13 @@ public class LoginActivity extends AppCompatActivity {
     private static final String TAG = "LoginActivity";
     private static final int RC_SIGN_IN = 9001;
 
+    // Scope para obtener fecha de nacimiento
+    private static final String BIRTHDAY_SCOPE = "https://www.googleapis.com/auth/user.birthday.read";
+
     // Firebase
     private FirebaseAuth mAuth;
     private GoogleSignInClient mGoogleSignInClient;
+    private GoogleSignInAccount lastSignInAccount;  // Para guardar el account y obtener birthday
 
     // UI
     private Button btnSignIn;
@@ -91,7 +104,7 @@ public class LoginActivity extends AppCompatActivity {
         // Configurar Firebase Auth
         mAuth = FirebaseAuth.getInstance();
 
-        // Configurar Google Sign-In
+        // Configurar Google Sign-In con scope de birthday
         // NOTA: Si requestIdToken falla, significa que necesitas configurar
         // el OAuth 2.0 Client ID en Firebase Console
         GoogleSignInOptions gso;
@@ -101,12 +114,14 @@ public class LoginActivity extends AppCompatActivity {
             gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                     .requestIdToken(webClientId)
                     .requestEmail()
+                    .requestScopes(new Scope(BIRTHDAY_SCOPE))  // Solicitar birthday
                     .build();
         } catch (Exception e) {
             // Fallback: Solo solicitar email (sin Firebase Auth)
             Log.w(TAG, "⚠ No se encontró default_web_client_id, usando modo básico");
             gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                     .requestEmail()
+                    .requestScopes(new Scope(BIRTHDAY_SCOPE))  // Solicitar birthday
                     .build();
         }
 
@@ -152,6 +167,7 @@ public class LoginActivity extends AppCompatActivity {
                 // Inicio de sesión exitoso, autenticar con Firebase
                 GoogleSignInAccount account = task.getResult(ApiException.class);
                 Log.d(TAG, "✓ Google Sign-In exitoso: " + account.getId());
+                lastSignInAccount = account;  // Guardar para obtener birthday después
                 firebaseAuthWithGoogle(account.getIdToken());
             } catch (ApiException e) {
                 // Inicio de sesión falló
@@ -199,11 +215,122 @@ public class LoginActivity extends AppCompatActivity {
             userManager.saveUserData(userId, userName, userEmail, photoUrl);
             userManager.printUserInfo();
 
-            // Ir a MainActivity
-            showLoading(false);
-            Toast.makeText(this, "¡Bienvenido, " + userName + "!", Toast.LENGTH_SHORT).show();
-            goToMainActivity();
+            // Intentar obtener birthday de Google People API
+            if (lastSignInAccount != null) {
+                fetchBirthdayFromGoogle(lastSignInAccount, userManager, userName);
+            } else {
+                // Sin account, ir directo a MainActivity
+                showLoading(false);
+                Toast.makeText(this, "¡Bienvenido, " + userName + "!", Toast.LENGTH_SHORT).show();
+                goToMainActivity();
+            }
         }
+    }
+
+    /**
+     * Obtiene la fecha de nacimiento del usuario usando Google People API
+     */
+    private void fetchBirthdayFromGoogle(GoogleSignInAccount account, UserManager userManager, String userName) {
+        tvStatus.setText("Obteniendo datos adicionales...");
+
+        new Thread(() -> {
+            try {
+                // Obtener access token silenciosamente
+                GoogleSignInAccount silentAccount = GoogleSignIn.getLastSignedInAccount(this);
+                if (silentAccount == null) {
+                    Log.w(TAG, "⚠ No se pudo obtener cuenta para People API");
+                    runOnUiThread(() -> finishLogin(userName));
+                    return;
+                }
+
+                // Necesitamos el serverAuthCode para obtener un access token
+                // O podemos usar el token que ya tenemos
+                String accessToken = null;
+
+                // Intentar obtener el access token usando GoogleAuthUtil
+                try {
+                    accessToken = com.google.android.gms.auth.GoogleAuthUtil.getToken(
+                        this,
+                        account.getAccount(),
+                        "oauth2:" + BIRTHDAY_SCOPE
+                    );
+                } catch (Exception e) {
+                    Log.e(TAG, "✗ Error obteniendo access token: " + e.getMessage());
+                    runOnUiThread(() -> finishLogin(userName));
+                    return;
+                }
+
+                if (accessToken == null) {
+                    Log.w(TAG, "⚠ Access token es null");
+                    runOnUiThread(() -> finishLogin(userName));
+                    return;
+                }
+
+                Log.d(TAG, "✓ Access token obtenido para People API");
+
+                // Llamar a People API
+                URL url = new URL("https://people.googleapis.com/v1/people/me?personFields=birthdays");
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setRequestProperty("Authorization", "Bearer " + accessToken);
+                conn.setRequestProperty("Accept", "application/json");
+
+                int responseCode = conn.getResponseCode();
+                Log.d(TAG, "People API response code: " + responseCode);
+
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+                    reader.close();
+
+                    // Parsear JSON
+                    JSONObject json = new JSONObject(response.toString());
+                    Log.d(TAG, "People API response: " + json.toString());
+
+                    if (json.has("birthdays")) {
+                        JSONArray birthdays = json.getJSONArray("birthdays");
+                        for (int i = 0; i < birthdays.length(); i++) {
+                            JSONObject birthday = birthdays.getJSONObject(i);
+                            if (birthday.has("date")) {
+                                JSONObject date = birthday.getJSONObject("date");
+                                int year = date.optInt("year", 0);
+                                int month = date.optInt("month", 0);
+                                int day = date.optInt("day", 0);
+
+                                if (year > 0 && month > 0 && day > 0) {
+                                    Log.d(TAG, "✓ Birthday encontrado: " + year + "-" + month + "-" + day);
+                                    userManager.saveBirthDate(year, month, day);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Log.w(TAG, "⚠ People API error: " + responseCode);
+                }
+
+                conn.disconnect();
+
+            } catch (Exception e) {
+                Log.e(TAG, "✗ Error en People API: " + e.getMessage(), e);
+            }
+
+            // Finalizar login en UI thread
+            runOnUiThread(() -> finishLogin(userName));
+        }).start();
+    }
+
+    /**
+     * Finaliza el proceso de login y navega a MainActivity
+     */
+    private void finishLogin(String userName) {
+        showLoading(false);
+        Toast.makeText(this, "¡Bienvenido, " + userName + "!", Toast.LENGTH_SHORT).show();
+        goToMainActivity();
     }
 
     /**
