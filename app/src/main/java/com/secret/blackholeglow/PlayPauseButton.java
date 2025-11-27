@@ -35,6 +35,7 @@ public class PlayPauseButton implements SceneObject {
 
     // Animación
     private float time = 0f;
+    private static final float TIME_CYCLE = 62.831853f;  // 10 * TWO_PI - ciclo completo para evitar overflow
     private float fadeTimer = 0f;
     private float fadeAlpha = 1.0f;
     private static final float AUTO_HIDE_DELAY = 4.0f;
@@ -98,12 +99,19 @@ public class PlayPauseButton implements SceneObject {
             "#define PI 3.14159265359\n" +
             "#define TWO_PI 6.28318530718\n" +
             "\n" +
+            "// ⚡ Tiempo normalizado para evitar overflow en floats\n" +
+            "// El tiempo ya viene acotado desde Java, pero usamos mod() extra por seguridad\n" +
+            "#define SAFE_TIME(t) mod(t, TWO_PI * 10.0)\n" +
+            "\n" +
             "// Suavizado de bordes\n" +
             "float smoothEdge(float d, float w) {\n" +
             "    return smoothstep(w, -w, d);\n" +
             "}\n" +
             "\n" +
             "void main() {\n" +
+            "    // ⚡ Tiempo seguro - ya viene acotado pero aplicamos mod extra\n" +
+            "    float t = SAFE_TIME(u_Time);\n" +
+            "    \n" +
             "    // Coordenadas ajustadas por aspect ratio\n" +
             "    vec2 uv = v_TexCoord;\n" +
             "    uv.x = (uv.x - 0.5) * u_Aspect + 0.5;\n" +
@@ -122,7 +130,7 @@ public class PlayPauseButton implements SceneObject {
             "    // 🌟 AURA EXTERIOR - Resplandor místico pulsante\n" +
             "    // ═══════════════════════════════════════════════════════════\n" +
             "    float auraSize = u_Size * 2.5;\n" +
-            "    float auraPulse = sin(u_Time * 1.5) * 0.15 + 1.0;\n" +
+            "    float auraPulse = sin(t * 1.5) * 0.15 + 1.0;\n" +
             "    float aura = smoothstep(auraSize * auraPulse, u_Size * 0.8, dist);\n" +
             "    \n" +
             "    // Color del aura según estado (cyan para play, magenta para stop)\n" +
@@ -131,7 +139,7 @@ public class PlayPauseButton implements SceneObject {
             "    vec3 auraColor = mix(auraColorPlay, auraColorStop, u_Shape);\n" +
             "    \n" +
             "    // Gradiente de color que rota\n" +
-            "    float colorShift = sin(angle * 2.0 + u_Time * 2.0) * 0.5 + 0.5;\n" +
+            "    float colorShift = sin(angle * 2.0 + t * 2.0) * 0.5 + 0.5;\n" +
             "    vec3 auraColor2 = mix(auraColor, vec3(0.5, 0.0, 1.0), colorShift * 0.3);\n" +
             "    \n" +
             "    finalColor += auraColor2 * aura * 0.4;\n" +
@@ -143,18 +151,18 @@ public class PlayPauseButton implements SceneObject {
             "    float orbitRadius = u_Size * 1.3;\n" +
             "    for (int i = 0; i < 6; i++) {\n" +
             "        float fi = float(i);\n" +
-            "        float particleAngle = fi * (TWO_PI / 6.0) + u_Time * (0.8 + fi * 0.1);\n" +
+            "        float particleAngle = fi * (TWO_PI / 6.0) + t * (0.8 + fi * 0.1);\n" +
             "        vec2 particlePos = center + vec2(cos(particleAngle), sin(particleAngle)) * orbitRadius;\n" +
             "        \n" +
             "        float particleDist = length(uv - particlePos);\n" +
-            "        float particleSize = 0.012 + sin(u_Time * 3.0 + fi) * 0.004;\n" +
+            "        float particleSize = 0.012 + sin(t * 3.0 + fi) * 0.004;\n" +
             "        float particle = smoothstep(particleSize, 0.0, particleDist);\n" +
             "        \n" +
             "        // Color de partícula (arcoíris rotando)\n" +
             "        vec3 particleColor = vec3(\n" +
-            "            sin(fi * 1.0 + u_Time) * 0.5 + 0.5,\n" +
-            "            sin(fi * 1.0 + u_Time + 2.094) * 0.5 + 0.5,\n" +
-            "            sin(fi * 1.0 + u_Time + 4.188) * 0.5 + 0.5\n" +
+            "            sin(fi * 1.0 + t) * 0.5 + 0.5,\n" +
+            "            sin(fi * 1.0 + t + 2.094) * 0.5 + 0.5,\n" +
+            "            sin(fi * 1.0 + t + 4.188) * 0.5 + 0.5\n" +
             "        );\n" +
             "        \n" +
             "        finalColor += particleColor * particle * 1.5;\n" +
@@ -166,13 +174,13 @@ public class PlayPauseButton implements SceneObject {
             "    // ═══════════════════════════════════════════════════════════\n" +
             "    float ringRadius = u_Size * 1.05;\n" +
             "    float ringWidth = 0.012;\n" +
-            "    float wave = sin(angle * 8.0 + u_Time * 4.0) * 0.003;\n" +
+            "    float wave = sin(angle * 8.0 + t * 4.0) * 0.003;\n" +
             "    float ring = smoothEdge(abs(dist - ringRadius - wave) - ringWidth, 0.008);\n" +
             "    \n" +
             "    // Color del anillo (gradiente rotativo)\n" +
             "    vec3 ringColor1 = mix(vec3(0.2, 1.0, 0.8), vec3(0.8, 0.2, 1.0), u_Shape);\n" +
             "    vec3 ringColor2 = mix(vec3(0.0, 0.5, 1.0), vec3(1.0, 0.5, 0.0), u_Shape);\n" +
-            "    float ringGradient = sin(angle * 2.0 - u_Time * 3.0) * 0.5 + 0.5;\n" +
+            "    float ringGradient = sin(angle * 2.0 - t * 3.0) * 0.5 + 0.5;\n" +
             "    vec3 ringColor = mix(ringColor1, ringColor2, ringGradient);\n" +
             "    \n" +
             "    finalColor += ringColor * ring * 1.2;\n" +
@@ -219,8 +227,8 @@ public class PlayPauseButton implements SceneObject {
             "    }\n" +
             "    \n" +
             "    // Efecto holográfico en el icono\n" +
-            "    float holoWave = sin(localUV.y * 30.0 + u_Time * 5.0) * 0.5 + 0.5;\n" +
-            "    float holoShimmer = sin(u_Time * 8.0 + angle * 4.0) * 0.3 + 0.7;\n" +
+            "    float holoWave = sin(localUV.y * 30.0 + t * 5.0) * 0.5 + 0.5;\n" +
+            "    float holoShimmer = sin(t * 8.0 + angle * 4.0) * 0.3 + 0.7;\n" +
             "    \n" +
             "    // Color del icono\n" +
             "    vec3 iconColorPlay = vec3(0.3, 1.0, 0.5);   // Verde neón\n" +
@@ -232,7 +240,7 @@ public class PlayPauseButton implements SceneObject {
             "    iconColor *= holoShimmer;\n" +
             "    \n" +
             "    // Glow del icono\n" +
-            "    float iconGlow = iconMask * (0.8 + sin(u_Time * 2.0) * 0.2);\n" +
+            "    float iconGlow = iconMask * (0.8 + sin(t * 2.0) * 0.2);\n" +
             "    \n" +
             "    finalColor = mix(finalColor, iconColor, iconMask * bg);\n" +
             "    finalColor += iconColor * iconGlow * 0.3 * bg;\n" +
@@ -241,13 +249,13 @@ public class PlayPauseButton implements SceneObject {
             "    // ═══════════════════════════════════════════════════════════\n" +
             "    // ⚡ DESTELLOS OCASIONALES - Sparkles mágicos\n" +
             "    // ═══════════════════════════════════════════════════════════\n" +
-            "    float sparkleTime = mod(u_Time, 3.0);\n" +
+            "    float sparkleTime = mod(t, 3.0);\n" +
             "    if (sparkleTime < 0.3) {\n" +
             "        float sparklePhase = sparkleTime / 0.3;\n" +
             "        float sparkleIntensity = sin(sparklePhase * PI) * 2.0;\n" +
             "        \n" +
-            "        // Posición del destello (rota alrededor)\n" +
-            "        float sparkleAngle = floor(u_Time / 3.0) * 2.5;\n" +
+            "        // Posición del destello (rota alrededor) - usar mod para limitar\n" +
+            "        float sparkleAngle = mod(t / 3.0, 20.0) * 2.5;\n" +
             "        vec2 sparklePos = center + vec2(cos(sparkleAngle), sin(sparkleAngle)) * u_Size * 0.7;\n" +
             "        float sparkleDist = length(uv - sparklePos);\n" +
             "        float sparkle = smoothstep(0.03, 0.0, sparkleDist) * sparkleIntensity;\n" +
@@ -261,7 +269,7 @@ public class PlayPauseButton implements SceneObject {
             "    // ═══════════════════════════════════════════════════════════\n" +
             "    float innerRing = smoothEdge(abs(dist - u_Size * 0.95) - 0.006, 0.005);\n" +
             "    vec3 innerColor = mix(vec3(0.5, 1.0, 0.8), vec3(1.0, 0.5, 0.8), u_Shape);\n" +
-            "    innerColor *= 0.8 + sin(u_Time * 4.0) * 0.2;\n" +
+            "    innerColor *= 0.8 + sin(t * 4.0) * 0.2;\n" +
             "    \n" +
             "    finalColor += innerColor * innerRing * 0.6;\n" +
             "    finalAlpha += innerRing * 0.4;\n" +
@@ -329,7 +337,11 @@ public class PlayPauseButton implements SceneObject {
 
     @Override
     public void update(float dt) {
+        // ⚡ CRÍTICO: Mantener time acotado para evitar pérdida de precisión en GPU
         time += dt;
+        if (time > TIME_CYCLE) {
+            time -= TIME_CYCLE;  // Wrap suave sin saltos visuales
+        }
 
         // Auto-hide cuando está animando
         if (isPlaying) {
@@ -397,6 +409,14 @@ public class PlayPauseButton implements SceneObject {
         this.isPlaying = playing;
         fadeTimer = 0f;
         fadeAlpha = 1.0f;
+    }
+
+    /**
+     * ⚡ Resetea el tiempo interno - llamar cuando cambia de estado de visibilidad
+     * para evitar acumulación de tiempo que causa pérdida de precisión
+     */
+    public void resetTime() {
+        time = 0f;
     }
     public void setPosition(float x, float y) { centerX = x; centerY = y; }
     public void setSize(float size) { this.size = size; }

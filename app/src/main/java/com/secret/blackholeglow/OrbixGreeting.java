@@ -71,6 +71,7 @@ public class OrbixGreeting implements SceneObject {
     private float alpha = 0f;
     private float targetAlpha = 0f;
     private float time = 0f;
+    private static final float TIME_CYCLE = 62.831853f;  // 10 * TWO_PI - evita overflow
     private String currentGreeting = "";
     private String userName = "";
     private long lastGreetingChange = 0;
@@ -692,10 +693,17 @@ public class OrbixGreeting implements SceneObject {
 
     @Override
     public void update(float dt) {
+        // ⚡ CRÍTICO: Mantener time acotado para evitar pérdida de precisión en GPU
         time += dt;
+        if (time > TIME_CYCLE) {
+            time -= TIME_CYCLE;
+        }
 
         // Animación del corazón (latido)
         heartBeat += dt * 5.0f;
+        if (heartBeat > TIME_CYCLE) {
+            heartBeat -= TIME_CYCLE;
+        }
         heartScale = 1.0f + (float)Math.sin(heartBeat) * 0.15f;
 
         float alphaSpeed = 4.0f;
@@ -827,6 +835,14 @@ public class OrbixGreeting implements SceneObject {
     public void hide() {
         isVisible = false;
         targetAlpha = 0.0f;
+    }
+
+    /**
+     * ⚡ Resetea el tiempo interno - llamar cuando cambia de estado de visibilidad
+     */
+    public void resetTime() {
+        time = 0f;
+        heartBeat = 0f;
     }
 
     public void setAspectRatio(float aspect) {

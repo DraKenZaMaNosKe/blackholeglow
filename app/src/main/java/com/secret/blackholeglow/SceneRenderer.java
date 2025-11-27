@@ -1867,6 +1867,14 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         lastTime = System.nanoTime();
         TimeManager.update();
 
+        // ⚡ Resetear tiempo de elementos UI para evitar overflow de precisión
+        if (playPauseButton != null) {
+            playPauseButton.resetTime();
+        }
+        if (orbixGreeting != null) {
+            orbixGreeting.resetTime();
+        }
+
         // Reactivar audio (rápido y seguro llamar múltiples veces)
         if (musicVisualizer != null) {
             musicVisualizer.resume();
