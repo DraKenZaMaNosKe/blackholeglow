@@ -44,18 +44,18 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     private volatile boolean needsSceneRecreation = false;
 
     // Referencias para el sistema de HP y respawn
-    private Planeta sol;
+    private Planeta tierra;  // 🌍 Planeta Tierra (antes se llamaba "sol" por error histórico)
     private Planeta planetaTierra;  // 🌍 Referencia a la Tierra para detectar impactos
     private ForceField forceField;
     private EarthShield earthShield;  // 🌍🛡️ Escudo invisible de la Tierra para mostrar impactos
-    private HPBar hpBarSun;
+    private HPBar hpBarTierra;  // Renombrado de hpBarTierra
     private HPBar hpBarForceField;
     private MeteorShower meteorShower;
     private Spaceship3D ovni;  // 🛸 OVNI con IA + armas láser
     private InstancedParticles instancedParticles;  // ✨ Sistema de partículas GL3.0 (instanced rendering)
     private PlayerWeapon playerWeapon;  // 🎮 NUEVO: Arma del jugador (separada de MeteorShower)
     private FireButton fireButton;      // 🎯 Botón visual de disparo con indicador de estado
-    private boolean solWasDead = false;  // Para detectar cuando respawnea
+    private boolean tierraWasDead = false;  // Para detectar cuando respawnea
     // 🚀 Referencia a la escena de batalla espacial (para touch interactivo)
     private SpaceBattleScene spaceBattleScene;
 
@@ -132,12 +132,27 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     private SimpleTextRenderer songNotificationSongText;   // Título de la canción
 
     // ▶️ SISTEMA DE PLAY/PAUSE - Control de animación por usuario
-    // Por defecto PAUSED (false) para arranque rápido - usuario activa cuando quiere
+    // Por defecto PANEL_MODE para arranque instantáneo sin flickering
     private PlayPauseButton playPauseButton;
     private OrbixGreeting orbixGreeting;  // 🤖 Saludos inteligentes + Reloj preciso
-    private boolean isAnimationPlaying = false;  // false = congelado (arranque rápido), true = animando
-    private boolean frozenFrameReady = false;    // true = ya renderizamos el frame estático
-    private int frozenFrameCount = 0;            // Contador para renderizar unos frames antes de congelar
+    private boolean isAnimationPlaying = false;  // false = Panel de Control, true = Wallpaper Animado
+
+    // 🎮 NUEVO: Sistema de modos para eliminar flickering
+    // PANEL_MODE: Solo dibuja Panel de Control (super ligero, sin escena 3D)
+    // LOADING_MODE: Mostrando barra de carga mientras se preparan recursos
+    // WALLPAPER_MODE: Escena 3D completa
+    private enum RenderMode { PANEL_MODE, LOADING_MODE, WALLPAPER_MODE }
+    private RenderMode currentRenderMode = RenderMode.PANEL_MODE;  // Por defecto Panel
+    private boolean sceneInitialized = false;  // true cuando la escena 3D está lista para renderizar
+
+    // 📊 SISTEMA DE CARGA DE RECURSOS
+    private LoadingBar loadingBar;  // Barra de progreso horizontal
+    private ResourceLoader resourceLoader;
+    private boolean resourcesLoaded = false;  // true cuando todos los recursos están en GPU
+    private boolean loadingTasksConfigured = false;  // true cuando las tareas están listas
+
+    // ⏹️ BOTÓN STOP MINI (visible durante WALLPAPER_MODE)
+    private MiniStopButton miniStopButton;
 
     // 🚀 OPTIMIZACIÓN: Arrays reutilizables (evita allocations en runtime)
     private final float[] identityMatrixCache = new float[16];  // Para UI 2D
@@ -232,8 +247,20 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         orbixGreeting.show();  // Visible por defecto (ya que empieza en STOP)
         Log.d(TAG, "🤖 OrbixGreeting inicializado con contexto");
 
-        // Preparar escena
-        prepareScene();
+        // 📊 INICIALIZAR BARRA DE CARGA
+        loadingBar = new LoadingBar();
+        loadingBar.setOnLoadingCompleteListener(this::onResourceLoadingComplete);
+        Log.d(TAG, "📊 LoadingBar inicializado");
+
+        // ⏹️ INICIALIZAR BOTÓN STOP MINI (para modo WALLPAPER)
+        miniStopButton = new MiniStopButton();
+        miniStopButton.hide();  // Oculto hasta que entre en WALLPAPER_MODE
+        Log.d(TAG, "⏹️ MiniStopButton inicializado");
+
+        // 🚀 INICIALIZAR RESOURCE LOADER (no preparar escena todavía)
+        // La escena se prepara cuando el usuario presiona Play
+        resourceLoader = new ResourceLoader(context, textureManager);
+        Log.d(TAG, "🚀 ResourceLoader inicializado - escena se cargará al presionar Play");
 
         Log.d(TAG, "════════ onSurfaceCreated END ════════");
         Log.d(TAG, "✓ Surface created with " + sceneObjects.size() + " objects");
@@ -260,6 +287,16 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             orbixGreeting.setAspectRatio(aspectRatio);
         }
 
+        // 📊 Actualizar aspect ratio de la barra de carga
+        if (loadingBar != null) {
+            loadingBar.setAspectRatio(aspectRatio);
+        }
+
+        // ⏹️ Actualizar aspect ratio del botón stop mini
+        if (miniStopButton != null) {
+            miniStopButton.setAspectRatio(aspectRatio);
+        }
+
         Log.d(TAG, "╔══════════════════════════════════════════════╗");
         Log.d(TAG, "║          VIEWPORT CHANGED                   ║");
         Log.d(TAG, "╠══════════════════════════════════════════════╣");
@@ -273,57 +310,47 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     public void onDrawFrame(GL10 gl) {
         if (paused) return;
 
-        // ===== RECREAR ESCENA SI ES NECESARIO (GL THREAD SAFE) =====
+        // ═══════════════════════════════════════════════════════════════
+        // 🎮 SISTEMA DE MODOS - ANTI-FLICKERING + CARGA PROGRESIVA
+        // ═══════════════════════════════════════════════════════════════
+        // PANEL_MODE: Solo Panel de Control (fondo negro + greeting + play button)
+        // LOADING_MODE: Cargando recursos con barra de progreso
+        // WALLPAPER_MODE: Escena 3D completa
+        // ═══════════════════════════════════════════════════════════════
+
+        if (currentRenderMode == RenderMode.PANEL_MODE) {
+            // ════════════════════════════════════════════════════════════
+            // 🎛️ PANEL DE CONTROL - Super ligero, sin escena 3D
+            // ════════════════════════════════════════════════════════════
+            renderPanelMode();
+            return;  // ¡NO renderizar escena 3D!
+        }
+
+        if (currentRenderMode == RenderMode.LOADING_MODE) {
+            // ════════════════════════════════════════════════════════════
+            // 📊 LOADING MODE - Cargando recursos con barra de progreso
+            // ════════════════════════════════════════════════════════════
+            renderLoadingMode();
+            return;  // ¡NO renderizar escena 3D hasta que termine!
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // 🌌 WALLPAPER_MODE - Escena 3D completa
+        // ════════════════════════════════════════════════════════════════
+
+        // Recrear escena si es necesario (GL THREAD SAFE)
         if (needsSceneRecreation) {
             Log.d(TAG, "════════ RECREANDO ESCENA EN GL THREAD ════════");
             prepareScene();
             needsSceneRecreation = false;
-            frozenFrameReady = false;  // Forzar re-render del frame estático
-        }
-
-        // ═══════════════════════════════════════════════════════════════
-        // ▶️ SISTEMA PLAY/PAUSE - MODO FROZEN FRAME
-        // Si la animación está pausada Y ya tenemos un frame renderizado,
-        // solo dibujamos el PlayPauseButton (sin re-renderizar la escena)
-        // ═══════════════════════════════════════════════════════════════
-        if (!isAnimationPlaying && frozenFrameReady) {
-            // MODO CONGELADO: Solo actualizar/dibujar el botón Play + Saludo + Reloj
-            long now = System.nanoTime();
-            float miniDt = Math.min((now - lastTime) / 1e9f, 0.1f);
-            lastTime = now;
-
-            GLES20.glEnable(GLES20.GL_BLEND);
-            GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
-
-            // 🤖 Actualizar y dibujar saludo + reloj (PRIMERO - atrás)
-            if (orbixGreeting != null) {
-                orbixGreeting.update(miniDt);
-                orbixGreeting.draw();
-            }
-
-            // ▶️ Actualizar y dibujar botón Play/Pause (ÚLTIMO - al frente)
-            if (playPauseButton != null) {
-                playPauseButton.update(miniDt);
-                playPauseButton.draw();
-            }
-
-            return;  // ¡No renderizar nada más! Ahorra CPU/GPU
+            sceneInitialized = true;
+            resourcesLoaded = true;
         }
 
         // ⚡ OPTIMIZACIÓN: Usar TimeManager centralizado
-        // Una sola llamada a System.nanoTime() para todo el frame
         TimeManager.update();
         float dt = TimeManager.getDeltaTime();
-        lastTime = System.nanoTime(); // Mantener para compatibilidad con modo frozen
-
-        // Si estamos en proceso de congelar, renderizar unos frames antes de parar
-        if (!isAnimationPlaying && !frozenFrameReady) {
-            frozenFrameCount++;
-            if (frozenFrameCount >= 3) {  // 3 frames para estabilizar
-                frozenFrameReady = true;
-                Log.d(TAG, "▶️ Frame congelado - modo estático activado");
-            }
-        }
+        lastTime = System.nanoTime();
 
         // Actualizar métricas
         frameCount++;
@@ -527,6 +554,12 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             playPauseButton.update(dt);
             playPauseButton.draw();
         }
+
+        // ⏹️ DIBUJAR MINI STOP BUTTON - Solo en WALLPAPER_MODE
+        if (miniStopButton != null && currentRenderMode == RenderMode.WALLPAPER_MODE) {
+            miniStopButton.update(dt);
+            miniStopButton.draw();
+        }
     }
 
     /**
@@ -611,6 +644,320 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🎛️ PANEL DE CONTROL - Renderizado super ligero
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Renderiza SOLO el Panel de Control (sin escena 3D)
+     * - Fondo negro sólido
+     * - OrbixGreeting (saludo + reloj)
+     * - PlayPauseButton
+     *
+     * Este modo es ULTRA LIGERO y es el estado por defecto del wallpaper.
+     * No consume recursos de la escena 3D.
+     */
+    private void renderPanelMode() {
+        // Limpiar con fondo negro puro (sin transparencia para evitar flickering)
+        GLES20.glClearColor(0.02f, 0.02f, 0.05f, 1.0f);
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
+
+        // Calcular delta time minimal
+        long now = System.nanoTime();
+        float dt = Math.min((now - lastTime) / 1e9f, 0.1f);
+        lastTime = now;
+
+        // Habilitar blending para UI
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+
+        // 🤖 Dibujar OrbixGreeting (saludo + reloj) - PRIMERO (atrás)
+        if (orbixGreeting != null) {
+            orbixGreeting.update(dt);
+            orbixGreeting.draw();
+        }
+
+        // ▶️ Dibujar PlayPauseButton - ÚLTIMO (al frente)
+        if (playPauseButton != null) {
+            playPauseButton.update(dt);
+            playPauseButton.draw();
+        }
+    }
+
+    /**
+     * 📊 Renderiza el modo de carga con barra de progreso
+     *
+     * IMPORTANTE: La barra se muestra PRIMERO, luego se configuran las tareas
+     * Esto evita el "freeze" inicial que confunde al usuario
+     */
+    private void renderLoadingMode() {
+        // Limpiar con fondo negro
+        GLES20.glClearColor(0.02f, 0.02f, 0.05f, 1.0f);
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
+
+        // Calcular delta time
+        long now = System.nanoTime();
+        float dt = Math.min((now - lastTime) / 1e9f, 0.1f);
+        lastTime = now;
+
+        // Habilitar blending para UI
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+
+        // 📊 PASO 1: Dibujar UI primero (para que se vea inmediatamente)
+        // 🤖 Dibujar OrbixGreeting (título arriba)
+        if (orbixGreeting != null) {
+            orbixGreeting.update(dt);
+            orbixGreeting.draw();
+        }
+
+        // ▶️ Dibujar PlayPauseButton (centro)
+        if (playPauseButton != null) {
+            playPauseButton.update(dt);
+            playPauseButton.draw();
+        }
+
+        // 📊 Dibujar barra de carga (debajo del botón)
+        if (loadingBar != null) {
+            loadingBar.update(dt);
+            loadingBar.draw();
+        }
+
+        // 📦 PASO 2: Configurar tareas (solo una vez, después del primer frame)
+        if (!loadingTasksConfigured) {
+            loadingTasksConfigured = true;
+            setupLoadingTasks();
+            if (resourceLoader != null) {
+                resourceLoader.startLoading();
+            }
+            return;  // Dar un frame para que la UI se muestre
+        }
+
+        // 📦 PASO 3: Continuar cargando recursos (un paso por frame)
+        if (resourceLoader != null && resourceLoader.isLoading()) {
+            resourceLoader.loadNextStep();
+
+            // Actualizar barra de progreso
+            if (loadingBar != null) {
+                // Progreso base 5% + 95% del progreso real
+                float visualProgress = 0.05f + (resourceLoader.getProgress() * 0.95f);
+                loadingBar.setProgress(visualProgress);
+            }
+        }
+    }
+
+    /**
+     * 📊 Callback cuando la carga de recursos termina
+     */
+    private void onResourceLoadingComplete() {
+        Log.d(TAG, "╔════════════════════════════════════════╗");
+        Log.d(TAG, "║  ✅ CARGA COMPLETA - Iniciando escena  ║");
+        Log.d(TAG, "╚════════════════════════════════════════╝");
+
+        // Ocultar barra de carga
+        if (loadingBar != null) {
+            loadingBar.hide();
+        }
+
+        // Cambiar a modo wallpaper
+        currentRenderMode = RenderMode.WALLPAPER_MODE;
+        isAnimationPlaying = true;
+        sceneInitialized = true;
+        resourcesLoaded = true;
+
+        // Ocultar greeting
+        if (orbixGreeting != null) {
+            orbixGreeting.hide();
+        }
+
+        // ⏹️ Mostrar botón STOP mini
+        if (miniStopButton != null) {
+            miniStopButton.show();
+        }
+
+        // Reanudar audio
+        if (musicVisualizer != null && musicReactiveEnabled) {
+            musicVisualizer.resume();
+        }
+
+        Log.d(TAG, "🌌 WALLPAPER_MODE activado");
+    }
+
+    /**
+     * 🔄 Cambia al modo Panel de Control
+     * Libera recursos de audio para ahorrar batería.
+     */
+    public void switchToPanelMode() {
+        if (currentRenderMode == RenderMode.PANEL_MODE) return;  // Ya está en este modo
+
+        currentRenderMode = RenderMode.PANEL_MODE;
+        isAnimationPlaying = false;
+
+        // Ocultar barra de carga si estaba visible
+        if (loadingBar != null) {
+            loadingBar.hide();
+        }
+
+        // Resetear flag de configuración de tareas
+        loadingTasksConfigured = false;
+
+        // Actualizar UI
+        if (playPauseButton != null) {
+            playPauseButton.setPlaying(false);
+        }
+        if (orbixGreeting != null) {
+            orbixGreeting.show();
+        }
+
+        // ⏹️ Ocultar botón STOP mini
+        if (miniStopButton != null) {
+            miniStopButton.hide();
+        }
+
+        // Pausar captura de audio para ahorrar batería
+        if (musicVisualizer != null) {
+            musicVisualizer.pause();
+        }
+
+        Log.d(TAG, "╔════════════════════════════════════════╗");
+        Log.d(TAG, "║  🎛️ PANEL MODE - Recursos liberados    ║");
+        Log.d(TAG, "╚════════════════════════════════════════╝");
+    }
+
+    /**
+     * 📊 Cambia al modo de carga - prepara los recursos
+     */
+    public void switchToLoadingMode() {
+        if (currentRenderMode == RenderMode.LOADING_MODE) return;  // Ya está cargando
+
+        Log.d(TAG, "╔════════════════════════════════════════╗");
+        Log.d(TAG, "║  📊 LOADING MODE - Iniciando carga     ║");
+        Log.d(TAG, "╚════════════════════════════════════════╝");
+
+        currentRenderMode = RenderMode.LOADING_MODE;
+
+        // 📊 Mostrar barra de carga INMEDIATAMENTE con progreso inicial
+        if (loadingBar != null) {
+            loadingBar.reset();
+            loadingBar.show();
+            loadingBar.setProgressImmediate(0.05f);  // 5% inicial para feedback visual
+        }
+
+        // Cambiar botón a estado "cargando"
+        if (playPauseButton != null) {
+            playPauseButton.setPlaying(true);  // Mostrar que algo está pasando
+        }
+
+        // Resetear flag - las tareas se configuran en renderLoadingMode()
+        // Esto evita el freeze inicial
+        loadingTasksConfigured = false;
+
+        // Resetear ResourceLoader para nueva carga
+        if (resourceLoader != null) {
+            resourceLoader.reset();
+        }
+    }
+
+    /**
+     * 📦 Configura las tareas de carga según la escena seleccionada
+     * Dividimos en múltiples pasos para mostrar progreso más granular
+     */
+    private void setupLoadingTasks() {
+        if (resourceLoader == null) return;
+
+        resourceLoader.clearTasks();
+
+        // Tarea 1: Inicializar sistema de texturas
+        resourceLoader.addTask(ResourceLoader.LoadTask.custom(
+            "Sistema de texturas",
+            () -> {
+                if (textureManager != null) {
+                    textureManager.initialize();
+                }
+            },
+            0.1f
+        ));
+
+        // Tarea 2: Limpiar escena anterior
+        resourceLoader.addTask(ResourceLoader.LoadTask.custom(
+            "Limpiando escena",
+            () -> {
+                sceneObjects.clear();
+                spaceBattleScene = null;
+            },
+            0.05f
+        ));
+
+        // Tarea 3: Preparar cámara y controladores
+        resourceLoader.addTask(ResourceLoader.LoadTask.custom(
+            "Cámara",
+            () -> {
+                // La cámara ya está configurada, solo necesitamos asegurar que esté lista
+                if (sharedCamera != null) {
+                    sharedCamera.setMode(CameraController.CameraMode.PERSPECTIVE_3_4);
+                }
+            },
+            0.05f
+        ));
+
+        // Tarea 4: Cargar fondo
+        resourceLoader.addTask(ResourceLoader.LoadTask.sceneObject(
+            "Fondo estelar",
+            () -> { /* El fondo se carga en prepareSceneInternal */ },
+            0.15f
+        ));
+
+        // Tarea 5: Cargar planeta principal
+        resourceLoader.addTask(ResourceLoader.LoadTask.sceneObject(
+            "Planeta Tierra",
+            () -> { /* Se carga en prepareSceneInternal */ },
+            0.2f
+        ));
+
+        // Tarea 6: Cargar efectos y partículas
+        resourceLoader.addTask(ResourceLoader.LoadTask.sceneObject(
+            "Efectos visuales",
+            () -> { /* Se carga en prepareSceneInternal */ },
+            0.15f
+        ));
+
+        // Tarea 7: Preparar escena completa (esto hace el trabajo real)
+        resourceLoader.addTask(ResourceLoader.LoadTask.sceneObject(
+            "Escena " + selectedItem,
+            this::prepareSceneInternal,
+            0.2f
+        ));
+
+        // Tarea 8: Activar audio
+        resourceLoader.addTask(ResourceLoader.LoadTask.custom(
+            "Sistema de audio",
+            () -> {
+                if (musicVisualizer != null && musicReactiveEnabled) {
+                    musicVisualizer.resume();
+                }
+            },
+            0.1f
+        ));
+
+        Log.d(TAG, "📦 " + resourceLoader.getTotalTasks() + " tareas de carga configuradas");
+    }
+
+    /**
+     * 🌌 Cambia al modo Wallpaper Animado
+     * SIEMPRE pasa por LOADING_MODE para mostrar el anillo de carga
+     * Esto garantiza que el usuario siempre vea feedback visual
+     */
+    public void switchToWallpaperMode() {
+        if (currentRenderMode == RenderMode.WALLPAPER_MODE) return;  // Ya está en este modo
+        if (currentRenderMode == RenderMode.LOADING_MODE) return;    // Ya está cargando
+
+        // SIEMPRE ir a modo LOADING - el usuario necesita ver feedback visual
+        // Aunque los recursos estén en cache, hay trabajo de reactivación
+        switchToLoadingMode();
+    }
+
     private void prepareScene() {
         Log.d(TAG, "════════ Preparing Scene: " + selectedItem + " ════════");
 
@@ -622,6 +969,14 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         sceneObjects.clear();
         spaceBattleScene = null;  // Limpiar referencia de batalla espacial
 
+        prepareSceneInternal();
+    }
+
+    /**
+     * 📦 Preparación interna de la escena (sin inicializar TextureManager)
+     * Este método es llamado desde ResourceLoader durante la carga progresiva
+     */
+    private void prepareSceneInternal() {
         // ═══════════════════════════════════════════════════════════
         // 🎨 SELECTOR DE ESCENAS - 10 WALLPAPERS ÚNICOS
         // ═══════════════════════════════════════════════════════════
@@ -692,44 +1047,43 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
 
         // 🌍 PLANETA TIERRA EN EL CENTRO - MODO HÍBRIDO: TEXTURA + SHADERS PROCEDURALES
         // ✨ Textura realista HD como base + Nubes animadas + Atmósfera procedural + Océanos con olas
-        // Nota: La variable se llama "sol" por razones históricas (sistema de HP/respawn)
         try {
-            sol = new Planeta(
+            tierra = new Planeta(
                     context, textureManager,
                     "shaders/tierra_vertex.glsl",        // Shader épico con efectos
                     "shaders/tierra_fragment.glsl",      // 🌍 HÍBRIDO: Textura real + efectos procedurales
                     R.drawable.texturaplanetatierra,     // ✨ TEXTURA HD REALISTA como base
-                    0.8f, 0.0f,        // Posición orbital X, Z
+                    0.0f, 0.0f,        // 🎯 CENTRADO en X=0, Z=0 (centro de la escena)
                     0.0f,              // orbitSpeed = 0 (FIJO, sin órbita)
-                    0.0f,              // 📍 orbitOffsetY = 0.0 (sin altura)
+                    1.8f,              // 📍 orbitOffsetY = 1.8 (ARRIBA en la escena)
                     0.0f,              // scaleAmplitude = sin variación
-                    1.0f,              // 🌎 TAMAÑO PROTAGONISTA (planeta principal)
-                    12.0f,             // spinSpeed = rotación SUAVE y relajante
+                    1.2f,              // 🌎 TAMAÑO más grande para protagonismo
+                    8.0f,              // spinSpeed = rotación SUAVE y relajante
                     false, null, 1.0f,
                     null, 1.0f
             );
-            if (sol instanceof CameraAware) {
-                ((CameraAware) sol).setCameraController(sharedCamera);
+            if (tierra instanceof CameraAware) {
+                ((CameraAware) tierra).setCameraController(sharedCamera);
             }
-            sol.setMaxHealth(200);  // Tierra tiene 200 HP - objetivo principal a defender
-            sol.setOnExplosionListener(this);  // 💥 CONECTAR EXPLOSIÓN ÉPICA
+            tierra.setMaxHealth(200);  // Tierra tiene 200 HP - objetivo principal a defender
+            tierra.setOnExplosionListener(this);  // 💥 CONECTAR EXPLOSIÓN ÉPICA
 
             // ═══ 💾 CARGAR HP GUARDADO ═══
-            sol.setPlayerStats(playerStats);  // Inyectar PlayerStats para auto-guardar
+            tierra.setPlayerStats(playerStats);  // Inyectar PlayerStats para auto-guardar
             int savedPlanetHP = playerStats.getSavedPlanetHealth();  // Nota: usa "PlanetHealth" (campo Firebase: "sunHealth" por compatibilidad)
-            sol.setHealth(savedPlanetHP);  // Cargar HP guardado
+            tierra.setHealth(savedPlanetHP);  // Cargar HP guardado
             Log.d(TAG, "  💾 TIERRA HP cargado: " + savedPlanetHP + "/200");
 
             // ═══ ⚡ OPTIMIZACIÓN: ROTACIÓN ANIMADA SIMPLE (sin Calendar) ═══
             // Desactivado tiempo real para mejor rendimiento en dispositivos de gama baja
-            sol.setRealTimeRotation(false);  // ⚡ DESACTIVADO - usa rotación animada simple
+            tierra.setRealTimeRotation(false);  // ⚡ DESACTIVADO - usa rotación animada simple
             // spinSpeed ya está configurado en 80.0f para rotación visible
             Log.d(TAG, "  ⚡ TIERRA rotación SIMPLE (spinSpeed=80, sin Calendar)");
 
-            sceneObjects.add(sol);
+            sceneObjects.add(tierra);
 
             // 🌍 Guardar referencia para detección de impactos
-            planetaTierra = sol;
+            planetaTierra = tierra;
 
             Log.d(TAG, "════════════════════════════════════════════════");
             Log.d(TAG, "  ✓ 🌍 TIERRA ÉPICA añadida con shader procedural");
@@ -743,11 +1097,11 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         }
 
         // 🌍🛡️ CREAR ESCUDO INVISIBLE DE LA TIERRA (para mostrar impactos)
-        // Radio: 0.58 (Tierra = 0.5, shield MÁS SEPARADO para evitar Z-fighting)
+        // Radio mayor que la Tierra para evitar Z-fighting
         earthShield = new EarthShield(
             context, textureManager,
-            0.0f, 0.0f, 0.0f,  // Centrado con la Tierra
-            1.05f               // Radio mayor que la Tierra para evitar solapamiento
+            0.0f, 1.8f, 0.0f,  // 🎯 MISMO Y=1.8 QUE LA TIERRA
+            1.30f               // Radio mayor que la Tierra (1.2) para evitar solapamiento
         );
         if (earthShield instanceof CameraAware) {
             ((CameraAware) earthShield).setCameraController(sharedCamera);
@@ -814,6 +1168,17 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
 
             sceneObjects.add(solProcedural);
             Log.d(TAG, "  ✓ ☀️ SOL PROCEDURAL añadido (576 tri - 14x más eficiente)");
+
+            // 🔥 EFECTO DE CALOR/DISTORSIÓN ALREDEDOR DEL SOL
+            try {
+                SunHeatEffect sunHeat = new SunHeatEffect(context);
+                sunHeat.setSunPosition(-8.0f, 4.0f, -15.0f, 1.5f);
+                sunHeat.setCameraController(sharedCamera);
+                sceneObjects.add(sunHeat);
+                Log.d(TAG, "  ✓ 🔥 Efecto de calor del Sol añadido");
+            } catch (Exception heatEx) {
+                Log.e(TAG, "  ✗ Error creando efecto de calor: " + heatEx.getMessage());
+            }
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creating procedural sun: " + e.getMessage());
             e.printStackTrace();
@@ -855,11 +1220,13 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             );
             ovni.setCameraController(sharedCamera);
 
-            // 🌍 Configurar posición de la Tierra para ESQUIVARLA
-            ovni.setEarthPosition(0f, 0f, 0f);
+            // 🌍 Configurar posición de la Tierra para ESQUIVARLA (Y=1.8)
+            ovni.setEarthPosition(0f, 1.8f, 0f);
+            // ☀️ Configurar posición del Sol para ESQUIVARLO
+            ovni.setSunPosition(-8.0f, 4.0f, -15.0f);
             ovni.setOrbitParams(
-                1.5f,   // Distancia segura al planeta (no acercarse más)
-                0.35f,  // Velocidad de exploración
+                2.5f,   // Distancia segura al planeta (aumentada)
+                0.4f,   // Velocidad de exploración
                 0.0f    // (no usado en modo exploración)
             );
 
@@ -882,7 +1249,10 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         }
 
         // ✨ SISTEMA DE PARTÍCULAS INSTANCIADAS - OpenGL ES 3.0
-        // Renderiza miles de partículas con UNA sola draw call
+        // ⚠️ DESHABILITADO: Emitía partículas naranjas continuamente debajo de la Tierra
+        // El sistema está disponible pero sin emisión continua
+        // Puede usarse para efectos especiales con burst() si se necesita en el futuro
+        /*
         try {
             instancedParticles = new InstancedParticles(context, 500);  // Max 500 partículas
             instancedParticles.setEmitterPosition(0f, -0.5f, 0f);  // Debajo de la Tierra
@@ -899,6 +1269,8 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             Log.e(TAG, "  ✗ Error creating instanced particles: " + e.getMessage());
             e.printStackTrace();
         }
+        */
+        instancedParticles = null;  // Deshabilitado para evitar partículas continuas
 
         // BARRA DE PODER DE BATERÍA - UI ELEMENT
         BatteryPowerBar powerBar = null;
@@ -923,11 +1295,11 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         try {
             forceField = new ForceField(
                     context, textureManager,
-                    0.0f, 0.0f, 0.0f,   // 🎯 CENTRADO CON LA TIERRA en (0, 0, 0)
-                    1.230f,              // 🛡️ MUCHO MÁS GRANDE (envuelve atmósfera sin tocarla)
+                    0.0f, 1.8f, 0.0f,   // 🎯 MISMO Y=1.8 QUE LA TIERRA (protege al planeta)
+                    1.55f,               // 🛡️ INCREMENTADO: Mayor diámetro para mejor cobertura
                     R.drawable.fondo_transparente,  // Textura transparente para efectos puros
                     new float[]{0.3f, 0.9f, 1.0f},  // Color azul eléctrico suave
-                    0.0125f,               // ✨ CASI INVISIBLE (alpha 0%, solo impactos)
+                    0.08f,               // ✨ MÁS VISIBLE para ver el OVNI detrás (8% alpha base)
                     0.028f,              // Pulsación ULTRA sutil (3% de variación)
                     0.240f                // Pulsación ULTRA LENTA
             );
@@ -946,9 +1318,10 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         }
 
         // BARRAS HP para Tierra y Campo de Fuerza
+        // ⚠️ OCULTAS VISUALMENTE - La funcionalidad sigue activa pero sin UI
         try {
             // Barra HP de la Tierra (azul-verde cuando llena, roja cuando vacía)
-            hpBarSun = new HPBar(
+            hpBarTierra = new HPBar(
                     context,
                     "🌍 TIERRA",  // Actualizado a TIERRA
                     0.05f, 0.92f,  // Posición: arriba izquierda
@@ -957,7 +1330,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     new float[]{0.2f, 0.8f, 0.3f, 1.0f},  // Verde-azul lleno (colores tierra)
                     new float[]{1.0f, 0.0f, 0.0f, 1.0f}   // Rojo vacío
             );
-            sceneObjects.add(hpBarSun);
+            // sceneObjects.add(hpBarTierra);  // ← OCULTA: No agregar a escena
 
             // Barra HP del Campo de Fuerza (azul cuando llena, roja cuando vacía)
             hpBarForceField = new HPBar(
@@ -969,14 +1342,15 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     new float[]{0.2f, 0.6f, 1.0f, 1.0f},  // Azul lleno
                     new float[]{1.0f, 0.0f, 0.0f, 1.0f}   // Rojo vacío
             );
-            sceneObjects.add(hpBarForceField);
+            // sceneObjects.add(hpBarForceField);  // ← OCULTA: No agregar a escena
 
-            Log.d(TAG, "[SceneRenderer] ✓ Barras HP agregadas (Sol y Escudo)");
+            Log.d(TAG, "[SceneRenderer] ✓ Barras HP creadas (OCULTAS - funcionalidad activa)");
         } catch (Exception e) {
             Log.e(TAG, "[SceneRenderer] ✗ Error creando barras HP: " + e.getMessage());
         }
 
         // 👆 BARRA DE CARGA DE PODER (PARA DISPARAR METEORITOS)
+        // ⚠️ OCULTA VISUALMENTE - Se mantiene la funcionalidad interna
         try {
             chargePowerBar = new HPBar(
                     context,
@@ -989,8 +1363,8 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     false  // ⚠️ Deshabilitar parpadeo (solo se usa para indicar carga, no daño)
             );
             chargePowerBar.setHealth(0);  // Empieza vacía
-            sceneObjects.add(chargePowerBar);
-            Log.d(TAG, "  ⚡✓ Barra de carga de poder agregada (sin parpadeo)");
+            // sceneObjects.add(chargePowerBar);  // ← OCULTA: No agregar a escena
+            Log.d(TAG, "  ⚡✓ Barra de carga de poder creada (OCULTA)");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ ERROR creando barra de carga: " + e.getMessage());
         }
@@ -1041,13 +1415,13 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
 
             musicIndicator = new MusicIndicator(
                     context,
-                    -0.250f,   // X: Centrado (ligeramente a la izquierda del centro)
-                    0.2660f,    // Y: Parte superior de la pantalla
-                    0.50f,    // Ancho: HORIZONTAL (más ancho que alto)
-                    0.10f     // Alto: Delgado y compacto
+                    -0.250f,   // X: Centrado (ligeramente a la izquierda)
+                    -0.35f,    // Y: Debajo del planeta, arriba de los iconos
+                    0.50f,     // Ancho: HORIZONTAL (más ancho que alto)
+                    0.12f      // Alto: Un poco más alto para mejor visibilidad
             );
             sceneObjects.add(musicIndicator);
-            Log.d(TAG, "  🎵✓ INDICADOR DE MÚSICA agregado - CENTRADO, ARRIBA del sol");
+            Log.d(TAG, "  🎵✓ INDICADOR DE MÚSICA - DEBAJO DE LA TIERRA (Y=-0.35)");
         } catch (Exception e) {
             Log.e(TAG, "  ✗✗✗ ERROR CRÍTICO creando indicador de música: " + e.getMessage());
             e.printStackTrace();
@@ -1112,17 +1486,24 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             // Actualizar leaderboard directamente (sin esperar bots)
             updateLeaderboardUI();
 
-            // Crear textos para Top 3 (VERTICAL, de arriba a abajo, en la parte inferior izquierda)
-            float x = -0.99f;        // X fija en el borde izquierdo (alineado con barras HP)
-            float startY = 0.10f;   // Y inicial (parte inferior, justo arriba de las barras HP)
-            float width = 0.45f;    // Ancho de cada texto
-            float spacing = 0.18f;  // Espaciado VERTICAL entre textos
+            // Crear textos para Top 3 (ARRIBA IZQUIERDA - debajo del indicador de música)
+            float x = -0.95f;        // X fija en el borde izquierdo
+            float startY = 0.55f;    // 🎯 Y inicial - ARRIBA (debajo del ecualizador)
+            float width = 0.50f;     // Ancho de cada texto (más ancho para nombres)
+            float spacing = 0.10f;   // Espaciado VERTICAL entre textos (más compacto)
 
             for (int i = 0; i < 3; i++) {
-                float y = startY + (i * spacing);  // Y varía (vertical), X fija
-                leaderboardTexts[i] = new SimpleTextRenderer(context, x, y, width, 0.08f);
-                leaderboardTexts[i].setColor(android.graphics.Color.WHITE);
-                leaderboardTexts[i].setText("#" + (i+1) + " ---");
+                float y = startY - (i * spacing);  // De arriba a abajo (#1 arriba, #3 abajo)
+                leaderboardTexts[i] = new SimpleTextRenderer(context, x, y, width, 0.06f);
+                // Colores según posición
+                if (i == 0) {
+                    leaderboardTexts[i].setColor(android.graphics.Color.rgb(255, 215, 0));  // 🥇 Oro
+                } else if (i == 1) {
+                    leaderboardTexts[i].setColor(android.graphics.Color.rgb(192, 192, 192)); // 🥈 Plata
+                } else {
+                    leaderboardTexts[i].setColor(android.graphics.Color.rgb(205, 127, 50));  // 🥉 Bronce
+                }
+                leaderboardTexts[i].setText("---");
                 sceneObjects.add(leaderboardTexts[i]);
             }
 
@@ -1211,8 +1592,8 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             }
 
             // Conectar con el sistema de HP
-            if (sol != null && forceField != null && hpBarSun != null && hpBarForceField != null) {
-                meteorShower.setHPSystem(sol, forceField, hpBarSun, hpBarForceField);
+            if (tierra != null && forceField != null && hpBarTierra != null && hpBarForceField != null) {
+                meteorShower.setHPSystem(tierra, forceField, hpBarTierra, hpBarForceField);
                 Log.d(TAG, "[SceneRenderer] ✓ Sistema HP conectado con MeteorShower");
             }
 
@@ -1832,36 +2213,41 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     }
 
     /**
-     * 🔴 PAUSA - Detiene renderizado y libera recursos
+     * 🔴 PAUSA - Detiene renderizado completamente
      * IMPORTANTE: Puede llamarse múltiples veces seguidas (cambios rápidos de visibilidad)
+     * Al pausar, forzamos PANEL_MODE para que al volver no haya flickering
      */
     public void pause() {
         paused = true;  // Siempre marcar como pausado (sin verificar estado previo)
+
+        // 🎛️ FORZAR PANEL_MODE - Clave para evitar flickering al volver
+        currentRenderMode = RenderMode.PANEL_MODE;
+        isAnimationPlaying = false;
 
         // Pausar audio (rápido y seguro llamar múltiples veces)
         if (musicVisualizer != null) {
             musicVisualizer.pause();
         }
 
-        // Guardar estado solo si no se guardó recientemente
+        // Guardar estado de juego
         if (playerStats != null) {
             playerStats.endSession();
             playerStats.saveStats();
         }
 
-        // Resetear estado de animación
-        isAnimationPlaying = false;
-        frozenFrameReady = false;
-
-        Log.d(TAG, "🔴 PAUSE");
+        Log.d(TAG, "🔴 PAUSE → PANEL_MODE");
     }
 
     /**
-     * 🟢 RESUME - Reactiva el renderizado
-     * IMPORTANTE: Puede llamarse múltiples veces seguidas (cambios rápidos de visibilidad)
+     * 🟢 RESUME - Reactiva el renderizado en PANEL_MODE
+     * IMPORTANTE: Siempre vuelve a PANEL_MODE para que el usuario decida cuando activar el wallpaper
      */
     public void resume() {
         paused = false;  // Siempre marcar como activo (sin verificar estado previo)
+
+        // 🎛️ SIEMPRE volver a PANEL_MODE - El usuario activa el wallpaper manualmente
+        currentRenderMode = RenderMode.PANEL_MODE;
+        isAnimationPlaying = false;
 
         // Resetear tiempo para evitar saltos de deltaTime
         lastTime = System.nanoTime();
@@ -1870,26 +2256,22 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         // ⚡ Resetear tiempo de elementos UI para evitar overflow de precisión
         if (playPauseButton != null) {
             playPauseButton.resetTime();
+            playPauseButton.setPlaying(false);  // Asegurar que muestre Play
         }
         if (orbixGreeting != null) {
             orbixGreeting.resetTime();
+            orbixGreeting.show();  // Asegurar que esté visible
         }
 
-        // Reactivar audio (rápido y seguro llamar múltiples veces)
-        if (musicVisualizer != null) {
-            musicVisualizer.resume();
-        }
+        // NO reactivar audio - solo se activa cuando el usuario presiona Play
+        // El audio se activa en switchToWallpaperMode()
 
-        // Iniciar sesión de juego
+        // Iniciar sesión de juego (para estadísticas)
         if (playerStats != null) {
             playerStats.startSession();
         }
 
-        // Preparar para renderizado
-        frozenFrameReady = false;
-        frozenFrameCount = 0;
-
-        Log.d(TAG, "🟢 RESUME");
+        Log.d(TAG, "🟢 RESUME → PANEL_MODE (esperando Play)");
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -1897,75 +2279,36 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
-     * Alterna entre modo PLAY (animando) y STOP (congelado)
-     * Cuando está en STOP:
-     * - No actualiza objetos de escena
-     * - No consume CPU en cálculos
-     * - Pausa captura de audio (ahorra batería)
-     * - Solo renderiza el último frame + botón Play
+     * 🎮 Alterna entre PANEL_MODE y WALLPAPER_MODE
+     * Esta es la función principal llamada cuando el usuario toca el botón Play/Pause
      */
     public void togglePlayPause() {
-        isAnimationPlaying = !isAnimationPlaying;
-
-        if (playPauseButton != null) {
-            playPauseButton.setPlaying(isAnimationPlaying);
-        }
-
-        if (isAnimationPlaying) {
-            // ▶️ MODO PLAY: Reanudar todo
-            frozenFrameReady = false;
-            frozenFrameCount = 0;
-            lastTime = System.nanoTime();  // Reset delta time para evitar saltos
-
-            // 🤖 Ocultar saludo y reloj
-            if (orbixGreeting != null) {
-                orbixGreeting.hide();
-            }
-
-            // Reanudar captura de audio
-            if (musicVisualizer != null && musicReactiveEnabled) {
-                musicVisualizer.resume();
-            }
-
-            Log.d(TAG, "╔════════════════════════════════════════╗");
-            Log.d(TAG, "║  ▶️ PLAY - Animación INICIADA          ║");
-            Log.d(TAG, "║  Audio capture: ACTIVADO               ║");
-            Log.d(TAG, "╚════════════════════════════════════════╝");
+        if (currentRenderMode == RenderMode.PANEL_MODE) {
+            // ▶️ Activar wallpaper animado
+            switchToWallpaperMode();
         } else {
-            // ■ MODO STOP: Pausar todo (excepto el renderizado del frame actual)
-
-            // 🤖 Mostrar saludo y reloj
-            if (orbixGreeting != null) {
-                orbixGreeting.show();
-            }
-
-            // Pausar captura de audio para ahorrar batería
-            if (musicVisualizer != null) {
-                musicVisualizer.pause();
-            }
-
-            Log.d(TAG, "╔════════════════════════════════════════╗");
-            Log.d(TAG, "║  ■ STOP - Animación DETENIDA           ║");
-            Log.d(TAG, "║  Audio capture: PAUSADO                ║");
-            Log.d(TAG, "║  Modo bajo consumo activado            ║");
-            Log.d(TAG, "╚════════════════════════════════════════╝");
+            // ■ Volver al Panel de Control
+            switchToPanelMode();
         }
     }
 
     /**
-     * Verifica si la animación está activa
-     * @return true si está animando, false si está congelado
+     * Verifica si el wallpaper está en modo animado
+     * @return true si está en WALLPAPER_MODE, false si está en PANEL_MODE
      */
     public boolean isAnimationPlaying() {
-        return isAnimationPlaying;
+        return currentRenderMode == RenderMode.WALLPAPER_MODE;
     }
 
     /**
-     * Fuerza el estado de animación (útil para restaurar estado)
+     * Fuerza el cambio de modo (usado por LiveWallpaperService)
+     * @param playing true = WALLPAPER_MODE, false = PANEL_MODE
      */
     public void setAnimationPlaying(boolean playing) {
-        if (this.isAnimationPlaying != playing) {
-            togglePlayPause();
+        if (playing && currentRenderMode != RenderMode.WALLPAPER_MODE) {
+            switchToWallpaperMode();
+        } else if (!playing && currentRenderMode != RenderMode.PANEL_MODE) {
+            switchToPanelMode();
         }
     }
 
@@ -2023,27 +2366,27 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
      * Coordina el respawn del Sol y Campo de Fuerza juntos
      */
     private void coordinarRespawn() {
-        if (sol == null || forceField == null) return;
+        if (tierra == null || forceField == null) return;
 
-        boolean solIsDead = sol.isDead();
+        boolean tierraIsDead = tierra.isDead();
 
-        // Detectar cuando el sol acaba de morir
-        if (solIsDead && !solWasDead) {
+        // Detectar cuando la Tierra acaba de morir
+        if (tierraIsDead && !tierraWasDead) {
             Log.d(TAG, "╔════════════════════════════════════════╗");
-            Log.d(TAG, "║   ¡¡¡ SOL DESTRUIDO !!!               ║");
+            Log.d(TAG, "║   ¡¡¡ TIERRA DESTRUIDA !!!            ║");
             Log.d(TAG, "║   Campo de Fuerza caído...            ║");
             Log.d(TAG, "║   Respawn en 3 segundos...            ║");
             Log.d(TAG, "╚════════════════════════════════════════╝");
         }
 
-        // Detectar cuando el sol acaba de respawnear
-        if (!solIsDead && solWasDead) {
+        // Detectar cuando la Tierra acaba de respawnear
+        if (!tierraIsDead && tierraWasDead) {
             // RESPAWN COORDINADO: Resetear campo de fuerza y HP bars juntos
             if (forceField != null) {
                 forceField.reset();
             }
-            if (hpBarSun != null) {
-                hpBarSun.reset();
+            if (hpBarTierra != null) {
+                hpBarTierra.reset();
             }
             if (hpBarForceField != null) {
                 hpBarForceField.reset();
@@ -2051,12 +2394,12 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
 
             Log.d(TAG, "╔════════════════════════════════════════╗");
             Log.d(TAG, "║   ✨ RESPAWN COMPLETO ✨              ║");
-            Log.d(TAG, "║   Sol: HP restaurado                  ║");
+            Log.d(TAG, "║   Tierra: HP restaurado               ║");
             Log.d(TAG, "║   Campo de Fuerza: ACTIVO             ║");
             Log.d(TAG, "╚════════════════════════════════════════╝");
         }
 
-        solWasDead = solIsDead;
+        tierraWasDead = tierraIsDead;
     }
 
     public void setSelectedItem(String item) {
@@ -2089,16 +2432,36 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
 
         try {
             // ▶️ VERIFICAR PLAYPAUSEBUTTON PRIMERO (prioridad máxima)
+            // SOLO procesar toques cuando estamos en PANEL_MODE o LOADING_MODE
+            // Esto evita activaciones accidentales cuando hay ventanas encima
             if (action == android.view.MotionEvent.ACTION_DOWN) {
-                float tx = event.getX();
-                float ty = event.getY();
-                float nx = (tx / screenWidth) * 2.0f - 1.0f;
-                float ny = -((ty / screenHeight) * 2.0f - 1.0f);
+                // Solo permitir tocar el botón cuando el Panel de Control está visible
+                if (currentRenderMode == RenderMode.PANEL_MODE) {
+                    float tx = event.getX();
+                    float ty = event.getY();
+                    float nx = (tx / screenWidth) * 2.0f - 1.0f;
+                    float ny = -((ty / screenHeight) * 2.0f - 1.0f);
 
-                if (playPauseButton != null && playPauseButton.isInside(nx, ny)) {
-                    Log.d(TAG, "▶️ PlayPauseButton tocado en (" + nx + ", " + ny + ")");
-                    togglePlayPause();
-                    return;  // No procesar más
+                    if (playPauseButton != null && playPauseButton.isInside(nx, ny)) {
+                        Log.d(TAG, "▶️ PlayPauseButton tocado en PANEL_MODE (" + nx + ", " + ny + ")");
+                        togglePlayPause();
+                        return;  // No procesar más
+                    }
+                }
+
+                // ⏹️ VERIFICAR MINI STOP BUTTON (solo en WALLPAPER_MODE)
+                if (currentRenderMode == RenderMode.WALLPAPER_MODE) {
+                    float tx = event.getX();
+                    float ty = event.getY();
+                    float nx = (tx / screenWidth) * 2.0f - 1.0f;
+                    float ny = -((ty / screenHeight) * 2.0f - 1.0f);
+
+                    if (miniStopButton != null && miniStopButton.isInside(nx, ny)) {
+                        Log.d(TAG, "⏹️ MiniStopButton tocado en WALLPAPER_MODE (" + nx + ", " + ny + ")");
+                        miniStopButton.onInteraction();  // Efecto visual
+                        switchToPanelMode();  // Volver al panel
+                        return;  // No procesar más
+                    }
                 }
             }
 
@@ -2790,18 +3153,21 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                     for (int i = 0; i < Math.min(top3.size(), 3); i++) {
                         LeaderboardManager.LeaderboardEntry entry = top3.get(i);
                         if (leaderboardTexts[i] != null) {
-                            String icon = entry.isBot ? "🤖" : "👤";
-                            String text = icon + " #" + entry.rank + " " + entry.displayName + "\n🪐" + entry.planetsDestroyed;
+                            // 🏆 Formato bonito: medalla + nombre + puntuación
+                            String medal = (i == 0) ? "🥇" : (i == 1) ? "🥈" : "🥉";
+                            String name = entry.displayName;
+                            // Truncar nombre si es muy largo
+                            if (name.length() > 10) {
+                                name = name.substring(0, 9) + "..";
+                            }
+                            String text = medal + " " + name + " " + entry.planetsDestroyed;
                             leaderboardTexts[i].setText(text);
 
-                            // Color diferente para el usuario actual
+                            // Colores según posición (ya configurados en init)
+                            // Resaltar si es el usuario actual
                             if (!entry.isBot && playerStats != null &&
                                 entry.planetsDestroyed == playerStats.getPlanetsDestroyed()) {
-                                leaderboardTexts[i].setColor(android.graphics.Color.rgb(255, 215, 0)); // Oro
-                            } else if (entry.isBot) {
-                                leaderboardTexts[i].setColor(android.graphics.Color.rgb(100, 200, 255)); // Azul claro
-                            } else {
-                                leaderboardTexts[i].setColor(android.graphics.Color.WHITE);
+                                leaderboardTexts[i].setColor(android.graphics.Color.rgb(0, 255, 150)); // Verde brillante para TÚ
                             }
                         }
                     }
@@ -2823,7 +3189,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     // ===== 💥💥💥 EXPLOSIÓN ÉPICA DEL SOL 💥💥💥 =====
 
     /**
-     * Callback cuando el sol explota - GENERA EXPLOSIÓN MASIVA DE PARTÍCULAS
+     * Callback cuando la Tierra explota - GENERA EXPLOSIÓN MASIVA DE PARTÍCULAS
      * Llamado desde Planeta cuando HP llega a 0
      */
     @Override
@@ -2832,7 +3198,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         Log.d(TAG, "║                                                        ║");
         Log.d(TAG, "║         💥💥💥 ¡¡¡EXPLOSIÓN ÉPICA!!! 💥💥💥           ║");
         Log.d(TAG, "║                                                        ║");
-        Log.d(TAG, "║   El sol ha sido destruido!                           ║");
+        Log.d(TAG, "║   ¡La Tierra ha sido destruida!                       ║");
         Log.d(TAG, String.format("║   Intensidad: %.1f (MÁXIMA)                           ║", intensity));
         Log.d(TAG, String.format("║   Posición: (%.2f, %.2f, %.2f)                        ║", x, y, z));
         Log.d(TAG, "║                                                        ║");

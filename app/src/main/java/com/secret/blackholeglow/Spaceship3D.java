@@ -75,9 +75,32 @@ public class Spaceship3D implements SceneObject, CameraAware {
     private float maxZ = 2.0f;
 
     // 🌍 POSICIÓN DE LA TIERRA (para esquivarla y dispararle)
-    private float earthX = 0f, earthY = 0f, earthZ = 0f;
+    private float earthX = 0f, earthY = 1.8f, earthZ = 0f;
     private float earthRadius = 1.2f;           // Radio de seguridad de la Tierra
-    private float safeDistance = 1.8f;          // Distancia mínima al planeta
+    private float safeDistanceEarth = 2.5f;     // Distancia mínima a la Tierra
+
+    // ☀️ POSICIÓN DEL SOL (para esquivarlo)
+    private float sunX = 0f, sunY = -1.0f, sunZ = 0f;
+    private float sunRadius = 0.8f;             // Radio de seguridad del Sol
+    private float safeDistanceSun = 1.8f;       // Distancia mínima al Sol
+
+    // ✨ TELETRANSPORTACIÓN
+    private float teleportTimer = 0f;
+    private float teleportInterval = 12.0f;     // Cada 12 segundos (varía)
+    private float minTeleportInterval = 8.0f;
+    private float maxTeleportInterval = 18.0f;
+    private boolean isTeleporting = false;
+    private float teleportFadeTimer = 0f;
+    private float teleportFadeDuration = 0.5f;  // Duración del fade in/out
+    private float teleportAlpha = 1.0f;         // Para efecto de fade
+
+    // 👀 ACERCAMIENTO A CÁMARA (fly-by dramático)
+    private float cameraApproachTimer = 0f;
+    private float cameraApproachInterval = 25.0f;  // Cada 25 segundos
+    private boolean isApproachingCamera = false;
+    private float approachDuration = 3.0f;
+    private float approachTimer = 0f;
+    private float approachStartZ = 0f;
 
     // 🔫 SISTEMA DE ARMAS
     private java.util.ArrayList<UfoLaser> lasers = new java.util.ArrayList<>();
@@ -462,6 +485,8 @@ public class Spaceship3D implements SceneObject, CameraAware {
         // 🛸 EXPLORACIÓN LIBRE CON IA INTELIGENTE (OPTIMIZADO)
         // ═══════════════════════════════════════════════════════════
 
+        if (destroyed) return;
+
         // ⚡ OPTIMIZACIÓN: Actualizar cache de random cada 10 frames
         frameCounter++;
         if (frameCounter >= 10) {
@@ -470,16 +495,91 @@ public class Spaceship3D implements SceneObject, CameraAware {
             randomCache2 = random.nextFloat() - 0.5f;
         }
 
+        // ═══════════════════════════════════════════════════════════
+        // ✨ SISTEMA DE TELETRANSPORTACIÓN
+        // ═══════════════════════════════════════════════════════════
+        if (isTeleporting) {
+            teleportFadeTimer += deltaTime;
+            float phase = teleportFadeTimer / teleportFadeDuration;
+
+            if (phase < 0.5f) {
+                // Fase 1: Fade out (desaparecer)
+                teleportAlpha = 1.0f - (phase * 2.0f);
+            } else if (phase < 0.6f) {
+                // Fase 2: Teletransportar a nueva posición
+                if (teleportAlpha <= 0.01f) {
+                    teleportToRandomPosition();
+                }
+                teleportAlpha = 0f;
+            } else {
+                // Fase 3: Fade in (aparecer)
+                teleportAlpha = (phase - 0.5f) * 2.0f;
+                if (phase >= 1.0f) {
+                    isTeleporting = false;
+                    teleportAlpha = 1.0f;
+                    teleportInterval = minTeleportInterval + random.nextFloat() * (maxTeleportInterval - minTeleportInterval);
+                    Log.d(TAG, "✨ Teletransportación completada!");
+                }
+            }
+            return; // No hacer otros updates durante teletransportación
+        }
+
+        // Timer para próxima teletransportación
+        teleportTimer += deltaTime;
+        if (teleportTimer >= teleportInterval) {
+            isTeleporting = true;
+            teleportFadeTimer = 0f;
+            teleportTimer = 0f;
+            Log.d(TAG, "✨ Iniciando teletransportación...");
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // 👀 ACERCAMIENTO A CÁMARA (fly-by dramático)
+        // ═══════════════════════════════════════════════════════════
+        cameraApproachTimer += deltaTime;
+        if (!isApproachingCamera && cameraApproachTimer >= cameraApproachInterval) {
+            isApproachingCamera = true;
+            approachTimer = 0f;
+            approachStartZ = z;
+            cameraApproachTimer = 0f;
+            cameraApproachInterval = 20.0f + random.nextFloat() * 15.0f;
+            Log.d(TAG, "👀 OVNI iniciando fly-by hacia la cámara!");
+        }
+
+        if (isApproachingCamera) {
+            approachTimer += deltaTime;
+            float phase = approachTimer / approachDuration;
+
+            if (phase < 1.0f) {
+                // Volar hacia la cámara (Z aumenta hacia 5.0)
+                float targetZ = 4.5f;  // Muy cerca de la cámara (en Z=6)
+                z = approachStartZ + (targetZ - approachStartZ) * phase;
+
+                // Reducir X e Y para centrarse en pantalla
+                x *= 0.98f;
+                y = y * 0.98f + 2.0f * 0.02f;  // Hacia el centro-arriba
+
+                // Aumentar escala un poco para efecto dramático
+                // (se maneja en draw())
+            } else {
+                // Terminar approach, volver a explorar
+                isApproachingCamera = false;
+                z = 1.5f;  // Volver a posición normal
+                Log.d(TAG, "👀 Fly-by completado, volviendo a explorar");
+            }
+        }
+
         // 1️⃣ DEAMBULACIÓN ORGÁNICA (cambio gradual de dirección)
-        wanderAngle += randomCache1 * 2.0f * deltaTime;
-        velocityX += (float) Math.cos(wanderAngle) * 0.1f * deltaTime;
-        velocityZ += (float) Math.sin(wanderAngle) * 0.1f * deltaTime;
-        velocityY += randomCache2 * 0.05f * deltaTime;
+        if (!isApproachingCamera) {
+            wanderAngle += randomCache1 * 2.0f * deltaTime;
+            velocityX += (float) Math.cos(wanderAngle) * 0.1f * deltaTime;
+            velocityZ += (float) Math.sin(wanderAngle) * 0.1f * deltaTime;
+            velocityY += randomCache2 * 0.05f * deltaTime;
+        }
 
         // 2️⃣ CAMBIO DE DIRECCIÓN PERIÓDICO
         directionChangeTimer += deltaTime;
-        if (directionChangeTimer >= directionChangeInterval) {
-            // Nueva dirección aleatoria (solo aquí usamos random fresco)
+        if (directionChangeTimer >= directionChangeInterval && !isApproachingCamera) {
             float angle = random.nextFloat() * (float) (Math.PI * 2);
             float elevation = (random.nextFloat() - 0.5f) * 0.5f;
             velocityX = (float) Math.cos(angle) * currentSpeed;
@@ -496,28 +596,49 @@ public class Spaceship3D implements SceneObject, CameraAware {
         float dz = z - earthZ;
         float distToEarth = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-        if (distToEarth < safeDistance) {
-            // ¡Muy cerca! Alejarse del planeta
-            float escapeForce = (safeDistance - distToEarth) / safeDistance;
-            escapeForce = escapeForce * escapeForce * 3.0f;  // Fuerza cuadrática
+        if (distToEarth < safeDistanceEarth) {
+            float escapeForce = (safeDistanceEarth - distToEarth) / safeDistanceEarth;
+            escapeForce = escapeForce * escapeForce * 4.0f;
 
-            // Normalizar vector de escape
             if (distToEarth > 0.01f) {
                 velocityX += (dx / distToEarth) * escapeForce;
                 velocityY += (dy / distToEarth) * escapeForce;
                 velocityZ += (dz / distToEarth) * escapeForce;
             }
 
-            // Si está MUY cerca, teletransportar a distancia segura
-            if (distToEarth < earthRadius + 0.3f) {
-                float safeRadius = safeDistance + 0.5f;
+            if (distToEarth < earthRadius + 0.5f) {
+                float safeRadius = safeDistanceEarth + 0.5f;
                 x = earthX + (dx / distToEarth) * safeRadius;
                 y = earthY + (dy / distToEarth) * safeRadius;
                 z = earthZ + (dz / distToEarth) * safeRadius;
             }
         }
 
-        // 4️⃣ NORMALIZAR VELOCIDAD
+        // 4️⃣ ☀️ ESQUIVAR EL SOL (igual de importante)
+        float dxSun = x - sunX;
+        float dySun = y - sunY;
+        float dzSun = z - sunZ;
+        float distToSun = (float) Math.sqrt(dxSun * dxSun + dySun * dySun + dzSun * dzSun);
+
+        if (distToSun < safeDistanceSun) {
+            float escapeForce = (safeDistanceSun - distToSun) / safeDistanceSun;
+            escapeForce = escapeForce * escapeForce * 4.0f;
+
+            if (distToSun > 0.01f) {
+                velocityX += (dxSun / distToSun) * escapeForce;
+                velocityY += (dySun / distToSun) * escapeForce;
+                velocityZ += (dzSun / distToSun) * escapeForce;
+            }
+
+            if (distToSun < sunRadius + 0.3f) {
+                float safeRadius = safeDistanceSun + 0.3f;
+                x = sunX + (dxSun / distToSun) * safeRadius;
+                y = sunY + (dySun / distToSun) * safeRadius;
+                z = sunZ + (dzSun / distToSun) * safeRadius;
+            }
+        }
+
+        // 5️⃣ NORMALIZAR VELOCIDAD
         float speed = (float) Math.sqrt(velocityX * velocityX + velocityY * velocityY + velocityZ * velocityZ);
         if (speed > maxSpeed) {
             velocityX = (velocityX / speed) * maxSpeed;
@@ -529,12 +650,14 @@ public class Spaceship3D implements SceneObject, CameraAware {
             velocityZ = (velocityZ / speed) * minSpeed;
         }
 
-        // 5️⃣ APLICAR MOVIMIENTO
-        x += velocityX * deltaTime;
-        y += velocityY * deltaTime;
-        z += velocityZ * deltaTime;
+        // 6️⃣ APLICAR MOVIMIENTO (solo si no está en fly-by)
+        if (!isApproachingCamera) {
+            x += velocityX * deltaTime;
+            y += velocityY * deltaTime;
+            z += velocityZ * deltaTime;
+        }
 
-        // 6️⃣ REBOTE SUAVE EN LÍMITES DE PANTALLA
+        // 7️⃣ REBOTE SUAVE EN LÍMITES DE PANTALLA
         if (x < minX) { x = minX; velocityX = Math.abs(velocityX) * 0.8f; }
         if (x > maxX) { x = maxX; velocityX = -Math.abs(velocityX) * 0.8f; }
         if (y < minY) { y = minY; velocityY = Math.abs(velocityY) * 0.8f; }
@@ -542,45 +665,84 @@ public class Spaceship3D implements SceneObject, CameraAware {
         if (z < minZ) { z = minZ; velocityZ = Math.abs(velocityZ) * 0.8f; }
         if (z > maxZ) { z = maxZ; velocityZ = -Math.abs(velocityZ) * 0.8f; }
 
-        // 7️⃣ ROTACIÓN - Mira hacia donde va
+        // 8️⃣ ROTACIÓN - Mira hacia donde va
         if (speed > 0.01f) {
             float targetRotation = (float) Math.toDegrees(Math.atan2(velocityX, velocityZ));
-            // Interpolación suave de rotación
             float rotDiff = targetRotation - rotationY;
             while (rotDiff > 180) rotDiff -= 360;
             while (rotDiff < -180) rotDiff += 360;
             rotationY += rotDiff * 2.0f * deltaTime;
         }
 
-        // 8️⃣ 🔫 SISTEMA DE DISPARO AUTOMÁTICO
+        // 9️⃣ 🔫 SISTEMA DE DISPARO AUTOMÁTICO
         shootTimer += deltaTime;
-        if (shootTimer >= shootInterval) {
+        if (shootTimer >= shootInterval && !isApproachingCamera) {
             shootLaser();
             shootTimer = 0f;
-            // Intervalo aleatorio para siguiente disparo
             shootInterval = minShootInterval + random.nextFloat() * (maxShootInterval - minShootInterval);
         }
 
-        // 9️⃣ ACTUALIZAR LÁSERES
+        // 🔟 ACTUALIZAR LÁSERES
         for (int i = lasers.size() - 1; i >= 0; i--) {
             UfoLaser laser = lasers.get(i);
             laser.update(deltaTime, earthX, earthY, earthZ, earthRadius);
 
-            // Si el láser impactó la Tierra, notificar al escudo
             if (laser.hitTarget && earthShieldRef != null) {
                 earthShieldRef.registerImpact(laser.x, laser.y, laser.z);
             }
 
-            // Remover láseres inactivos
             if (!laser.active) {
                 lasers.remove(i);
             }
         }
 
-        // 🔟 INVENCIBILIDAD POST-GOLPE
+        // 1️⃣1️⃣ INVENCIBILIDAD POST-GOLPE
         if (invincibilityTimer > 0) {
             invincibilityTimer -= deltaTime;
         }
+    }
+
+    /**
+     * ✨ Teletransportar a posición aleatoria segura
+     */
+    private void teleportToRandomPosition() {
+        // Generar posición aleatoria
+        float newX, newY, newZ;
+        int attempts = 0;
+
+        do {
+            newX = minX + random.nextFloat() * (maxX - minX);
+            newY = minY + 0.5f + random.nextFloat() * (maxY - minY - 1.0f);  // Evitar extremos
+            newZ = minZ + random.nextFloat() * (maxZ - minZ);
+            attempts++;
+
+            // Verificar distancia a Tierra y Sol
+            float distEarth = (float) Math.sqrt(
+                (newX - earthX) * (newX - earthX) +
+                (newY - earthY) * (newY - earthY) +
+                (newZ - earthZ) * (newZ - earthZ));
+
+            float distSun = (float) Math.sqrt(
+                (newX - sunX) * (newX - sunX) +
+                (newY - sunY) * (newY - sunY) +
+                (newZ - sunZ) * (newZ - sunZ));
+
+            if (distEarth > safeDistanceEarth && distSun > safeDistanceSun) {
+                break;  // Posición válida
+            }
+        } while (attempts < 20);
+
+        x = newX;
+        y = newY;
+        z = newZ;
+
+        // Nueva velocidad aleatoria
+        float angle = random.nextFloat() * (float) (Math.PI * 2);
+        velocityX = (float) Math.cos(angle) * currentSpeed;
+        velocityZ = (float) Math.sin(angle) * currentSpeed;
+        velocityY = (random.nextFloat() - 0.5f) * currentSpeed * 0.5f;
+
+        Log.d(TAG, "✨ Teletransportado a: (" + x + ", " + y + ", " + z + ")");
     }
 
     /**
@@ -686,14 +848,24 @@ public class Spaceship3D implements SceneObject, CameraAware {
     }
 
     /**
+     * ☀️ Establece la posición del Sol (para esquivarlo)
+     */
+    public void setSunPosition(float sx, float sy, float sz) {
+        this.sunX = sx;
+        this.sunY = sy;
+        this.sunZ = sz;
+        Log.d(TAG, "☀️ Posición de Sol para esquivar: (" + sx + ", " + sy + ", " + sz + ")");
+    }
+
+    /**
      * ⚙️ Configurar parámetros de exploración
      */
     public void setOrbitParams(float radius, float speed, float height) {
         // Convertido a parámetros de exploración
-        this.safeDistance = radius + 0.5f;  // Distancia segura al planeta
+        this.safeDistanceEarth = radius + 0.5f;  // Distancia segura a la Tierra
         this.maxSpeed = speed * 2.0f;
         this.currentSpeed = speed;
-        Log.d(TAG, "🛸 Exploración configurada: safeDistance=" + safeDistance + ", speed=" + speed);
+        Log.d(TAG, "🛸 Exploración configurada: safeDistanceEarth=" + safeDistanceEarth + ", speed=" + speed);
     }
 
     @Override
@@ -717,6 +889,9 @@ public class Spaceship3D implements SceneObject, CameraAware {
         // No dibujar OVNI si está destruido
         if (destroyed) return;
 
+        // ✨ No dibujar si está invisible (teletransportación)
+        if (teleportAlpha <= 0.01f) return;
+
         // Parpadeo durante invencibilidad
         if (invincibilityTimer > 0) {
             // Parpadear rápido (no dibujar en frames alternos)
@@ -727,8 +902,24 @@ public class Spaceship3D implements SceneObject, CameraAware {
         GLES20.glDisable(GLES20.GL_CULL_FACE);
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
 
+        // ✨ Habilitar blending para efecto de teletransportación
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+
         // Usar shader
         GLES20.glUseProgram(shaderProgram);
+
+        // 👀 Calcular escala dinámica (más grande cuando se acerca a cámara)
+        float dynamicScale = scale;
+        if (isApproachingCamera) {
+            float approachPhase = approachTimer / approachDuration;
+            dynamicScale = scale * (1.0f + approachPhase * 0.8f);  // Hasta 80% más grande
+        }
+
+        // ✨ Efecto de escala durante teletransportación
+        if (isTeleporting) {
+            dynamicScale *= teleportAlpha;  // Encoge/crece con el fade
+        }
 
         // Construir matriz modelo
         Matrix.setIdentityM(modelMatrix, 0);
@@ -736,7 +927,7 @@ public class Spaceship3D implements SceneObject, CameraAware {
         if (rotationY != 0f) {
             Matrix.rotateM(modelMatrix, 0, rotationY, 0, 1, 0);
         }
-        Matrix.scaleM(modelMatrix, 0, scale, scale, scale);
+        Matrix.scaleM(modelMatrix, 0, dynamicScale, dynamicScale, dynamicScale);
 
         // Calcular MVP
         camera.computeMvp(modelMatrix, mvpMatrix);

@@ -57,8 +57,13 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     private final List<AsteroideRealista> paraRemover = new ArrayList<>();
 
     // ⚡ OPTIMIZACIÓN: Arrays estáticos para verificarColisiones (evita allocaciones)
-    private static final float[] POS_TIERRA = {0f, 0f, 0f};
+    // 🌍 NUEVA POSICIÓN DE LA TIERRA (Y=1.8, centrada en X y Z)
+    private static final float[] POS_TIERRA = {0f, 1.8f, 0f};
     private static final float[] POS_PLANETA_ORBITANTE = {3.2f, 0f, 0f};
+
+    // 🌍 GRAVEDAD DE LA TIERRA - Atrae meteoritos cercanos
+    private static final float GRAVITY_RANGE = 4.0f;      // Rango de influencia gravitacional
+    private static final float GRAVITY_STRENGTH = 0.8f;   // Fuerza de la gravedad
 
     // Estadísticas
     private int totalMeteoritosLanzados = 0;
@@ -275,6 +280,11 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         paraRemover.clear();
 
         for (AsteroideRealista m : meteoritosActivos) {
+            // 🌍 APLICAR GRAVEDAD DE LA TIERRA antes de actualizar
+            if (m.getEstado() == AsteroideRealista.Estado.ACTIVO) {
+                aplicarGravedadTierra(m, deltaTime);
+            }
+
             m.update(deltaTime);
 
             // 💥 VERIFICAR IMPACTO EN PANTALLA (asteroides dirigidos a pantalla)
@@ -341,6 +351,7 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
 
     /**
      * Genera un nuevo asteroide
+     * 🌍 ACTUALIZADO: Trayectorias más naturales hacia la Tierra (Y=1.8)
      */
     private void spawnMeteorito() {
         if (poolMeteorites.isEmpty()) return;
@@ -355,13 +366,27 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         float y = SPAWN_DISTANCE * (float) (Math.sin(angulo2) * Math.sin(angulo1));
         float z = SPAWN_DISTANCE * (float) Math.cos(angulo2);
 
-        // Velocidad hacia el centro con algo de variación
+        // Velocidad hacia la Tierra con variación natural
         // Más velocidad si hay más batería
         float powerBoost = powerBar != null ? powerBar.getPowerMultiplier() : 1.0f;
         float velocidadBase = (2.0f + (float) Math.random() * 3.0f) * powerBoost;
-        float targetX = (float) (Math.random() * 2 - 1);  // Punto cerca del centro
-        float targetY = (float) (Math.random() * 2 - 1);
-        float targetZ = (float) (Math.random() * 2 - 1);
+
+        // 🌍 TARGET: La Tierra está en Y=1.8 - Variación para trayectorias naturales
+        // 70% de meteoritos van hacia la Tierra, 30% pasan cerca
+        float targetBias = (float) Math.random();
+        float targetX, targetY, targetZ;
+
+        if (targetBias < 0.7f) {
+            // 70% - Directo hacia la Tierra con pequeña variación
+            targetX = POS_TIERRA[0] + (float)(Math.random() * 1.0 - 0.5);  // ±0.5
+            targetY = POS_TIERRA[1] + (float)(Math.random() * 0.6 - 0.3);  // ±0.3 de Y=1.8
+            targetZ = POS_TIERRA[2] + (float)(Math.random() * 1.0 - 0.5);  // ±0.5
+        } else {
+            // 30% - Pasan cerca pero no directos (más variado/natural)
+            targetX = (float)(Math.random() * 3.0 - 1.5);   // -1.5 a 1.5
+            targetY = 1.0f + (float)(Math.random() * 1.6);  // 1.0 a 2.6 (cerca del nivel de la Tierra)
+            targetZ = (float)(Math.random() * 3.0 - 1.5);   // -1.5 a 1.5
+        }
 
         float dx = targetX - x;
         float dy = targetY - y;
@@ -424,13 +449,14 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         float y = -3.0f;          // Abajo
         float z = 4.0f;           // Adelante (hacia la cámara)
 
-        // 🚀 VELOCIDAD: Dirección hacia el sol (centro en 0,0,0)
+        // 🚀 VELOCIDAD: Dirección hacia la Tierra (Y=1.8)
         // Velocidad base escalada por la potencia
         float velocidadBase = 5.0f + (power * 10.0f);  // 5-15 unidades/seg según potencia
 
-        float targetX = 0.0f;  // Sol en el centro
-        float targetY = 0.0f;
-        float targetZ = 0.0f;
+        // 🌍 TARGET: La Tierra ahora está en Y=1.8
+        float targetX = POS_TIERRA[0];  // 0.0
+        float targetY = POS_TIERRA[1];  // 1.8
+        float targetZ = POS_TIERRA[2];  // 0.0
 
         // Calcular vector de dirección
         float dx = targetX - x;
@@ -759,6 +785,48 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     }
 
     /**
+     * 🌍 APLICA EFECTO DE GRAVEDAD DE LA TIERRA
+     * Cuando un meteorito está dentro del rango gravitacional,
+     * su velocidad es atraída gradualmente hacia la Tierra.
+     * Esto crea un efecto natural de curvatura en la trayectoria.
+     */
+    private void aplicarGravedadTierra(AsteroideRealista m, float deltaTime) {
+        float[] pos = m.getPosicion();
+        float[] vel = m.getVelocidad();
+
+        // Calcular distancia a la Tierra
+        float dx = POS_TIERRA[0] - pos[0];
+        float dy = POS_TIERRA[1] - pos[1];
+        float dz = POS_TIERRA[2] - pos[2];
+        float distancia = (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+        // Solo aplicar gravedad si está dentro del rango
+        if (distancia < GRAVITY_RANGE && distancia > 0.1f) {
+            // Normalizar dirección hacia la Tierra
+            float nx = dx / distancia;
+            float ny = dy / distancia;
+            float nz = dz / distancia;
+
+            // La gravedad es más fuerte mientras más cerca esté (ley del cuadrado inverso suavizada)
+            // Factor de atracción: más fuerte cerca, más suave lejos
+            float gravityFactor = GRAVITY_STRENGTH * (1.0f - (distancia / GRAVITY_RANGE));
+            gravityFactor *= gravityFactor;  // Cuadrático para efecto más realista
+
+            // Aplicar aceleración gravitacional a la velocidad
+            float accelX = nx * gravityFactor * deltaTime;
+            float accelY = ny * gravityFactor * deltaTime;
+            float accelZ = nz * gravityFactor * deltaTime;
+
+            // Actualizar velocidad del meteorito
+            m.ajustarVelocidad(
+                vel[0] + accelX,
+                vel[1] + accelY,
+                vel[2] + accelZ
+            );
+        }
+    }
+
+    /**
      * Crea efecto visual de impacto
      */
     private void crearEfectoImpacto(float x, float y, float z, boolean enSol) {
@@ -792,9 +860,10 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         }
 
         // 🔥 DIBUJAR BARRA DE COMBO (UI overlay)
-        if (comboBar != null) {
-            comboBar.draw();
-        }
+        // ⚠️ OCULTA VISUALMENTE - Funcionalidad activa pero sin UI
+        // if (comboBar != null) {
+        //     comboBar.draw();
+        // }
     }
 
     /**
@@ -953,10 +1022,10 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         // VELOCIDAD ÉPICA - Mucho más rápido que meteoritos normales
         float velocidadBase = 8.0f + (float) Math.random() * 4.0f; // 8-12 unidades/seg (RÁPIDO!)
 
-        // Apuntar directamente al centro (sol/campo de fuerza)
-        float targetX = (float) (Math.random() * 0.5 - 0.25);  // Pequeña variación
-        float targetY = 0;
-        float targetZ = (float) (Math.random() * 0.5 - 0.25);
+        // 🌍 Apuntar directamente a la Tierra (Y=1.8) con pequeña variación
+        float targetX = POS_TIERRA[0] + (float)(Math.random() * 0.5 - 0.25);  // Pequeña variación
+        float targetY = POS_TIERRA[1] + (float)(Math.random() * 0.3 - 0.15);  // Cerca de Y=1.8
+        float targetZ = POS_TIERRA[2] + (float)(Math.random() * 0.5 - 0.25);
 
         float dx = targetX - x;
         float dy = targetY - y;

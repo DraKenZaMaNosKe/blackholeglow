@@ -51,11 +51,11 @@ public class GreetingText implements SceneObject {
 
     private State currentState = State.HIDDEN;
 
-    // Posición y tamaño
-    private float x = 0.0f;  // Parte inferior izquierda (5% desde la izquierda)
-    private float y = 0.75f;  // 15% desde abajo
-    private float width = 0.5f;   // 50% del ancho de pantalla
-    private float height = 0.08f; // 8% de altura
+    // Posición y tamaño - CENTRADO ARRIBA (debajo del sol)
+    private float x = 0.15f;   // Centrado horizontalmente
+    private float y = 0.60f;   // Arriba de la escena (debajo del sol)
+    private float width = 0.7f;   // 70% del ancho de pantalla
+    private float height = 0.10f; // 10% de altura
 
     private String greetingText = "";
     private String userName = "";
@@ -168,15 +168,20 @@ public class GreetingText implements SceneObject {
         int hour = calendar.get(Calendar.HOUR_OF_DAY);
 
         String greeting;
+        String emoji;
         if (hour >= 6 && hour < 12) {
             greeting = "Buenos días";
+            emoji = "☀️";
         } else if (hour >= 12 && hour < 20) {
             greeting = "Buenas tardes";
+            emoji = "🌅";
         } else {
             greeting = "Buenas noches";
+            emoji = "🌙";
         }
 
-        greetingText = greeting + ": " + userName;
+        // Formato más elegante con emojis
+        greetingText = emoji + " " + greeting + ", " + userName + " " + emoji;
         Log.d(TAG, "👋 Saludo: " + greetingText);
     }
 
@@ -194,20 +199,22 @@ public class GreetingText implements SceneObject {
         // Configurar paint para el texto
         Paint paint = new Paint();
         paint.setAntiAlias(true);
-        paint.setTextSize(80);
+        paint.setTextSize(64);  // Tamaño más pequeño para que quepa mejor
         paint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        paint.setTextAlign(Paint.Align.CENTER);  // Centrar texto
 
-        // Color dorado brillante con sombra
-        paint.setShadowLayer(8f, 0f, 0f, Color.BLACK);
-        paint.setColor(Color.rgb(255, 215, 0));  // Dorado
+        // Sombra suave para legibilidad
+        paint.setShadowLayer(12f, 2f, 2f, Color.BLACK);
+
+        // Color cyan brillante (más moderno que dorado)
+        paint.setColor(Color.rgb(0, 230, 255));  // Cyan brillante
 
         // Centrar texto verticalmente
         Paint.FontMetrics fm = paint.getFontMetrics();
-        float textHeight = fm.descent - fm.ascent;
         float y = (textureHeight / 2f) - ((fm.descent + fm.ascent) / 2f);
 
-        // Dibujar texto
-        canvas.drawText(greetingText, 40, y, paint);
+        // Dibujar texto centrado
+        canvas.drawText(greetingText, textureWidth / 2f, y, paint);
 
         // Crear textura OpenGL
         int[] textures = new int[1];

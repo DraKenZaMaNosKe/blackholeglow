@@ -307,6 +307,16 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
             return;  // No dibujar nada cuando está destruido
         }
 
+        // ═══════════════════════════════════════════════════════════════════
+        // 🛡️ CONFIGURACIÓN DE TRANSPARENCIA - OVNI visible detrás del escudo
+        // ═══════════════════════════════════════════════════════════════════
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+
+        // ✨ IMPORTANTE: Desactivar escritura de profundidad
+        // Esto permite que objetos detrás del escudo sigan siendo visibles
+        GLES20.glDepthMask(false);
+
         GLES20.glUseProgram(programId);
 
         // ════════════════════════════════════════════════════════════
@@ -409,6 +419,9 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
 
         GLES20.glDisableVertexAttribArray(aPosLoc);
         GLES20.glDisableVertexAttribArray(aTexLoc);
+
+        // ✨ Restaurar escritura de profundidad para otros objetos
+        GLES20.glDepthMask(true);
     }
 
     // ===== IMPLEMENTACIÓN DE MUSICREACTIVE =====

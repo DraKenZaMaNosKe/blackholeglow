@@ -29,11 +29,11 @@ public class BatteryPowerBar implements SceneObject {
     private float glowIntensity = 0;
     private float chargingGlow = 0;  // Efecto especial cuando carga
 
-    // Posición de la barra (esquina superior derecha)
-    private static final float BAR_WIDTH = 0.6f;
-    private static final float BAR_HEIGHT = 0.06f;
-    private static final float BAR_X = 0.85f;
-    private static final float BAR_Y = 0.85f;
+    // Posición de la barra (esquina superior derecha - más pequeña y elegante)
+    private static final float BAR_WIDTH = 0.20f;   // Más angosta
+    private static final float BAR_HEIGHT = 0.04f;  // Más delgada
+    private static final float BAR_X = 0.78f;       // Posición X
+    private static final float BAR_Y = 0.92f;       // Arriba
 
     // Buffers
     private FloatBuffer vertexBuffer;

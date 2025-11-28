@@ -152,18 +152,17 @@ public class LiveWallpaperService extends WallpaperService {
         }
 
         /**
-         * ⚡ Fuerza el wallpaper a estado STOP y pone la animación en pausa
+         * ⚡ Fuerza el wallpaper a PANEL_MODE inmediatamente
+         * Este es el método clave anti-flickering: siempre vuelve al Panel de Control
          */
         private void forceStopAnimation() {
             synchronized (stateLock) {
                 if (sceneRenderer != null) {
-                    // Forzar el estado interno a STOP (no animando)
-                    if (sceneRenderer.isAnimationPlaying()) {
-                        sceneRenderer.setAnimationPlaying(false);
-                    }
+                    // Forzar cambio INMEDIATO a Panel de Control
+                    sceneRenderer.switchToPanelMode();
                 }
             }
-            Log.d(TAG, "⚡ Animación forzada a STOP");
+            Log.d(TAG, "⚡ PANEL_MODE forzado - sin flickering");
         }
 
         @Override
@@ -232,12 +231,12 @@ public class LiveWallpaperService extends WallpaperService {
                 if (visible) {
                     startRendering();
                 } else {
-                    // 📱 IMPORTANTE: Cuando no es visible, SIEMPRE pausar la animación
+                    // 📱 IMPORTANTE: Cuando no es visible, volver a PANEL_MODE
                     stopRendering();
-                    // También forzar el estado interno a STOP
-                    if (sceneRenderer != null && sceneRenderer.isAnimationPlaying()) {
-                        sceneRenderer.setAnimationPlaying(false);
-                        Log.d(TAG, "⚡ Animación pausada por pérdida de visibilidad");
+                    // Forzar PANEL_MODE para evitar flickering al volver
+                    if (sceneRenderer != null) {
+                        sceneRenderer.switchToPanelMode();
+                        Log.d(TAG, "⚡ PANEL_MODE activado por pérdida de visibilidad");
                     }
                 }
             }

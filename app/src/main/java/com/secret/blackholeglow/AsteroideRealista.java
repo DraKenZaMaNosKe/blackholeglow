@@ -212,6 +212,25 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
         return scale;
     }
 
+    /**
+     * 🌍 Obtiene la velocidad actual del asteroide
+     * Usado por el sistema de gravedad de MeteorShower
+     */
+    public float[] getVelocidad() {
+        return new float[]{velocityX, velocityY, velocityZ};
+    }
+
+    /**
+     * 🌍 Ajusta la velocidad del asteroide (efecto de gravedad)
+     * Permite que fuerzas externas (como la gravedad de la Tierra)
+     * modifiquen la trayectoria del meteorito
+     */
+    public void ajustarVelocidad(float vx, float vy, float vz) {
+        this.velocityX = vx;
+        this.velocityY = vy;
+        this.velocityZ = vz;
+    }
+
     public Estado getEstado() {
         return estado;
     }
@@ -238,18 +257,22 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
         if (rotationY > 360f) rotationY -= 360f;
         if (rotationZ > 360f) rotationZ -= 360f;
 
-        // Añadir algo de gravedad hacia el centro (0,0,0)
+        // 🌍 Gravedad interna ya no se aplica aquí
+        // El sistema de gravedad de la Tierra se maneja en MeteorShower.aplicarGravedadTierra()
+        // Esto evita duplicar el efecto y permite control centralizado
+
+        // 🌍 Calcular distancia a la Tierra (Y=1.8)
+        float tierraX = 0f, tierraY = 1.8f, tierraZ = 0f;
+        float dxT = posX - tierraX;
+        float dyT = posY - tierraY;
+        float dzT = posZ - tierraZ;
+        float distTierra = (float) Math.sqrt(dxT*dxT + dyT*dyT + dzT*dzT);
+
+        // También calcular distancia al centro de la escena (para límites)
         float distCentro = (float) Math.sqrt(posX * posX + posY * posY + posZ * posZ);
 
-        if (distCentro > 0.1f) {
-            float gravedad = 2.0f / (distCentro * distCentro);
-            velocityX += -posX * gravedad * dt;
-            velocityY += -posY * gravedad * dt;
-            velocityZ += -posZ * gravedad * dt;
-        }
-
-        // Desactivar si sale muy lejos o llega muy cerca del centro
-        if (distCentro > 20.0f || distCentro < 0.1f) {
+        // Desactivar si sale muy lejos o llega muy cerca de la Tierra
+        if (distCentro > 20.0f || distTierra < 0.1f) {
             desactivar();
         }
     }
