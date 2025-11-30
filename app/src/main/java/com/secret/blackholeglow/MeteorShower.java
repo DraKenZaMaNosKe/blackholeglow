@@ -139,7 +139,7 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
      * @deprecated Usar EventBus.SCREEN_IMPACT, EventBus.SCREEN_CRACK, EventBus.EARTH_IMPACT
      */
     @Deprecated
-    public void setSceneRenderer(Object renderer) {
+    public void setWallpaperDirector(Object director) {
         Log.d(TAG, "[MeteorShower] 💥 Sistema de efectos ahora usa EventBus");
     }
 
@@ -751,8 +751,7 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
                 int points = playerStats.onImpact(true);
 
                 // 🔥 VERIFICAR SI LA TIERRA FUE DESTRUIDA
-                // NOTA: El incremento de planetas destruidos se hace en SceneRenderer.onExplosion()
-                // para mantener la sincronización con la actualización del contador visual
+                // El incremento de planetas destruidos se hace en BatallaCosmicaScene.onExplosion()
 
                 // 💥💥 EFECTO DE IMPACTO EN PANTALLA (TIERRA) - MÁS INTENSO via EventBus
                 // Intensidad basada en tamaño del meteorito (0.05-0.20 → 0.3-0.5)

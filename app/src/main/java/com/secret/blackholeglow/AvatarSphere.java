@@ -30,7 +30,7 @@ import java.nio.ShortBuffer;
  *   avatar.draw();
  */
 public class AvatarSphere implements SceneObject, CameraAware {
-    private static final String TAG = "depurar";  // Mismo TAG que SceneRenderer para consistencia
+    private static final String TAG = "depurar";
 
     // Shader program
     private int programId;

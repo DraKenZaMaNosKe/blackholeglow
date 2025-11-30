@@ -189,15 +189,24 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
     private void setupSun() {
         try {
             SolProcedural solProcedural = new SolProcedural(context, textureManager);
-            solProcedural.setPosition(-8.0f, 4.0f, -15.0f);
-            solProcedural.setScale(1.5f);
+            solProcedural.setPosition(
+                SceneConstants.Sun.POSITION_X,
+                SceneConstants.Sun.POSITION_Y,
+                SceneConstants.Sun.POSITION_Z
+            );
+            solProcedural.setScale(SceneConstants.Sun.SCALE);
             solProcedural.setCameraController(camera);
             addSceneObject(solProcedural);
             Log.d(TAG, "  ✓ ☀️ Sol procedural agregado");
 
             // Efecto de calor
             SunHeatEffect sunHeat = new SunHeatEffect(context);
-            sunHeat.setSunPosition(-8.0f, 4.0f, -15.0f, 1.5f);
+            sunHeat.setSunPosition(
+                SceneConstants.Sun.POSITION_X,
+                SceneConstants.Sun.POSITION_Y,
+                SceneConstants.Sun.POSITION_Z,
+                SceneConstants.Sun.SCALE
+            );
             sunHeat.setCameraController(camera);
             addSceneObject(sunHeat);
             Log.d(TAG, "  ✓ 🔥 Efecto de calor agregado");
@@ -213,12 +222,13 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
                     "shaders/tierra_vertex.glsl",
                     "shaders/tierra_fragment.glsl",
                     R.drawable.texturaplanetatierra,
-                    0.0f, 0.0f,    // Centro
-                    0.0f,          // Sin órbita
-                    1.8f,          // Y = 1.8 (arriba)
-                    0.0f,          // Sin variación de escala
-                    1.2f,          // Tamaño
-                    8.0f,          // Rotación suave
+                    SceneConstants.Earth.ORBIT_RADIUS_X,
+                    SceneConstants.Earth.ORBIT_RADIUS_Z,
+                    SceneConstants.Earth.ORBIT_SPEED,
+                    SceneConstants.Earth.POSITION_Y,
+                    SceneConstants.Earth.SCALE_VARIATION,
+                    SceneConstants.Earth.SCALE,
+                    SceneConstants.Earth.ROTATION_SPEED,
                     false, null, 1.0f,
                     null, 1.0f
             );
@@ -227,7 +237,7 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
                 ((CameraAware) tierra).setCameraController(camera);
             }
 
-            tierra.setMaxHealth(200);
+            tierra.setMaxHealth(SceneConstants.Earth.MAX_HP);
             tierra.setOnExplosionListener(this);
 
             // Cargar HP guardado
@@ -240,7 +250,7 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
             addSceneObject(tierra);
             planetaTierra = tierra;
 
-            Log.d(TAG, "  ✓ 🌍 Tierra agregada con HP: " + savedPlanetHP + "/200");
+            Log.d(TAG, "  ✓ 🌍 Tierra agregada con HP: " + savedPlanetHP + "/" + SceneConstants.Earth.MAX_HP);
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creando Tierra: " + e.getMessage());
         }
@@ -251,8 +261,10 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         try {
             earthShield = new EarthShield(
                     context, textureManager,
-                    0.0f, 1.8f, 0.0f,
-                    1.30f
+                    SceneConstants.Earth.POSITION_X,
+                    SceneConstants.Earth.POSITION_Y,
+                    SceneConstants.Earth.POSITION_Z,
+                    SceneConstants.Shield.EARTH_SHIELD_RADIUS
             );
             if (earthShield instanceof CameraAware) {
                 ((CameraAware) earthShield).setCameraController(camera);
@@ -267,13 +279,19 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         try {
             forceField = new ForceField(
                     context, textureManager,
-                    0.0f, 1.8f, 0.0f,
-                    1.55f,
+                    SceneConstants.Earth.POSITION_X,
+                    SceneConstants.Earth.POSITION_Y,
+                    SceneConstants.Earth.POSITION_Z,
+                    SceneConstants.Shield.FORCE_FIELD_RADIUS,
                     R.drawable.fondo_transparente,
-                    new float[]{0.3f, 0.9f, 1.0f},
-                    0.08f,
-                    0.028f,
-                    0.240f
+                    new float[]{
+                        SceneConstants.Shield.FORCE_FIELD_COLOR_R,
+                        SceneConstants.Shield.FORCE_FIELD_COLOR_G,
+                        SceneConstants.Shield.FORCE_FIELD_COLOR_B
+                    },
+                    SceneConstants.Shield.FORCE_FIELD_INTENSITY,
+                    SceneConstants.Shield.FORCE_FIELD_PULSE_SPEED,
+                    SceneConstants.Shield.FORCE_FIELD_PULSE_AMPLITUDE
             );
             forceField.setCameraController(camera);
 
@@ -282,7 +300,7 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
             forceField.setHealth(savedForceFieldHP);
 
             addSceneObject(forceField);
-            Log.d(TAG, "  ✓ 🛡️ ForceField agregado con HP: " + savedForceFieldHP + "/50");
+            Log.d(TAG, "  ✓ 🛡️ ForceField agregado con HP: " + savedForceFieldHP + "/" + SceneConstants.Shield.FORCE_FIELD_MAX_HP);
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creando ForceField: " + e.getMessage());
         }
@@ -293,14 +311,28 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
             ovni = new Spaceship3D(
                     context,
                     textureManager,
-                    1.8f, 1.5f, -1.0f,
-                    0.07f
+                    SceneConstants.Ufo.START_POSITION_X,
+                    SceneConstants.Ufo.START_POSITION_Y,
+                    SceneConstants.Ufo.START_POSITION_Z,
+                    SceneConstants.Ufo.SCALE
             );
             ovni.setCameraController(camera);
 
-            ovni.setEarthPosition(0f, 1.8f, 0f);
-            ovni.setSunPosition(-8.0f, 4.0f, -15.0f);
-            ovni.setOrbitParams(2.5f, 0.4f, 0.0f);
+            ovni.setEarthPosition(
+                SceneConstants.Earth.POSITION_X,
+                SceneConstants.Earth.POSITION_Y,
+                SceneConstants.Earth.POSITION_Z
+            );
+            ovni.setSunPosition(
+                SceneConstants.Sun.POSITION_X,
+                SceneConstants.Sun.POSITION_Y,
+                SceneConstants.Sun.POSITION_Z
+            );
+            ovni.setOrbitParams(
+                SceneConstants.Ufo.ORBIT_RADIUS,
+                SceneConstants.Ufo.ORBIT_SPEED,
+                SceneConstants.Ufo.ORBIT_PHASE
+            );
 
             if (earthShield != null) {
                 ovni.setEarthShield(earthShield);
@@ -317,17 +349,11 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         try {
             estrellasBailarinas.clear();
 
-            float[][] positions = {
-                    {1.8f, 0.8f, 0.5f, 45.0f},
-                    {-1.5f, 0.3f, -0.8f, 38.0f},
-                    {0.5f, -0.6f, 1.2f, 52.0f}
-            };
-
-            for (float[] pos : positions) {
+            for (float[] pos : SceneConstants.DancingStars.POSITIONS) {
                 EstrellaBailarina estrella = new EstrellaBailarina(
                         context, textureManager,
                         pos[0], pos[1], pos[2],
-                        0.02f,
+                        SceneConstants.DancingStars.SCALE,
                         pos[3]
                 );
                 estrella.setCameraController(camera);
@@ -364,16 +390,24 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         try {
             hpBarTierra = new HPBar(
                     context, "🌍 TIERRA",
-                    0.05f, 0.92f, 0.25f, 0.03f, 200,
-                    new float[]{0.2f, 0.8f, 0.3f, 1.0f},
-                    new float[]{1.0f, 0.0f, 0.0f, 1.0f}
+                    SceneConstants.UI.HP_BAR_EARTH_X,
+                    SceneConstants.UI.HP_BAR_EARTH_Y,
+                    SceneConstants.UI.HP_BAR_EARTH_WIDTH,
+                    SceneConstants.UI.HP_BAR_EARTH_HEIGHT,
+                    SceneConstants.Earth.MAX_HP,
+                    SceneConstants.Colors.HP_EARTH_FULL,
+                    SceneConstants.Colors.HP_EARTH_EMPTY
             );
 
             hpBarForceField = new HPBar(
                     context, "ESCUDO",
-                    0.05f, 0.87f, 0.25f, 0.03f, 50,
-                    new float[]{0.2f, 0.6f, 1.0f, 1.0f},
-                    new float[]{1.0f, 0.0f, 0.0f, 1.0f}
+                    SceneConstants.UI.HP_BAR_SHIELD_X,
+                    SceneConstants.UI.HP_BAR_SHIELD_Y,
+                    SceneConstants.UI.HP_BAR_SHIELD_WIDTH,
+                    SceneConstants.UI.HP_BAR_SHIELD_HEIGHT,
+                    SceneConstants.Shield.FORCE_FIELD_MAX_HP,
+                    SceneConstants.Colors.HP_SHIELD_FULL,
+                    SceneConstants.Colors.HP_SHIELD_EMPTY
             );
 
             // No agregar a sceneObjects (ocultas)
@@ -386,8 +420,10 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         try {
             musicIndicator = new MusicIndicator(
                     context,
-                    -0.250f, -0.35f,
-                    0.50f, 0.12f
+                    SceneConstants.UI.MUSIC_INDICATOR_X,
+                    SceneConstants.UI.MUSIC_INDICATOR_Y,
+                    SceneConstants.UI.MUSIC_INDICATOR_WIDTH,
+                    SceneConstants.UI.MUSIC_INDICATOR_HEIGHT
             );
             addSceneObject(musicIndicator);
             Log.d(TAG, "  ✓ 🎵 MusicIndicator agregado");
@@ -399,9 +435,12 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         try {
             planetsDestroyedCounter = new SimpleTextRenderer(
                     context,
-                    0.50f, 0.60f, 0.40f, 0.10f
+                    SceneConstants.UI.PLANETS_COUNTER_X,
+                    SceneConstants.UI.PLANETS_COUNTER_Y,
+                    SceneConstants.UI.PLANETS_COUNTER_WIDTH,
+                    SceneConstants.UI.PLANETS_COUNTER_HEIGHT
             );
-            planetsDestroyedCounter.setColor(android.graphics.Color.rgb(100, 150, 255));
+            planetsDestroyedCounter.setColor(SceneConstants.Colors.PLANETS_COUNTER_COLOR);
 
             if (playerStats != null) {
                 int currentPlanets = playerStats.getPlanetsDestroyed();
@@ -419,28 +458,28 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         // Leaderboard
         setupLeaderboard();
 
-        // NOTA: FireButton y LikeButton son manejados por SceneRenderer
-        // para mantener consistencia y evitar duplicación de código
+        // NOTA: FireButton y LikeButton son manejados por WallpaperDirector/SongSharingController
     }
 
     private void setupLeaderboard() {
         try {
             leaderboardManager = LeaderboardManager.getInstance(context);
 
-            float x = -0.95f;
-            float startY = 0.55f;
-            float width = 0.50f;
-            float spacing = 0.10f;
-
             int[] colors = {
-                    android.graphics.Color.rgb(255, 215, 0),   // Oro
-                    android.graphics.Color.rgb(192, 192, 192), // Plata
-                    android.graphics.Color.rgb(205, 127, 50)   // Bronce
+                    SceneConstants.Colors.MEDAL_GOLD,
+                    SceneConstants.Colors.MEDAL_SILVER,
+                    SceneConstants.Colors.MEDAL_BRONZE
             };
 
             for (int i = 0; i < 3; i++) {
-                float y = startY - (i * spacing);
-                leaderboardTexts[i] = new SimpleTextRenderer(context, x, y, width, 0.06f);
+                float y = SceneConstants.UI.LEADERBOARD_START_Y - (i * SceneConstants.UI.LEADERBOARD_SPACING);
+                leaderboardTexts[i] = new SimpleTextRenderer(
+                    context,
+                    SceneConstants.UI.LEADERBOARD_X,
+                    y,
+                    SceneConstants.UI.LEADERBOARD_WIDTH,
+                    SceneConstants.UI.LEADERBOARD_HEIGHT
+                );
                 leaderboardTexts[i].setColor(colors[i]);
                 leaderboardTexts[i].setText("---");
                 addSceneObject(leaderboardTexts[i]);
@@ -497,7 +536,6 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
 
             addSceneObject(playerWeapon);
             Log.d(TAG, "  ✓ 🎮 Sistema de armas agregado");
-            // NOTA: FireButton es dibujado por SceneRenderer
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creando PlayerWeapon: " + e.getMessage());
         }
@@ -602,10 +640,6 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         return musicIndicator;
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🎨 NOTA: FireButton y LikeButton son dibujados por SceneRenderer
-    // ═══════════════════════════════════════════════════════════════════════
-
     /**
      * 🏆 Actualiza los textos del leaderboard
      */
@@ -643,7 +677,6 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
     // ═══════════════════════════════════════════════════════════════════════
 
     private long lastLeaderboardUpdate = 0;
-    private static final long LEADERBOARD_UPDATE_INTERVAL = 30000; // 30 segundos
 
     @Override
     public void update(float deltaTime) {
@@ -652,7 +685,7 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
 
         // Actualizar leaderboard periódicamente
         long now = System.currentTimeMillis();
-        if (now - lastLeaderboardUpdate > LEADERBOARD_UPDATE_INTERVAL) {
+        if (now - lastLeaderboardUpdate > SceneConstants.Timing.LEADERBOARD_UPDATE_INTERVAL) {
             lastLeaderboardUpdate = now;
             updateLeaderboardUI();
         }

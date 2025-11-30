@@ -6,10 +6,10 @@ package com.secret.blackholeglow.scenes;
  * ╚═══════════════════════════════════════════════════════════════════╝
  *
  * Define callbacks que las escenas pueden usar para comunicarse con
- * el SceneRenderer (efectos visuales, impactos, etc.)
+ * WallpaperDirector (efectos visuales, impactos, etc.)
  *
  * Esto permite que las escenas modulares tengan lógica de juego
- * sin estar acopladas directamente a SceneRenderer.
+ * sin estar acopladas directamente al renderer.
  */
 public interface SceneCallbacks {
 

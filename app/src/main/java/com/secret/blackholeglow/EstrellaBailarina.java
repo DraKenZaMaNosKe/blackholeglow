@@ -24,7 +24,7 @@ import java.util.List;
  * - ENERGÍA: Partículas y brillo
  */
 public class EstrellaBailarina extends BaseShaderProgram implements SceneObject, CameraAware, MusicReactive {
-    private static final String TAG = "depurar";  // Mismo TAG que SceneRenderer para debugging
+    private static final String TAG = "depurar";
 
     // Geometría
     private final FloatBuffer vertexBuffer, texCoordBuffer;

@@ -34,7 +34,7 @@ import com.secret.blackholeglow.core.WallpaperDirector;
 ║       - Conectado al cargador (cargando)                                    ║
 ║       - En reposo/inactivo                                                  ║
 ║       - En un dock/soporte                                                  ║
-║     • Reutiliza SceneRenderer para mostrar escenas 3D                       ║
+║     • Reutiliza WallpaperDirector para mostrar escenas 3D                   ║
 ║     • Interactivo (puede responder a toques) o modo observación             ║
 ║                                                                              ║
 ║   🎨 Características:                                                        ║
@@ -53,7 +53,7 @@ public class GlowDreamService extends DreamService {
     private static final String TAG = "GlowDreamService";
 
     private GLSurfaceView glSurfaceView;
-    private WallpaperDirector director;  // Usar WallpaperDirector en lugar de SceneRenderer
+    private WallpaperDirector director;
     private ImageView exitButton;
     private Handler autoHideHandler;
     private Runnable autoHideRunnable;
@@ -104,7 +104,6 @@ public class GlowDreamService extends DreamService {
 
         Log.d(TAG, "🎨 Cargando escena: " + selectedWallpaper);
 
-        // Usar WallpaperDirector (arquitectura de actores) en lugar de SceneRenderer
         director = new WallpaperDirector(this);
         director.setPreviewMode(true);  // Dream siempre en modo preview (directo al wallpaper)
         director.changeScene(selectedWallpaper);

@@ -47,7 +47,7 @@ import java.util.Locale;
 ║     • Detección de amplitud de audio                                        ║
 ║     • Análisis de frecuencia para filtrar ruido                             ║
 ║     • Text-to-Speech para voz personalizada                                 ║
-║     • Broadcast a SceneRenderer para efectos visuales                       ║
+║     • Broadcast via EventBus para efectos visuales                          ║
 ║     • Notificación persistente mientras está activo                         ║
 ║                                                                              ║
 ║   📱 Activación:                                                             ║
@@ -396,7 +396,7 @@ public class ClapDetectorService extends Service {
     }
 
     private void triggerWallpaperEffect() {
-        // Enviar broadcast a SceneRenderer para activar efectos visuales
+        // Enviar broadcast para activar efectos visuales
         Intent intent = new Intent("com.secret.blackholeglow.CLAP_DETECTED");
         sendBroadcast(intent);
         Log.d(TAG, "🌟 Broadcast enviado para efectos visuales");
