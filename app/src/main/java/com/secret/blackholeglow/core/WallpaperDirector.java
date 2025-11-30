@@ -1,0 +1,376 @@
+package com.secret.blackholeglow.core;
+
+import android.content.Context;
+import android.opengl.GLES20;
+import android.opengl.GLSurfaceView;
+import android.opengl.Matrix;
+import android.util.Log;
+import android.view.MotionEvent;
+
+import com.secret.blackholeglow.CameraController;
+import com.secret.blackholeglow.MusicVisualizer;
+import com.secret.blackholeglow.ResourceLoader;
+import com.secret.blackholeglow.TextureManager;
+import com.secret.blackholeglow.scenes.BatallaCosmicaScene;
+import com.secret.blackholeglow.scenes.WallpaperScene;
+import com.secret.blackholeglow.systems.EventBus;
+import com.secret.blackholeglow.systems.FirebaseQueueManager;
+import com.secret.blackholeglow.systems.ResourceManager;
+import com.secret.blackholeglow.systems.ScreenEffectsManager;
+import com.secret.blackholeglow.systems.UIController;
+
+import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.opengles.GL10;
+
+/**
+ * WallpaperDirector - Director Central con Arquitectura de Actores v2.0
+ *
+ * ACTORES:
+ * - RenderModeController: Transiciones de modo
+ * - PanelModeRenderer: UI del panel de control
+ * - SceneFactory: Creacion/destruccion de escenas
+ * - SongSharingController: Like, corazones, Gemini AI
+ * - TouchRouter: Distribucion de eventos de toque
+ */
+public class WallpaperDirector implements GLSurfaceView.Renderer {
+    private static final String TAG = "WallpaperDirector";
+
+    // ACTORES ESPECIALIZADOS
+    private RenderModeController modeController;
+    private PanelModeRenderer panelRenderer;
+    private SceneFactory sceneFactory;
+    private SongSharingController songSharing;
+    private TouchRouter touchRouter;
+
+    // SISTEMAS COMPARTIDOS
+    private CameraController camera;
+    private ResourceManager resources;
+    private TextureManager textureManager;
+    private MusicVisualizer musicVisualizer;
+    private ScreenEffectsManager screenEffects;
+    private ResourceLoader resourceLoader;
+    private EventBus eventBus;
+    private FirebaseQueueManager firebaseQueue;
+
+    // ESTADO
+    private final Context context;
+    private boolean initialized = false;
+    private boolean paused = false;
+    private int screenWidth = 1;
+    private int screenHeight = 1;
+    private String pendingSceneName = "";
+    private boolean pendingPreviewMode = false; // Para guardar preview mode antes de inicializar
+
+    // TIMING
+    private long lastFrameTime = System.nanoTime();
+    private float totalTime = 0f;
+    private int frameCount = 0;
+    private float fpsTimer = 0f;
+    private float currentFPS = 0f;
+    private final float[] identityMatrix = new float[16];
+
+    public WallpaperDirector(Context context) {
+        this.context = context.getApplicationContext();
+        this.eventBus = EventBus.get();
+        Matrix.setIdentityM(identityMatrix, 0);
+        Log.d(TAG, "WallpaperDirector v2.0 - Arquitectura de Actores");
+    }
+
+    @Override
+    public void onSurfaceCreated(GL10 gl, EGLConfig config) {
+        Log.d(TAG, "onSurfaceCreated START");
+        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES20.glClearColor(0.02f, 0.02f, 0.05f, 1f);
+
+        initializeSharedSystems();
+        initializeActors();
+        wireActors();
+
+        if (modeController.isPreviewMode()) {
+            Log.d(TAG, "PREVIEW MODE - cargando escena directamente");
+            modeController.goDirectToWallpaper();
+            sceneFactory.createScene(pendingSceneName);
+        }
+
+        initialized = true;
+        Log.d(TAG, "onSurfaceCreated END");
+    }
+
+    @Override
+    public void onSurfaceChanged(GL10 gl, int width, int height) {
+        Log.d(TAG, "onSurfaceChanged: " + width + "x" + height);
+        GLES20.glViewport(0, 0, width, height);
+        screenWidth = width;
+        screenHeight = height;
+
+        if (camera != null) camera.updateProjection(width, height);
+        if (panelRenderer != null) panelRenderer.setScreenSize(width, height);
+        if (sceneFactory != null) sceneFactory.setScreenSize(width, height);
+        if (touchRouter != null) touchRouter.setScreenSize(width, height);
+        UIController.get().setScreenSize(width, height);
+    }
+
+    @Override
+    public void onDrawFrame(GL10 gl) {
+        if (!initialized) {
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
+            return;
+        }
+
+        float deltaTime = calculateDeltaTime();
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
+
+        RenderModeController.RenderMode mode = modeController.getCurrentMode();
+        switch (mode) {
+            case PANEL_MODE:
+                panelRenderer.updatePanelMode(deltaTime);
+                panelRenderer.drawPanelMode();
+                break;
+            case LOADING_MODE:
+                panelRenderer.updateLoadingMode(deltaTime);
+                panelRenderer.drawLoadingMode();
+                checkLoadingComplete();
+                break;
+            case WALLPAPER_MODE:
+                updateWallpaperMode(deltaTime);
+                drawWallpaperMode();
+                break;
+        }
+    }
+
+    private void updateWallpaperMode(float deltaTime) {
+        if (musicVisualizer != null) {
+            WallpaperScene scene = sceneFactory.getCurrentScene();
+            if (scene instanceof BatallaCosmicaScene) {
+                ((BatallaCosmicaScene) scene).updateMusicLevels(
+                    musicVisualizer.getBassLevel(),
+                    musicVisualizer.getMidLevel(),
+                    musicVisualizer.getTrebleLevel()
+                );
+            }
+        }
+        sceneFactory.updateCurrentScene(deltaTime);
+        if (screenEffects != null) screenEffects.update(deltaTime);
+        panelRenderer.updateWallpaperMode(deltaTime);
+        songSharing.update(deltaTime);
+    }
+
+    private void drawWallpaperMode() {
+        sceneFactory.drawCurrentScene();
+        if (screenEffects != null) screenEffects.draw();
+        panelRenderer.drawWallpaperOverlay();
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        songSharing.draw(identityMatrix, totalTime);
+        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+    }
+
+    private void checkLoadingComplete() {
+        if (panelRenderer.isLoadingComplete()) onLoadingComplete();
+    }
+
+    private void onLoadingComplete() {
+        if (modeController.isWallpaperMode()) return;
+        Log.d(TAG, "Carga completada - activando wallpaper");
+        sceneFactory.createScene(pendingSceneName);
+        modeController.activateWallpaper();
+        panelRenderer.onWallpaperActivated();
+
+        // 🎵 CRÍTICO: Reanudar MusicVisualizer al entrar en WALLPAPER_MODE
+        if (musicVisualizer != null) {
+            musicVisualizer.resume();
+            Log.d(TAG, "🎵 MusicVisualizer reanudado para WALLPAPER_MODE");
+        }
+    }
+
+    public void startLoading() {
+        if (modeController.startLoading()) panelRenderer.onStartLoading();
+    }
+
+    public void switchToPanelMode() {
+        if (modeController.stopWallpaper()) {
+            panelRenderer.onReturnToPanel();
+            sceneFactory.destroyCurrentScene();
+        }
+    }
+
+    private void initializeSharedSystems() {
+        Log.d(TAG, "Inicializando sistemas compartidos...");
+        camera = new CameraController();
+        camera.setMode(CameraController.CameraMode.PERSPECTIVE_3_4);
+        resources = ResourceManager.get();
+        resources.init(context);
+        textureManager = new TextureManager(context);
+        musicVisualizer = new MusicVisualizer();
+        musicVisualizer.initialize();
+        screenEffects = new ScreenEffectsManager();
+        resourceLoader = new ResourceLoader(context, textureManager);
+
+        // Inicializar FirebaseQueueManager para batching de operaciones
+        try {
+            firebaseQueue = FirebaseQueueManager.getInstance(context);
+            Log.d(TAG, "FirebaseQueueManager inicializado");
+        } catch (Exception e) {
+            Log.w(TAG, "FirebaseQueueManager no disponible: " + e.getMessage());
+        }
+
+        Log.d(TAG, "Sistemas compartidos OK");
+    }
+
+    private void initializeActors() {
+        Log.d(TAG, "Inicializando 5 actores...");
+        modeController = new RenderModeController();
+        // Aplicar preview mode pendiente
+        if (pendingPreviewMode) {
+            modeController.setPreviewMode(true);
+        }
+        panelRenderer = new PanelModeRenderer(context);
+        panelRenderer.initialize();
+        sceneFactory = new SceneFactory();
+        sceneFactory.setContext(context);
+        sceneFactory.setTextureManager(textureManager);
+        sceneFactory.setCamera(camera);
+        sceneFactory.setResourceManager(resources);
+        sceneFactory.registerDefaultScenes();
+        songSharing = new SongSharingController(context);
+        songSharing.initialize();
+        touchRouter = new TouchRouter();
+        Log.d(TAG, "5 actores inicializados OK");
+    }
+
+    private void wireActors() {
+        Log.d(TAG, "Conectando actores...");
+        touchRouter.setPanelRenderer(panelRenderer);
+        touchRouter.setSongSharing(songSharing);
+        touchRouter.setModeController(modeController);
+        touchRouter.setListener(new TouchRouter.TouchListener() {
+            @Override public void onPlayButtonTapped() { startLoading(); }
+            @Override public void onStopButtonTapped() { switchToPanelMode(); }
+            @Override public void onLikeButtonPressed() {}
+            @Override public void onLikeButtonReleased() {}
+            @Override public void onLikeButtonTapped() { songSharing.shareSongWithAI(); }
+            @Override public boolean onSceneTouched(float nx, float ny, int action) {
+                return sceneFactory.onSceneTouchEvent(nx, ny, action);
+            }
+        });
+        panelRenderer.setLoadingListener(this::onLoadingComplete);
+        Log.d(TAG, "Actores conectados OK");
+    }
+
+    public boolean onTouchEvent(MotionEvent event) {
+        if (!initialized) return false;
+        touchRouter.setCurrentScene(sceneFactory.getCurrentScene());
+        return touchRouter.onTouchEvent(event);
+    }
+
+    private float calculateDeltaTime() {
+        long now = System.nanoTime();
+        float deltaTime = (now - lastFrameTime) / 1_000_000_000f;
+        lastFrameTime = now;
+        deltaTime = Math.min(deltaTime, 0.1f);
+        totalTime += deltaTime;
+        frameCount++;
+        fpsTimer += deltaTime;
+        if (fpsTimer >= 1.0f) {
+            currentFPS = frameCount / fpsTimer;
+            frameCount = 0;
+            fpsTimer = 0f;
+        }
+        return deltaTime;
+    }
+
+    public void pause() {
+        paused = true;
+        if (modeController != null && !modeController.isPreviewMode()) {
+            switchToPanelMode();
+        }
+        if (sceneFactory != null) {
+            sceneFactory.pauseCurrentScene();
+        }
+        if (musicVisualizer != null) musicVisualizer.pause();
+
+        // Flush Firebase queue al pausar para guardar datos pendientes
+        if (firebaseQueue != null) {
+            firebaseQueue.forceFlush();
+        }
+
+        Log.d(TAG, "WallpaperDirector pausado");
+    }
+
+    public void resume() {
+        paused = false;
+        lastFrameTime = System.nanoTime();
+        if (modeController != null && sceneFactory != null &&
+            modeController.isPreviewMode() && sceneFactory.hasCurrentScene()) {
+            sceneFactory.resumeCurrentScene();
+            modeController.goDirectToWallpaper();
+        }
+        if (musicVisualizer != null) musicVisualizer.resume();
+        Log.d(TAG, "WallpaperDirector reanudado");
+    }
+
+    public void setPreviewMode(boolean preview) {
+        pendingPreviewMode = preview;
+        if (modeController != null) {
+            modeController.setPreviewMode(preview);
+        }
+    }
+
+    public void changeScene(String sceneName) {
+        Log.d(TAG, "Escena pendiente: " + sceneName);
+        pendingSceneName = sceneName;
+    }
+
+    public void release() {
+        Log.d(TAG, "Liberando WallpaperDirector...");
+        if (sceneFactory != null) sceneFactory.destroyCurrentScene();
+        if (songSharing != null) songSharing.release();
+        if (musicVisualizer != null) musicVisualizer.release();
+        if (resources != null) resources.release();
+        if (screenEffects != null) screenEffects.release();
+
+        // Flush final y liberar FirebaseQueueManager
+        if (firebaseQueue != null) {
+            firebaseQueue.forceFlush();
+            firebaseQueue.release();
+            firebaseQueue = null;
+        }
+
+        ResourceManager.reset();
+        UIController.reset();
+        EventBus.reset();
+        initialized = false;
+        Log.d(TAG, "WallpaperDirector liberado");
+    }
+
+    // GETTERS
+    public boolean isInitialized() { return initialized; }
+    public boolean isPaused() { return paused; }
+    public float getCurrentFPS() { return currentFPS; }
+    public CameraController getCamera() { return camera; }
+    public int getScreenWidth() { return screenWidth; }
+    public int getScreenHeight() { return screenHeight; }
+
+    public RenderModeController.RenderMode getCurrentRenderMode() {
+        return modeController != null ? modeController.getCurrentMode() : RenderModeController.RenderMode.PANEL_MODE;
+    }
+
+    public String getCurrentSceneName() {
+        return sceneFactory != null ? sceneFactory.getCurrentSceneName() : "";
+    }
+
+    public WallpaperScene getCurrentScene() {
+        return sceneFactory != null ? sceneFactory.getCurrentScene() : null;
+    }
+
+    public boolean isPlaying() {
+        return modeController != null && modeController.isPlaying();
+    }
+
+    public void setPlaying(boolean playing) {
+        if (modeController == null) return;
+        if (playing && !modeController.isWallpaperMode()) startLoading();
+        else if (!playing && !modeController.isPanelMode()) switchToPanelMode();
+    }
+}

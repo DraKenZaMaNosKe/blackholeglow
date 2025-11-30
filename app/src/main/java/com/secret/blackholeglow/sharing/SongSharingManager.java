@@ -16,6 +16,7 @@ import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.secret.blackholeglow.NetworkUtils;
+import com.secret.blackholeglow.systems.FirebaseQueueManager;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -122,26 +123,44 @@ public class SongSharingManager {
             userPhotoUrl = user.getPhotoUrl().toString();
         }
 
-        Map<String, Object> songData = new HashMap<>();
-        songData.put("userId", user.getUid());
-        songData.put("userName", userName);
-        songData.put("userPhotoUrl", userPhotoUrl);
-        songData.put("songTitle", songTitle);
-        songData.put("timestamp", com.google.firebase.firestore.FieldValue.serverTimestamp());
-        songData.put("likes", 0);
+        // Usar FirebaseQueueManager para batching eficiente
+        try {
+            FirebaseQueueManager queueManager = FirebaseQueueManager.getInstance(context);
+            queueManager.shareSong(
+                user.getUid(),
+                userName,
+                userPhotoUrl,
+                songTitle
+            );
 
-        // Guardar en Firebase
-        db.collection(COLLECTION_SHARED_SONGS)
-                .add(songData)
-                .addOnSuccessListener(documentReference -> {
-                    lastShareTime = System.currentTimeMillis();
-                    Log.d(TAG, "✅ Canción compartida: " + songTitle);
-                    if (callback != null) callback.onSuccess();
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "❌ Error compartiendo canción: " + e.getMessage());
-                    if (callback != null) callback.onError("Error al compartir: " + e.getMessage());
-                });
+            lastShareTime = System.currentTimeMillis();
+            Log.d(TAG, "✅ Canción encolada para compartir: " + songTitle);
+            if (callback != null) callback.onSuccess();
+
+        } catch (Exception e) {
+            // Fallback: escritura directa si el queue falla
+            Log.w(TAG, "⚠️ Queue no disponible, usando escritura directa");
+
+            Map<String, Object> songData = new HashMap<>();
+            songData.put("userId", user.getUid());
+            songData.put("userName", userName);
+            songData.put("userPhotoUrl", userPhotoUrl);
+            songData.put("songTitle", songTitle);
+            songData.put("timestamp", com.google.firebase.firestore.FieldValue.serverTimestamp());
+            songData.put("likes", 0);
+
+            db.collection(COLLECTION_SHARED_SONGS)
+                    .add(songData)
+                    .addOnSuccessListener(documentReference -> {
+                        lastShareTime = System.currentTimeMillis();
+                        Log.d(TAG, "✅ Canción compartida (directo): " + songTitle);
+                        if (callback != null) callback.onSuccess();
+                    })
+                    .addOnFailureListener(ex -> {
+                        Log.e(TAG, "❌ Error compartiendo canción: " + ex.getMessage());
+                        if (callback != null) callback.onError("Error al compartir: " + ex.getMessage());
+                    });
+        }
     }
 
     // ═══════════════════════════════════════════════════════════

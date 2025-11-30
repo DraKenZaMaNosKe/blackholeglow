@@ -14,6 +14,8 @@ import android.opengl.GLSurfaceView;
 
 import androidx.annotation.NonNull;
 
+import com.secret.blackholeglow.core.WallpaperDirector;
+
 /**
  * ╔═══════════════════════════════════════════════════════════════════╗
  * ║   🚀 LiveWallpaperService - ANTI-FLICKERING EDITION              ║
@@ -48,7 +50,11 @@ public class LiveWallpaperService extends WallpaperService {
         private final Context context;
         private GLWallpaperSurfaceView glSurfaceView;
         private SceneRenderer sceneRenderer;
+        private WallpaperDirector wallpaperDirector;  // 🆕 Nuevo sistema modular
         private ChargingScreenManager chargingScreenManager;
+
+        // 🔧 FLAG: true = usar WallpaperDirector, false = usar SceneRenderer (legacy)
+        private static final boolean USE_NEW_DIRECTOR = true;  // 🆕 Panel de Control implementado!
 
         private final Object stateLock = new Object();
         private RenderState currentState = RenderState.UNINITIALIZED;
@@ -157,7 +163,9 @@ public class LiveWallpaperService extends WallpaperService {
          */
         private void forceStopAnimation() {
             synchronized (stateLock) {
-                if (sceneRenderer != null) {
+                if (USE_NEW_DIRECTOR && wallpaperDirector != null) {
+                    wallpaperDirector.pause();
+                } else if (sceneRenderer != null) {
                     // Forzar cambio INMEDIATO a Panel de Control
                     sceneRenderer.switchToPanelMode();
                 }
@@ -169,8 +177,14 @@ public class LiveWallpaperService extends WallpaperService {
         public void onTouchEvent(MotionEvent event) {
             super.onTouchEvent(event);
             synchronized (stateLock) {
-                if (sceneRenderer != null && currentState == RenderState.RUNNING) {
-                    sceneRenderer.onTouchEvent(event);
+                // 🔧 FIX: Procesar touch cuando está RUNNING (incluye PANEL_MODE del Director)
+                // El WallpaperDirector necesita touch para el botón Play incluso en Panel de Control
+                if (currentState == RenderState.RUNNING || currentState == RenderState.STOPPED) {
+                    if (USE_NEW_DIRECTOR && wallpaperDirector != null) {
+                        wallpaperDirector.onTouchEvent(event);
+                    } else if (sceneRenderer != null && currentState == RenderState.RUNNING) {
+                        sceneRenderer.onTouchEvent(event);
+                    }
                 }
             }
         }
@@ -190,9 +204,23 @@ public class LiveWallpaperService extends WallpaperService {
                 Log.d(TAG, "║   🚀 OPENGL ES 3.0 ACTIVADO           ║");
                 Log.d(TAG, "╚════════════════════════════════════════╝");
 
-                String nombreWallpaper = wallpaperPrefs.getSelectedWallpaperSync();
-                sceneRenderer = new SceneRenderer(context, nombreWallpaper);
-                glSurfaceView.setRenderer(sceneRenderer);
+                // 🔧 Elegir renderer según flag
+                if (USE_NEW_DIRECTOR) {
+                    // 🆕 NUEVO: WallpaperDirector (sistema modular)
+                    Log.d(TAG, "🎬 Usando WallpaperDirector (NUEVO SISTEMA)");
+                    wallpaperDirector = new WallpaperDirector(context);
+                    glSurfaceView.setRenderer(wallpaperDirector);
+
+                    // Cargar escena inicial
+                    String nombreWallpaper = wallpaperPrefs.getSelectedWallpaperSync();
+                    wallpaperDirector.changeScene(nombreWallpaper);
+                } else {
+                    // 📦 LEGACY: SceneRenderer
+                    Log.d(TAG, "📦 Usando SceneRenderer (LEGACY)");
+                    String nombreWallpaper = wallpaperPrefs.getSelectedWallpaperSync();
+                    sceneRenderer = new SceneRenderer(context, nombreWallpaper);
+                    glSurfaceView.setRenderer(sceneRenderer);
+                }
 
                 // CRÍTICO: Empezar DETENIDO
                 glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
@@ -234,7 +262,10 @@ public class LiveWallpaperService extends WallpaperService {
                     // 📱 IMPORTANTE: Cuando no es visible, volver a PANEL_MODE
                     stopRendering();
                     // Forzar PANEL_MODE para evitar flickering al volver
-                    if (sceneRenderer != null) {
+                    if (USE_NEW_DIRECTOR && wallpaperDirector != null) {
+                        wallpaperDirector.pause();
+                        Log.d(TAG, "⚡ Director pausado por pérdida de visibilidad");
+                    } else if (sceneRenderer != null) {
                         sceneRenderer.switchToPanelMode();
                         Log.d(TAG, "⚡ PANEL_MODE activado por pérdida de visibilidad");
                     }
@@ -261,7 +292,9 @@ public class LiveWallpaperService extends WallpaperService {
             glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
             // PASO 2: Reanudar lógica
-            if (sceneRenderer != null) {
+            if (USE_NEW_DIRECTOR && wallpaperDirector != null) {
+                wallpaperDirector.resume();
+            } else if (sceneRenderer != null) {
                 sceneRenderer.resume();
             }
 
@@ -290,7 +323,9 @@ public class LiveWallpaperService extends WallpaperService {
             }
 
             // PASO 1: Pausar lógica PRIMERO
-            if (sceneRenderer != null) {
+            if (USE_NEW_DIRECTOR && wallpaperDirector != null) {
+                wallpaperDirector.pause();
+            } else if (sceneRenderer != null) {
                 sceneRenderer.pause();
             }
 
@@ -308,8 +343,12 @@ public class LiveWallpaperService extends WallpaperService {
                 @Override
                 public void onWallpaperReceived(@NonNull String wallpaperName) {
                     synchronized (stateLock) {
-                        if (sceneRenderer != null && currentState == RenderState.RUNNING) {
-                            sceneRenderer.setSelectedItem(wallpaperName);
+                        if (currentState == RenderState.RUNNING) {
+                            if (USE_NEW_DIRECTOR && wallpaperDirector != null) {
+                                wallpaperDirector.changeScene(wallpaperName);
+                            } else if (sceneRenderer != null) {
+                                sceneRenderer.setSelectedItem(wallpaperName);
+                            }
                         }
                     }
                 }
@@ -349,7 +388,9 @@ public class LiveWallpaperService extends WallpaperService {
             synchronized (stateLock) {
                 // Detener si está corriendo
                 if (currentState == RenderState.RUNNING) {
-                    if (sceneRenderer != null) {
+                    if (USE_NEW_DIRECTOR && wallpaperDirector != null) {
+                        wallpaperDirector.pause();
+                    } else if (sceneRenderer != null) {
                         sceneRenderer.pause();
                     }
                     if (glSurfaceView != null) {
@@ -396,6 +437,12 @@ public class LiveWallpaperService extends WallpaperService {
 
             if (chargingScreenManager != null) {
                 chargingScreenManager.unregister();
+            }
+
+            // 🆕 Liberar WallpaperDirector si se usó
+            if (USE_NEW_DIRECTOR && wallpaperDirector != null) {
+                wallpaperDirector.release();
+                wallpaperDirector = null;
             }
 
             if (glSurfaceView != null) {

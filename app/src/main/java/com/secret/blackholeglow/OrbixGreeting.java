@@ -75,7 +75,7 @@ public class OrbixGreeting implements SceneObject {
     private String currentGreeting = "";
     private String userName = "";
     private long lastGreetingChange = 0;
-    private static final long GREETING_CHANGE_INTERVAL = 15000; // 15 segundos
+    private static final long GREETING_CHANGE_INTERVAL = 60000; // 60 segundos (más tiempo para ver saludo Gemini)
 
     // Fecha de nacimiento
     private long birthDateMillis = 0;  // 0 = no configurado

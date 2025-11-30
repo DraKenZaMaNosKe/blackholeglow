@@ -115,12 +115,12 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
             holder.buttonPreview.setEnabled(true);
             holder.buttonPreview.setAlpha(1.0f);
             holder.buttonPreview.setOnClickListener(v -> {
-                // Ir directamente a WallpaperPreviewActivity
-                Intent intent = new Intent(context, com.secret.blackholeglow.activities.WallpaperPreviewActivity.class);
+                // Ir a WallpaperLoadingActivity para precarga de recursos
+                Intent intent = new Intent(context, com.secret.blackholeglow.activities.WallpaperLoadingActivity.class);
 
-                // ✨ USAR EL NOMBRE DEL ITEM (ahora cada wallpaper pasa su propio nombre)
+                // Pasar datos del wallpaper
                 intent.putExtra("WALLPAPER_PREVIEW_ID", item.getResourceIdPreview());
-                intent.putExtra("WALLPAPER_ID", item.getNombre());  // "DiscoBall", "Universo", etc.
+                intent.putExtra("WALLPAPER_ID", item.getNombre());  // "Batalla Cosmica", "Universo", etc.
                 context.startActivity(intent);
             });
         } else {

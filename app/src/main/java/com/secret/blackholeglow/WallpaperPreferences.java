@@ -55,11 +55,20 @@ public class WallpaperPreferences {
     private static final String FIREBASE_FIELD_UPDATED_AT = "updated_at";
 
     // ============================================
-    // LISTA DE WALLPAPERS VÁLIDOS
+    // LISTA DE WALLPAPERS VÁLIDOS (3 principales + legados)
     // ============================================
     public static final Set<String> VALID_WALLPAPERS = new HashSet<>(Arrays.asList(
+        // ═══════════════════════════════════════════
+        // 🎨 WALLPAPERS PRINCIPALES (v4.0)
+        // ═══════════════════════════════════════════
+        "Universo",           // Sistema solar con planetas y OVNI (legacy)
+        "Ocean Pearl",        // Fondo del mar con ostra y perla (modular)
+        "Batalla Cósmica",    // Batalla espacial (modular - igual que Universo)
+
+        // ═══════════════════════════════════════════
+        // 📦 WALLPAPERS LEGADOS (compatibilidad)
+        // ═══════════════════════════════════════════
         "🌊 Océano Profundo",
-        "Universo",
         "🌲 Bosque Encantado",
         "🏙️ Neo Tokyo 2099",
         "🏖️ Paraíso Dorado",

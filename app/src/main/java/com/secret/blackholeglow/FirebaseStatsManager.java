@@ -16,6 +16,7 @@ import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.SetOptions;
 import com.google.firebase.firestore.WriteBatch;
+import com.secret.blackholeglow.systems.FirebaseQueueManager;
 
 import java.security.MessageDigest;
 import java.util.HashMap;
@@ -235,28 +236,72 @@ public class FirebaseStatsManager {
 
     /**
      * 💾 Guarda las estadísticas en Firebase con seguridad
+     * Usa FirebaseQueueManager para batching eficiente
      */
     private void savePlanetsToFirebase(String userId, int planetsDestroyed) {
         String securityHash = generateSecurityHash(userId, planetsDestroyed);
 
+        // Usar FirebaseQueueManager para batching
+        try {
+            FirebaseQueueManager queueManager = FirebaseQueueManager.getInstance(context);
+
+            // Encolar actualizacion de stats
+            FirebaseQueueManager.QueuedOperation statsOp = new FirebaseQueueManager.QueuedOperation()
+                .setType(FirebaseQueueManager.OperationType.STATS_UPDATE)
+                .setPriority(FirebaseQueueManager.Priority.HIGH)
+                .setCollection(COLLECTION_STATS)
+                .setDocumentId(userId)
+                .setUserId(userId)
+                .putData("sunsDestroyed", planetsDestroyed)
+                .putData("securityHash", securityHash)
+                .putData("userId", userId);
+
+            queueManager.enqueue(statsOp);
+
+            // Encolar actualizacion de leaderboard
+            FirebaseUser currentUser = auth.getCurrentUser();
+            String displayName = "Player";
+            if (currentUser != null && currentUser.getDisplayName() != null) {
+                displayName = currentUser.getDisplayName();
+            }
+            queueManager.updateLeaderboard(userId, displayName, planetsDestroyed);
+
+            Log.d(TAG, "╔════════════════════════════════════════╗");
+            Log.d(TAG, "║   🌍 PLANETAS ENCOLADOS (QUEUE)        ║");
+            Log.d(TAG, "║   Total: " + planetsDestroyed + " planetas                    ║");
+            Log.d(TAG, "╚════════════════════════════════════════╝");
+
+            if (listener != null) {
+                listener.onStatsUpdated(planetsDestroyed, -1);
+            }
+
+        } catch (Exception e) {
+            // Fallback: escritura directa si el queue falla
+            Log.w(TAG, "⚠️ Queue no disponible, usando escritura directa: " + e.getMessage());
+            savePlanetsToFirebaseDirect(userId, planetsDestroyed, securityHash);
+        }
+    }
+
+    /**
+     * 💾 Escritura directa a Firebase (fallback)
+     */
+    private void savePlanetsToFirebaseDirect(String userId, int planetsDestroyed, String securityHash) {
         Map<String, Object> stats = new HashMap<>();
-        stats.put("sunsDestroyed", planetsDestroyed);  // ⚠️ Mantener nombre de campo Firebase
+        stats.put("sunsDestroyed", planetsDestroyed);
         stats.put("securityHash", securityHash);
-        stats.put("lastUpdate", FieldValue.serverTimestamp());  // Timestamp del servidor (no manipulable)
+        stats.put("lastUpdate", FieldValue.serverTimestamp());
         stats.put("userId", userId);
 
-        // Guardar en la colección de estadísticas
         db.collection(COLLECTION_STATS).document(userId)
                 .set(stats, SetOptions.merge())
                 .addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
                     public void onSuccess(Void aVoid) {
                         Log.d(TAG, "╔════════════════════════════════════════╗");
-                        Log.d(TAG, "║   🌍 PLANETAS GUARDADOS EN FIREBASE 🌍  ║");
+                        Log.d(TAG, "║   🌍 PLANETAS GUARDADOS (DIRECTO)      ║");
                         Log.d(TAG, "║   Total: " + planetsDestroyed + " planetas                    ║");
                         Log.d(TAG, "╚════════════════════════════════════════╝");
 
-                        // Actualizar leaderboard
                         updateLeaderboard(userId, planetsDestroyed);
                     }
                 })

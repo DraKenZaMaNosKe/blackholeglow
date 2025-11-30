@@ -19,11 +19,17 @@ import java.util.Calendar;
  * GeminiService - Servicio para interactuar con Google Gemini AI
  *
  * Proporciona saludos inteligentes y respuestas de chat usando
- * la API gratuita de Gemini 1.5 Flash
+ * la API gratuita de Gemini 2.0 Flash
+ *
+ * 🔐 SEGURIDAD: La API key se lee desde BuildConfig (configurada en local.properties)
+ *    Esto evita que la key se suba a GitHub
  */
 public class GeminiService {
     private static final String TAG = "GeminiService";
-    private static final String API_KEY = "AIzaSyDOXpSaswyL2nOg1YKp_rpuN3PWRsARiD4";
+
+    // 🔐 API Key se lee de BuildConfig (configurada en local.properties)
+    private static final String API_KEY = BuildConfig.GEMINI_API_KEY;
+
     // Usar gemini-2.0-flash (gratuito y rápido)
     private static final String API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + API_KEY;
 
@@ -98,6 +104,24 @@ public class GeminiService {
                        "El usuario se llama " + nameStr + ". " +
                        "Responde de forma breve (máximo 2 oraciones), amigable y con un toque espacial/cósmico. " +
                        "Mensaje del usuario: " + userMessage;
+
+        sendRequest(prompt, callback);
+    }
+
+    /**
+     * 🎵 Genera un comentario creativo sobre una canción
+     * @param songTitle Título de la canción (puede incluir artista)
+     * @param userName Nombre del usuario
+     * @param callback Callback con la respuesta
+     */
+    public void generateSongComment(String songTitle, String userName, GeminiCallback callback) {
+        String nameStr = (userName != null && !userName.isEmpty()) ? userName : "Alguien";
+
+        String prompt = "Genera un mensaje MUY CORTO (máximo 15 palabras) y creativo sobre que a " + nameStr +
+                       " le gusta la canción '" + songTitle + "'. " +
+                       "Sé entusiasta, usa 1-2 emojis. " +
+                       "Ejemplos de estilo: '🎵 " + nameStr + " vibra con esto!', '♥ " + nameStr + " está disfrutando este temazo', '🔥 Buena elección " + nameStr + "!'. " +
+                       "Solo responde con el mensaje, sin explicaciones ni comillas.";
 
         sendRequest(prompt, callback);
     }

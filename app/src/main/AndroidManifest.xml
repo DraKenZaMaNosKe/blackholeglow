@@ -133,6 +133,18 @@
             android:exported="true" />
 
         <!--
+          ╔═══════════════════════════════════════════════════════════╗
+          ║   ACTIVITY: PANTALLA DE CARGA CON PROGRESO               ║
+          ╚═══════════════════════════════════════════════════════════╝
+          Muestra barra de progreso mientras se precargan los recursos
+          del wallpaper (texturas, shaders, modelos 3D)
+        -->
+        <activity
+            android:name=".activities.WallpaperLoadingActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Blackholeglow" />
+
+        <!--
           ╔════════════════════════════════╗
           ║   🪐 ACTIVITY: MENÚ GALÁCTICO 🪐 ║
           ╚════════════════════════════════╝

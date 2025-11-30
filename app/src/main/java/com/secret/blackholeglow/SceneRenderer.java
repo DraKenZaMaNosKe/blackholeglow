@@ -25,6 +25,15 @@ import com.secret.blackholeglow.sharing.SongNotification;
 import com.secret.blackholeglow.sharing.SongSharingManager;
 import com.secret.blackholeglow.sharing.UserAvatar;
 
+// 🐚 Sistema de escenas modular
+import com.secret.blackholeglow.scenes.BatallaCosmicaScene;
+import com.secret.blackholeglow.scenes.OceanPearlScene;
+import com.secret.blackholeglow.scenes.SceneManager;
+import com.secret.blackholeglow.scenes.WallpaperScene;
+
+// 🔧 Sistemas compartidos
+import com.secret.blackholeglow.systems.ScreenEffectsManager;
+
 /**
  * SceneRenderer con sistema de logging detallado para desarrollo
  */
@@ -59,6 +68,10 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     // 🚀 Referencia a la escena de batalla espacial (para touch interactivo)
     private SpaceBattleScene spaceBattleScene;
 
+    // 🐚 Sistema de escenas modular
+    private SceneManager sceneManager;
+    private OceanPearlScene oceanPearlScene;  // Referencia directa (legacy, se eliminará)
+
     // Sistema de visualización musical
     private MusicVisualizer musicVisualizer;
     private boolean musicReactiveEnabled = true;  // Activado por defecto
@@ -75,24 +88,8 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     private float touchX = 0f;                    // Posición X del toque (en coordenadas de pantalla)
     private float touchY = 0f;                    // Posición Y del toque
 
-    // ===== 💥 SISTEMA DE IMPACTO EN PANTALLA 💥 =====
-    private float impactFlashAlpha = 0f;          // Alpha del flash blanco (0-1)
-    private float impactFlashTimer = 0f;          // Tiempo restante del flash
-    private int flashShaderProgramId = 0;         // Shader para el flash blanco
-    private int flashAPositionLoc = -1;
-    private int flashAColorLoc = -1;
-
-    // ===== 💥 SISTEMA DE PANTALLA ROTA (GRIETAS) 💥 =====
-    private float crackAlpha = 0f;                // Alpha de las grietas (0-1)
-    private float crackTimer = 0f;                // Tiempo desde el impacto
-    private float crackX = 0.5f;                  // Posición X del impacto (0-1)
-    private float crackY = 0.5f;                  // Posición Y del impacto (0-1)
-    private int crackShaderProgramId = 0;         // Shader para las grietas
-    private int crackAPositionLoc = -1;
-    private int crackATexCoordLoc = -1;
-    private int crackUTimeLoc = -1;
-    private int crackUImpactPosLoc = -1;
-    private int crackUAlphaLoc = -1;
+    // ===== 💥 SISTEMA DE EFECTOS DE PANTALLA (MODULAR) 💥 =====
+    private ScreenEffectsManager screenEffects;
 
     // Métricas de rendimiento
     private int frameCount = 0;
@@ -154,6 +151,9 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     // ⏹️ BOTÓN STOP MINI (visible durante WALLPAPER_MODE)
     private MiniStopButton miniStopButton;
 
+    // 🖼️ MODO PREVIEW - Para WallpaperPreviewActivity (sin panel de control)
+    private boolean isPreviewMode = false;
+
     // 🚀 OPTIMIZACIÓN: Arrays reutilizables (evita allocations en runtime)
     private final float[] identityMatrixCache = new float[16];  // Para UI 2D
     private final float[] hsvCache = new float[3];              // Para colores HSV
@@ -201,6 +201,9 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
         GLES20.glClearColor(0.02f, 0.02f, 0.05f, 1f);
 
+        // 💥 Inicializar sistema de efectos de pantalla
+        screenEffects = new ScreenEffectsManager();
+
         // Obtener información de OpenGL
         String vendor = GLES20.glGetString(GLES20.GL_VENDOR);
         String renderer = GLES20.glGetString(GLES20.GL_RENDERER);
@@ -217,6 +220,14 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         // Crear controladores
         sharedCamera = new CameraController();
         textureManager = new TextureManager(context);
+
+        // 🎬 INICIALIZAR SCENE MANAGER (para escenas modulares)
+        sceneManager = new SceneManager();
+        sceneManager.initialize(context, textureManager, sharedCamera);
+        // Registrar escenas modulares
+        sceneManager.registerScene("Ocean Pearl", OceanPearlScene.class);
+        sceneManager.registerScene("Batalla Cósmica", BatallaCosmicaScene.class);
+        Log.d(TAG, "🎬 SceneManager inicializado con " + sceneManager.getRegisteredSceneCount() + " escenas");
 
         // CONFIGURAR CÁMARA EN PERSPECTIVA FIJA (3/4 isométrica)
         sharedCamera.setMode(CameraController.CameraMode.PERSPECTIVE_3_4);
@@ -261,6 +272,14 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         // La escena se prepara cuando el usuario presiona Play
         resourceLoader = new ResourceLoader(context, textureManager);
         Log.d(TAG, "🚀 ResourceLoader inicializado - escena se cargará al presionar Play");
+
+        // 🖼️ MODO PREVIEW: Cargar escena inmediatamente (sin esperar Play)
+        if (isPreviewMode) {
+            Log.d(TAG, "🖼️ PREVIEW MODE detectado - cargando escena: " + selectedItem);
+            currentRenderMode = RenderMode.WALLPAPER_MODE;
+            isAnimationPlaying = true;
+            needsSceneRecreation = true;
+        }
 
         Log.d(TAG, "════════ onSurfaceCreated END ════════");
         Log.d(TAG, "✓ Surface created with " + sceneObjects.size() + " objects");
@@ -469,82 +488,71 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         // 👆 ACTUALIZAR SISTEMA DE CARGA DE PODER
         updateChargeSystem(dt);
 
-        // 💥 ACTUALIZAR FLASH DE IMPACTO
-        if (impactFlashTimer > 0) {
-            impactFlashTimer -= dt;
-            impactFlashAlpha *= 0.85f;  // Decay rápido
-            if (impactFlashTimer <= 0) {
-                impactFlashAlpha = 0f;
-            }
-        }
-
-        // 💥 ACTUALIZAR GRIETAS DE PANTALLA ROTA
-        if (crackTimer > 0) {
-            crackTimer += dt;
-
-            // Fase 1 (0-0.5s): Grietas aparecen y se expanden rápidamente
-            if (crackTimer < 0.5f) {
-                crackAlpha = crackTimer / 0.5f;  // 0 → 1
-            }
-            // Fase 2 (0.5-3.5s): Grietas visibles
-            else if (crackTimer < 3.5f) {
-                crackAlpha = 1.0f;  // Máximo
-            }
-            // Fase 3 (3.5-5.0s): Grietas se desvanecen
-            else if (crackTimer < 5.0f) {
-                crackAlpha = 1.0f - ((crackTimer - 3.5f) / 1.5f);  // 1 → 0
-            }
-            // Fin
-            else {
-                crackTimer = 0f;
-                crackAlpha = 0f;
-            }
+        // 💥 ACTUALIZAR EFECTOS DE PANTALLA (flash + grietas)
+        if (screenEffects != null) {
+            screenEffects.update(dt);
         }
 
         // ═══════════════════════════════════════════════════════════
         // 🎨 RENDERIZADO EN CAPAS - FireButton siempre encima
         // ═══════════════════════════════════════════════════════════
 
-        // Actualizar TODOS los objetos primero (incluye EarthShield)
-        for (SceneObject obj : sceneObjects) {
-            obj.update(dt);
-        }
+        // 🎬 VERIFICAR SI HAY ESCENA MODULAR ACTIVA
+        boolean isModularScene = sceneManager != null && sceneManager.hasSceneLoaded();
 
-        // ✨ Actualizar partículas instanciadas (OpenGL ES 3.0)
-        if (instancedParticles != null) {
-            instancedParticles.update(dt);
-            // Pasar matriz VP para renderizado 3D
-            if (sharedCamera != null) {
-                instancedParticles.setVPMatrix(sharedCamera.getViewProjectionMatrix());
+        if (isModularScene) {
+            // ═══════════════════════════════════════════════════════
+            // 🐚 ESCENA MODULAR (Ocean Pearl, Batalla Cósmica, futuras)
+            // ═══════════════════════════════════════════════════════
+            sceneManager.update(dt);
+            sceneManager.draw();
+
+            // 🎮 BatallaCosmicaScene ahora maneja su propia UI (independiente)
+        } else {
+            // ═══════════════════════════════════════════════════════
+            // 🌌 ESCENA LEGACY (Universo, otras)
+            // ═══════════════════════════════════════════════════════
+            // Actualizar TODOS los objetos primero (incluye EarthShield)
+            for (SceneObject obj : sceneObjects) {
+                obj.update(dt);
+            }
+
+            // ✨ Actualizar partículas instanciadas (OpenGL ES 3.0)
+            if (instancedParticles != null) {
+                instancedParticles.update(dt);
+                // Pasar matriz VP para renderizado 3D
+                if (sharedCamera != null) {
+                    instancedParticles.setVPMatrix(sharedCamera.getViewProjectionMatrix());
+                }
+            }
+
+            // Dibujar objetos del JUEGO (excepto FireButton) - incluye EarthShield
+            for (SceneObject obj : sceneObjects) {
+                if (!(obj instanceof FireButton)) {
+                    obj.draw();
+                }
+            }
+
+            // ✨ Dibujar partículas instanciadas (después de objetos 3D, antes de UI)
+            if (instancedParticles != null) {
+                instancedParticles.draw();
             }
         }
 
-        // Dibujar objetos del JUEGO (excepto FireButton) - incluye EarthShield
-        for (SceneObject obj : sceneObjects) {
-            if (!(obj instanceof FireButton)) {
-                obj.draw();
-            }
+        // 💥 DIBUJAR EFECTOS DE PANTALLA (flash + grietas)
+        if (screenEffects != null) {
+            screenEffects.draw();
         }
 
-        // ✨ Dibujar partículas instanciadas (después de objetos 3D, antes de UI)
-        if (instancedParticles != null) {
-            instancedParticles.draw();
-        }
-
-        // 💥 DIBUJAR FLASH BLANCO SI ESTÁ ACTIVO (puede cubrir el juego)
-        if (impactFlashAlpha > 0.01f) {
-            drawImpactFlash();
-        }
-
-        // 💥 DIBUJAR GRIETAS DE PANTALLA ROTA SI ESTÁN ACTIVAS
-        if (crackAlpha > 0.01f) {
-            drawScreenCracks();
-        }
-
-        // 🎵 DIBUJAR SISTEMA DE COMPARTIR CANCIONES
+        // 🎵 DIBUJAR SISTEMA DE COMPARTIR CANCIONES (para TODAS las escenas)
         drawSongSharingUI();
 
-        // 🎯 DIBUJAR FIREBUTTON AL FINAL - SIEMPRE VISIBLE ENCIMA DE TODO
+        // 🖼️ EN MODO PREVIEW: No dibujar botones de UI
+        if (isPreviewMode) {
+            return;  // Solo mostrar escena 3D pura
+        }
+
+        // 🎯 DIBUJAR FIREBUTTON AL FINAL (para TODAS las escenas)
         if (fireButton != null) {
             fireButton.draw();
         }
@@ -966,8 +974,15 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             return;
         }
 
+        // 🧹 LIMPIAR ESCENA ANTERIOR
         sceneObjects.clear();
         spaceBattleScene = null;  // Limpiar referencia de batalla espacial
+
+        // 🎬 Descargar escena modular si había una activa
+        if (sceneManager != null && sceneManager.hasSceneLoaded()) {
+            Log.d(TAG, "🎬 Descargando escena modular anterior: " + sceneManager.getCurrentSceneName());
+            sceneManager.unloadCurrentScene();
+        }
 
         prepareSceneInternal();
     }
@@ -975,17 +990,37 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     /**
      * 📦 Preparación interna de la escena (sin inicializar TextureManager)
      * Este método es llamado desde ResourceLoader durante la carga progresiva
+     *
+     * ARQUITECTURA HÍBRIDA:
+     * - Escenas MODULARES (Ocean Pearl, futuras): Usa SceneManager
+     * - Escenas LEGACY (Universo, otras): Usa métodos setup directos
      */
     private void prepareSceneInternal() {
         // ═══════════════════════════════════════════════════════════
-        // 🎨 SELECTOR DE ESCENAS - 10 WALLPAPERS ÚNICOS
+        // 🎬 VERIFICAR SI ES ESCENA MODULAR (usa SceneManager)
+        // ═══════════════════════════════════════════════════════════
+        if (sceneManager != null && sceneManager.isSceneRegistered(selectedItem)) {
+            Log.d(TAG, "🎬 Cargando escena MODULAR: " + selectedItem);
+            boolean loaded = sceneManager.loadScene(selectedItem);
+            if (loaded) {
+                Log.d(TAG, "✓ Escena modular cargada: " + selectedItem);
+                // La escena modular maneja su propia UI (independiente de SceneRenderer)
+                return;  // ¡Listo! SceneManager maneja todo
+            } else {
+                Log.e(TAG, "✗ Error cargando escena modular, fallback a legacy");
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // 🎨 ESCENAS LEGACY - Métodos setup directos
         // ═══════════════════════════════════════════════════════════
         switch (selectedItem) {
-            case "🌊 Océano Profundo":
-                setupOceanScene();
-                break;
             case "Universo":
                 setupUniverseScene();
+                break;
+            // Escenas legacy (mantenidas por compatibilidad)
+            case "🌊 Océano Profundo":
+                setupOceanScene();
                 break;
             case "Bosque Encantado":
                 setupBosqueScene();
@@ -1699,6 +1734,24 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         Log.d(TAG, "✓ Universe scene setup complete");
     }
 
+    /**
+     * 🐚 ESCENA OCEAN PEARL - Fondo del mar con ostra y perla brillante
+     *
+     * Elementos:
+     * - Fondo oceánico con gradiente azul profundo
+     * - Rayos de luz solar atravesando el agua
+     * - Ostra abierta con perla brillante (elemento principal)
+     * - Peces nadando tranquilamente
+     * - Burbujas subiendo
+     * - Algas marinas meciéndose
+     * - Partículas de plancton flotando
+     */
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🐚 OCEAN PEARL - Ahora manejada por SceneManager (escena modular)
+    // El método setupOceanPearlScene() fue eliminado.
+    // La escena se carga automáticamente en prepareSceneInternal() via SceneManager.
+    // ═══════════════════════════════════════════════════════════════════════
+
     private void setupBlackHoleScene() {
         Log.d(TAG, "Setting up BLACK HOLE scene...");
 
@@ -2216,13 +2269,17 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
      * 🔴 PAUSA - Detiene renderizado completamente
      * IMPORTANTE: Puede llamarse múltiples veces seguidas (cambios rápidos de visibilidad)
      * Al pausar, forzamos PANEL_MODE para que al volver no haya flickering
+     * EXCEPCIÓN: En modo preview, mantenemos WALLPAPER_MODE
      */
     public void pause() {
         paused = true;  // Siempre marcar como pausado (sin verificar estado previo)
 
-        // 🎛️ FORZAR PANEL_MODE - Clave para evitar flickering al volver
-        currentRenderMode = RenderMode.PANEL_MODE;
-        isAnimationPlaying = false;
+        // 🖼️ EN MODO PREVIEW: No cambiar a PANEL_MODE
+        if (!isPreviewMode) {
+            // 🎛️ FORZAR PANEL_MODE - Clave para evitar flickering al volver
+            currentRenderMode = RenderMode.PANEL_MODE;
+            isAnimationPlaying = false;
+        }
 
         // Pausar audio (rápido y seguro llamar múltiples veces)
         if (musicVisualizer != null) {
@@ -2235,32 +2292,41 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             playerStats.saveStats();
         }
 
-        Log.d(TAG, "🔴 PAUSE → PANEL_MODE");
+        Log.d(TAG, "🔴 PAUSE → " + (isPreviewMode ? "WALLPAPER_MODE (preview)" : "PANEL_MODE"));
     }
 
     /**
      * 🟢 RESUME - Reactiva el renderizado en PANEL_MODE
      * IMPORTANTE: Siempre vuelve a PANEL_MODE para que el usuario decida cuando activar el wallpaper
+     * EXCEPCIÓN: En modo preview, mantiene WALLPAPER_MODE
      */
     public void resume() {
         paused = false;  // Siempre marcar como activo (sin verificar estado previo)
 
-        // 🎛️ SIEMPRE volver a PANEL_MODE - El usuario activa el wallpaper manualmente
-        currentRenderMode = RenderMode.PANEL_MODE;
-        isAnimationPlaying = false;
+        // 🖼️ EN MODO PREVIEW: Mantener WALLPAPER_MODE
+        if (isPreviewMode) {
+            currentRenderMode = RenderMode.WALLPAPER_MODE;
+            isAnimationPlaying = true;
+        } else {
+            // 🎛️ SIEMPRE volver a PANEL_MODE - El usuario activa el wallpaper manualmente
+            currentRenderMode = RenderMode.PANEL_MODE;
+            isAnimationPlaying = false;
+        }
 
         // Resetear tiempo para evitar saltos de deltaTime
         lastTime = System.nanoTime();
         TimeManager.update();
 
-        // ⚡ Resetear tiempo de elementos UI para evitar overflow de precisión
-        if (playPauseButton != null) {
-            playPauseButton.resetTime();
-            playPauseButton.setPlaying(false);  // Asegurar que muestre Play
-        }
-        if (orbixGreeting != null) {
-            orbixGreeting.resetTime();
-            orbixGreeting.show();  // Asegurar que esté visible
+        // ⚡ Resetear tiempo de elementos UI para evitar overflow de precisión (solo si no es preview)
+        if (!isPreviewMode) {
+            if (playPauseButton != null) {
+                playPauseButton.resetTime();
+                playPauseButton.setPlaying(false);  // Asegurar que muestre Play
+            }
+            if (orbixGreeting != null) {
+                orbixGreeting.resetTime();
+                orbixGreeting.show();  // Asegurar que esté visible
+            }
         }
 
         // NO reactivar audio - solo se activa cuando el usuario presiona Play
@@ -2271,7 +2337,7 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
             playerStats.startSession();
         }
 
-        Log.d(TAG, "🟢 RESUME → PANEL_MODE (esperando Play)");
+        Log.d(TAG, "🟢 RESUME → " + (isPreviewMode ? "WALLPAPER_MODE (preview)" : "PANEL_MODE (esperando Play)"));
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -2312,13 +2378,57 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         }
     }
 
+    /**
+     * 🖼️ MODO PREVIEW - Para WallpaperPreviewActivity
+     * Cuando está en modo preview:
+     * - Salta directamente a WALLPAPER_MODE (sin panel de control)
+     * - No muestra botones de Play/Pause ni Stop
+     * - Solo renderiza la escena 3D
+     * - Marca la escena para recreación automática
+     * @param preview true para activar modo preview
+     */
+    public void setPreviewMode(boolean preview) {
+        this.isPreviewMode = preview;
+        Log.d(TAG, "🖼️ Preview mode: " + (preview ? "ACTIVADO" : "DESACTIVADO") + " - Escena: " + selectedItem);
+
+        if (preview) {
+            // En modo preview, ir directo a WALLPAPER_MODE
+            currentRenderMode = RenderMode.WALLPAPER_MODE;
+            isAnimationPlaying = true;
+
+            // Marcar escena para recreación en GL thread
+            needsSceneRecreation = true;
+            Log.d(TAG, "🖼️ Escena marcada para recreación: " + selectedItem);
+        }
+    }
+
+    /**
+     * Verifica si está en modo preview
+     * @return true si está en modo preview (WallpaperPreviewActivity)
+     */
+    public boolean isPreviewMode() {
+        return isPreviewMode;
+    }
+
     public void release() {
         Log.d(TAG, "Releasing resources...");
+
+        // 🎬 Liberar SceneManager y escenas modulares
+        if (sceneManager != null) {
+            sceneManager.destroy();
+            sceneManager = null;
+        }
 
         // Liberar visualizador musical
         if (musicVisualizer != null) {
             musicVisualizer.release();
             musicVisualizer = null;
+        }
+
+        // 💥 Liberar efectos de pantalla
+        if (screenEffects != null) {
+            screenEffects.release();
+            screenEffects = null;
         }
 
         for (SceneObject obj : sceneObjects) {
@@ -2358,6 +2468,22 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         for (SceneObject obj : sceneObjects) {
             if (obj instanceof MusicReactive) {
                 ((MusicReactive) obj).onMusicData(bass, mid, treble, volume, beatIntensity, isBeat);
+            }
+        }
+
+        // 🎵 ENVIAR DATOS DE MÚSICA A ESCENAS MODULARES
+        if (sceneManager != null && sceneManager.hasSceneLoaded()) {
+            WallpaperScene currentScene = sceneManager.getCurrentScene();
+            if (currentScene instanceof BatallaCosmicaScene) {
+                BatallaCosmicaScene batalla = (BatallaCosmicaScene) currentScene;
+                batalla.updateMusicLevels(bass, mid, treble);
+
+                // Enviar datos a objetos MusicReactive de la escena modular
+                for (SceneObject obj : batalla.getSceneObjects()) {
+                    if (obj instanceof MusicReactive) {
+                        ((MusicReactive) obj).onMusicData(bass, mid, treble, volume, beatIntensity, isBeat);
+                    }
+                }
             }
         }
     }
@@ -2465,7 +2591,13 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                 }
             }
 
-            // 🎵 VERIFICAR LIKE BUTTON (funciona en TODAS las escenas)
+            // 🚀 PRIORIDAD 1: Batalla Espacial (legacy SpaceBattleScene)
+            if (spaceBattleScene != null) {
+                spaceBattleScene.handleTouch(event);
+                return;  // No procesar más eventos de touch
+            }
+
+            // 🎵 PRIORIDAD 2: LIKE BUTTON (funciona para TODAS las escenas)
             if (action == android.view.MotionEvent.ACTION_DOWN) {
                 float tx = event.getX();
                 float ty = event.getY();
@@ -2483,12 +2615,6 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
                 if (likeButton != null) {
                     likeButton.onRelease();
                 }
-            }
-
-            // 🚀 ENRUTAMIENTO ESPECIAL: Si estamos en Batalla Espacial, enrutar eventos táctiles
-            if (spaceBattleScene != null) {
-                spaceBattleScene.handleTouch(event);
-                return;  // No procesar más eventos de touch
             }
 
             switch (action) {
@@ -2762,18 +2888,9 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
     }
 
     public void triggerScreenImpact(float intensity) {
-        // Screen shake - DESACTIVADO para apreciar mejor el efecto del sol
-        /*
-        if (sharedCamera != null) {
-            sharedCamera.triggerScreenShake(intensity * 0.8f, 0.3f);
+        if (screenEffects != null) {
+            screenEffects.triggerScreenImpact(intensity);
         }
-        */
-
-        // Flash blanco
-        impactFlashAlpha = intensity * 0.6f;  // Máximo 60% de alpha para no cegar
-        impactFlashTimer = 0.25f;  // 0.25 segundos
-
-        Log.d(TAG, String.format("💥 IMPACTO EN PANTALLA! Intensidad: %.0f%%", intensity * 100));
     }
 
     /**
@@ -2783,351 +2900,9 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
      * @param intensity Intensidad del impacto (0.0 - 1.0)
      */
     public void triggerScreenCrack(float screenX, float screenY, float intensity) {
-        // Screen shake MÁS FUERTE - DESACTIVADO para apreciar mejor el efecto del sol
-        /*
-        if (sharedCamera != null) {
-            sharedCamera.triggerScreenShake(intensity * 1.2f, 0.5f);
+        if (screenEffects != null) {
+            screenEffects.triggerScreenCrack(screenX, screenY, intensity);
         }
-        */
-
-        // Flash blanco MÁS INTENSO
-        impactFlashAlpha = intensity * 0.8f;  // Máximo 80%
-        impactFlashTimer = 0.4f;
-
-        // GRIETAS
-        crackX = screenX;
-        crackY = screenY;
-        crackTimer = 0.01f;  // Iniciar animación
-        crackAlpha = 0f;
-
-        Log.d(TAG, "╔════════════════════════════════════════════════════════╗");
-        Log.d(TAG, "║                                                        ║");
-        Log.d(TAG, "║    💥💥💥 ¡PANTALLA ROTA! 💥💥💥                      ║");
-        Log.d(TAG, "║                                                        ║");
-        Log.d(TAG, String.format("║    Impacto en: (%.2f, %.2f)                           ║", screenX, screenY));
-        Log.d(TAG, String.format("║    Intensidad: %.0f%%                                  ║", intensity * 100));
-        Log.d(TAG, "║                                                        ║");
-        Log.d(TAG, "╚════════════════════════════════════════════════════════╝");
-    }
-
-    /**
-     * Dibuja un flash blanco semi-transparente en toda la pantalla
-     */
-    private void drawImpactFlash() {
-        // Desactivar depth test y habilitar blending
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
-
-        // ╔═════════════════════════════════════════════════════════╗
-        // ║  INICIALIZACIÓN LAZY DEL SHADER (solo primera vez)     ║
-        // ╚═════════════════════════════════════════════════════════╝
-        if (flashShaderProgramId == 0) {
-            // Shader muy simple para dibujar quad 2D con color
-            String vertexShader =
-                "attribute vec2 a_Position;\n" +
-                "attribute vec4 a_Color;\n" +
-                "varying vec4 v_Color;\n" +
-                "void main() {\n" +
-                "    v_Color = a_Color;\n" +
-                "    gl_Position = vec4(a_Position, 0.0, 1.0);\n" +
-                "}\n";
-
-            String fragmentShader =
-                "#ifdef GL_ES\n" +
-                "precision mediump float;\n" +
-                "#endif\n" +
-                "varying vec4 v_Color;\n" +
-                "void main() {\n" +
-                "    gl_FragColor = v_Color;\n" +
-                "}\n";
-
-            int vShader = ShaderUtils.compileShader(GLES20.GL_VERTEX_SHADER, vertexShader);
-            int fShader = ShaderUtils.compileShader(GLES20.GL_FRAGMENT_SHADER, fragmentShader);
-
-            flashShaderProgramId = GLES20.glCreateProgram();
-            GLES20.glAttachShader(flashShaderProgramId, vShader);
-            GLES20.glAttachShader(flashShaderProgramId, fShader);
-            GLES20.glLinkProgram(flashShaderProgramId);
-
-            // Verificar link
-            int[] linkStatus = new int[1];
-            GLES20.glGetProgramiv(flashShaderProgramId, GLES20.GL_LINK_STATUS, linkStatus, 0);
-            if (linkStatus[0] == 0) {
-                Log.e(TAG, "💥 Flash shader link failed: " + GLES20.glGetProgramInfoLog(flashShaderProgramId));
-                flashShaderProgramId = 0;
-                return;
-            }
-
-            GLES20.glDeleteShader(vShader);
-            GLES20.glDeleteShader(fShader);
-
-            flashAPositionLoc = GLES20.glGetAttribLocation(flashShaderProgramId, "a_Position");
-            flashAColorLoc = GLES20.glGetAttribLocation(flashShaderProgramId, "a_Color");
-
-            Log.d(TAG, "💥 Flash shader creado - ID: " + flashShaderProgramId);
-        }
-
-        // ╔═════════════════════════════════════════════════════════╗
-        // ║  DIBUJAR QUAD BLANCO SEMI-TRANSPARENTE                 ║
-        // ╚═════════════════════════════════════════════════════════╝
-        if (flashShaderProgramId > 0 && GLES20.glIsProgram(flashShaderProgramId)) {
-            GLES20.glUseProgram(flashShaderProgramId);
-
-            // Vértices en NDC que cubren toda la pantalla (TRIANGLE_STRIP)
-            float[] vertices = {
-                -1.0f, -1.0f,  // Bottom-left
-                 1.0f, -1.0f,  // Bottom-right
-                -1.0f,  1.0f,  // Top-left
-                 1.0f,  1.0f   // Top-right
-            };
-
-            // Color blanco con alpha variable
-            float[] colors = new float[16];
-            for (int i = 0; i < 4; i++) {
-                colors[i * 4] = 1.0f;  // R
-                colors[i * 4 + 1] = 1.0f;  // G
-                colors[i * 4 + 2] = 1.0f;  // B
-                colors[i * 4 + 3] = impactFlashAlpha;  // A
-            }
-
-            // Crear buffers
-            java.nio.ByteBuffer vbb = java.nio.ByteBuffer.allocateDirect(vertices.length * 4);
-            vbb.order(java.nio.ByteOrder.nativeOrder());
-            java.nio.FloatBuffer vb = vbb.asFloatBuffer();
-            vb.put(vertices);
-            vb.position(0);
-
-            java.nio.ByteBuffer cbb = java.nio.ByteBuffer.allocateDirect(colors.length * 4);
-            cbb.order(java.nio.ByteOrder.nativeOrder());
-            java.nio.FloatBuffer cb = cbb.asFloatBuffer();
-            cb.put(colors);
-            cb.position(0);
-
-            // Configurar atributos
-            GLES20.glEnableVertexAttribArray(flashAPositionLoc);
-            GLES20.glVertexAttribPointer(flashAPositionLoc, 2, GLES20.GL_FLOAT, false, 0, vb);
-
-            GLES20.glEnableVertexAttribArray(flashAColorLoc);
-            GLES20.glVertexAttribPointer(flashAColorLoc, 4, GLES20.GL_FLOAT, false, 0, cb);
-
-            // Dibujar
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
-
-            // Limpiar
-            GLES20.glDisableVertexAttribArray(flashAPositionLoc);
-            GLES20.glDisableVertexAttribArray(flashAColorLoc);
-        }
-
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-    }
-
-    /**
-     * 💥💥 Dibuja grietas procedurales en la pantalla
-     */
-    private void drawScreenCracks() {
-        // Desactivar depth test y habilitar blending
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
-
-        // ╔═════════════════════════════════════════════════════════╗
-        // ║  INICIALIZACIÓN LAZY DEL SHADER (solo primera vez)     ║
-        // ╚═════════════════════════════════════════════════════════╝
-        if (crackShaderProgramId == 0) {
-            // Vertex shader simple
-            String vertexShader =
-                "attribute vec2 a_Position;\n" +
-                "attribute vec2 a_TexCoord;\n" +
-                "varying vec2 v_TexCoord;\n" +
-                "void main() {\n" +
-                "    v_TexCoord = a_TexCoord;\n" +
-                "    gl_Position = vec4(a_Position, 0.0, 1.0);\n" +
-                "}\n";
-
-            // Fragment shader MEJORADO - Grietas épicas y caóticas
-            String fragmentShader =
-                "#ifdef GL_ES\n" +
-                "precision mediump float;\n" +
-                "#endif\n" +
-                "varying vec2 v_TexCoord;\n" +
-                "uniform float u_Time;\n" +
-                "uniform vec2 u_ImpactPos;\n" +
-                "uniform float u_Alpha;\n" +
-                "\n" +
-                "// Funciones de ruido mejoradas\n" +
-                "float hash(float n) {\n" +
-                "    return fract(sin(n) * 43758.5453);\n" +
-                "}\n" +
-                "\n" +
-                "float noise(vec2 p) {\n" +
-                "    vec2 i = floor(p);\n" +
-                "    vec2 f = fract(p);\n" +
-                "    f = f * f * (3.0 - 2.0 * f);\n" +
-                "    float n = i.x + i.y * 57.0;\n" +
-                "    return mix(mix(hash(n), hash(n + 1.0), f.x),\n" +
-                "               mix(hash(n + 57.0), hash(n + 58.0), f.x), f.y);\n" +
-                "}\n" +
-                "\n" +
-                "void main() {\n" +
-                "    vec2 uv = v_TexCoord;\n" +
-                "    vec2 toImpact = uv - u_ImpactPos;\n" +
-                "    float dist = length(toImpact);\n" +
-                "    float angle = atan(toImpact.y, toImpact.x);\n" +
-                "    \n" +
-                "    // ===== GRIETAS PRINCIPALES (8 rayos) =====\n" +
-                "    float numCracks = 8.0;  // Reducido de 12 a 8\n" +
-                "    float crackPattern = 0.0;\n" +
-                "    \n" +
-                "    for (float i = 0.0; i < numCracks; i++) {\n" +
-                "        float crackAngle = (i / numCracks) * 6.28318 + hash(i) * 0.3;  // Variación\n" +
-                "        float angleDiff = abs(mod(angle - crackAngle + 3.14159, 6.28318) - 3.14159);\n" +
-                "        \n" +
-                "        // Grieta MÁS FINA con variación caótica\n" +
-                "        float crackNoise = noise(vec2(dist * 30.0, i)) * 0.5 + 0.5;\n" +
-                "        float crackWidth = 0.004 + crackNoise * 0.003;  // MUY FINA (0.004 vs 0.02)\n" +
-                "        float crack = smoothstep(crackWidth, 0.0, angleDiff);\n" +
-                "        \n" +
-                "        // Ramificaciones caóticas\n" +
-                "        float branch = noise(vec2(dist * 15.0 + i, angle * 8.0));\n" +
-                "        crack *= (0.7 + branch * 0.3);\n" +
-                "        \n" +
-                "        // Fade out con la distancia\n" +
-                "        float distFade = smoothstep(1.0, 0.0, dist);\n" +
-                "        crack *= distFade;\n" +
-                "        \n" +
-                "        // Expansión animada rápida\n" +
-                "        float expansion = smoothstep(dist * 2.0, dist * 2.0 + 0.15, u_Time * 3.0);\n" +
-                "        crack *= expansion;\n" +
-                "        \n" +
-                "        crackPattern = max(crackPattern, crack);\n" +
-                "    }\n" +
-                "    \n" +
-                "    // ===== GRIETAS SECUNDARIAS (3 rayos sutiles) =====\n" +
-                "    float secondaryCracks = 0.0;\n" +
-                "    for (float i = 0.0; i < 3.0; i++) {  // Reducido de 6 a 3\n" +
-                "        float offset = hash(i + 10.0) * 6.28318;\n" +
-                "        float crackAngle = (i / 3.0) * 6.28318 + offset;\n" +
-                "        float angleDiff = abs(mod(angle - crackAngle + 3.14159, 6.28318) - 3.14159);\n" +
-                "        \n" +
-                "        float crack = smoothstep(0.003, 0.0, angleDiff);  // Super finas\n" +
-                "        float distFade = smoothstep(0.6, 0.0, dist);  // Más cortas\n" +
-                "        crack *= distFade;\n" +
-                "        \n" +
-                "        float expansion = smoothstep(dist * 2.0, dist * 2.0 + 0.15, u_Time * 3.0);\n" +
-                "        crack *= expansion * 0.4;  // Mucho más sutiles\n" +
-                "        \n" +
-                "        secondaryCracks = max(secondaryCracks, crack);\n" +
-                "    }\n" +
-                "    \n" +
-                "    crackPattern = max(crackPattern, secondaryCracks);\n" +
-                "    \n" +
-                "    // ===== DESTELLO EN PUNTO DE IMPACTO =====\n" +
-                "    float impactGlow = 0.0;\n" +
-                "    if (dist < 0.15) {\n" +
-                "        impactGlow = (1.0 - dist / 0.15) * smoothstep(0.3, 0.0, u_Time);\n" +
-                "        impactGlow = pow(impactGlow, 2.0);\n" +
-                "    }\n" +
-                "    \n" +
-                "    // ===== COLOR ENERGÉTICO (azul eléctrico/cyan) =====\n" +
-                "    vec3 crackColor = mix(\n" +
-                "        vec3(0.3, 0.8, 1.0),  // Cyan eléctrico\n" +
-                "        vec3(0.9, 0.95, 1.0), // Blanco\n" +
-                "        crackPattern * 0.6    // Interpolación\n" +
-                "    );\n" +
-                "    \n" +
-                "    // Agregar destello naranja en el centro\n" +
-                "    crackColor = mix(crackColor, vec3(1.0, 0.7, 0.3), impactGlow * 0.8);\n" +
-                "    \n" +
-                "    float finalAlpha = (crackPattern + impactGlow) * u_Alpha * 0.7;  // Reducido\n" +
-                "    gl_FragColor = vec4(crackColor, finalAlpha);\n" +
-                "}\n";
-
-            int vShader = ShaderUtils.compileShader(GLES20.GL_VERTEX_SHADER, vertexShader);
-            int fShader = ShaderUtils.compileShader(GLES20.GL_FRAGMENT_SHADER, fragmentShader);
-
-            crackShaderProgramId = GLES20.glCreateProgram();
-            GLES20.glAttachShader(crackShaderProgramId, vShader);
-            GLES20.glAttachShader(crackShaderProgramId, fShader);
-            GLES20.glLinkProgram(crackShaderProgramId);
-
-            // Verificar link
-            int[] linkStatus = new int[1];
-            GLES20.glGetProgramiv(crackShaderProgramId, GLES20.GL_LINK_STATUS, linkStatus, 0);
-            if (linkStatus[0] == 0) {
-                Log.e(TAG, "💥 Crack shader link failed: " + GLES20.glGetProgramInfoLog(crackShaderProgramId));
-                crackShaderProgramId = 0;
-                return;
-            }
-
-            GLES20.glDeleteShader(vShader);
-            GLES20.glDeleteShader(fShader);
-
-            crackAPositionLoc = GLES20.glGetAttribLocation(crackShaderProgramId, "a_Position");
-            crackATexCoordLoc = GLES20.glGetAttribLocation(crackShaderProgramId, "a_TexCoord");
-            crackUTimeLoc = GLES20.glGetUniformLocation(crackShaderProgramId, "u_Time");
-            crackUImpactPosLoc = GLES20.glGetUniformLocation(crackShaderProgramId, "u_ImpactPos");
-            crackUAlphaLoc = GLES20.glGetUniformLocation(crackShaderProgramId, "u_Alpha");
-
-            Log.d(TAG, "💥 Crack shader creado - ID: " + crackShaderProgramId);
-        }
-
-        // ╔═════════════════════════════════════════════════════════╗
-        // ║  DIBUJAR GRIETAS PROCEDURALES                           ║
-        // ╚═════════════════════════════════════════════════════════╝
-        if (crackShaderProgramId > 0 && GLES20.glIsProgram(crackShaderProgramId)) {
-            GLES20.glUseProgram(crackShaderProgramId);
-
-            // Vértices en NDC
-            float[] vertices = {
-                -1.0f, -1.0f,  // Bottom-left
-                 1.0f, -1.0f,  // Bottom-right
-                -1.0f,  1.0f,  // Top-left
-                 1.0f,  1.0f   // Top-right
-            };
-
-            // UV coordinates
-            float[] uvs = {
-                0.0f, 0.0f,
-                1.0f, 0.0f,
-                0.0f, 1.0f,
-                1.0f, 1.0f
-            };
-
-            // Crear buffers
-            java.nio.ByteBuffer vbb = java.nio.ByteBuffer.allocateDirect(vertices.length * 4);
-            vbb.order(java.nio.ByteOrder.nativeOrder());
-            java.nio.FloatBuffer vb = vbb.asFloatBuffer();
-            vb.put(vertices);
-            vb.position(0);
-
-            java.nio.ByteBuffer ubb = java.nio.ByteBuffer.allocateDirect(uvs.length * 4);
-            ubb.order(java.nio.ByteOrder.nativeOrder());
-            java.nio.FloatBuffer ub = ubb.asFloatBuffer();
-            ub.put(uvs);
-            ub.position(0);
-
-            // Configurar uniforms
-            GLES20.glUniform1f(crackUTimeLoc, crackTimer);
-            GLES20.glUniform2f(crackUImpactPosLoc, crackX, crackY);
-            GLES20.glUniform1f(crackUAlphaLoc, crackAlpha);
-
-            // Configurar atributos
-            GLES20.glEnableVertexAttribArray(crackAPositionLoc);
-            GLES20.glVertexAttribPointer(crackAPositionLoc, 2, GLES20.GL_FLOAT, false, 0, vb);
-
-            GLES20.glEnableVertexAttribArray(crackATexCoordLoc);
-            GLES20.glVertexAttribPointer(crackATexCoordLoc, 2, GLES20.GL_FLOAT, false, 0, ub);
-
-            // Dibujar
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
-
-            // Limpiar
-            GLES20.glDisableVertexAttribArray(crackAPositionLoc);
-            GLES20.glDisableVertexAttribArray(crackATexCoordLoc);
-        }
-
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
     }
 
     // ===== 🏆 SISTEMA DE LEADERBOARD =====
@@ -3142,6 +2917,15 @@ public class SceneRenderer implements GLSurfaceView.Renderer, Planeta.OnExplosio
         }
 
         lastLeaderboardUpdate = now;
+
+        // 🎮 Para escenas modulares, delegar al método de la escena
+        if (sceneManager != null && sceneManager.hasSceneLoaded()) {
+            WallpaperScene currentScene = sceneManager.getCurrentScene();
+            if (currentScene instanceof BatallaCosmicaScene) {
+                ((BatallaCosmicaScene) currentScene).updateLeaderboardUI();
+                return;  // La escena maneja su propio leaderboard
+            }
+        }
 
         if (leaderboardManager != null) {
             leaderboardManager.getTop3(new LeaderboardManager.Top3Callback() {

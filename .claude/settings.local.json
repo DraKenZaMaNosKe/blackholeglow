@@ -14,7 +14,14 @@
       "Bash(keytool -list -v -keystore:*)",
       "Bash(findstr:*)",
       "Bash(timeout 5:*)",
-      "WebFetch(domain:generativelanguage.googleapis.com)"
+      "WebFetch(domain:generativelanguage.googleapis.com)",
+      "Bash(./gradlew assembleRelease:*)",
+      "Bash(./gradlew compileDebugJavaWithJavac:*)",
+      "Bash(git checkout:*)",
+      "Bash(timeout 15 D:/adb/platform-tools/adb.exe logcat:*)",
+      "Bash(timeout 12 D:/adb/platform-tools/adb.exe:*)",
+      "Bash(timeout 15 D:/adb/platform-tools/adb.exe:*)",
+      "Bash(timeout 30 D:/adb/platform-tools/adb.exe:*)"
     ],
     "deny": [],
     "ask": []

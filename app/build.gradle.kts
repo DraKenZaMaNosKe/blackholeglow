@@ -1,6 +1,15 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.google.services)
+}
+
+// Leer API keys desde local.properties (seguro, no se sube a GitHub)
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(localPropertiesFile.inputStream())
 }
 
 android {
@@ -15,6 +24,14 @@ android {
         versionName = "4.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // 🔐 API Key de Gemini (se lee de local.properties)
+        buildConfigField("String", "GEMINI_API_KEY", "\"${localProperties.getProperty("GEMINI_API_KEY", "")}\"")
+    }
+
+    // Habilitar BuildConfig
+    buildFeatures {
+        buildConfig = true
     }
 
     signingConfigs {

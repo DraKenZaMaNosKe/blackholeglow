@@ -263,25 +263,30 @@ public class AnimatedWallpaperListFragment extends Fragment {
         List<WallpaperItem> list = new ArrayList<>();
 
         // ╔════════════════════════════════════════════════════════════╗
-        // ║  🎨 CATÁLOGO DE WALLPAPERS - UNIVERSO INFINITO           ║
-        // ║  Experiencias visuales hipnotizantes en OpenGL           ║
+        // ║  🎨 CATÁLOGO DE WALLPAPERS - 2 ESCENAS DISPONIBLES        ║
+        // ║  Experiencias visuales hipnotizantes en OpenGL            ║
         // ╚════════════════════════════════════════════════════════════╝
 
-        // 1️⃣ ESPACIO - Universo con sistema solar completo ⭐ DISPONIBLE
+        // 1️⃣ UNIVERSO - Sistema solar con planetas y OVNI
         list.add(new WallpaperItem(
                 R.drawable.universo03,
                 "Universo",
                 "Flota entre planetas orbitantes y estrellas danzantes en un universo infinito. Tu avatar explora el cosmos en tiempo real con efectos de brillo pulsante."
         ));
 
-        // 2️⃣ PRÓXIMAMENTE - Nuevas experiencias cósmicas en desarrollo ✨
+        // 2️⃣ OCEAN PEARL - Fondo del mar con ostra y perla
         list.add(new WallpaperItem(
-                R.drawable.agujero_negro,
-                "✨ Próximamente",
-                "Estamos creando nuevas dimensiones visuales para ti. Mundos épicos, efectos hipnóticos y experiencias inmersivas que desafiarán tu imaginación. ¡Mantente atento a las actualizaciones! 🚀🌌",
-                false  // ❌ NO DISPONIBLE - Botón deshabilitado
+                R.drawable.agujero_negro,  // TODO: Crear preview del oceano
+                "Ocean Pearl",
+                "Sumérgete en las profundidades del océano. Una perla mágica brilla dentro de una ostra mientras peces danzan entre rayos de luz solar."
         ));
 
+        // 3️⃣ BATALLA CÓSMICA - Escena modular (igual que Universo pero con nueva arquitectura)
+        list.add(new WallpaperItem(
+                R.drawable.universo03,
+                "Batalla Cósmica",
+                "Defiende la Tierra de meteoritos mientras el OVNI patrulla el cosmos. Sistema de combate espacial con escudos y armas láser."
+        ));
 
         return list;
     }
