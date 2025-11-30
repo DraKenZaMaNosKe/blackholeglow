@@ -5,6 +5,7 @@ import android.opengl.GLES30;
 import android.util.Log;
 
 import com.secret.blackholeglow.gl3.ShaderProgram3;
+import com.secret.blackholeglow.systems.ScreenManager;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -110,8 +111,8 @@ public class StarryBackground implements SceneObject {
     @Override
     public void update(float deltaTime) {
         // Actualizar aspect ratio si cambió la pantalla
-        float w = SceneRenderer.screenWidth;
-        float h = SceneRenderer.screenHeight;
+        float w = ScreenManager.getWidth();
+        float h = ScreenManager.getHeight();
         if (h > 0) {
             cachedAspectRatio = w / h;
         }
@@ -135,7 +136,7 @@ public class StarryBackground implements SceneObject {
         // ═══ CONFIGURAR UNIFORMS ═══
         float time = (TimeManager.getTime() - timeOffset) % 100.0f;
         shader.setUniform("u_Time", time);
-        shader.setUniform("u_Resolution", SceneRenderer.screenWidth, SceneRenderer.screenHeight);
+        shader.setUniform("u_Resolution", ScreenManager.getWidth(), ScreenManager.getHeight());
         shader.setUniform("u_AspectRatio", cachedAspectRatio);
 
         // ═══ CONFIGURAR TEXTURA ═══

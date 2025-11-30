@@ -16,6 +16,8 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 
+import com.secret.blackholeglow.core.WallpaperDirector;
+
 /*
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                                                                              ║
@@ -51,7 +53,7 @@ public class GlowDreamService extends DreamService {
     private static final String TAG = "GlowDreamService";
 
     private GLSurfaceView glSurfaceView;
-    private SceneRenderer renderer;
+    private WallpaperDirector director;  // Usar WallpaperDirector en lugar de SceneRenderer
     private ImageView exitButton;
     private Handler autoHideHandler;
     private Runnable autoHideRunnable;
@@ -93,7 +95,7 @@ public class GlowDreamService extends DreamService {
         glSurfaceView.setZOrderOnTop(false);
 
         // ╔════════════════════════════════════════════════════════════════════╗
-        // ║    🎬 CREAR RENDERER CON ESCENA SELECCIONADA                      ║
+        // ║    🎬 CREAR DIRECTOR CON ESCENA SELECCIONADA                      ║
         // ╚════════════════════════════════════════════════════════════════════╝
 
         // Leer escena seleccionada de SharedPreferences
@@ -102,8 +104,11 @@ public class GlowDreamService extends DreamService {
 
         Log.d(TAG, "🎨 Cargando escena: " + selectedWallpaper);
 
-        renderer = new SceneRenderer(this, selectedWallpaper);
-        glSurfaceView.setRenderer(renderer);
+        // Usar WallpaperDirector (arquitectura de actores) en lugar de SceneRenderer
+        director = new WallpaperDirector(this);
+        director.setPreviewMode(true);  // Dream siempre en modo preview (directo al wallpaper)
+        director.changeScene(selectedWallpaper);
+        glSurfaceView.setRenderer(director);
 
         // Renderizado continuo para animaciones fluidas
         glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
@@ -255,8 +260,8 @@ public class GlowDreamService extends DreamService {
         if (glSurfaceView != null) {
             glSurfaceView.onResume();
         }
-        if (renderer != null) {
-            renderer.resume();
+        if (director != null) {
+            director.resume();
         }
     }
 
@@ -269,8 +274,8 @@ public class GlowDreamService extends DreamService {
         Log.d(TAG, "⏸️ Dream detenido - Usuario activo o cargador desconectado");
 
         // Pausar renderizado para ahorrar recursos
-        if (renderer != null) {
-            renderer.pause();
+        if (director != null) {
+            director.pause();
         }
         if (glSurfaceView != null) {
             glSurfaceView.onPause();
@@ -291,8 +296,9 @@ public class GlowDreamService extends DreamService {
             glSurfaceView = null;
         }
 
-        if (renderer != null) {
-            renderer = null;
+        if (director != null) {
+            director.release();
+            director = null;
         }
     }
 }

@@ -1,39 +1,54 @@
 package com.secret.blackholeglow.ui;
 
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
+import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.Shader;
+import android.os.Vibrator;
 import android.util.AttributeSet;
-import android.view.animation.LinearInterpolator;
+import android.view.MotionEvent;
+import android.view.animation.OvershootInterpolator;
 import androidx.appcompat.widget.AppCompatButton;
 
 /**
  * ╔════════════════════════════════════════════════════════════════╗
- * ║  ✨ AnimatedGlowButton - Botón Épico con Efectos Animados     ║
+ * ║  ✨ AnimatedGlowButton - Efecto ÉPICO al Tocar                 ║
  * ║                                                                ║
- * ║  Efectos implementados:                                        ║
- * ║  • Gradiente animado (púrpura → cyan → púrpura)                ║
- * ║  • Borde brillante con luz recorriendo (shimmer)               ║
- * ║  • Glow pulsante suave                                         ║
- * ║  • Esquinas redondeadas con sombra                             ║
+ * ║  OPTIMIZADO + IMPACTANTE:                                      ║
+ * ║  • Gradiente estático (no consume recursos)                    ║
+ * ║  • Efecto "pulse" al presionar (on-demand)                     ║
+ * ║  • Onda expansiva al soltar                                    ║
+ * ║  • Vibración háptica sutil                                     ║
+ * ║  • Rebote satisfactorio con OvershootInterpolator              ║
  * ╚════════════════════════════════════════════════════════════════╝
  */
 public class AnimatedGlowButton extends AppCompatButton {
 
     private Paint gradientPaint;
     private Paint borderPaint;
-    private Paint glowPaint;
+    private Paint ripplePaint;      // Para onda expansiva
+    private Paint glowPaint;        // Para destello
     private RectF rectF;
+    private LinearGradient cachedGradient;
+    private int lastWidth = 0;
+    private int lastHeight = 0;
 
-    private float animationProgress = 0f;
-    private float shimmerOffset = 0f;
-    private ValueAnimator gradientAnimator;
-    private ValueAnimator shimmerAnimator;
+    // 🌊 Efecto de onda expansiva
+    private float rippleRadius = 0f;
+    private float rippleAlpha = 0f;
+    private float rippleCenterX = 0f;
+    private float rippleCenterY = 0f;
+    private boolean isRippling = false;
+
+    // ✨ Destello brillante
+    private float glowIntensity = 0f;
 
     private final int[] gradientColors = {
         Color.parseColor("#8B5CF6"), // Púrpura
@@ -57,61 +72,155 @@ public class AnimatedGlowButton extends AppCompatButton {
     }
 
     private void init() {
-        // ══════════════════════════════════════════════════════════════
-        // 🎨 Configurar Paints
-        // ══════════════════════════════════════════════════════════════
-
-        // Paint para el fondo con gradiente animado
+        // Paint para el fondo con gradiente
         gradientPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         gradientPaint.setStyle(Paint.Style.FILL);
 
-        // Paint para el borde brillante
+        // Paint para el borde (simple, sin shadow)
         borderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         borderPaint.setStyle(Paint.Style.STROKE);
-        borderPaint.setStrokeWidth(6f);
-        borderPaint.setColor(Color.WHITE);
-        borderPaint.setShadowLayer(15f, 0f, 0f, Color.WHITE);
+        borderPaint.setStrokeWidth(2f);
+        borderPaint.setColor(Color.parseColor("#FFFFFF"));
+        borderPaint.setAlpha(80);
 
-        // Paint para el glow exterior
+        // 🌊 Paint para onda expansiva
+        ripplePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        ripplePaint.setStyle(Paint.Style.STROKE);
+        ripplePaint.setStrokeWidth(4f);
+        ripplePaint.setColor(Color.WHITE);
+
+        // ✨ Paint para destello central
         glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         glowPaint.setStyle(Paint.Style.FILL);
-        glowPaint.setShadowLayer(30f, 0f, 0f, Color.parseColor("#8B5CF6"));
 
         rectF = new RectF();
-
-        // ══════════════════════════════════════════════════════════════
-        // 🎬 Animación del gradiente (ciclo continuo)
-        // ══════════════════════════════════════════════════════════════
-        gradientAnimator = ValueAnimator.ofFloat(0f, 1f);
-        gradientAnimator.setDuration(3000);
-        gradientAnimator.setRepeatCount(ValueAnimator.INFINITE);
-        gradientAnimator.setInterpolator(new LinearInterpolator());
-        gradientAnimator.addUpdateListener(animation -> {
-            animationProgress = (float) animation.getAnimatedValue();
-            invalidate();
-        });
-        gradientAnimator.start();
-
-        // ══════════════════════════════════════════════════════════════
-        // ✨ Animación del shimmer (luz recorriendo bordes)
-        // ══════════════════════════════════════════════════════════════
-        shimmerAnimator = ValueAnimator.ofFloat(0f, 1f);
-        shimmerAnimator.setDuration(2000);
-        shimmerAnimator.setRepeatCount(ValueAnimator.INFINITE);
-        shimmerAnimator.setInterpolator(new LinearInterpolator());
-        shimmerAnimator.addUpdateListener(animation -> {
-            shimmerOffset = (float) animation.getAnimatedValue();
-        });
-        shimmerAnimator.start();
 
         // Configurar texto
         setTextColor(Color.WHITE);
         setTextSize(16);
         setTypeface(getTypeface(), android.graphics.Typeface.BOLD);
-
-        // Hacer el botón completamente custom (sin fondo default)
         setBackgroundColor(Color.TRANSPARENT);
-        setLayerType(LAYER_TYPE_HARDWARE, null); // Aceleración GPU para mejor rendimiento
+
+        // Habilitar clicks
+        setClickable(true);
+        setFocusable(true);
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // 🎯 TOUCH HANDLER - Efecto épico al tocar
+    // ══════════════════════════════════════════════════════════════════
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        if (!isEnabled()) return super.onTouchEvent(event);
+
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                // 📍 Guardar punto de toque
+                rippleCenterX = event.getX();
+                rippleCenterY = event.getY();
+
+                // 🔽 Efecto de presión (encoge)
+                animatePress();
+
+                // 📳 Vibración sutil
+                triggerHapticFeedback();
+                break;
+
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                // 🚀 Efecto de liberación épico
+                animateRelease();
+
+                // 🌊 Onda expansiva desde el punto de toque
+                startRippleEffect();
+
+                // ✨ Destello brillante
+                startGlowEffect();
+                break;
+        }
+
+        return super.onTouchEvent(event);
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // 🔽 Animación de presión (encoge el botón)
+    // ══════════════════════════════════════════════════════════════════
+    private void animatePress() {
+        animate()
+            .scaleX(0.92f)
+            .scaleY(0.92f)
+            .setDuration(80)
+            .start();
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // 🚀 Animación de liberación (rebote satisfactorio)
+    // ══════════════════════════════════════════════════════════════════
+    private void animateRelease() {
+        animate()
+            .scaleX(1.0f)
+            .scaleY(1.0f)
+            .setDuration(400)
+            .setInterpolator(new OvershootInterpolator(3f)) // Rebote exagerado
+            .start();
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // 🌊 Onda expansiva desde el punto de toque
+    // ══════════════════════════════════════════════════════════════════
+    private void startRippleEffect() {
+        isRippling = true;
+        float maxRadius = (float) Math.hypot(getWidth(), getHeight());
+
+        ValueAnimator rippleAnim = ValueAnimator.ofFloat(0f, maxRadius);
+        rippleAnim.setDuration(500);
+        rippleAnim.addUpdateListener(animation -> {
+            rippleRadius = (float) animation.getAnimatedValue();
+            rippleAlpha = 1f - (rippleRadius / maxRadius); // Se desvanece al expandirse
+            invalidate();
+        });
+        rippleAnim.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                isRippling = false;
+                invalidate();
+            }
+        });
+        rippleAnim.start();
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // ✨ Destello brillante central
+    // ══════════════════════════════════════════════════════════════════
+    private void startGlowEffect() {
+        ValueAnimator glowAnim = ValueAnimator.ofFloat(0f, 1f, 0f);
+        glowAnim.setDuration(300);
+        glowAnim.addUpdateListener(animation -> {
+            glowIntensity = (float) animation.getAnimatedValue();
+            invalidate();
+        });
+        glowAnim.start();
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // 📳 Vibración háptica sutil
+    // ══════════════════════════════════════════════════════════════════
+    private void triggerHapticFeedback() {
+        try {
+            Vibrator vibrator = (Vibrator) getContext().getSystemService(Context.VIBRATOR_SERVICE);
+            if (vibrator != null && vibrator.hasVibrator()) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    vibrator.vibrate(android.os.VibrationEffect.createOneShot(
+                        20, // 20ms - muy corta
+                        android.os.VibrationEffect.DEFAULT_AMPLITUDE
+                    ));
+                } else {
+                    vibrator.vibrate(20);
+                }
+            }
+        } catch (Exception e) {
+            // Ignorar si no hay permiso de vibración
+        }
     }
 
     @Override
@@ -120,80 +229,82 @@ public class AnimatedGlowButton extends AppCompatButton {
 
         float cornerRadius = 24f;
         float padding = 20f;
-
         rectF.set(padding, padding, getWidth() - padding, getHeight() - padding);
 
-        // ══════════════════════════════════════════════════════════════
-        // 🌈 1. Dibujar fondo con gradiente animado
-        // ══════════════════════════════════════════════════════════════
-        LinearGradient gradient = new LinearGradient(
-            rectF.left, rectF.top,
-            rectF.right, rectF.bottom,
-            gradientColors,
-            new float[]{0f, animationProgress, 1f},
-            Shader.TileMode.CLAMP
-        );
-        gradientPaint.setShader(gradient);
+        // Solo recrear gradiente si el tamaño cambió
+        if (lastWidth != getWidth() || lastHeight != getHeight()) {
+            cachedGradient = new LinearGradient(
+                rectF.left, rectF.top,
+                rectF.right, rectF.bottom,
+                gradientColors,
+                new float[]{0f, 0.5f, 1f},
+                Shader.TileMode.CLAMP
+            );
+            gradientPaint.setShader(cachedGradient);
+            lastWidth = getWidth();
+            lastHeight = getHeight();
+        }
+
+        // ══════════════════════════════════════════════════════════════════
+        // 🎨 DIBUJO BASE
+        // ══════════════════════════════════════════════════════════════════
+
+        // Fondo con gradiente
         canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, gradientPaint);
 
-        // ══════════════════════════════════════════════════════════════
-        // ✨ 2. Dibujar borde brillante con shimmer
-        // ══════════════════════════════════════════════════════════════
-        float shimmerAlpha = (float) (0.3f + 0.7f * Math.sin(shimmerOffset * Math.PI * 2));
-        borderPaint.setAlpha((int) (shimmerAlpha * 255));
+        // ══════════════════════════════════════════════════════════════════
+        // ✨ DESTELLO BRILLANTE (cuando se toca)
+        // ══════════════════════════════════════════════════════════════════
+        if (glowIntensity > 0) {
+            // Gradiente radial que brilla desde el centro
+            RadialGradient glowGradient = new RadialGradient(
+                getWidth() / 2f, getHeight() / 2f,
+                getWidth() * 0.8f,
+                new int[]{
+                    Color.argb((int)(180 * glowIntensity), 255, 255, 255),
+                    Color.argb((int)(100 * glowIntensity), 139, 92, 246),
+                    Color.TRANSPARENT
+                },
+                new float[]{0f, 0.4f, 1f},
+                Shader.TileMode.CLAMP
+            );
+            glowPaint.setShader(glowGradient);
+            canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, glowPaint);
+        }
+
+        // ══════════════════════════════════════════════════════════════════
+        // 🌊 ONDA EXPANSIVA (desde punto de toque)
+        // ══════════════════════════════════════════════════════════════════
+        if (isRippling && rippleRadius > 0) {
+            // Guardar estado del canvas
+            canvas.save();
+
+            // Clipear al rectángulo del botón para que la onda no salga
+            canvas.clipRect(rectF);
+
+            // Dibujar anillo de onda
+            ripplePaint.setAlpha((int)(255 * rippleAlpha * 0.7f));
+            ripplePaint.setStrokeWidth(8f * rippleAlpha + 2f);
+            canvas.drawCircle(rippleCenterX, rippleCenterY, rippleRadius, ripplePaint);
+
+            // Segunda onda más pequeña y tenue
+            if (rippleRadius > 30) {
+                ripplePaint.setAlpha((int)(180 * rippleAlpha * 0.5f));
+                ripplePaint.setStrokeWidth(4f);
+                canvas.drawCircle(rippleCenterX, rippleCenterY, rippleRadius * 0.6f, ripplePaint);
+            }
+
+            canvas.restore();
+        }
+
+        // Borde simple
         canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, borderPaint);
 
-        // ══════════════════════════════════════════════════════════════
-        // 💫 3. Dibujar glow pulsante
-        // ══════════════════════════════════════════════════════════════
-        float glowAlpha = (float) (0.2f + 0.1f * Math.sin(animationProgress * Math.PI * 2));
-        glowPaint.setAlpha((int) (glowAlpha * 255));
-        canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, glowPaint);
-
-        // Dibujar texto encima
+        // Texto
         super.onDraw(canvas);
     }
 
-    /**
-     * Pausar animaciones (llamar cuando la vista está fuera de pantalla)
-     */
-    public void pauseAnimation() {
-        if (gradientAnimator != null && gradientAnimator.isRunning()) {
-            gradientAnimator.pause();
-        }
-        if (shimmerAnimator != null && shimmerAnimator.isRunning()) {
-            shimmerAnimator.pause();
-        }
-    }
-
-    /**
-     * Reanudar animaciones (llamar cuando la vista vuelve a pantalla)
-     */
-    public void resumeAnimation() {
-        if (gradientAnimator != null) {
-            if (gradientAnimator.isPaused()) {
-                gradientAnimator.resume();
-            } else if (!gradientAnimator.isRunning()) {
-                gradientAnimator.start();
-            }
-        }
-        if (shimmerAnimator != null) {
-            if (shimmerAnimator.isPaused()) {
-                shimmerAnimator.resume();
-            } else if (!shimmerAnimator.isRunning()) {
-                shimmerAnimator.start();
-            }
-        }
-    }
-
-    @Override
-    protected void onDetachedFromWindow() {
-        super.onDetachedFromWindow();
-        if (gradientAnimator != null) {
-            gradientAnimator.cancel();
-        }
-        if (shimmerAnimator != null) {
-            shimmerAnimator.cancel();
-        }
-    }
+    // Métodos vacíos para compatibilidad
+    public void pauseAnimation() { }
+    public void resumeAnimation() { }
 }

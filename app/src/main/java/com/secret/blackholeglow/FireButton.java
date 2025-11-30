@@ -4,6 +4,8 @@ import android.content.Context;
 import android.opengl.GLES20;
 import android.util.Log;
 
+import com.secret.blackholeglow.systems.ScreenManager;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -125,7 +127,7 @@ public class FireButton extends BaseShaderProgram implements SceneObject, Camera
         // Pasar uniforms
         GLES20.glUniform2f(uButtonPosLoc, BUTTON_X, BUTTON_Y);
         GLES20.glUniform1f(uRadiusLoc, BUTTON_RADIUS);
-        GLES20.glUniform2f(uResolutionLoc, SceneRenderer.screenWidth, SceneRenderer.screenHeight);
+        GLES20.glUniform2f(uResolutionLoc, ScreenManager.getWidth(), ScreenManager.getHeight());
         GLES20.glUniform1f(uPressedLoc, isPressed ? 1.0f : 0.0f);
         GLES20.glUniform1f(uCooldownProgressLoc, cooldownProgress);
 

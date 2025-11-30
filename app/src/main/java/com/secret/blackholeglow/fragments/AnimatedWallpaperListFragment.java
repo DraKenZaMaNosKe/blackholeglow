@@ -23,8 +23,9 @@ import com.secret.blackholeglow.ClapDetectorService;
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.adapters.WallpaperAdapter;
 import com.secret.blackholeglow.models.WallpaperItem;
+import com.secret.blackholeglow.systems.SubscriptionManager;
+import com.secret.blackholeglow.systems.WallpaperCatalog;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /*
@@ -115,9 +116,13 @@ public class AnimatedWallpaperListFragment extends Fragment {
         recyclerView.setNestedScrollingEnabled(true);
 
         // ┌───────────────────────────────────────────────────┐
-        // │ 🌟 3) Cargar datos simulados                     │
+        // │ 🌟 3) Cargar wallpapers desde WallpaperCatalog   │
         // └───────────────────────────────────────────────────┘
-        wallpaperItems = getWallpapersList();
+        // Inicializar SubscriptionManager si no está inicializado
+        SubscriptionManager.init(requireContext());
+
+        // Obtener wallpapers del catálogo centralizado
+        wallpaperItems = WallpaperCatalog.get().getAll();
 
         // ┌───────────────────────────────────────────────────┐
         // │ 🔌 4) Crear y asignar adaptador                   │
@@ -250,44 +255,8 @@ public class AnimatedWallpaperListFragment extends Fragment {
     }
 
     // ╔════════════════════════════════════════════════════════╗
-    // ║ 🔍 getWallpapersList: Generar datos de prueba       ║
+    // ║ 📚 NOTA: El catálogo de wallpapers ahora está en      ║
+    // ║    WallpaperCatalog.java (systems/)                   ║
+    // ║    Para agregar wallpapers, edita ese archivo.        ║
     // ╚════════════════════════════════════════════════════════╝
-    /**
-     * getWallpapersList:
-     *   • Crea una lista de WallpaperItem con ejemplos de fondos animados.
-     *   • Cada ítem incluye un drawable, un título y una breve descripción.
-     *
-     * @return Lista mutable de objetos WallpaperItem.
-     */
-    private List<WallpaperItem> getWallpapersList() {
-        List<WallpaperItem> list = new ArrayList<>();
-
-        // ╔════════════════════════════════════════════════════════════╗
-        // ║  🎨 CATÁLOGO DE WALLPAPERS - 2 ESCENAS DISPONIBLES        ║
-        // ║  Experiencias visuales hipnotizantes en OpenGL            ║
-        // ╚════════════════════════════════════════════════════════════╝
-
-        // 1️⃣ UNIVERSO - Sistema solar con planetas y OVNI
-        list.add(new WallpaperItem(
-                R.drawable.universo03,
-                "Universo",
-                "Flota entre planetas orbitantes y estrellas danzantes en un universo infinito. Tu avatar explora el cosmos en tiempo real con efectos de brillo pulsante."
-        ));
-
-        // 2️⃣ OCEAN PEARL - Fondo del mar con ostra y perla
-        list.add(new WallpaperItem(
-                R.drawable.agujero_negro,  // TODO: Crear preview del oceano
-                "Ocean Pearl",
-                "Sumérgete en las profundidades del océano. Una perla mágica brilla dentro de una ostra mientras peces danzan entre rayos de luz solar."
-        ));
-
-        // 3️⃣ BATALLA CÓSMICA - Escena modular (igual que Universo pero con nueva arquitectura)
-        list.add(new WallpaperItem(
-                R.drawable.universo03,
-                "Batalla Cósmica",
-                "Defiende la Tierra de meteoritos mientras el OVNI patrulla el cosmos. Sistema de combate espacial con escudos y armas láser."
-        ));
-
-        return list;
-    }
 }

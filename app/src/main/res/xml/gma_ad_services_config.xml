@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ╔══════════════════════════════════════════════════════╗
+  ║   💰 Google Mobile Ads Services Config 💰            ║
+  ╚══════════════════════════════════════════════════════╝
+  Configuración requerida para AdMob con Privacy Sandbox
+-->
+<ad-services-config>
+    <!-- Habilitar Topics API para anuncios personalizados -->
+    <topics enabled="false" />
+</ad-services-config>

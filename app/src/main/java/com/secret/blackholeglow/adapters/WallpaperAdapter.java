@@ -19,6 +19,7 @@ import android.content.Intent;
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.fragments.WallpaperInfoDialogFragment;
 import com.secret.blackholeglow.models.WallpaperItem;
+import com.secret.blackholeglow.models.WallpaperTier;
 import com.secret.blackholeglow.opengl.AnimatedBorderTextureView;
 import com.secret.blackholeglow.activities.WallpaperPreviewActivity;
 
@@ -95,15 +96,27 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         holder.textDescription.setText(item.getDescripcion());
 
         // ╔═════════════════════════════════════════════════════════╗
-        // ║  🎨 ASIGNAR IMAGEN DE PREVIEW ÚNICA POR WALLPAPER      ║
+        // ║  🎨 ASIGNAR IMAGEN DE PREVIEW DESDE WallpaperItem      ║
         // ╚═════════════════════════════════════════════════════════╝
-        int previewResource;
-        switch (position) {
-            case 0: previewResource = R.drawable.preview_universo; break;  // Captura real del wallpaper
-            case 1: previewResource = R.drawable.preview_blackhole; break; // Proximamente
-            default: previewResource = R.drawable.preview_space; break;
+        holder.imagePreview.setImageResource(item.getResourceIdPreview());
+
+        // ╔═════════════════════════════════════════════════════════╗
+        // ║  🏷️ BADGE - Mostrar etiqueta si tiene                 ║
+        // ╚═════════════════════════════════════════════════════════╝
+        if (item.hasBadge() && holder.textBadge != null) {
+            holder.textBadge.setText(item.getBadge());
+            holder.textBadge.setVisibility(View.VISIBLE);
+        } else if (holder.textBadge != null) {
+            holder.textBadge.setVisibility(View.GONE);
         }
-        holder.imagePreview.setImageResource(previewResource);
+
+        // ╔═════════════════════════════════════════════════════════╗
+        // ║  🔒 OVERLAY COMING SOON - Para wallpapers en desarrollo ║
+        // ╚═════════════════════════════════════════════════════════╝
+        boolean isComingSoon = item.getTier() == WallpaperTier.COMING_SOON;
+        if (holder.overlayComingSoon != null) {
+            holder.overlayComingSoon.setVisibility(isComingSoon ? View.VISIBLE : View.GONE);
+        }
 
         // ╔═════════════════════════════════════════════════════════╗
         // ║  🎯 BOTÓN "VER WALLPAPER" - Va a preview              ║
@@ -114,19 +127,21 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
             // Wallpaper disponible - botón habilitado
             holder.buttonPreview.setEnabled(true);
             holder.buttonPreview.setAlpha(1.0f);
+            holder.buttonPreview.setText("✨ VER WALLPAPER");
             holder.buttonPreview.setOnClickListener(v -> {
                 // Ir a WallpaperLoadingActivity para precarga de recursos
                 Intent intent = new Intent(context, com.secret.blackholeglow.activities.WallpaperLoadingActivity.class);
 
-                // Pasar datos del wallpaper
+                // Pasar datos del wallpaper (sceneName para SceneFactory)
                 intent.putExtra("WALLPAPER_PREVIEW_ID", item.getResourceIdPreview());
-                intent.putExtra("WALLPAPER_ID", item.getNombre());  // "Batalla Cosmica", "Universo", etc.
+                intent.putExtra("WALLPAPER_ID", item.getSceneName());  // Nombre interno para SceneFactory
                 context.startActivity(intent);
             });
         } else {
-            // Wallpaper NO disponible - botón deshabilitado
+            // Wallpaper NO disponible - botón deshabilitado con texto especial
             holder.buttonPreview.setEnabled(false);
-            holder.buttonPreview.setAlpha(0.4f);
+            holder.buttonPreview.setAlpha(0.6f);
+            holder.buttonPreview.setText("🔒 PRÓXIMAMENTE");
             holder.buttonPreview.setOnClickListener(null);
         }
     }
@@ -141,7 +156,7 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
                 Intent intent = new Intent(context, WallpaperPreviewActivity.class);
 
                 intent.putExtra("WALLPAPER_PREVIEW_ID", item.getResourceIdPreview());
-                intent.putExtra("WALLPAPER_ID", item.getNombre());
+                intent.putExtra("WALLPAPER_ID", item.getSceneName());
 
 
                 context.startActivity(intent);
@@ -206,6 +221,8 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         ImageView imagePreview;
         TextView textTitle;
         TextView textDescription;
+        TextView textBadge;
+        View overlayComingSoon;
         com.secret.blackholeglow.ui.AnimatedGlowButton buttonPreview;
         com.secret.blackholeglow.ui.AnimatedGlowCard animatedBorder;
 
@@ -214,6 +231,8 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
             imagePreview = itemView.findViewById(R.id.image_preview);
             textTitle = itemView.findViewById(R.id.text_title);
             textDescription = itemView.findViewById(R.id.text_description);
+            textBadge = itemView.findViewById(R.id.text_badge);
+            overlayComingSoon = itemView.findViewById(R.id.overlay_coming_soon);
             buttonPreview = itemView.findViewById(R.id.button_preview);
             animatedBorder = itemView.findViewById(R.id.animated_border);
         }

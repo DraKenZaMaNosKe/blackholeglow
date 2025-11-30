@@ -44,7 +44,13 @@ android {
     }
 
     buildTypes {
+        debug {
+            // 🧪 DEBUG: Ads HABILITADOS para pruebas
+            buildConfigField("boolean", "ADS_ENABLED", "true")
+        }
         release {
+            // 🚀 RELEASE: Ads habilitados para producción
+            buildConfigField("boolean", "ADS_ENABLED", "true")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -69,9 +75,13 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.firestore)
+    implementation(libs.firebase.config)  // Remote Config para reglas dinámicas
 
     // Google Sign-In
     implementation(libs.play.services.auth)
+
+    // Google Mobile Ads (AdMob)
+    implementation(libs.play.services.ads)
 
     // Glide para cargar imágenes (avatar del usuario)
     implementation(libs.glide)

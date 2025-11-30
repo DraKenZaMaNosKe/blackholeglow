@@ -5,6 +5,7 @@ import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.util.Log;
 
+import com.secret.blackholeglow.systems.ScreenManager;
 import com.secret.blackholeglow.util.ProceduralSphere;
 
 import java.nio.FloatBuffer;
@@ -126,7 +127,7 @@ public class SolProcedural extends BaseShaderProgram implements SceneObject, Cam
 
         // Enviar uniforms
         setTime(time);
-        setMvpAndResolution(mvpMatrix, SceneRenderer.screenWidth, SceneRenderer.screenHeight);
+        setMvpAndResolution(mvpMatrix, ScreenManager.getWidth(), ScreenManager.getHeight());
 
         // Configurar textura
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);

@@ -72,6 +72,8 @@ public class EventBus {
     // 💥 Eventos de efectos
     public static final String SCREEN_FLASH = "screen_flash";
     public static final String SCREEN_CRACK = "screen_crack";
+    public static final String SCREEN_IMPACT = "screen_impact";
+    public static final String EARTH_IMPACT = "earth_impact";
     public static final String EXPLOSION = "explosion";
 
     // 🎬 Eventos de escena
@@ -85,6 +87,9 @@ public class EventBus {
     public static final String SCORE_CHANGED = "score_changed";
     public static final String COMBO_CHANGED = "combo_changed";
     public static final String LEADERBOARD_UPDATED = "leaderboard_updated";
+
+    // 📐 Eventos de pantalla
+    public static final String SCREEN_RESIZED = "screen_resized";
 
     // ═══════════════════════════════════════════════════════════════
     // 🔧 SINGLETON

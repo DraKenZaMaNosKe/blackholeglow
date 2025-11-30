@@ -73,6 +73,30 @@
         tools:targetApi="31">
 
         <!--
+          ╔══════════════════════════════════════════════════════╗
+          ║   💰 ADMOB - GOOGLE MOBILE ADS 💰                    ║
+          ╚══════════════════════════════════════════════════════╝
+          🧪 ID DE PRUEBA (para desarrollo)
+          🚀 PRODUCCIÓN: Reemplazar con tu App ID real de AdMob
+
+          Para obtener tu App ID:
+          1. Ve a admob.google.com
+          2. Agrega tu app
+          3. Copia el App ID (formato: ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX)
+        -->
+        <!-- 🧪 TEST App ID - Cambiar a producción cuando la cuenta esté aprobada -->
+        <!-- PROD: ca-app-pub-6734758230109098~7716587922 -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713" />
+
+        <!-- Resolver conflicto entre Analytics y Ads SDK -->
+        <property
+            android:name="android.adservices.AD_SERVICES_CONFIG"
+            android:resource="@xml/gma_ad_services_config"
+            tools:replace="android:resource" />
+
+        <!--
           ╔════════════════════════════════════════╗
           ║ 🚀 SERVICIO LIVE WALLPAPER INVOCADO 🚀 ║
           ╚════════════════════════════════════════╝

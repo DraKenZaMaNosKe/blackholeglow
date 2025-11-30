@@ -39,6 +39,8 @@ import com.secret.blackholeglow.LiveWallpaperService;
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.core.WallpaperDirector;
 import com.secret.blackholeglow.WallpaperPreferences;
+import com.secret.blackholeglow.systems.AdsManager;
+import com.secret.blackholeglow.systems.EventBus;
 
 /**
  * ╔═════════════════════════════════════════════════════════════════╗
@@ -137,26 +139,43 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         // ║ 🛡️ Botón: Consagrar Wallpaper ║
         // ╚════════════════════════════╝
         setWallpaperButton.setOnClickListener(v -> {
-            // ⚙️ Guardar elección usando WallpaperPreferences (Firebase + SharedPreferences)
-            WallpaperPreferences prefs = WallpaperPreferences.getInstance(this);
-
-            prefs.setSelectedWallpaper(nombre_wallpaper, (success, message) -> {
-                Log.d("WallpaperPreviewActivity", "Wallpaper guardado: " + message);
-
-                // 📌 Marcar que estamos esperando el resultado
-                waitingForWallpaperResult = true;
-
-                // 📜 Crear intent para el selector de Live Wallpaper
-                Intent intent = new Intent(
-                        WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER);
-                intent.putExtra(
-                        WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
-                        new android.content.ComponentName(
-                                this, LiveWallpaperService.class));
-
-                // 🚀 Lanzar el selector cósmico
-                startActivity(intent);
+            // 💰 Mostrar anuncio intersticial antes de establecer
+            AdsManager.get().showInterstitialAd(this, shown -> {
+                Log.d("WallpaperPreviewActivity", "Ad completado: " + shown);
+                // Continuar con el flujo de establecer wallpaper
+                proceedToSetWallpaper();
             });
+        });
+    }
+
+    /**
+     * Procede a establecer el wallpaper después del anuncio
+     */
+    private void proceedToSetWallpaper() {
+        // ⚙️ Guardar elección usando WallpaperPreferences (Firebase + SharedPreferences)
+        WallpaperPreferences prefs = WallpaperPreferences.getInstance(this);
+
+        prefs.setSelectedWallpaper(nombre_wallpaper, (success, message) -> {
+            Log.d("WallpaperPreviewActivity", "Wallpaper guardado: " + message);
+
+            // 📌 Marcar que estamos esperando el resultado
+            waitingForWallpaperResult = true;
+
+            // 🎯 Publicar evento para misiones
+            EventBus.get().publish("wallpaper_set",
+                    new EventBus.EventData()
+                            .put("wallpaper_id", nombre_wallpaper));
+
+            // 📜 Crear intent para el selector de Live Wallpaper
+            Intent intent = new Intent(
+                    WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER);
+            intent.putExtra(
+                    WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
+                    new android.content.ComponentName(
+                            this, LiveWallpaperService.class));
+
+            // 🚀 Lanzar el selector cósmico
+            startActivity(intent);
         });
     }
 

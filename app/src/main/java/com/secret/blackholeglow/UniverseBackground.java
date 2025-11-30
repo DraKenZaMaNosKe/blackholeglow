@@ -6,6 +6,7 @@ import android.opengl.Matrix;
 import android.os.SystemClock;
 import android.util.Log;
 
+import com.secret.blackholeglow.systems.ScreenManager;
 import com.secret.blackholeglow.util.ObjLoader;
 
 import java.io.IOException;
@@ -174,8 +175,8 @@ public class UniverseBackground
         GLES20.glDisable(GLES20.GL_CULL_FACE);
         GLES20.glDepthMask(false);
 
-        float screenWidth = SceneRenderer.screenWidth;
-        float screenHeight = SceneRenderer.screenHeight;
+        float screenWidth = ScreenManager.getWidth();
+        float screenHeight = ScreenManager.getHeight();
         float screenAspect = screenWidth / screenHeight;
         boolean isPortrait = screenHeight > screenWidth;
 

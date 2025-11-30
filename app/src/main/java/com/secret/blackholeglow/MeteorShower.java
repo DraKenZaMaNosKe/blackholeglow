@@ -3,6 +3,8 @@ package com.secret.blackholeglow;
 import android.content.Context;
 import android.util.Log;
 
+import com.secret.blackholeglow.systems.EventBus;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,7 +49,7 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     private final TextureManager textureManager;
     private CameraController camera;
     private BatteryPowerBar powerBar;  // Para efectos basados en batería
-    private SceneRenderer sceneRenderer;  // Para efectos de impacto en pantalla
+    // NOTA: Efectos de pantalla ahora se comunican via EventBus
     private MeteorCountdownBar countdownBar;  // Barra visual de countdown
 
     // 🛸 REFERENCIA AL OVNI (para colisiones)
@@ -132,11 +134,13 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     }
 
     /**
-     * 💥 Conecta el SceneRenderer para efectos de impacto en pantalla
+     * 💥 DEPRECATED: Los efectos de pantalla ahora se comunican via EventBus
+     * Este metodo se mantiene por compatibilidad pero no hace nada
+     * @deprecated Usar EventBus.SCREEN_IMPACT, EventBus.SCREEN_CRACK, EventBus.EARTH_IMPACT
      */
-    public void setSceneRenderer(SceneRenderer renderer) {
-        this.sceneRenderer = renderer;
-        Log.d(TAG, "[MeteorShower] 💥 Sistema de impacto en pantalla conectado");
+    @Deprecated
+    public void setSceneRenderer(Object renderer) {
+        Log.d(TAG, "[MeteorShower] 💥 Sistema de efectos ahora usa EventBus");
     }
 
     /**
@@ -617,7 +621,7 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
      * @return true si impactó (para removerlo de la lista)
      */
     private boolean verificarImpactoPantalla(AsteroideRealista m) {
-        if (sceneRenderer == null || camera == null) return false;
+        if (camera == null) return false;
 
         float[] pos = m.getPosicion();
 
@@ -648,8 +652,12 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
             float intensity = 0.8f + sizeNormalized * 0.15f;
             intensity = Math.max(0.8f, Math.min(0.95f, intensity));  // Clamp 0.8-0.95
 
-            // 💥💥💥 ACTIVAR GRIETAS EN LA PANTALLA 💥💥💥
-            sceneRenderer.triggerScreenCrack(screenX, screenY, intensity);
+            // 💥💥💥 ACTIVAR GRIETAS EN LA PANTALLA via EventBus 💥💥💥
+            EventBus.get().publish(EventBus.SCREEN_CRACK,
+                new EventBus.EventData()
+                    .put("x", screenX)
+                    .put("y", screenY)
+                    .put("intensity", intensity));
 
             // Marcar el asteroide como impactado
             m.impactar();
@@ -693,13 +701,12 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
                     hpBarForceField.setHealth(campoFuerza.getCurrentHealth());
                 }
 
-                // 💥 EFECTO DE IMPACTO EN PANTALLA (ESCUDO) - MÁS SUTIL
+                // 💥 EFECTO DE IMPACTO EN PANTALLA (ESCUDO) - MÁS SUTIL via EventBus
                 // Intensidad basada en tamaño del meteorito (0.05-0.20 → 0.15-0.3)
-                if (sceneRenderer != null) {
-                    float intensity = 0.15f + (radioMeteorito / 0.20f) * 0.15f;
-                    intensity = Math.min(0.3f, Math.max(0.15f, intensity));  // Clamp 0.15-0.3
-                    sceneRenderer.triggerScreenImpact(intensity);
-                }
+                float intensityShield = 0.15f + (radioMeteorito / 0.20f) * 0.15f;
+                intensityShield = Math.min(0.3f, Math.max(0.15f, intensityShield));  // Clamp 0.15-0.3
+                EventBus.get().publish(EventBus.SCREEN_IMPACT,
+                    new EventBus.EventData().put("intensity", intensityShield));
 
                 totalImpactos++;
 
@@ -725,10 +732,12 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
                 m.impactar();
                 crearEfectoImpacto(posMeteorito[0], posMeteorito[1], posMeteorito[2], true);
 
-                // 🌍💥 ACTIVAR EFECTO ÉPICO DE IMPACTO EN LA TIERRA
-                if (sceneRenderer != null) {
-                    sceneRenderer.triggerEarthImpact(posMeteorito[0], posMeteorito[1], posMeteorito[2]);
-                }
+                // 🌍💥 ACTIVAR EFECTO ÉPICO DE IMPACTO EN LA TIERRA via EventBus
+                EventBus.get().publish(EventBus.EARTH_IMPACT,
+                    new EventBus.EventData()
+                        .put("x", posMeteorito[0])
+                        .put("y", posMeteorito[1])
+                        .put("z", posMeteorito[2]));
 
                 // CAUSAR DAÑO A LA TIERRA
                 sol.damage(1);  // 1 punto de daño por meteorito
@@ -745,13 +754,12 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
                 // NOTA: El incremento de planetas destruidos se hace en SceneRenderer.onExplosion()
                 // para mantener la sincronización con la actualización del contador visual
 
-                // 💥💥 EFECTO DE IMPACTO EN PANTALLA (TIERRA) - MÁS INTENSO
+                // 💥💥 EFECTO DE IMPACTO EN PANTALLA (TIERRA) - MÁS INTENSO via EventBus
                 // Intensidad basada en tamaño del meteorito (0.05-0.20 → 0.3-0.5)
-                if (sceneRenderer != null) {
-                    float intensity = 0.3f + (radioMeteorito / 0.20f) * 0.2f;
-                    intensity = Math.min(0.5f, Math.max(0.3f, intensity));  // Clamp 0.3-0.5
-                    sceneRenderer.triggerScreenImpact(intensity);
-                }
+                float intensityEarth = 0.3f + (radioMeteorito / 0.20f) * 0.2f;
+                intensityEarth = Math.min(0.5f, Math.max(0.3f, intensityEarth));  // Clamp 0.3-0.5
+                EventBus.get().publish(EventBus.SCREEN_IMPACT,
+                    new EventBus.EventData().put("intensity", intensityEarth));
 
                 totalImpactos++;
                 Log.d(TAG, "[MeteorShower] 🌍💥 ¡¡IMPACTO EN LA TIERRA!! HP: " +

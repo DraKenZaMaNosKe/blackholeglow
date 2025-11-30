@@ -62,6 +62,34 @@
             android:background="@drawable/gradient_overlay_bottom"/>
 
         <!-- ══════════════════════════════════════════════════════════════
+             🏷️ BADGE - Etiqueta de estado (PRÓXIMAMENTE, NUEVO, etc.)
+             ══════════════════════════════════════════════════════════════ -->
+        <TextView
+            android:id="@+id/text_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:layout_margin="16dp"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp"
+            android:background="@drawable/badge_background"
+            android:textColor="@android:color/white"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            android:elevation="4dp"/>
+
+        <!-- ══════════════════════════════════════════════════════════════
+             🔒 OVERLAY COMING SOON - Oscurece la imagen
+             ══════════════════════════════════════════════════════════════ -->
+        <View
+            android:id="@+id/overlay_coming_soon"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#80000000"
+            android:visibility="gone"/>
+
+        <!-- ══════════════════════════════════════════════════════════════
              📝 CONTENEDOR DE TEXTO - Parte inferior
              ══════════════════════════════════════════════════════════════ -->
         <LinearLayout

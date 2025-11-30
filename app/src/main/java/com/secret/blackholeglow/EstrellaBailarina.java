@@ -5,6 +5,7 @@ import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.util.Log;
 
+import com.secret.blackholeglow.systems.ScreenManager;
 import com.secret.blackholeglow.util.ObjLoader;
 import com.secret.blackholeglow.util.ProceduralSphere;
 
@@ -502,7 +503,7 @@ public class EstrellaBailarina extends BaseShaderProgram implements SceneObject,
 
         // ===== MVP =====
         camera.computeMvp(model, mvp);
-        setMvpAndResolution(mvp, SceneRenderer.screenWidth, SceneRenderer.screenHeight);
+        setMvpAndResolution(mvp, ScreenManager.getWidth(), ScreenManager.getHeight());
 
         // ===== COLOR SUTIL Y BONITO =====
         // Usar textura para que el shader planet haga efectos bonitos

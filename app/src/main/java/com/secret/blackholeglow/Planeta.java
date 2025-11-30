@@ -6,6 +6,7 @@ import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.util.Log;
 
+import com.secret.blackholeglow.systems.ScreenManager;
 import com.secret.blackholeglow.util.ObjLoader;
 import com.secret.blackholeglow.util.ProceduralSphere;
 import com.secret.blackholeglow.util.TextureConfig;
@@ -375,7 +376,7 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
         camera.computeMvp(model, mvp);
 
         // Enviar MVP al shader
-        setMvpAndResolution(mvp, SceneRenderer.screenWidth, SceneRenderer.screenHeight);
+        setMvpAndResolution(mvp, ScreenManager.getWidth(), ScreenManager.getHeight());
 
         // Configurar textura
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);

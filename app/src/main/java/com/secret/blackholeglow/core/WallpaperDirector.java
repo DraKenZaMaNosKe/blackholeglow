@@ -15,8 +15,10 @@ import com.secret.blackholeglow.scenes.BatallaCosmicaScene;
 import com.secret.blackholeglow.scenes.WallpaperScene;
 import com.secret.blackholeglow.systems.EventBus;
 import com.secret.blackholeglow.systems.FirebaseQueueManager;
+import com.secret.blackholeglow.systems.GLStateManager;
 import com.secret.blackholeglow.systems.ResourceManager;
 import com.secret.blackholeglow.systems.ScreenEffectsManager;
+import com.secret.blackholeglow.systems.ScreenManager;
 import com.secret.blackholeglow.systems.UIController;
 
 import javax.microedition.khronos.egl.EGLConfig;
@@ -61,12 +63,8 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     private String pendingSceneName = "";
     private boolean pendingPreviewMode = false; // Para guardar preview mode antes de inicializar
 
-    // TIMING
-    private long lastFrameTime = System.nanoTime();
+    // TIMING (deltaTime y FPS manejados por GLStateManager)
     private float totalTime = 0f;
-    private int frameCount = 0;
-    private float fpsTimer = 0f;
-    private float currentFPS = 0f;
     private final float[] identityMatrix = new float[16];
 
     public WallpaperDirector(Context context) {
@@ -79,10 +77,9 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
         Log.d(TAG, "onSurfaceCreated START");
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
-        GLES20.glClearColor(0.02f, 0.02f, 0.05f, 1f);
+
+        // 🎮 GLStateManager: Actor especializado en configuracion de OpenGL
+        GLStateManager.get().initialize();
 
         initializeSharedSystems();
         initializeActors();
@@ -101,9 +98,15 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     @Override
     public void onSurfaceChanged(GL10 gl, int width, int height) {
         Log.d(TAG, "onSurfaceChanged: " + width + "x" + height);
-        GLES20.glViewport(0, 0, width, height);
+
+        // 🎮 GLStateManager: Configurar viewport
+        GLStateManager.get().setViewport(width, height);
+
         screenWidth = width;
         screenHeight = height;
+
+        // 📐 ScreenManager: Actor especializado en dimensiones
+        ScreenManager.updateDimensions(width, height);
 
         if (camera != null) camera.updateProjection(width, height);
         if (panelRenderer != null) panelRenderer.setScreenSize(width, height);
@@ -114,13 +117,15 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
     @Override
     public void onDrawFrame(GL10 gl) {
+        // 🎮 GLStateManager: Inicio de frame (calcula deltaTime y limpia buffers)
+        float deltaTime = GLStateManager.get().beginFrame();
+
         if (!initialized) {
-            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
             return;
         }
 
-        float deltaTime = calculateDeltaTime();
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
+        // Actualizar tiempo total para animaciones
+        updateTotalTime(deltaTime);
 
         RenderModeController.RenderMode mode = modeController.getCurrentMode();
         switch (mode) {
@@ -207,6 +212,9 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         screenEffects = new ScreenEffectsManager();
         resourceLoader = new ResourceLoader(context, textureManager);
 
+        // 💥 Suscribir a eventos de efectos de pantalla via EventBus
+        subscribeToScreenEffectEvents();
+
         // Inicializar FirebaseQueueManager para batching de operaciones
         try {
             firebaseQueue = FirebaseQueueManager.getInstance(context);
@@ -264,20 +272,10 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         return touchRouter.onTouchEvent(event);
     }
 
-    private float calculateDeltaTime() {
-        long now = System.nanoTime();
-        float deltaTime = (now - lastFrameTime) / 1_000_000_000f;
-        lastFrameTime = now;
-        deltaTime = Math.min(deltaTime, 0.1f);
+    // NOTA: deltaTime y FPS ahora son manejados por GLStateManager
+    // Solo mantenemos totalTime para animaciones que lo necesiten
+    private void updateTotalTime(float deltaTime) {
         totalTime += deltaTime;
-        frameCount++;
-        fpsTimer += deltaTime;
-        if (fpsTimer >= 1.0f) {
-            currentFPS = frameCount / fpsTimer;
-            frameCount = 0;
-            fpsTimer = 0f;
-        }
-        return deltaTime;
     }
 
     public void pause() {
@@ -300,7 +298,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
     public void resume() {
         paused = false;
-        lastFrameTime = System.nanoTime();
+        // GLStateManager maneja el timing automáticamente en beginFrame()
         if (modeController != null && sceneFactory != null &&
             modeController.isPreviewMode() && sceneFactory.hasCurrentScene()) {
             sceneFactory.resumeCurrentScene();
@@ -340,6 +338,8 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         ResourceManager.reset();
         UIController.reset();
         EventBus.reset();
+        GLStateManager.reset();
+        ScreenManager.reset();
         initialized = false;
         Log.d(TAG, "WallpaperDirector liberado");
     }
@@ -347,7 +347,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     // GETTERS
     public boolean isInitialized() { return initialized; }
     public boolean isPaused() { return paused; }
-    public float getCurrentFPS() { return currentFPS; }
+    public float getCurrentFPS() { return GLStateManager.get().getFPS(); }
     public CameraController getCamera() { return camera; }
     public int getScreenWidth() { return screenWidth; }
     public int getScreenHeight() { return screenHeight; }
@@ -372,5 +372,43 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         if (modeController == null) return;
         if (playing && !modeController.isWallpaperMode()) startLoading();
         else if (!playing && !modeController.isPanelMode()) switchToPanelMode();
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 💥 SUSCRIPCIÓN A EVENTOS DE EFECTOS DE PANTALLA
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Suscribe a eventos de efectos de pantalla via EventBus
+     * Los eventos son publicados por MeteorShower y otros sistemas
+     */
+    private void subscribeToScreenEffectEvents() {
+        // 💥 Impacto en pantalla (flash)
+        eventBus.subscribe(EventBus.SCREEN_IMPACT, data -> {
+            if (screenEffects != null) {
+                float intensity = data.getFloat("intensity", 0.3f);
+                screenEffects.triggerScreenImpact(intensity);
+            }
+        });
+
+        // 💥💥 Grietas en pantalla
+        eventBus.subscribe(EventBus.SCREEN_CRACK, data -> {
+            if (screenEffects != null) {
+                float x = data.getFloat("x", 0.5f);
+                float y = data.getFloat("y", 0.5f);
+                float intensity = data.getFloat("intensity", 0.8f);
+                screenEffects.triggerScreenCrack(x, y, intensity);
+            }
+        });
+
+        // 🌍💥 Impacto en la Tierra (efectos especiales)
+        eventBus.subscribe(EventBus.EARTH_IMPACT, data -> {
+            if (screenEffects != null) {
+                // El impacto en la Tierra genera un flash más intenso
+                screenEffects.triggerScreenImpact(0.4f);
+            }
+        });
+
+        Log.d(TAG, "💥 Suscrito a eventos de efectos de pantalla");
     }
 }
