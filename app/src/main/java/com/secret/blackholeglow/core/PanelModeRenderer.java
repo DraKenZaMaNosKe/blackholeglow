@@ -4,6 +4,7 @@ import android.content.Context;
 import android.opengl.GLES20;
 import android.util.Log;
 
+import com.secret.blackholeglow.HoroscopeDisplay;
 import com.secret.blackholeglow.LoadingBar;
 import com.secret.blackholeglow.MiniStopButton;
 import com.secret.blackholeglow.OrbixGreeting;
@@ -34,6 +35,7 @@ public class PanelModeRenderer {
     private OrbixGreeting orbixGreeting;
     private LoadingBar loadingBar;
     private MiniStopButton miniStopButton;
+    private HoroscopeDisplay horoscopeDisplay;  // ✨ Horóscopo semanal
 
     // Estado
     private boolean initialized = false;
@@ -81,6 +83,10 @@ public class PanelModeRenderer {
         miniStopButton.hide();
         Log.d(TAG, "⏹️ MiniStopButton inicializado");
 
+        // HoroscopeDisplay - Horóscopo semanal personalizado (DESHABILITADO temporalmente)
+        // horoscopeDisplay = new HoroscopeDisplay(context);
+        // Log.d(TAG, "✨ HoroscopeDisplay inicializado");
+
         initialized = true;
         Log.d(TAG, "✅ Panel de Control inicializado");
     }
@@ -98,6 +104,9 @@ public class PanelModeRenderer {
         }
         if (playPauseButton != null) {
             playPauseButton.update(deltaTime);
+        }
+        if (horoscopeDisplay != null) {
+            horoscopeDisplay.update(deltaTime);
         }
     }
 
@@ -137,6 +146,10 @@ public class PanelModeRenderer {
         }
         if (playPauseButton != null) {
             playPauseButton.draw();
+        }
+        // ✨ Horóscopo se dibuja encima de todo (cuando está visible)
+        if (horoscopeDisplay != null) {
+            horoscopeDisplay.draw();
         }
 
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
@@ -250,6 +263,9 @@ public class PanelModeRenderer {
         if (miniStopButton != null) {
             miniStopButton.setAspectRatio(aspectRatio);
         }
+        if (horoscopeDisplay != null) {
+            horoscopeDisplay.setAspectRatio(aspectRatio);
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -273,4 +289,20 @@ public class PanelModeRenderer {
     public OrbixGreeting getOrbixGreeting() { return orbixGreeting; }
     public LoadingBar getLoadingBar() { return loadingBar; }
     public MiniStopButton getMiniStopButton() { return miniStopButton; }
+    public HoroscopeDisplay getHoroscopeDisplay() { return horoscopeDisplay; }
+
+    /**
+     * Libera recursos
+     */
+    public void release() {
+        if (horoscopeDisplay != null) {
+            horoscopeDisplay.release();
+            horoscopeDisplay = null;
+        }
+        if (orbixGreeting != null) {
+            orbixGreeting.dispose();
+            orbixGreeting = null;
+        }
+        Log.d(TAG, "🧹 PanelModeRenderer recursos liberados");
+    }
 }

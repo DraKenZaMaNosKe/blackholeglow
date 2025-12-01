@@ -6,6 +6,7 @@ import android.util.Log;
 import com.secret.blackholeglow.AvatarLoader;
 import com.secret.blackholeglow.AvatarSphere;
 import com.secret.blackholeglow.BatteryPowerBar;
+import com.secret.blackholeglow.BirthdayMarquee;
 import com.secret.blackholeglow.CameraAware;
 import com.secret.blackholeglow.CameraController;
 import com.secret.blackholeglow.EarthShield;
@@ -14,8 +15,10 @@ import com.secret.blackholeglow.ForceField;
 import com.secret.blackholeglow.GreetingText;
 import com.secret.blackholeglow.HPBar;
 import com.secret.blackholeglow.LeaderboardManager;
+import com.secret.blackholeglow.MagicLeaderboard;
 import com.secret.blackholeglow.MeteorShower;
 import com.secret.blackholeglow.MusicIndicator;
+import com.secret.blackholeglow.MusicIndicator3D;
 import com.secret.blackholeglow.Planeta;
 import com.secret.blackholeglow.PlayerStats;
 import com.secret.blackholeglow.PlayerWeapon;
@@ -72,9 +75,11 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
     // ═══════════════════════════════════════════════════════════════
     private HPBar hpBarTierra;
     private HPBar hpBarForceField;
-    private MusicIndicator musicIndicator;
+    private MusicIndicator musicIndicator;           // 2D (legacy, deshabilitado)
+    private MusicIndicator3D musicIndicator3D;       // 🎵 3D con cubos
     private SimpleTextRenderer planetsDestroyedCounter;
-    private SimpleTextRenderer[] leaderboardTexts = new SimpleTextRenderer[3];
+    private MagicLeaderboard magicLeaderboard;  // ✨ Leaderboard mágico con partículas
+    private BirthdayMarquee birthdayMarquee;    // 🎂 Marquesina de cumpleaños
 
     // ═══════════════════════════════════════════════════════════════
     // ✨ EFECTOS VISUALES
@@ -416,20 +421,40 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
             Log.e(TAG, "  ✗ Error creando HP Bars: " + e.getMessage());
         }
 
-        // Music Indicator
+        // Music Indicator 3D (nuevo ecualizador con cubos)
         try {
-            musicIndicator = new MusicIndicator(
+            musicIndicator3D = new MusicIndicator3D(
                     context,
-                    SceneConstants.UI.MUSIC_INDICATOR_X,
-                    SceneConstants.UI.MUSIC_INDICATOR_Y,
-                    SceneConstants.UI.MUSIC_INDICATOR_WIDTH,
-                    SceneConstants.UI.MUSIC_INDICATOR_HEIGHT
+                    SceneConstants.UI.MUSIC_INDICATOR_3D_X,
+                    SceneConstants.UI.MUSIC_INDICATOR_3D_Y,
+                    SceneConstants.UI.MUSIC_INDICATOR_3D_Z
             );
-            addSceneObject(musicIndicator);
-            Log.d(TAG, "  ✓ 🎵 MusicIndicator agregado");
+            musicIndicator3D.setDimensions(
+                    SceneConstants.UI.MUSIC_INDICATOR_3D_WIDTH,
+                    SceneConstants.UI.MUSIC_INDICATOR_3D_HEIGHT,
+                    SceneConstants.UI.MUSIC_INDICATOR_3D_DEPTH
+            );
+            musicIndicator3D.setCameraController(camera);
+            addSceneObject(musicIndicator3D);
+            Log.d(TAG, "  ✓ 🎵 MusicIndicator3D agregado (ecualizador con cubos)");
         } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creando MusicIndicator: " + e.getMessage());
+            Log.e(TAG, "  ✗ Error creando MusicIndicator3D: " + e.getMessage());
         }
+
+        // Music Indicator 2D (legacy - DESHABILITADO)
+        // try {
+        //     musicIndicator = new MusicIndicator(
+        //             context,
+        //             SceneConstants.UI.MUSIC_INDICATOR_X,
+        //             SceneConstants.UI.MUSIC_INDICATOR_Y,
+        //             SceneConstants.UI.MUSIC_INDICATOR_WIDTH,
+        //             SceneConstants.UI.MUSIC_INDICATOR_HEIGHT
+        //     );
+        //     addSceneObject(musicIndicator);
+        //     Log.d(TAG, "  ✓ 🎵 MusicIndicator 2D agregado");
+        // } catch (Exception e) {
+        //     Log.e(TAG, "  ✗ Error creando MusicIndicator 2D: " + e.getMessage());
+        // }
 
         // Planets Destroyed Counter
         try {
@@ -465,27 +490,16 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         try {
             leaderboardManager = LeaderboardManager.getInstance(context);
 
-            int[] colors = {
-                    SceneConstants.Colors.MEDAL_GOLD,
-                    SceneConstants.Colors.MEDAL_SILVER,
-                    SceneConstants.Colors.MEDAL_BRONZE
-            };
+            // ✨ Crear MagicLeaderboard con efectos de polvo estelar
+            magicLeaderboard = new MagicLeaderboard(context);
+            addSceneObject(magicLeaderboard);
 
-            for (int i = 0; i < 3; i++) {
-                float y = SceneConstants.UI.LEADERBOARD_START_Y - (i * SceneConstants.UI.LEADERBOARD_SPACING);
-                leaderboardTexts[i] = new SimpleTextRenderer(
-                    context,
-                    SceneConstants.UI.LEADERBOARD_X,
-                    y,
-                    SceneConstants.UI.LEADERBOARD_WIDTH,
-                    SceneConstants.UI.LEADERBOARD_HEIGHT
-                );
-                leaderboardTexts[i].setColor(colors[i]);
-                leaderboardTexts[i].setText("---");
-                addSceneObject(leaderboardTexts[i]);
-            }
+            Log.d(TAG, "  ✓ ✨ MagicLeaderboard creado con efectos de polvo estelar");
 
-            Log.d(TAG, "  ✓ 🏆 Leaderboard UI creado");
+            // 🎂 Crear BirthdayMarquee para celebrar cumpleaños (DESHABILITADO temporalmente)
+            // birthdayMarquee = new BirthdayMarquee(context);
+            // addSceneObject(birthdayMarquee);
+            // Log.d(TAG, "  ✓ 🎂 BirthdayMarquee creado");
 
             // Actualizar inmediatamente
             updateLeaderboardUI();
@@ -580,6 +594,19 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         playerWeapon = null;
         powerBar = null;
         musicIndicator = null;
+        musicIndicator3D = null;
+
+        // Liberar MagicLeaderboard
+        if (magicLeaderboard != null) {
+            magicLeaderboard.release();
+            magicLeaderboard = null;
+        }
+
+        // Liberar BirthdayMarquee
+        if (birthdayMarquee != null) {
+            birthdayMarquee.release();
+            birthdayMarquee = null;
+        }
 
         estrellasBailarinas.clear();
 
@@ -611,6 +638,11 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
      * Actualiza los niveles de música en el indicador
      */
     public void updateMusicLevels(float bass, float mid, float treble) {
+        // MusicIndicator 3D (nuevo)
+        if (musicIndicator3D != null) {
+            musicIndicator3D.updateMusicLevels(bass, mid, treble);
+        }
+        // MusicIndicator 2D (legacy, deshabilitado)
         if (musicIndicator != null) {
             musicIndicator.updateMusicLevels(bass, mid, treble);
         }
@@ -640,29 +672,23 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         return musicIndicator;
     }
 
+    public MusicIndicator3D getMusicIndicator3D() {
+        return musicIndicator3D;
+    }
+
     /**
-     * 🏆 Actualiza los textos del leaderboard
+     * ✨ Actualiza el MagicLeaderboard con datos de Firebase
      */
     public void updateLeaderboardUI() {
-        if (leaderboardManager == null) return;
+        if (leaderboardManager == null || magicLeaderboard == null) return;
 
         leaderboardManager.getTop3(new LeaderboardManager.Top3Callback() {
             @Override
             public void onSuccess(List<LeaderboardManager.LeaderboardEntry> top3) {
                 if (top3 == null || top3.isEmpty()) return;
 
-                for (int i = 0; i < Math.min(top3.size(), 3); i++) {
-                    LeaderboardManager.LeaderboardEntry entry = top3.get(i);
-                    if (leaderboardTexts[i] != null) {
-                        String medal = (i == 0) ? "🥇" : (i == 1) ? "🥈" : "🥉";
-                        String name = entry.displayName;
-                        if (name.length() > 10) {
-                            name = name.substring(0, 9) + "..";
-                        }
-                        String text = medal + " " + name + " " + entry.planetsDestroyed;
-                        leaderboardTexts[i].setText(text);
-                    }
-                }
+                // Actualizar el MagicLeaderboard con los datos
+                magicLeaderboard.updateEntries(top3);
             }
 
             @Override

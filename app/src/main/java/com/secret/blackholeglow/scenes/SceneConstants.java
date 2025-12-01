@@ -170,11 +170,19 @@ public final class SceneConstants {
         public static final float HP_BAR_SHIELD_WIDTH = 0.25f;
         public static final float HP_BAR_SHIELD_HEIGHT = 0.03f;
 
-        // Music Indicator
+        // Music Indicator (2D - legacy)
         public static final float MUSIC_INDICATOR_X = -0.250f;
         public static final float MUSIC_INDICATOR_Y = -0.35f;
         public static final float MUSIC_INDICATOR_WIDTH = 0.50f;
         public static final float MUSIC_INDICATOR_HEIGHT = 0.12f;
+
+        // Music Indicator 3D - Posición base del grupo completo
+        public static final float MUSIC_INDICATOR_3D_X = 0.0f;        // Centro horizontal
+        public static final float MUSIC_INDICATOR_3D_Y = -1.5f;       // Arriba de controles
+        public static final float MUSIC_INDICATOR_3D_Z = 0.0f;        // Profundidad base
+        public static final float MUSIC_INDICATOR_3D_WIDTH = 2.2f;    // Ancho total (legacy)
+        public static final float MUSIC_INDICATOR_3D_HEIGHT = 0.6f;   // Altura (legacy)
+        public static final float MUSIC_INDICATOR_3D_DEPTH = 0.06f;   // Profundidad (legacy)
 
         // Planets Counter
         public static final float PLANETS_COUNTER_X = 0.50f;
@@ -189,6 +197,112 @@ public final class SceneConstants {
         public static final float LEADERBOARD_HEIGHT = 0.06f;
         public static final float LEADERBOARD_SPACING = 0.10f;
     }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 🎵 ECUALIZADOR 3D - BARRAS INDIVIDUALES
+    // ═══════════════════════════════════════════════════════════════════
+    // Cada barra tiene: posición (X,Y,Z), rotación (X,Y,Z), tamaño (ancho,alto,profundidad)
+    // Las barras van de izquierda (0) a derecha (6)
+    // BASS = barras 0,1,2 | MID = barra 3 | TREBLE = barras 4,5,6
+
+    public static final class EqBar0 {
+        // 🔊 BARRA 0 - BASS (más a la izquierda, la más grande)
+        public static final float POS_X = -0.9f;      // Posición X (negativo = izquierda)
+        public static final float POS_Y = 0.0f;       // Posición Y (base de la barra)
+        public static final float POS_Z = 0.0f;       // Posición Z (profundidad)
+        public static final float ROT_X = 0.0f;       // Rotación en X (grados)
+        public static final float ROT_Y = 0.0f;       // Rotación en Y (grados)
+        public static final float ROT_Z = 0.0f;       // Rotación en Z (grados)
+        public static final float WIDTH = 0.12f;      // Ancho de la barra
+        public static final float HEIGHT = 0.6f;      // Altura máxima
+        public static final float DEPTH = 0.06f;      // Profundidad
+        public static final float SENSITIVITY = 1.2f; // Sensibilidad al audio
+    }
+
+    public static final class EqBar1 {
+        // 🔊 BARRA 1 - BASS
+        public static final float POS_X = -0.6f;
+        public static final float POS_Y = 0.0f;
+        public static final float POS_Z = 0.0f;
+        public static final float ROT_X = 0.0f;
+        public static final float ROT_Y = 0.0f;
+        public static final float ROT_Z = 0.0f;
+        public static final float WIDTH = 0.10f;
+        public static final float HEIGHT = 0.55f;
+        public static final float DEPTH = 0.06f;
+        public static final float SENSITIVITY = 1.4f;
+    }
+
+    public static final class EqBar2 {
+        // 🔊 BARRA 2 - BASS/MID
+        public static final float POS_X = -0.3f;
+        public static final float POS_Y = 0.25f;
+        public static final float POS_Z = 0.0f;
+        public static final float ROT_X = 0.0f;
+        public static final float ROT_Y = 0.0f;
+        public static final float ROT_Z = 0.0f;
+        public static final float WIDTH = 0.09f;
+        public static final float HEIGHT = 0.50f;
+        public static final float DEPTH = 0.06f;
+        public static final float SENSITIVITY = 2.0f;
+    }
+
+    public static final class EqBar3 {
+        // 🎵 BARRA 3 - MID (centro)
+        public static final float POS_X = 0.0f;
+        public static final float POS_Y = 0.2f;
+        public static final float POS_Z = 0.0f;
+        public static final float ROT_X = 0.0f;
+        public static final float ROT_Y = 0.0f;
+        public static final float ROT_Z = 0.0f;
+        public static final float WIDTH = 0.08f;
+        public static final float HEIGHT = 0.45f;
+        public static final float DEPTH = 0.06f;
+        public static final float SENSITIVITY = 3.0f;
+    }
+
+    public static final class EqBar4 {
+        // 🎶 BARRA 4 - MID/TREBLE
+        public static final float POS_X = 0.3f;
+        public static final float POS_Y = 0.4f;
+        public static final float POS_Z = 0.0f;
+        public static final float ROT_X = 0.0f;
+        public static final float ROT_Y = 0.0f;
+        public static final float ROT_Z = 0.0f;
+        public static final float WIDTH = 0.07f;
+        public static final float HEIGHT = 0.40f;
+        public static final float DEPTH = 0.06f;
+        public static final float SENSITIVITY = 7.0f;
+    }
+
+    public static final class EqBar5 {
+        // 🎶 BARRA 5 - TREBLE
+        public static final float POS_X = 0.6f;
+        public static final float POS_Y = 0.4f;
+        public static final float POS_Z = 0.0f;
+        public static final float ROT_X = 0.0f;
+        public static final float ROT_Y = 0.0f;
+        public static final float ROT_Z = 0.0f;
+        public static final float WIDTH = 0.06f;
+        public static final float HEIGHT = 0.35f;
+        public static final float DEPTH = 0.06f;
+        public static final float SENSITIVITY = 9.0f;
+    }
+
+    public static final class EqBar6 {
+        // 🎶 BARRA 6 - TREBLE (más a la derecha, la más pequeña)
+        public static final float POS_X = 0.9f;
+        public static final float POS_Y = 0.530f;
+        public static final float POS_Z = 0.0f;
+        public static final float ROT_X = 0.0f;
+        public static final float ROT_Y = 0.0f;
+        public static final float ROT_Z = 0.0f;
+        public static final float WIDTH = 0.05f;
+        public static final float HEIGHT = 0.30f;
+        public static final float DEPTH = 0.06f;
+        public static final float SENSITIVITY = 12.0f;
+    }
+
 
     // ═══════════════════════════════════════════════════════════════════
     // ⏱️ TIEMPOS Y INTERVALOS

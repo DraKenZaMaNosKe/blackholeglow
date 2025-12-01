@@ -182,10 +182,14 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         modeController.activateWallpaper();
         panelRenderer.onWallpaperActivated();
 
-        // 🎵 CRÍTICO: Reanudar MusicVisualizer al entrar en WALLPAPER_MODE
+        // 🎵 CRÍTICO: Forzar reconexión del MusicVisualizer al entrar en WALLPAPER_MODE
+        // Esto es necesario porque el visualizador puede haber perdido la conexión
+        // durante las transiciones de preview a wallpaper real
         if (musicVisualizer != null) {
-            musicVisualizer.resume();
-            Log.d(TAG, "🎵 MusicVisualizer reanudado para WALLPAPER_MODE");
+            Log.d(TAG, "🎵 Forzando reconexión de MusicVisualizer para WALLPAPER_MODE...");
+            // Siempre reconectar para asegurar que funcione
+            musicVisualizer.reconnect();
+            Log.d(TAG, "🎵 MusicVisualizer reconectado para WALLPAPER_MODE (enabled=" + musicVisualizer.isEnabled() + ")");
         }
     }
 
@@ -289,8 +293,13 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         if (musicVisualizer != null) musicVisualizer.pause();
 
         // Flush Firebase queue al pausar para guardar datos pendientes
-        if (firebaseQueue != null) {
-            firebaseQueue.forceFlush();
+        // NOTA: Envuelto en try-catch para evitar crash si el handler está muerto
+        try {
+            if (firebaseQueue != null) {
+                firebaseQueue.forceFlush();
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error en forceFlush durante pause: " + e.getMessage());
         }
 
         Log.d(TAG, "WallpaperDirector pausado");
@@ -304,7 +313,20 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             sceneFactory.resumeCurrentScene();
             modeController.goDirectToWallpaper();
         }
-        if (musicVisualizer != null) musicVisualizer.resume();
+
+        // 🎵 Reanudar MusicVisualizer - SIEMPRE reconectar en WALLPAPER_MODE
+        // para evitar problemas de conexión perdida
+        if (musicVisualizer != null) {
+            if (modeController != null && modeController.isWallpaperMode()) {
+                // En WALLPAPER_MODE siempre reconectar para garantizar funcionamiento
+                Log.d(TAG, "🎵 Resume en WALLPAPER_MODE: Reconectando MusicVisualizer...");
+                musicVisualizer.reconnect();
+            } else {
+                // En otros modos, solo hacer resume normal
+                musicVisualizer.resume();
+            }
+            Log.d(TAG, "🎵 MusicVisualizer estado después de resume: enabled=" + musicVisualizer.isEnabled());
+        }
         Log.d(TAG, "WallpaperDirector reanudado");
     }
 

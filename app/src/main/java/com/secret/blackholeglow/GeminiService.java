@@ -109,6 +109,16 @@ public class GeminiService {
     }
 
     /**
+     * ✨ Genera contenido con un prompt personalizado
+     * Útil para horóscopos, mensajes de cumpleaños, etc.
+     * @param prompt El prompt completo para Gemini
+     * @param callback Callback con la respuesta
+     */
+    public void generateContent(String prompt, GeminiCallback callback) {
+        sendRequest(prompt, callback);
+    }
+
+    /**
      * 🎵 Genera un comentario creativo sobre una canción
      * @param songTitle Título de la canción (puede incluir artista)
      * @param userName Nombre del usuario

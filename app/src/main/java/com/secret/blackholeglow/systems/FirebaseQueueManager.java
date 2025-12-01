@@ -675,10 +675,17 @@ public class FirebaseQueueManager {
 
     /**
      * Fuerza un flush inmediato
+     * Protegido contra handler muerto o hilo terminado
      */
     public void forceFlush() {
-        if (backgroundHandler != null) {
-            backgroundHandler.post(this::flush);
+        try {
+            if (backgroundHandler != null && backgroundThread != null && backgroundThread.isAlive()) {
+                backgroundHandler.post(this::flush);
+            } else {
+                Log.w(TAG, "forceFlush ignorado - background thread no disponible");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error en forceFlush: " + e.getMessage());
         }
     }
 

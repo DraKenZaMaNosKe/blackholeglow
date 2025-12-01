@@ -359,7 +359,7 @@ public class MusicVisualizer {
     public void resume() {
         if (visualizer == null) {
             // Visualizer fue liberado, reinicializar
-            Log.d(TAG, "[MusicVisualizer] Reinicializando visualizer...");
+            Log.d(TAG, "[MusicVisualizer] Reinicializando visualizer (era null)...");
             initialize();
             return;
         }
@@ -370,12 +370,20 @@ public class MusicVisualizer {
                 isEnabled = true;
                 // Reset timestamps para evitar falsos positivos de "sin audio"
                 lastAudioDataTime = System.currentTimeMillis();
-                Log.d(TAG, "[MusicVisualizer] Reanudado");
+                Log.d(TAG, "[MusicVisualizer] Reanudado correctamente");
             } catch (IllegalStateException e) {
-                Log.w(TAG, "[MusicVisualizer] Error al reanudar, intentando reconectar: " + e.getMessage());
+                Log.w(TAG, "[MusicVisualizer] Error al reanudar: " + e.getMessage());
                 // El visualizer puede estar en estado inválido, reconectar
+                Log.d(TAG, "[MusicVisualizer] Intentando reconectar...");
                 reconnect();
+            } catch (Exception e) {
+                Log.e(TAG, "[MusicVisualizer] Error inesperado al reanudar: " + e.getMessage());
+                // Forzar reinicialización completa
+                visualizer = null;
+                initialize();
             }
+        } else {
+            Log.d(TAG, "[MusicVisualizer] Ya estaba habilitado, no hace falta reanudar");
         }
     }
 
