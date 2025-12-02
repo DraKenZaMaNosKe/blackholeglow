@@ -26,7 +26,8 @@
       "Bash(cat:*)",
       "Bash(xargs ls:*)",
       "Bash(timeout 10 D:/adb/platform-tools/adb.exe shell:*)",
-      "Bash(timeout 8 D:/adb/platform-tools/adb.exe logcat:*)"
+      "Bash(timeout 8 D:/adb/platform-tools/adb.exe logcat:*)",
+      "Bash(timeout 8 D:/adb/platform-tools/adb.exe shell am force-stop:*)"
     ],
     "deny": [],
     "ask": []

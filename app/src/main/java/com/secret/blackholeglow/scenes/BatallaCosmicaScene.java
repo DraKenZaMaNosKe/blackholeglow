@@ -19,6 +19,7 @@ import com.secret.blackholeglow.MagicLeaderboard;
 import com.secret.blackholeglow.MeteorShower;
 import com.secret.blackholeglow.MusicIndicator;
 import com.secret.blackholeglow.MusicIndicator3D;
+import com.secret.blackholeglow.EqualizerBarsDJ;
 import com.secret.blackholeglow.Planeta;
 import com.secret.blackholeglow.PlayerStats;
 import com.secret.blackholeglow.PlayerWeapon;
@@ -76,7 +77,8 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
     private HPBar hpBarTierra;
     private HPBar hpBarForceField;
     private MusicIndicator musicIndicator;           // 2D (legacy, deshabilitado)
-    private MusicIndicator3D musicIndicator3D;       // 🎵 3D con cubos
+    private MusicIndicator3D musicIndicator3D;       // 🎵 3D con cubos (deshabilitado)
+    private EqualizerBarsDJ equalizerDJ;             // 🎵 Ecualizador estilo DJ
     private SimpleTextRenderer planetsDestroyedCounter;
     private MagicLeaderboard magicLeaderboard;  // ✨ Leaderboard mágico con partículas
     private BirthdayMarquee birthdayMarquee;    // 🎂 Marquesina de cumpleaños
@@ -421,7 +423,18 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
             Log.e(TAG, "  ✗ Error creando HP Bars: " + e.getMessage());
         }
 
-        // Music Indicator 3D (nuevo ecualizador con cubos)
+        // 🎵 Ecualizador DJ (barras en la parte inferior)
+        try {
+            equalizerDJ = new EqualizerBarsDJ();
+            equalizerDJ.initialize();
+            // No agregar a sceneObjects - se dibuja manualmente después de todo
+            Log.d(TAG, "  ✓ 🎵 EqualizerBarsDJ agregado (estilo DJ en bottom)");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creando EqualizerBarsDJ: " + e.getMessage());
+        }
+
+        // Music Indicator 3D (DESHABILITADO - reemplazado por EqualizerBarsDJ)
+        /*
         try {
             musicIndicator3D = new MusicIndicator3D(
                     context,
@@ -440,6 +453,7 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creando MusicIndicator3D: " + e.getMessage());
         }
+        */
 
         // Music Indicator 2D (legacy - DESHABILITADO)
         // try {
@@ -638,7 +652,11 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
      * Actualiza los niveles de música en el indicador
      */
     public void updateMusicLevels(float bass, float mid, float treble) {
-        // MusicIndicator 3D (nuevo)
+        // 🎵 EqualizerBarsDJ (nuevo estilo DJ)
+        if (equalizerDJ != null) {
+            equalizerDJ.updateMusicLevels(bass, mid, treble);
+        }
+        // MusicIndicator 3D (deshabilitado)
         if (musicIndicator3D != null) {
             musicIndicator3D.updateMusicLevels(bass, mid, treble);
         }
@@ -709,11 +727,40 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         // Llamar al update base (actualiza todos los sceneObjects)
         super.update(deltaTime);
 
+        // 🎵 Actualizar ecualizador DJ (no está en sceneObjects)
+        if (equalizerDJ != null) {
+            equalizerDJ.update(deltaTime);
+        }
+
         // Actualizar leaderboard periódicamente
         long now = System.currentTimeMillis();
         if (now - lastLeaderboardUpdate > SceneConstants.Timing.LEADERBOARD_UPDATE_INTERVAL) {
             lastLeaderboardUpdate = now;
             updateLeaderboardUI();
+        }
+    }
+
+    @Override
+    public void draw() {
+        // Dibujar todos los objetos de la escena primero
+        super.draw();
+
+        // 🎵 Dibujar ecualizador DJ encima de todo (overlay 2D)
+        if (equalizerDJ != null) {
+            equalizerDJ.draw();
+        }
+    }
+
+    /**
+     * Sobrescribe setScreenSize para pasar dimensiones al ecualizador
+     */
+    @Override
+    public void setScreenSize(int width, int height) {
+        super.setScreenSize(width, height);
+
+        // 🎵 Pasar dimensiones al ecualizador DJ
+        if (equalizerDJ != null) {
+            equalizerDJ.setScreenSize(width, height);
         }
     }
 }

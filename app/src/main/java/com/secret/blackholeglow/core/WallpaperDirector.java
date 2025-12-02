@@ -13,6 +13,7 @@ import com.secret.blackholeglow.ResourceLoader;
 import com.secret.blackholeglow.TextureManager;
 import com.secret.blackholeglow.scenes.BatallaCosmicaScene;
 import com.secret.blackholeglow.scenes.WallpaperScene;
+import com.secret.blackholeglow.systems.AspectRatioManager;
 import com.secret.blackholeglow.systems.EventBus;
 import com.secret.blackholeglow.systems.FirebaseQueueManager;
 import com.secret.blackholeglow.systems.GLStateManager;
@@ -107,6 +108,9 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
         // 📐 ScreenManager: Actor especializado en dimensiones
         ScreenManager.updateDimensions(width, height);
+
+        // 📐 AspectRatioManager: Notifica a todos los listeners registrados
+        AspectRatioManager.get().updateDimensions(width, height);
 
         if (camera != null) camera.updateProjection(width, height);
         if (panelRenderer != null) panelRenderer.setScreenSize(width, height);
@@ -362,6 +366,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         EventBus.reset();
         GLStateManager.reset();
         ScreenManager.reset();
+        AspectRatioManager.reset();
         initialized = false;
         Log.d(TAG, "WallpaperDirector liberado");
     }
