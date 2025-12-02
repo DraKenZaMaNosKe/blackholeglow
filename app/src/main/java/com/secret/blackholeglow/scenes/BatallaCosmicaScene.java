@@ -494,8 +494,8 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
             Log.e(TAG, "  ✗ Error creando contador: " + e.getMessage());
         }
 
-        // Leaderboard
-        setupLeaderboard();
+        // Leaderboard (OCULTO - deshabilitado temporalmente)
+        // setupLeaderboard();
 
         // NOTA: FireButton y LikeButton son manejados por WallpaperDirector/SongSharingController
     }

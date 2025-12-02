@@ -9,26 +9,32 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
 /**
- * ♥ BOTÓN DE LIKE FLOTANTE
+ * 💜 BOTÓN DE LIKE NEÓN - Estilo Cyberpunk
  *
  * Botón con forma de corazón que permite compartir canciones.
  * Renderizado con OpenGL ES 2.0.
  *
+ * Estilo Visual:
+ * - Glow neón cyan/rosa que pulsa suavemente
+ * - Interior semi-transparente rosa neón
+ * - Borde brillante cyan que parpadea
+ * - Tamaño compacto (no intrusivo)
+ *
  * Características:
- * - Animación de pulso suave
- * - Detección de toques
- * - Estado de cooldown visual
- * - Glow cuando está activo
+ * - Animación de pulso con interpolación de colores
+ * - Detección de toques con feedback visual
+ * - Estado de cooldown visual (gris apagado)
+ * - Múltiples capas de glow para efecto neón profundo
  */
 public class LikeButton {
     private static final String TAG = "LikeButton";
 
     // Posición en coordenadas normalizadas (-1 a 1)
-    private float x = 0.75f;    // Derecha
-    private float y = -0.80f;   // Abajo
+    private float x = 0.92f;    // Pegado al borde derecho
+    private float y = -0.55f;   // Un poco más arriba
 
-    // Tamaño del botón
-    private float size = 0.12f;
+    // Tamaño del botón (MICRO)
+    private float size = 0.012f;  // Micro - como un icono pequeño
 
     // Estado
     private boolean isPressed = false;
@@ -40,10 +46,14 @@ public class LikeButton {
     private FloatBuffer vertexBuffer;
     private boolean isInitialized = false;
 
-    // Colores estilo TikTok
-    private float[] colorNormal = {1.0f, 0.2f, 0.35f, 1.0f};   // Rojo TikTok
-    private float[] colorPressed = {1.0f, 0.4f, 0.5f, 1.0f};   // Rosa brillante
-    private float[] colorCooldown = {0.4f, 0.4f, 0.45f, 0.8f}; // Gris suave
+    // Colores NEÓN Cyberpunk
+    private float[] colorNormal = {1.0f, 0.0f, 0.5f, 0.85f};    // Rosa neón semi-transparente
+    private float[] colorPressed = {0.0f, 0.85f, 1.0f, 1.0f};   // Cyan brillante al presionar
+    private float[] colorCooldown = {0.3f, 0.3f, 0.35f, 0.6f};  // Gris apagado
+
+    // Colores para glow neón
+    private float[] glowCyan = {0.0f, 0.85f, 1.0f};    // #00D9FF
+    private float[] glowPink = {1.0f, 0.0f, 0.5f};     // #FF0080
 
     // Shaders
     private static final String VERTEX_SHADER =
@@ -205,7 +215,7 @@ public class LikeButton {
     }
 
     /**
-     * ✨ Dibuja una capa de glow
+     * ✨ Dibuja una capa de glow NEÓN con gradiente cyan/rosa
      */
     private void drawGlowLayer(float[] mvpMatrix, float glowSize, float alpha) {
         float[] modelMatrix = new float[16];
@@ -218,8 +228,14 @@ public class LikeButton {
 
         GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrix, 0);
 
-        // Color rosa brillante con transparencia
-        float[] glowColor = {1.0f, 0.3f, 0.5f, alpha};
+        // Interpolar entre cyan y rosa según el tiempo para efecto neón pulsante
+        float colorMix = (float) (Math.sin(pulsePhase * 2.5) * 0.5 + 0.5);
+        float[] glowColor = {
+            glowCyan[0] * (1 - colorMix) + glowPink[0] * colorMix,
+            glowCyan[1] * (1 - colorMix) + glowPink[1] * colorMix,
+            glowCyan[2] * (1 - colorMix) + glowPink[2] * colorMix,
+            alpha * 0.8f  // Más transparente para efecto neón suave
+        };
         GLES20.glUniform4fv(colorHandle, 1, glowColor, 0);
 
         GLES20.glEnableVertexAttribArray(positionHandle);
@@ -228,21 +244,27 @@ public class LikeButton {
     }
 
     /**
-     * 💫 Dibuja el highlight interior
+     * 💫 Dibuja el highlight interior con brillo neón
      */
     private void drawHighlight(float[] mvpMatrix, float highlightSize) {
         float[] modelMatrix = new float[16];
         android.opengl.Matrix.setIdentityM(modelMatrix, 0);
-        android.opengl.Matrix.translateM(modelMatrix, 0, x, y + size * 0.15f, 0);  // Ligeramente arriba
-        android.opengl.Matrix.scaleM(modelMatrix, 0, highlightSize * 0.7f, highlightSize * 0.5f, 1);
+        android.opengl.Matrix.translateM(modelMatrix, 0, x, y + size * 0.2f, 0);  // Centro-arriba
+        android.opengl.Matrix.scaleM(modelMatrix, 0, highlightSize * 0.5f, highlightSize * 0.4f, 1);
 
         float[] finalMatrix = new float[16];
         android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
 
         GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrix, 0);
 
-        // Blanco semi-transparente para el brillo
-        float[] highlightColor = {1.0f, 1.0f, 1.0f, 0.4f};
+        // Highlight cyan brillante para efecto neón interior
+        float highlightPulse = (float) (Math.sin(pulsePhase * 3.0) * 0.2 + 0.5);
+        float[] highlightColor = {
+            0.5f + glowCyan[0] * 0.5f,
+            0.5f + glowCyan[1] * 0.5f,
+            0.5f + glowCyan[2] * 0.5f,
+            highlightPulse
+        };
         GLES20.glUniform4fv(colorHandle, 1, highlightColor, 0);
 
         GLES20.glEnableVertexAttribArray(positionHandle);
@@ -251,13 +273,20 @@ public class LikeButton {
     }
 
     /**
-     * 🔲 Dibuja el borde del corazón
+     * 🔲 Dibuja el borde del corazón con efecto NEÓN brillante
      */
     private void drawBorder(float[] matrix) {
-        float[] borderColor = {1.0f, 1.0f, 1.0f, 0.9f};
+        // Borde cyan neón brillante que pulsa
+        float borderPulse = (float) (Math.sin(pulsePhase * 4.0) * 0.3 + 0.7);
+        float[] borderColor = {
+            glowCyan[0] * borderPulse + 0.3f,
+            glowCyan[1] * borderPulse + 0.1f,
+            glowCyan[2] * borderPulse,
+            1.0f
+        };
         GLES20.glUniform4fv(colorHandle, 1, borderColor, 0);
-        GLES20.glLineWidth(2.5f);
-        GLES20.glDrawArrays(GLES20.GL_LINE_LOOP, 1, 65);  // 64 segmentos + cierre
+        GLES20.glLineWidth(3.0f);  // Borde más grueso para efecto neón
+        GLES20.glDrawArrays(GLES20.GL_LINE_LOOP, 1, 65);
     }
 
     /**

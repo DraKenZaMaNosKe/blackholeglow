@@ -60,10 +60,10 @@ public class AvatarSphere implements SceneObject, CameraAware {
     private float[] modelMatrix = new float[16];
     private float[] mvpMatrix = new float[16];
 
-    // Posición fija (debajo del contador de planetas destruidos)
-    private float fixedX = 1.85f;  // Movido más a la derecha para alinearse con el contador
-    private float fixedY = 3.10f;   // Debajo del contador de planetas (antes: 2.70)
-    private float fixedZ = 0.10f;    // En el plano frontal
+    // Posición fija (esquina inferior izquierda, al nivel del corazón)
+    private float fixedX = -4.0f;   // En el límite izquierdo visible
+    private float fixedY = -5.2f;   // Al nivel del like
+    private float fixedZ = 0.10f;   // En el plano frontal
 
     // Rotación de la esfera (sobre su eje Y, como el sol)
     private float rotationY = 0f;

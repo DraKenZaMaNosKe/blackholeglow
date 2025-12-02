@@ -36,6 +36,15 @@
 
     <!--
       ╔═══════════════════════════════════════════════╗
+      ║    🖼️ PERMISO PARA CAMBIAR WALLPAPER 🖼️      ║
+      ╚═══════════════════════════════════════════════╝
+      Necesario para desinstalar el live wallpaper y restaurar
+      un fondo estático cuando el usuario lo solicite.
+    -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER"/>
+
+    <!--
+      ╔═══════════════════════════════════════════════╗
       ║    👏 PERMISOS PARA ENCONTRAR CON APLAUSO 👏  ║
       ╚═══════════════════════════════════════════════╝
       DESHABILITADO - Funcionalidad removida para release

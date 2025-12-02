@@ -47,11 +47,11 @@ public class SongSharingController {
         if (initialized) return;
 
         try {
-            // Botón de Like (corazón rojo)
+            // Botón de Like (corazón neón - micro)
             likeButton = new LikeButton();
             likeButton.init();
-            likeButton.setPosition(0.80f, -0.45f);
-            likeButton.setSize(0.10f);
+            likeButton.setPosition(0.85f, -0.50f);
+            likeButton.setSize(0.04f);  // Tamaño mini
             Log.d(TAG, "♥ LikeButton inicializado");
 
             // Sistema de partículas de corazones

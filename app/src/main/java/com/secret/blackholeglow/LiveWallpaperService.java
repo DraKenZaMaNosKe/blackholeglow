@@ -60,6 +60,7 @@ public class LiveWallpaperService extends WallpaperService {
         private final Object stateLock = new Object();
         private RenderState currentState = RenderState.UNINITIALIZED;
         private boolean surfaceExists = false;
+        private boolean isSystemPreviewMode = false;  // 🎬 Para mantener el wallpaper visible en preview del sistema
 
         // ═══════════════════════════════════════════════════════════════
         // 📱 DETECCIÓN DE EVENTOS DEL SISTEMA
@@ -210,19 +211,19 @@ public class LiveWallpaperService extends WallpaperService {
                 // 🎬 WallpaperDirector - Sistema modular de renderizado
                 Log.d(TAG, "🎬 Usando WallpaperDirector");
                 wallpaperDirector = new WallpaperDirector(context);
-                glSurfaceView.setRenderer(wallpaperDirector);
 
-                // Cargar escena inicial
+                // ⚠️ IMPORTANTE: Cargar escena ANTES de setRenderer
                 String nombreWallpaper = wallpaperPrefs.getSelectedWallpaperSync();
+                Log.d(TAG, "🎬 Escena seleccionada: " + nombreWallpaper);
                 wallpaperDirector.changeScene(nombreWallpaper);
 
-                // CRÍTICO: Empezar DETENIDO
-                glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+                glSurfaceView.setRenderer(wallpaperDirector);
 
+                // CRÍTICO: Empezar DETENIDO - el modo preview se configura en onSurfaceCreated
+                glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
                 synchronized (stateLock) {
                     currentState = RenderState.STOPPED;
                 }
-
                 Log.d(TAG, "✓ OpenGL inicializado en modo STOPPED");
 
             } catch (Exception e) {
@@ -258,12 +259,19 @@ public class LiveWallpaperService extends WallpaperService {
                     // ⏱️ Detener tracking de uso
                     UsageTracker.get().onWallpaperHidden();
 
-                    // 📱 IMPORTANTE: Cuando no es visible, volver a PANEL_MODE
-                    stopRendering();
-                    // Forzar PANEL_MODE para evitar flickering al volver
-                    if (wallpaperDirector != null) {
-                        wallpaperDirector.pause();
-                        Log.d(TAG, "⚡ Director pausado por pérdida de visibilidad");
+                    // 🎬 En preview del sistema, NO forzar panel - mantener wallpaper visible
+                    if (isSystemPreviewMode) {
+                        Log.d(TAG, "🎬 Preview del sistema: Manteniendo wallpaper visible");
+                        // Solo pausar el rendering, no volver a panel
+                        stopRendering();
+                    } else {
+                        // 📱 IMPORTANTE: Cuando no es visible, volver a PANEL_MODE
+                        stopRendering();
+                        // Forzar PANEL_MODE para evitar flickering al volver
+                        if (wallpaperDirector != null) {
+                            wallpaperDirector.pause();
+                            Log.d(TAG, "⚡ Director pausado por pérdida de visibilidad");
+                        }
                     }
                 }
             }
@@ -352,6 +360,28 @@ public class LiveWallpaperService extends WallpaperService {
         public void onSurfaceCreated(SurfaceHolder holder) {
             super.onSurfaceCreated(holder);
             Log.d(TAG, "📐 Surface CREATED");
+
+            // 🎬 Detectar si es preview del sistema AHORA (seguro de llamar después de attach)
+            try {
+                boolean isSystemPreview = isPreview();
+                Log.d(TAG, "🎬 isPreview() = " + isSystemPreview);
+
+                if (isSystemPreview && wallpaperDirector != null) {
+                    Log.d(TAG, "🎬 MODO PREVIEW DEL SISTEMA - Activando wallpaper directo");
+                    wallpaperDirector.setPreviewMode(true);
+                    isSystemPreviewMode = true;
+
+                    // Cambiar a modo continuo para preview
+                    if (glSurfaceView != null) {
+                        glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+                    }
+                    synchronized (stateLock) {
+                        currentState = RenderState.RUNNING;
+                    }
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "No se pudo determinar isPreview: " + e.getMessage());
+            }
 
             synchronized (stateLock) {
                 surfaceExists = true;

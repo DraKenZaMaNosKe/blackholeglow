@@ -1,74 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector
-    android:height="108dp"
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
-    android:viewportHeight="108"
+    android:height="108dp"
     android:viewportWidth="108"
-    xmlns:android="http://schemas.android.com/apk/res/android">
-    <path android:fillColor="#3DDC84"
-          android:pathData="M0,0h108v108h-108z"/>
-    <path android:fillColor="#00000000" android:pathData="M9,0L9,108"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M19,0L19,108"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M29,0L29,108"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M39,0L39,108"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M49,0L49,108"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M59,0L59,108"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M69,0L69,108"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M79,0L79,108"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M89,0L89,108"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M99,0L99,108"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M0,9L108,9"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M0,19L108,19"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M0,29L108,29"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M0,39L108,39"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M0,49L108,49"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M0,59L108,59"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M0,69L108,69"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M0,79L108,79"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M0,89L108,89"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M0,99L108,99"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M19,29L89,29"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M19,39L89,39"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M19,49L89,49"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M19,59L89,59"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M19,69L89,69"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M19,79L89,79"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M29,19L29,89"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M39,19L39,89"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M49,19L49,89"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M59,19L59,89"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M69,19L69,89"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
-    <path android:fillColor="#00000000" android:pathData="M79,19L79,89"
-          android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
+    android:viewportHeight="108">
+
+    <!-- ════════════════════════════════════════════════════════════
+         🌌 FONDO ESPACIAL - Gradiente oscuro con estrellas
+         ════════════════════════════════════════════════════════════ -->
+
+    <!-- Fondo con gradiente espacial -->
+    <path android:pathData="M0,0 L108,0 L108,108 L0,108 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="0"
+                android:startY="0"
+                android:endX="108"
+                android:endY="108"
+                android:type="linear">
+                <item android:color="#0A0A20" android:offset="0.0"/>
+                <item android:color="#1A0A30" android:offset="0.5"/>
+                <item android:color="#0A1020" android:offset="1.0"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Estrellas de fondo (pequeños puntos pixeleados) -->
+    <path android:fillColor="#FFFFFF" android:pathData="M10,15 L12,15 L12,17 L10,17 Z"/>
+    <path android:fillColor="#AAAAAA" android:pathData="M95,20 L96,20 L96,21 L95,21 Z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M25,90 L27,90 L27,92 L25,92 Z"/>
+    <path android:fillColor="#CCCCCC" android:pathData="M85,85 L86,85 L86,86 L85,86 Z"/>
+    <path android:fillColor="#AAAAAA" android:pathData="M50,10 L51,10 L51,11 L50,11 Z"/>
+    <path android:fillColor="#888888" android:pathData="M15,50 L16,50 L16,51 L15,51 Z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M90,55 L92,55 L92,57 L90,57 Z"/>
+    <path android:fillColor="#CCCCCC" android:pathData="M70,95 L71,95 L71,96 L70,96 Z"/>
+    <path android:fillColor="#AAAAAA" android:pathData="M5,75 L6,75 L6,76 L5,76 Z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M100,40 L102,40 L102,42 L100,42 Z"/>
+
+    <!-- Estrella cyan brillante -->
+    <path android:fillColor="#00D9FF" android:pathData="M18,25 L20,25 L20,27 L18,27 Z"/>
+
+    <!-- Estrella rosa -->
+    <path android:fillColor="#FF69B4" android:pathData="M88,75 L90,75 L90,77 L88,77 Z"/>
+
+    <!-- Más estrellas dispersas -->
+    <path android:fillColor="#FFFFFF" android:pathData="M35,5 L36,5 L36,6 L35,6 Z"/>
+    <path android:fillColor="#CCCCCC" android:pathData="M75,12 L76,12 L76,13 L75,13 Z"/>
+    <path android:fillColor="#00FF88" android:pathData="M8,40 L10,40 L10,42 L8,42 Z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M98,90 L99,90 L99,91 L98,91 Z"/>
+
 </vector>
