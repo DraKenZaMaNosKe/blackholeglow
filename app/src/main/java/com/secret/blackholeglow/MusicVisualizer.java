@@ -23,6 +23,14 @@ public class MusicVisualizer {
     private float trebleLevel = 0f;      // Agudos (0.0 - 1.0)
     private float volumeLevel = 0f;      // Volumen general (0.0 - 1.0)
 
+    // ════════════════════════════════════════════════════════════════════════
+    // BANDAS DE FRECUENCIA DETALLADAS (para ecualizador realista)
+    // 32 bandas que cubren todo el espectro audible
+    // ════════════════════════════════════════════════════════════════════════
+    private static final int NUM_BANDS = 32;
+    private float[] frequencyBands = new float[NUM_BANDS];
+    private float[] smoothedBands = new float[NUM_BANDS];
+
     // Detección de beats
     private float beatIntensity = 0f;    // Intensidad del beat actual
     private boolean isBeat = false;      // ¿Hay un beat ahora?
@@ -33,8 +41,8 @@ public class MusicVisualizer {
     private static final float BEAT_THRESHOLD = 1.5f;  // Umbral para detectar beats
     private static final int MIN_BEAT_INTERVAL_MS = 200;  // Mínimo tiempo entre beats
 
-    // Suavizado de valores (para evitar cambios bruscos)
-    private static final float SMOOTHING_FACTOR = 0.3f;
+    // Suavizado de valores (más alto = más reactivo, más bajo = más suave)
+    private static final float SMOOTHING_FACTOR = 0.45f;  // Aumentado para mejor respuesta
     private float smoothedBass = 0f;
     private float smoothedMid = 0f;
     private float smoothedTreble = 0f;
@@ -148,73 +156,105 @@ public class MusicVisualizer {
     }
 
     /**
-     * Procesa datos FFT para extraer niveles de frecuencias (bass, mid, treble)
+     * Procesa datos FFT para extraer niveles de frecuencias
      * FFT data format: [0]=DC, [1]=real[1], [2]=imag[1], ..., [n-2]=real[n/2], [n-1]=imag[n/2]
+     *
+     * NUEVO: Extrae 32 bandas de frecuencia para un ecualizador más realista
      */
     private void processFft(byte[] fft) {
         if (fft == null || fft.length < 4) return;
 
-        // Rangos de frecuencias (índices en el array FFT)
-        // Nota: La frecuencia = (índice * sampleRate) / captureSize
-        // Asumiendo sampleRate ~44100 Hz, captureSize=512
+        // ════════════════════════════════════════════════════════════════════════
+        // EXTRAER 32 BANDAS DE FRECUENCIA (escala logarítmica como ecualizadores reales)
+        // Frecuencias bajas tienen más resolución que las altas
+        // ════════════════════════════════════════════════════════════════════════
 
-        int bassEnd = 8;       // ~0-690 Hz (bajos profundos)
-        int midEnd = 32;       // ~690-2760 Hz (medios)
-        int trebleEnd = 64;    // ~2760-5520 Hz (agudos)
+        int fftSize = fft.length / 2;  // Número de bins de frecuencia
 
-        float bassSum = 0f;
-        float midSum = 0f;
-        float trebleSum = 0f;
+        // Distribución logarítmica de bandas (más resolución en bajos)
+        // Cada banda cubre un rango de frecuencias que crece exponencialmente
+        for (int band = 0; band < NUM_BANDS; band++) {
+            // Calcular rango de bins para esta banda (escala logarítmica)
+            float startRatio = (float) Math.pow(band / (float) NUM_BANDS, 1.5f);
+            float endRatio = (float) Math.pow((band + 1) / (float) NUM_BANDS, 1.5f);
 
-        // Calcular magnitud para cada rango de frecuencias
-        // Magnitud = sqrt(real^2 + imag^2)
+            int startBin = Math.max(1, (int) (startRatio * fftSize));
+            int endBin = Math.min(fftSize - 1, (int) (endRatio * fftSize));
 
-        // BAJOS (índices 2 a bassEnd)
-        for (int i = 2; i < Math.min(bassEnd * 2, fft.length); i += 2) {
-            float real = (float) fft[i];
-            float imag = (i + 1 < fft.length) ? (float) fft[i + 1] : 0f;
-            bassSum += Math.sqrt(real * real + imag * imag);
+            if (endBin <= startBin) endBin = startBin + 1;
+
+            // Calcular magnitud promedio para esta banda
+            float sum = 0f;
+            int count = 0;
+            for (int i = startBin; i <= endBin && i * 2 + 1 < fft.length; i++) {
+                float real = (float) fft[i * 2];
+                float imag = (float) fft[i * 2 + 1];
+                float magnitude = (float) Math.sqrt(real * real + imag * imag);
+                sum += magnitude;
+                count++;
+            }
+
+            float avgMagnitude = count > 0 ? sum / count : 0f;
+
+            // Normalizar con compensación por frecuencia (las altas necesitan más boost)
+            // Las frecuencias altas tienen menos energía naturalmente
+            float freqCompensation = 1.0f + (band / (float) NUM_BANDS) * 2.5f;
+            float normalized = (avgMagnitude / 128f) * freqCompensation;
+
+            // Aplicar curva de compresión para mejor rango dinámico
+            // Esto hace que valores bajos sean más visibles sin saturar los altos
+            float compressed = (float) Math.pow(normalized, 0.6f);
+
+            // Limitar al rango 0-1
+            frequencyBands[band] = Math.min(1.0f, compressed);
         }
 
-        // MEDIOS (índices bassEnd a midEnd)
-        for (int i = bassEnd * 2; i < Math.min(midEnd * 2, fft.length); i += 2) {
-            float real = (float) fft[i];
-            float imag = (i + 1 < fft.length) ? (float) fft[i + 1] : 0f;
-            midSum += Math.sqrt(real * real + imag * imag);
+        // Suavizar cada banda individualmente (decay más lento que subida)
+        for (int band = 0; band < NUM_BANDS; band++) {
+            if (frequencyBands[band] > smoothedBands[band]) {
+                // Subida rápida
+                smoothedBands[band] = smoothedBands[band] * 0.3f + frequencyBands[band] * 0.7f;
+            } else {
+                // Bajada más lenta (efecto "caída" de ecualizador)
+                smoothedBands[band] = smoothedBands[band] * 0.85f + frequencyBands[band] * 0.15f;
+            }
         }
 
-        // AGUDOS (índices midEnd a trebleEnd)
-        for (int i = midEnd * 2; i < Math.min(trebleEnd * 2, fft.length); i += 2) {
-            float real = (float) fft[i];
-            float imag = (i + 1 < fft.length) ? (float) fft[i + 1] : 0f;
-            trebleSum += Math.sqrt(real * real + imag * imag);
-        }
+        // ════════════════════════════════════════════════════════════════════════
+        // CALCULAR BASS, MID, TREBLE (para compatibilidad con código existente)
+        // ════════════════════════════════════════════════════════════════════════
+        float bassSum = 0f, midSum = 0f, trebleSum = 0f;
 
-        // Normalizar (dividir por número de muestras y escalar)
-        bassLevel = Math.min(1.0f, bassSum / (bassEnd * 128f));
-        midLevel = Math.min(1.0f, midSum / ((midEnd - bassEnd) * 128f));
-        trebleLevel = Math.min(1.0f, trebleSum / ((trebleEnd - midEnd) * 128f));
+        // Bass: bandas 0-7 (frecuencias más bajas)
+        for (int i = 0; i < 8; i++) bassSum += smoothedBands[i];
+        bassLevel = Math.min(1.0f, bassSum / 5f);
 
-        // Suavizar valores
-        smoothedBass = smoothedBass * (1f - SMOOTHING_FACTOR) + bassLevel * SMOOTHING_FACTOR;
-        smoothedMid = smoothedMid * (1f - SMOOTHING_FACTOR) + midLevel * SMOOTHING_FACTOR;
-        smoothedTreble = smoothedTreble * (1f - SMOOTHING_FACTOR) + trebleLevel * SMOOTHING_FACTOR;
+        // Mid: bandas 8-20
+        for (int i = 8; i < 20; i++) midSum += smoothedBands[i];
+        midLevel = Math.min(1.0f, midSum / 8f);
 
-        // Detectar audio significativo (no solo silencio)
+        // Treble: bandas 20-31
+        for (int i = 20; i < NUM_BANDS; i++) trebleSum += smoothedBands[i];
+        trebleLevel = Math.min(1.0f, trebleSum / 8f);
+
+        // Suavizar valores legacy
+        smoothedBass = smoothedBass * 0.6f + bassLevel * 0.4f;
+        smoothedMid = smoothedMid * 0.6f + midLevel * 0.4f;
+        smoothedTreble = smoothedTreble * 0.6f + trebleLevel * 0.4f;
+
+        // Detectar audio significativo
         float totalEnergy = smoothedBass + smoothedMid + smoothedTreble;
         if (totalEnergy > SILENCE_THRESHOLD) {
             lastSignificantAudioTime = System.currentTimeMillis();
             hasReceivedSignificantAudio = true;
         }
 
-        // Log SOLO cada 5 segundos para evitar overhead
+        // Log cada 5 segundos
         long now = System.currentTimeMillis();
         if (now - lastLogTime > 5000) {
             boolean hasSignificant = (totalEnergy > SILENCE_THRESHOLD);
             String audioStatus = hasSignificant ? "✓AUDIO" : "✗silencio";
-
-            // Log simplificado
-            if (hasSignificant || (now - lastLogTime > 10000)) {  // Log silencio cada 10s
+            if (hasSignificant || (now - lastLogTime > 10000)) {
                 Log.d(TAG, String.format("🎵 Bass:%.2f Mid:%.2f Treble:%.2f Energy:%.2f %s",
                     smoothedBass, smoothedMid, smoothedTreble, totalEnergy, audioStatus));
             }
@@ -223,6 +263,31 @@ public class MusicVisualizer {
     }
 
     // ========== GETTERS PARA VALORES DE AUDIO ==========
+
+    /**
+     * Obtiene las 32 bandas de frecuencia suavizadas
+     * Ideal para ecualizadores con muchas barras
+     */
+    public float[] getFrequencyBands() {
+        return smoothedBands;
+    }
+
+    /**
+     * Obtiene el número de bandas disponibles
+     */
+    public int getNumBands() {
+        return NUM_BANDS;
+    }
+
+    /**
+     * Obtiene una banda específica (0 a NUM_BANDS-1)
+     */
+    public float getBand(int index) {
+        if (index >= 0 && index < NUM_BANDS) {
+            return smoothedBands[index];
+        }
+        return 0f;
+    }
 
     public float getBassLevel() {
         return smoothedBass;

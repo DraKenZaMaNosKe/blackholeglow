@@ -153,6 +153,11 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         if (musicVisualizer != null) {
             WallpaperScene scene = sceneFactory.getCurrentScene();
             if (scene instanceof BatallaCosmicaScene) {
+                // Usar las 32 bandas de frecuencia para mejor visualización
+                ((BatallaCosmicaScene) scene).updateMusicBands(
+                    musicVisualizer.getFrequencyBands()
+                );
+                // También actualizar los valores legacy (bass/mid/treble)
                 ((BatallaCosmicaScene) scene).updateMusicLevels(
                     musicVisualizer.getBassLevel(),
                     musicVisualizer.getMidLevel(),

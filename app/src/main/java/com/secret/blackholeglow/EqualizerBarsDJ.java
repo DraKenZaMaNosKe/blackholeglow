@@ -76,8 +76,54 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     private float midLevel = 0f;
     private float trebleLevel = 0f;
 
-    private static final float SMOOTHING_UP = 0.35f;
-    private static final float SMOOTHING_DOWN = 0.10f;
+    private static final float SMOOTHING_UP = 0.40f;   // Subida rápida
+    private static final float SMOOTHING_DOWN = 0.15f;  // Bajada más rápida (era 0.10)
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 💥 BEAT DETECTION - Detección de ritmo con historial de energía
+    // ════════════════════════════════════════════════════════════════════════
+    private static final int ENERGY_HISTORY_SIZE = 43;  // ~1 segundo de historia a 43fps
+    private float[] energyHistory = new float[ENERGY_HISTORY_SIZE];
+    private int energyHistoryIndex = 0;
+    private float lastBassEnergy = 0f;
+    private float bassEnergyHistory = 0f;
+    private boolean beatDetected = false;
+    private float beatIntensity = 0f;
+    private float timeSinceLastBeat = 1.0f;
+    private float warmupTime = 0f;
+    private static final float BEAT_SENSITIVITY = 0.8f;    // MUY sensible
+    private static final float BEAT_COOLDOWN = 0.15f;      // 150ms (400 BPM max)
+    private static final float BEAT_DECAY = 1.5f;          // Decay visual
+    private static final float WARMUP_DURATION = 0.2f;     // Warmup corto
+    private int beatCounter = 0;
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ✨ SISTEMA DE PARTÍCULAS - Chispas que explotan en los beats
+    // ════════════════════════════════════════════════════════════════════════
+    private static final int MAX_PARTICLES = 100;  // Más partículas
+    private float[] particleX = new float[MAX_PARTICLES];
+    private float[] particleY = new float[MAX_PARTICLES];
+    private float[] particleVX = new float[MAX_PARTICLES];
+    private float[] particleVY = new float[MAX_PARTICLES];
+    private float[] particleLife = new float[MAX_PARTICLES];
+    private float[] particleR = new float[MAX_PARTICLES];
+    private float[] particleG = new float[MAX_PARTICLES];
+    private float[] particleB = new float[MAX_PARTICLES];
+    private int particleCount = 0;
+    private java.util.Random random = new java.util.Random();
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 🌊 ONDAS DE ENERGÍA - Se expanden en los beats
+    // ════════════════════════════════════════════════════════════════════════
+    private static final int MAX_WAVES = 5;  // Más ondas
+    private float[] waveRadius = new float[MAX_WAVES];
+    private float[] waveAlpha = new float[MAX_WAVES];
+    private float[] waveR = new float[MAX_WAVES];
+    private float[] waveG = new float[MAX_WAVES];
+    private float[] waveB = new float[MAX_WAVES];
+    private int waveIndex = 0;
+    private static final float WAVE_SPEED = 0.8f;  // Más lento para verse mejor
+    private static final float WAVE_MAX_RADIUS = 0.8f;  // Más grande
 
     // ════════════════════════════════════════════════════════════════════════
     // OPENGL
@@ -93,6 +139,15 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     private FloatBuffer glowColorBuffer;
     private FloatBuffer peakVertexBuffer;
     private FloatBuffer peakColorBuffer;
+
+    // Buffers para partículas
+    private FloatBuffer particleVertexBuffer;
+    private FloatBuffer particleColorBuffer;
+
+    // Buffers para ondas de energía
+    private static final int WAVE_SEGMENTS = 32;
+    private FloatBuffer waveVertexBuffer;
+    private FloatBuffer waveColorBuffer;
 
     private final float[] projectionMatrix = new float[16];
 
@@ -195,10 +250,18 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         peakVertexBuffer = createFloatBuffer(vertexCount);
         peakColorBuffer = createFloatBuffer(NUM_BARS * 4 * 4);
 
+        // Buffers para partículas (cada partícula es un quad = 4 vértices) - 100 max
+        particleVertexBuffer = createFloatBuffer(100 * 4 * 3);
+        particleColorBuffer = createFloatBuffer(100 * 4 * 4);
+
+        // Buffers para ondas (cada onda es un círculo de líneas)
+        waveVertexBuffer = createFloatBuffer(MAX_WAVES * WAVE_SEGMENTS * 2 * 3);
+        waveColorBuffer = createFloatBuffer(MAX_WAVES * WAVE_SEGMENTS * 2 * 4);
+
         Matrix.setIdentityM(projectionMatrix, 0);
 
         initialized = true;
-        Log.d(TAG, "✓ EqualizerBarsDJ v2.0 inicializado con glow y peaks");
+        Log.d(TAG, "✓ EqualizerBarsDJ v3.0 inicializado con glow, peaks, partículas y ondas");
     }
 
     private FloatBuffer createFloatBuffer(int size) {
@@ -223,41 +286,175 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     }
 
     /**
-     * Actualiza los niveles de música
+     * Actualiza los niveles de música (método legacy)
      */
     public void updateMusicLevels(float bass, float mid, float treble) {
         this.bassLevel = bass;
         this.midLevel = mid;
         this.trebleLevel = treble;
+        // Este método ya no se usa directamente, updateFromBands lo reemplaza
+    }
 
-        int center = NUM_BARS / 2;
+    /**
+     * 🎵 Actualiza usando las 32 bandas de frecuencia directamente
+     * Incluye detección de beats para efectos especiales
+     */
+    public void updateFromBands(float[] bands) {
+        if (bands == null || bands.length < NUM_BARS) return;
 
+        // ════════════════════════════════════════════════════════════════════════
+        // 💥 BEAT DETECTION - Algoritmo con historial de energía
+        // ════════════════════════════════════════════════════════════════════════
+
+        // Calcular energía actual de bass (bandas 0-5 = sub-bass y kick)
+        float currentBassEnergy = 0f;
+        for (int i = 0; i < 6; i++) {
+            currentBassEnergy += bands[i];
+        }
+        currentBassEnergy /= 6f;
+
+        // Guardar en historial circular
+        energyHistory[energyHistoryIndex] = currentBassEnergy;
+        energyHistoryIndex = (energyHistoryIndex + 1) % ENERGY_HISTORY_SIZE;
+
+        // Calcular promedio del historial
+        float avgEnergy = 0f;
+        for (int i = 0; i < ENERGY_HISTORY_SIZE; i++) {
+            avgEnergy += energyHistory[i];
+        }
+        avgEnergy /= ENERGY_HISTORY_SIZE;
+
+        // Calcular varianza para adaptarse al volumen
+        float variance = 0f;
+        for (int i = 0; i < ENERGY_HISTORY_SIZE; i++) {
+            float diff = energyHistory[i] - avgEnergy;
+            variance += diff * diff;
+        }
+        variance /= ENERGY_HISTORY_SIZE;
+        float stdDev = (float)Math.sqrt(variance);
+
+        // Threshold dinámico: promedio + (sensibilidad * desviación estándar)
+        float dynamicThreshold = avgEnergy + BEAT_SENSITIVITY * Math.max(stdDev, 0.05f);
+
+        // Detectar beat: energía actual supera threshold Y hay subida respecto al frame anterior
+        boolean isRising = currentBassEnergy > lastBassEnergy * 1.1f;  // Subiendo al menos 10%
+        boolean isBeatCandidate = currentBassEnergy > dynamicThreshold && isRising;
+
+        if (isBeatCandidate &&
+            timeSinceLastBeat > BEAT_COOLDOWN &&
+            warmupTime > WARMUP_DURATION) {
+
+            // ¡BEAT DETECTADO! 💥
+            beatDetected = true;
+            float excessEnergy = (currentBassEnergy - avgEnergy) / Math.max(avgEnergy, 0.1f);
+            beatIntensity = Math.min(1.0f, excessEnergy * 1.5f);
+            timeSinceLastBeat = 0f;
+            beatCounter++;
+
+            // Crear efectos visuales
+            spawnBeatParticles(beatIntensity);
+            spawnEnergyWave(beatIntensity);
+        }
+
+        // Actualizar historial
+        bassEnergyHistory = bassEnergyHistory * 0.8f + currentBassEnergy * 0.2f;
+        lastBassEnergy = currentBassEnergy;
+
+        // ════════════════════════════════════════════════════════════════════════
+        // ACTUALIZAR NIVELES DE BARRAS
+        // ════════════════════════════════════════════════════════════════════════
         for (int i = 0; i < NUM_BARS; i++) {
-            float distFromCenter = Math.abs(i - center) / (float) center;
+            float level = bands[i];
 
-            // Mezcla: centro = más bass, lados = más treble
-            float bassWeight = 1.0f - distFromCenter * 0.7f;
-            float midWeight = 0.5f + distFromCenter * 0.3f;
-            float trebleWeight = distFromCenter * 0.9f;
-
-            float level = bass * bassWeight * 1.6f +
-                         mid * midWeight * 1.3f +
-                         treble * trebleWeight * 2.2f;
-
-            // Variación sutil
-            float variation = (float) Math.sin(i * 0.8f + System.currentTimeMillis() * 0.004f) * 0.08f;
-            level += variation * level;
-
+            // Aplicar curva simétrica
             level *= heightMultipliers[i];
 
-            targetLevels[i] = Math.max(0.08f, Math.min(1.0f, level));
+            // Compensación por frecuencia
+            float freqBoost = 1.0f + (i / (float)NUM_BARS) * 0.8f;
+            level *= freqBoost;
+
+            // 💥 BEAT BOOST - Las barras saltan más en los beats
+            if (beatIntensity > 0.1f) {
+                // Las barras de bass reciben más boost
+                float bassInfluence = 1.0f - (i / (float)NUM_BARS);
+                level += beatIntensity * 0.3f * bassInfluence;
+            }
+
+            // Micro variación solo cuando hay nivel real
+            if (level > 0.05f) {
+                float microVariation = (float) Math.sin(i * 1.2f + System.currentTimeMillis() * 0.006f) * 0.015f;
+                level += microVariation * level;
+            }
+
+            // Permitir que llegue a casi cero (min 0.005 en vez de 0.02)
+            targetLevels[i] = Math.max(0.005f, Math.min(0.95f, level));
         }
+    }
+
+    /**
+     * ✨ Genera chispas cuando hay un beat
+     */
+    private void spawnBeatParticles(float intensity) {
+        int numParticles = 15 + (int)(intensity * 20);  // 15-35 chispas por beat
+
+        for (int i = 0; i < numParticles && particleCount < MAX_PARTICLES; i++) {
+            int idx = particleCount;
+
+            // Posición inicial: desde las barras que tienen más energía
+            float xRange = aspectRatio * 0.85f;
+            particleX[idx] = (random.nextFloat() - 0.5f) * 2f * xRange;
+            particleY[idx] = BASE_Y + MAX_HEIGHT * (0.5f + random.nextFloat() * 0.4f);
+
+            // Velocidad: explotan en todas direcciones hacia arriba
+            float angle = (float)(Math.PI * 0.2f + random.nextFloat() * Math.PI * 0.6f);  // 36-144 grados
+            float speed = 0.4f + random.nextFloat() * 0.6f * (0.5f + intensity);
+            particleVX[idx] = (float)Math.cos(angle) * speed * (random.nextBoolean() ? 1 : -1);
+            particleVY[idx] = (float)Math.abs(Math.sin(angle)) * speed * 1.2f;  // Siempre hacia arriba
+
+            // Vida más larga para que se vean
+            particleLife[idx] = 0.8f + random.nextFloat() * 0.7f;
+
+            // Color: rosa/cyan según posición
+            float colorMix = random.nextFloat();
+            particleR[idx] = COLOR_BASS[0] * (1-colorMix) + COLOR_TREBLE[0] * colorMix;
+            particleG[idx] = COLOR_BASS[1] * (1-colorMix) + COLOR_TREBLE[1] * colorMix;
+            particleB[idx] = COLOR_BASS[2] * (1-colorMix) + COLOR_TREBLE[2] * colorMix;
+
+            particleCount++;
+        }
+    }
+
+    /**
+     * 🌊 Genera una onda de energía cuando hay un beat
+     */
+    private void spawnEnergyWave(float intensity) {
+        waveRadius[waveIndex] = 0.02f;
+        waveAlpha[waveIndex] = 0.9f * intensity;  // Más visible
+
+        // Color de la onda basado en intensidad
+        if (intensity > 0.5f) {
+            // Beat fuerte: blanco/cyan brillante
+            waveR[waveIndex] = 1.0f;
+            waveG[waveIndex] = 1.0f;
+            waveB[waveIndex] = 1.0f;
+        } else {
+            // Beat normal: rosa/magenta
+            waveR[waveIndex] = 1.0f;
+            waveG[waveIndex] = 0.4f;
+            waveB[waveIndex] = 0.8f;
+        }
+
+        Log.d(TAG, "🌊 Wave spawned at index " + waveIndex + " alpha=" + waveAlpha[waveIndex]);
+        waveIndex = (waveIndex + 1) % MAX_WAVES;
     }
 
     @Override
     public void update(float deltaTime) {
         if (!initialized) return;
 
+        // ════════════════════════════════════════════════════════════════════════
+        // ACTUALIZAR BARRAS Y PEAKS
+        // ════════════════════════════════════════════════════════════════════════
         for (int i = 0; i < NUM_BARS; i++) {
             float target = targetLevels[i];
             float current = smoothedLevels[i];
@@ -273,18 +470,76 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
 
             // Actualizar peak markers
             if (barLevels[i] > peakLevels[i]) {
-                // Nuevo peak
                 peakLevels[i] = barLevels[i];
                 peakHoldTime[i] = PEAK_HOLD_TIME;
             } else {
-                // Decrementar hold time
                 peakHoldTime[i] -= deltaTime;
                 if (peakHoldTime[i] <= 0) {
-                    // Peak cae
                     peakLevels[i] -= PEAK_FALL_SPEED * deltaTime;
                     if (peakLevels[i] < barLevels[i]) {
                         peakLevels[i] = barLevels[i];
                     }
+                }
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════════════
+        // 💥 ACTUALIZAR BEAT INTENSITY (decay) y WARMUP
+        // ════════════════════════════════════════════════════════════════════════
+        timeSinceLastBeat += deltaTime;
+        warmupTime += deltaTime;  // Contador de warmup
+
+        if (beatIntensity > 0) {
+            beatIntensity -= BEAT_DECAY * deltaTime;
+            if (beatIntensity < 0) beatIntensity = 0;
+        }
+        beatDetected = false;
+
+        // ════════════════════════════════════════════════════════════════════════
+        // ✨ ACTUALIZAR PARTÍCULAS
+        // ════════════════════════════════════════════════════════════════════════
+        int aliveParticles = 0;
+        for (int i = 0; i < particleCount; i++) {
+            particleLife[i] -= deltaTime;
+
+            if (particleLife[i] > 0) {
+                // Mover partícula
+                particleX[i] += particleVX[i] * deltaTime;
+                particleY[i] += particleVY[i] * deltaTime;
+
+                // Gravedad suave
+                particleVY[i] -= 0.8f * deltaTime;
+
+                // Fricción del aire
+                particleVX[i] *= 0.98f;
+                particleVY[i] *= 0.98f;
+
+                // Compactar array (mover partículas vivas al frente)
+                if (aliveParticles != i) {
+                    particleX[aliveParticles] = particleX[i];
+                    particleY[aliveParticles] = particleY[i];
+                    particleVX[aliveParticles] = particleVX[i];
+                    particleVY[aliveParticles] = particleVY[i];
+                    particleLife[aliveParticles] = particleLife[i];
+                    particleR[aliveParticles] = particleR[i];
+                    particleG[aliveParticles] = particleG[i];
+                    particleB[aliveParticles] = particleB[i];
+                }
+                aliveParticles++;
+            }
+        }
+        particleCount = aliveParticles;
+
+        // ════════════════════════════════════════════════════════════════════════
+        // 🌊 ACTUALIZAR ONDAS DE ENERGÍA
+        // ════════════════════════════════════════════════════════════════════════
+        for (int i = 0; i < MAX_WAVES; i++) {
+            if (waveAlpha[i] > 0) {
+                waveRadius[i] += WAVE_SPEED * deltaTime;
+                waveAlpha[i] -= 0.8f * deltaTime;  // Fade más lento (era 1.5)
+
+                if (waveRadius[i] > WAVE_MAX_RADIUS || waveAlpha[i] <= 0) {
+                    waveAlpha[i] = 0;
                 }
             }
         }
@@ -319,6 +574,12 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         // 3. Dibujar peak markers
         updatePeakGeometry();
         drawBuffers(peakVertexBuffer, peakColorBuffer);
+
+        // 4. 🌊 Dibujar ondas de energía (detrás de las partículas)
+        drawEnergyWaves();
+
+        // 5. ✨ Dibujar partículas explosivas
+        drawParticles();
 
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
     }
@@ -577,6 +838,212 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
 
     public boolean isInitialized() {
         return initialized;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ✨ DIBUJO DE PARTÍCULAS
+    // ════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Dibuja las partículas explosivas que salen de las barras en los beats
+     */
+    private void drawParticles() {
+        if (particleCount == 0) return;
+
+        // Log siempre que hay partículas
+        Log.d(TAG, "🎆 DRAW " + particleCount + " particles at Y=" +
+              String.format("%.2f", particleY[0]));
+
+        // Asegurar que el shader y matriz estén activos
+        GLES20.glUseProgram(shaderProgram);
+        GLES20.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, projectionMatrix, 0);
+
+        // Usar blending aditivo para que las partículas brillen
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
+
+        float[] vertices = new float[particleCount * 4 * 3];
+        float[] colors = new float[particleCount * 4 * 4];
+
+        float particleSize = 0.03f;  // Tamaño visible
+
+        for (int i = 0; i < particleCount; i++) {
+            float x = particleX[i];
+            float y = particleY[i];
+            float life = particleLife[i];
+
+            // Tamaño basado en vida
+            float size = particleSize * (0.6f + life * 0.4f);
+
+            int vi = i * 12;
+            int ci = i * 16;
+
+            // Quad de la partícula
+            vertices[vi + 0] = x - size;
+            vertices[vi + 1] = y - size;
+            vertices[vi + 2] = 0f;
+
+            vertices[vi + 3] = x + size;
+            vertices[vi + 4] = y - size;
+            vertices[vi + 5] = 0f;
+
+            vertices[vi + 6] = x - size;
+            vertices[vi + 7] = y + size;
+            vertices[vi + 8] = 0f;
+
+            vertices[vi + 9] = x + size;
+            vertices[vi + 10] = y + size;
+            vertices[vi + 11] = 0f;
+
+            // Color MUY brillante (blanco/rosa)
+            float alpha = Math.min(1.0f, life * 1.5f);
+
+            // Colores muy saturados y brillantes
+            for (int j = 0; j < 4; j++) {
+                colors[ci + j * 4 + 0] = 1.0f;  // R máximo
+                colors[ci + j * 4 + 1] = 0.5f + life * 0.5f;  // G
+                colors[ci + j * 4 + 2] = 1.0f;  // B máximo (rosa/magenta brillante)
+                colors[ci + j * 4 + 3] = alpha;
+            }
+        }
+
+        // Actualizar buffers
+        particleVertexBuffer.clear();
+        particleVertexBuffer.put(vertices);
+        particleVertexBuffer.position(0);
+
+        particleColorBuffer.clear();
+        particleColorBuffer.put(colors);
+        particleColorBuffer.position(0);
+
+        // Dibujar
+        GLES20.glEnableVertexAttribArray(aPositionHandle);
+        GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, particleVertexBuffer);
+
+        GLES20.glEnableVertexAttribArray(aColorHandle);
+        GLES20.glVertexAttribPointer(aColorHandle, 4, GLES20.GL_FLOAT, false, 0, particleColorBuffer);
+
+        for (int i = 0; i < particleCount; i++) {
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, i * 4, 4);
+        }
+
+        GLES20.glDisableVertexAttribArray(aPositionHandle);
+        GLES20.glDisableVertexAttribArray(aColorHandle);
+
+        // Restaurar blending normal
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 🌊 DIBUJO DE ONDAS DE ENERGÍA
+    // ════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Dibuja las ondas de energía que se expanden desde las barras en los beats
+     */
+    private void drawEnergyWaves() {
+        // Contar ondas activas
+        int activeWaves = 0;
+        for (int i = 0; i < MAX_WAVES; i++) {
+            if (waveAlpha[i] > 0) activeWaves++;
+        }
+        if (activeWaves == 0) return;
+
+        // Asegurar shader y matriz activos
+        GLES20.glUseProgram(shaderProgram);
+        GLES20.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, projectionMatrix, 0);
+
+        // Usar blending aditivo para ondas brillantes
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
+
+        // Centro de las ondas (donde están las barras)
+        float centerX = 0f;
+        float centerY = BASE_Y + 0.15f;
+
+        float[] vertices = new float[MAX_WAVES * WAVE_SEGMENTS * 2 * 3];
+        float[] colors = new float[MAX_WAVES * WAVE_SEGMENTS * 2 * 4];
+
+        int vertexIndex = 0;
+        int colorIndex = 0;
+        int segmentsDrawn = 0;
+
+        for (int w = 0; w < MAX_WAVES; w++) {
+            if (waveAlpha[w] <= 0) continue;
+
+            float radius = waveRadius[w];
+            float alpha = waveAlpha[w];
+
+            // Dibujar círculo como una serie de líneas
+            for (int s = 0; s < WAVE_SEGMENTS; s++) {
+                float angle1 = (float)(s * 2 * Math.PI / WAVE_SEGMENTS);
+                float angle2 = (float)((s + 1) * 2 * Math.PI / WAVE_SEGMENTS);
+
+                // Solo dibujar la mitad superior del círculo (semicírculo hacia arriba)
+                if (angle1 > Math.PI) continue;
+
+                float x1 = centerX + (float)Math.cos(angle1) * radius * aspectRatio;
+                float y1 = centerY + (float)Math.sin(angle1) * radius;
+                float x2 = centerX + (float)Math.cos(angle2) * radius * aspectRatio;
+                float y2 = centerY + (float)Math.sin(angle2) * radius;
+
+                // Línea (2 vértices)
+                vertices[vertexIndex++] = x1;
+                vertices[vertexIndex++] = y1;
+                vertices[vertexIndex++] = 0f;
+
+                vertices[vertexIndex++] = x2;
+                vertices[vertexIndex++] = y2;
+                vertices[vertexIndex++] = 0f;
+
+                // Colores con fade hacia afuera
+                float fadeOuter = 1.0f - (radius / WAVE_MAX_RADIUS);
+                float finalAlpha = alpha * fadeOuter;
+
+                // Color 1
+                colors[colorIndex++] = waveR[w];
+                colors[colorIndex++] = waveG[w];
+                colors[colorIndex++] = waveB[w];
+                colors[colorIndex++] = finalAlpha;
+
+                // Color 2
+                colors[colorIndex++] = waveR[w];
+                colors[colorIndex++] = waveG[w];
+                colors[colorIndex++] = waveB[w];
+                colors[colorIndex++] = finalAlpha;
+
+                segmentsDrawn++;
+            }
+        }
+
+        if (segmentsDrawn == 0) {
+            GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+            return;
+        }
+
+        // Actualizar buffers
+        waveVertexBuffer.clear();
+        waveVertexBuffer.put(vertices, 0, vertexIndex);
+        waveVertexBuffer.position(0);
+
+        waveColorBuffer.clear();
+        waveColorBuffer.put(colors, 0, colorIndex);
+        waveColorBuffer.position(0);
+
+        // Dibujar líneas
+        GLES20.glLineWidth(3.0f);
+
+        GLES20.glEnableVertexAttribArray(aPositionHandle);
+        GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, waveVertexBuffer);
+
+        GLES20.glEnableVertexAttribArray(aColorHandle);
+        GLES20.glVertexAttribPointer(aColorHandle, 4, GLES20.GL_FLOAT, false, 0, waveColorBuffer);
+
+        GLES20.glDrawArrays(GLES20.GL_LINES, 0, segmentsDrawn * 2);
+
+        GLES20.glDisableVertexAttribArray(aPositionHandle);
+        GLES20.glDisableVertexAttribArray(aColorHandle);
+
+        // Restaurar blending normal
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
     }
 
     /**

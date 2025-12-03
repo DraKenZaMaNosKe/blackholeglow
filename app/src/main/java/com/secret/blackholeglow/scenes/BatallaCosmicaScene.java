@@ -666,6 +666,23 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         }
     }
 
+    /**
+     * 🎵 NUEVO: Actualiza usando las 32 bandas de frecuencia para mejor visualización
+     */
+    public void updateMusicBands(float[] bands) {
+        if (bands == null) return;
+
+        // 🎵 EqualizerBarsDJ usa las 32 bandas directamente (PRINCIPAL)
+        if (equalizerDJ != null) {
+            equalizerDJ.updateFromBands(bands);
+        }
+
+        // MusicIndicator 2D usa bandas directamente para variación realista
+        if (musicIndicator != null) {
+            musicIndicator.updateFromBands(bands);
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // 🎮 GETTERS PARA INTERACCIÓN
     // ═══════════════════════════════════════════════════════════════════════

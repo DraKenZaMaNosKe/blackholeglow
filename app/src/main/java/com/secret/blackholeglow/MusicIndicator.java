@@ -271,8 +271,8 @@ public class MusicIndicator implements SceneObject {
     }
 
     /**
-     * Actualiza los niveles de música con distribución de 7 bandas de frecuencia (óptimo)
-     * Mapea 3 bandas básicas (bass, mid, treble) a 7 barras visuales con interpolación
+     * Actualiza los niveles de música con distribución de 7 bandas de frecuencia
+     * NUEVO: Usa las 32 bandas del MusicVisualizer para mayor precisión
      */
     public void updateMusicLevels(float bass, float mid, float treble) {
         this.bassLevel = bass;
@@ -285,69 +285,124 @@ public class MusicIndicator implements SceneObject {
         float totalEnergy = bass + mid * 0.5f + treble * 0.3f;
         float bassJump = bass - lastBassLevel;
 
-        // Si hay un salto brusco de energía = BEAT detectado
         if (bassJump > BEAT_THRESHOLD || (totalEnergy - energyHistory) > BEAT_THRESHOLD * 1.5f) {
-            currentBeatBoost = BEAT_BOOST;  // Activar boost
+            currentBeatBoost = BEAT_BOOST;
         }
 
         lastBassLevel = bass;
-        energyHistory = energyHistory * 0.9f + totalEnergy * 0.1f;  // Suavizar historial
-
-        // Detectar si hay música reproduciéndose
-        musicPlaying = totalEnergy > 0.15f;
+        energyHistory = energyHistory * 0.9f + totalEnergy * 0.1f;
+        musicPlaying = totalEnergy > 0.08f;
 
         // ════════════════════════════════════════════════════════════════════════
-        // DISTRIBUCIÓN DE 3 BANDAS (bass, mid, treble) → 7 BARRAS (ÓPTIMO)
+        // DISTRIBUCIÓN MEJORADA - Más variación entre barras
         // ════════════════════════════════════════════════════════════════════════
 
-        // Barra 0: SUB-BASS (60-250 Hz) - Bass puro con énfasis en graves profundos
-        barLevels[0] = bass * 1.2f;  // Amplificado para que se note el bombo
+        // Barra 0: SUB-BASS - Solo bass puro (kick drum)
+        barLevels[0] = bass * 0.95f;
 
-        // Barra 1: BASS (250-500 Hz) - Bass dominante
-        barLevels[1] = bass * 0.9f + mid * 0.1f;
+        // Barra 1: BASS - Bass con algo de mid
+        barLevels[1] = bass * 0.7f + mid * 0.2f;
 
-        // Barra 2: MID-LOW (500-1000 Hz) - Bass + medios graves
-        barLevels[2] = bass * 0.4f + mid * 0.6f;
+        // Barra 2: LOW-MID - Transición bass a mid
+        barLevels[2] = bass * 0.3f + mid * 0.5f;
 
-        // Barra 3: MID (1000-2000 Hz) - Medios centrales (voces, piano)
-        barLevels[3] = bass * 0.1f + mid * 0.9f;
+        // Barra 3: MID - Medios puros (voces)
+        barLevels[3] = mid * 0.85f;
 
-        // Barra 4: MID-HIGH (2000-4000 Hz) - Medios altos + transición a agudos
-        barLevels[4] = mid * 0.6f + treble * 0.4f;
+        // Barra 4: HIGH-MID - Mid con treble
+        barLevels[4] = mid * 0.4f + treble * 0.5f;
 
-        // Barra 5: TREBLE (4000-8000 Hz) - Agudos (violín, claridad)
-        barLevels[5] = mid * 0.2f + treble * 0.8f;
+        // Barra 5: LOW-TREBLE - Más treble
+        barLevels[5] = mid * 0.15f + treble * 0.75f;
 
-        // Barra 6: AIR (8000-16000 Hz) - Súper agudos (platillos, aire, brillo)
-        barLevels[6] = treble * 1.0f;
+        // Barra 6: HIGH-TREBLE - Treble puro (hi-hats, cymbals)
+        barLevels[6] = treble * 0.9f;
 
         // ════════════════════════════════════════════════════════════════════════
-        // APLICAR SENSIBILIDAD + BEAT BOOST - Sistema ultra reactivo
+        // APLICAR SENSIBILIDAD DIFERENCIADA
         // ════════════════════════════════════════════════════════════════════════
         for (int i = 0; i < NUM_BARRAS; i++) {
-            // Aplicar sensibilidad por barra
             barLevels[i] = barLevels[i] * BAR_SENSITIVITY[i];
 
-            // Aplicar beat boost (afecta más a las barras treble)
-            float boostMultiplier = 1.0f + (i * 0.15f);  // Barras altas reciben más boost
-            barLevels[i] += currentBeatBoost * boostMultiplier;
+            // Beat boost más sutil
+            float boostMultiplier = 1.0f + (i * 0.1f);
+            barLevels[i] += currentBeatBoost * boostMultiplier * 0.5f;
 
-            // Mínimo de LEDs según si hay música o no
-            int minLeds = musicPlaying ? MIN_LEDS_WITH_MUSIC : MIN_LEDS_NO_MUSIC;
-            float minLevel = (float) minLeds / LEDS_POR_BARRA;
-            barLevels[i] = Math.max(barLevels[i], minLevel);
+            // Mínimo solo cuando hay música
+            if (musicPlaying) {
+                float minLevel = 0.08f + (i * 0.01f);  // Mínimo variable
+                barLevels[i] = Math.max(barLevels[i], minLevel);
+            }
 
-            // Limitar al máximo
-            barLevels[i] = Math.min(1.0f, barLevels[i]);
+            barLevels[i] = Math.min(0.95f, barLevels[i]);  // No llegar al 100%
+        }
+    }
+
+    /**
+     * 🎵 NUEVO: Actualiza usando las 32 bandas de frecuencia directamente
+     * Proporciona variación mucho más realista entre barras
+     */
+    public void updateFromBands(float[] bands) {
+        if (bands == null || bands.length < 7) return;
+
+        // ════════════════════════════════════════════════════════════════════════
+        // MAPEAR 32 BANDAS → 7 BARRAS (seleccionar bandas representativas)
+        // Esto da variación REAL porque cada barra usa bandas diferentes
+        // ════════════════════════════════════════════════════════════════════════
+
+        // Barra 0: SUB-BASS (bandas 0-3) - ~20-80 Hz
+        barLevels[0] = (bands[0] + bands[1] + bands[2] + bands[3]) / 4f;
+
+        // Barra 1: BASS (bandas 4-7) - ~80-200 Hz
+        barLevels[1] = (bands[4] + bands[5] + bands[6] + bands[7]) / 4f;
+
+        // Barra 2: LOW-MID (bandas 8-11) - ~200-500 Hz
+        barLevels[2] = (bands[8] + bands[9] + bands[10] + bands[11]) / 4f;
+
+        // Barra 3: MID (bandas 12-16) - ~500-1500 Hz
+        barLevels[3] = (bands[12] + bands[13] + bands[14] + bands[15] + bands[16]) / 5f;
+
+        // Barra 4: HIGH-MID (bandas 17-21) - ~1500-4000 Hz
+        barLevels[4] = (bands[17] + bands[18] + bands[19] + bands[20] + bands[21]) / 5f;
+
+        // Barra 5: LOW-TREBLE (bandas 22-26) - ~4000-8000 Hz
+        barLevels[5] = (bands[22] + bands[23] + bands[24] + bands[25] + bands[26]) / 5f;
+
+        // Barra 6: HIGH-TREBLE (bandas 27-31) - ~8000-16000 Hz
+        barLevels[6] = (bands[27] + bands[28] + bands[29] + bands[30] + bands[31]) / 5f;
+
+        // Detectar música
+        float totalEnergy = 0;
+        for (int i = 0; i < NUM_BARRAS; i++) totalEnergy += barLevels[i];
+        musicPlaying = totalEnergy > 0.3f;
+
+        // Beat detection basado en sub-bass
+        float bassJump = barLevels[0] - lastBassLevel;
+        if (bassJump > 0.15f) {
+            currentBeatBoost = BEAT_BOOST;
+        }
+        lastBassLevel = barLevels[0];
+
+        // Aplicar sensibilidad por barra (las treble necesitan más boost)
+        float[] bandSensitivity = {0.9f, 1.0f, 1.1f, 1.2f, 1.4f, 1.6f, 1.8f};
+        for (int i = 0; i < NUM_BARRAS; i++) {
+            barLevels[i] *= bandSensitivity[i];
+            barLevels[i] += currentBeatBoost * (0.5f + i * 0.1f);
+
+            // Mínimo sutil cuando hay música
+            if (musicPlaying) {
+                barLevels[i] = Math.max(barLevels[i], 0.05f);
+            }
+
+            // Limitar para que no todas lleguen al máximo
+            barLevels[i] = Math.min(0.92f, barLevels[i]);
         }
 
-        // Log cada 300 frames (reducido para performance)
-        if (frameCount % 300 == 0 && (bass > 0.05f || mid > 0.05f || treble > 0.05f)) {
-            Log.d(TAG, String.format("[MusicIndicator] 🎵 Bass:%.2f Mid:%.2f Treble:%.2f",
-                    bass, mid, treble));
-            Log.d(TAG, String.format("[MusicIndicator] 📊 Barras: [%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f]",
-                    barLevels[0], barLevels[1], barLevels[2], barLevels[3], barLevels[4],
-                    barLevels[5], barLevels[6]));
+        // Log reducido
+        if (frameCount % 300 == 0 && musicPlaying) {
+            Log.d(TAG, String.format("[EQ] Barras: %.2f %.2f %.2f %.2f %.2f %.2f %.2f",
+                    barLevels[0], barLevels[1], barLevels[2], barLevels[3],
+                    barLevels[4], barLevels[5], barLevels[6]));
         }
     }
 
