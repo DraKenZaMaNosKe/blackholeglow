@@ -64,6 +64,22 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
     private float velocityY = 0f;
     private float velocityZ = 0f;
 
+    // 🌍 Posición de la Tierra para colisiones
+    private static final float EARTH_X = 0f;
+    private static final float EARTH_Y = 1.8f;
+    private static final float EARTH_Z = 0f;
+    private static final float EARTH_RADIUS = 0.55f;  // Radio de la superficie de la Tierra
+
+    // 💥 Estado de explosión
+    private boolean exploding = false;
+    private float explosionTimer = 0f;
+    private static final float EXPLOSION_DURATION = 0.5f;  // Duración de la explosión
+    private float explosionScale = 1.0f;
+
+    // 🌍 Efecto de proximidad - desacelerar y reducir tamaño al acercarse
+    private float originalScale = 1.0f;  // Tamaño original al spawnearse
+    private static final float PROXIMITY_RANGE = 8.0f;  // Rango donde empieza el efecto
+
     public AsteroideRealista(Context context, TextureManager textureManager) {
         super(context, "shaders/asteroide_vertex.glsl", "shaders/asteroide_textured_fragment.glsl");
 
@@ -173,6 +189,7 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
         velocityZ = vz;
 
         scale = size;
+        originalScale = size;  // Guardar tamaño original para efecto de proximidad
 
         // Rotación aleatoria
         rotationX = (float)(Math.random() * 360);
@@ -182,6 +199,11 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
         spinSpeedX = (float)(Math.random() * 40 + 20);  // 20-60 deg/s
         spinSpeedY = (float)(Math.random() * 40 + 20);
         spinSpeedZ = (float)(Math.random() * 40 + 20);
+
+        // Reset estado de explosión
+        exploding = false;
+        explosionTimer = 0f;
+        explosionScale = 1.0f;
 
         Log.d(TAG, "[AsteroideRealista] Activado en pos(" + x + "," + y + "," + z + "), vel(" + vx + "," + vy + "," + vz + ")");
     }
@@ -194,13 +216,26 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
     }
 
     /**
-     * Inicia el impacto (simplemente desactiva)
+     * 💥 Inicia la explosión del asteroide en la superficie
      */
     public void impactar() {
-        if (estado == Estado.ACTIVO) {
-            desactivar();
-            Log.d(TAG, "[AsteroideRealista] ¡IMPACTO! Asteroide desaparece");
+        if (estado == Estado.ACTIVO && !exploding) {
+            exploding = true;
+            explosionTimer = 0f;
+            explosionScale = 1.0f;
+            // Detener el movimiento
+            velocityX = 0f;
+            velocityY = 0f;
+            velocityZ = 0f;
+            Log.d(TAG, "💥 [AsteroideRealista] ¡IMPACTO! Iniciando explosión en superficie");
         }
+    }
+
+    /**
+     * ❓ Verificar si el asteroide está explotando
+     */
+    public boolean isExploding() {
+        return exploding;
     }
 
     // Getters para el sistema de colisiones
@@ -243,6 +278,34 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
     public void update(float dt) {
         if (estado == Estado.INACTIVO) return;
 
+        // ═══════════════════════════════════════════════════════════
+        // 💥 MODO EXPLOSIÓN - Asteroide explotando en superficie
+        // ═══════════════════════════════════════════════════════════
+        if (exploding) {
+            explosionTimer += dt;
+
+            // Efecto de expansión y desvanecimiento
+            float progress = explosionTimer / EXPLOSION_DURATION;
+            explosionScale = 1.0f + progress * 2.0f;  // Expandirse al 300%
+
+            // Rotación rápida durante explosión
+            rotationX += spinSpeedX * 3.0f * dt;
+            rotationY += spinSpeedY * 3.0f * dt;
+            rotationZ += spinSpeedZ * 3.0f * dt;
+
+            // Terminar explosión y desactivar
+            if (explosionTimer >= EXPLOSION_DURATION) {
+                exploding = false;
+                desactivar();
+                Log.d(TAG, "💥 [AsteroideRealista] Explosión completada, asteroide destruido");
+            }
+            return;  // No procesar movimiento durante explosión
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // 🚀 MODO NORMAL - Volando hacia la Tierra
+        // ═══════════════════════════════════════════════════════════
+
         // Actualizar posición con velocidad
         posX += velocityX * dt;
         posY += velocityY * dt;
@@ -257,22 +320,63 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
         if (rotationY > 360f) rotationY -= 360f;
         if (rotationZ > 360f) rotationZ -= 360f;
 
-        // 🌍 Gravedad interna ya no se aplica aquí
-        // El sistema de gravedad de la Tierra se maneja en MeteorShower.aplicarGravedadTierra()
-        // Esto evita duplicar el efecto y permite control centralizado
-
-        // 🌍 Calcular distancia a la Tierra (Y=1.8)
-        float tierraX = 0f, tierraY = 1.8f, tierraZ = 0f;
-        float dxT = posX - tierraX;
-        float dyT = posY - tierraY;
-        float dzT = posZ - tierraZ;
+        // 🌍 Calcular distancia a la Tierra
+        float dxT = posX - EARTH_X;
+        float dyT = posY - EARTH_Y;
+        float dzT = posZ - EARTH_Z;
         float distTierra = (float) Math.sqrt(dxT*dxT + dyT*dyT + dzT*dzT);
+
+        // ═══════════════════════════════════════════════════════════
+        // 🌍 EFECTO DE PROXIMIDAD - Desacelerar y reducir tamaño
+        // ═══════════════════════════════════════════════════════════
+        if (distTierra < PROXIMITY_RANGE) {
+            // Factor de proximidad: 1.0 (lejos) → 0.0 (muy cerca)
+            float proximityFactor = distTierra / PROXIMITY_RANGE;
+
+            // 🐢 DESACELERACIÓN - Reducir velocidad gradualmente
+            // Mientras más cerca, más lento (simula resistencia atmosférica)
+            float speedMultiplier = 0.3f + (proximityFactor * 0.7f);  // 30%-100% de velocidad
+            float currentSpeed = (float) Math.sqrt(velocityX*velocityX + velocityY*velocityY + velocityZ*velocityZ);
+            if (currentSpeed > 0.1f) {
+                float targetSpeed = currentSpeed * speedMultiplier;
+                float deceleration = 0.98f;  // Desaceleración suave
+                velocityX *= deceleration;
+                velocityY *= deceleration;
+                velocityZ *= deceleration;
+            }
+
+            // 📉 REDUCCIÓN DE TAMAÑO - Se "comprime" al acercarse
+            // Efecto visual: el asteroide parece más pequeño por la perspectiva
+            float sizeMultiplier = 0.4f + (proximityFactor * 0.6f);  // 40%-100% del tamaño
+            scale = originalScale * sizeMultiplier;
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // 🌍💥 COLISIÓN CON LA TIERRA - Explotar en la superficie
+        // ═══════════════════════════════════════════════════════════
+        float collisionRadius = EARTH_RADIUS + (scale * 0.5f);  // Radio Tierra + radio asteroide
+        if (distTierra <= collisionRadius) {
+            // ¡IMPACTO! Posicionar en la superficie exacta
+            if (distTierra > 0.01f) {
+                // Mover a la superficie de la Tierra
+                float surfaceX = EARTH_X + (dxT / distTierra) * EARTH_RADIUS;
+                float surfaceY = EARTH_Y + (dyT / distTierra) * EARTH_RADIUS;
+                float surfaceZ = EARTH_Z + (dzT / distTierra) * EARTH_RADIUS;
+                posX = surfaceX;
+                posY = surfaceY;
+                posZ = surfaceZ;
+            }
+            // Iniciar explosión
+            impactar();
+            Log.d(TAG, "🌍💥 [AsteroideRealista] ¡COLISIÓN con Tierra! Explotando en superficie");
+            return;
+        }
 
         // También calcular distancia al centro de la escena (para límites)
         float distCentro = (float) Math.sqrt(posX * posX + posY * posY + posZ * posZ);
 
-        // Desactivar si sale muy lejos o llega muy cerca de la Tierra
-        if (distCentro > 20.0f || distTierra < 0.1f) {
+        // Desactivar si sale muy lejos
+        if (distCentro > 20.0f) {
             desactivar();
         }
     }
@@ -285,13 +389,23 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
 
         GLES20.glUseProgram(programId);
 
+        // 💥 Calcular escala y alpha para explosión
+        float finalScale = scale;
+        float alpha = 1.0f;
+
+        if (exploding) {
+            float progress = explosionTimer / EXPLOSION_DURATION;
+            finalScale = scale * explosionScale;  // Expandirse durante explosión
+            alpha = 1.0f - progress;  // Desvanecer gradualmente
+        }
+
         // Construir matriz de modelo
         Matrix.setIdentityM(modelMatrix, 0);
         Matrix.translateM(modelMatrix, 0, posX, posY, posZ);
         Matrix.rotateM(modelMatrix, 0, rotationX, 1f, 0f, 0f);  // Rotación X
         Matrix.rotateM(modelMatrix, 0, rotationY, 0f, 1f, 0f);  // Rotación Y
         Matrix.rotateM(modelMatrix, 0, rotationZ, 0f, 0f, 1f);  // Rotación Z
-        Matrix.scaleM(modelMatrix, 0, scale, scale, scale);
+        Matrix.scaleM(modelMatrix, 0, finalScale, finalScale, finalScale);
 
         // Calcular MVP
         camera.computeMvp(modelMatrix, mvpMatrix);
@@ -303,9 +417,9 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
         // Pasar tiempo
         setTime((System.currentTimeMillis() % 60000) / 1000.0f);
 
-        // Pasar alpha (opaco)
+        // Pasar alpha (desvanecimiento durante explosión)
         int uAlphaLoc = GLES20.glGetUniformLocation(programId, "u_Alpha");
-        GLES20.glUniform1f(uAlphaLoc, 1.0f);
+        GLES20.glUniform1f(uAlphaLoc, alpha);
 
         // Activar textura
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);

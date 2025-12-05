@@ -28,7 +28,9 @@
       "Bash(timeout 10 D:/adb/platform-tools/adb.exe shell:*)",
       "Bash(timeout 8 D:/adb/platform-tools/adb.exe logcat:*)",
       "Bash(timeout 8 D:/adb/platform-tools/adb.exe shell am force-stop:*)",
-      "Bash(./gradlew clean:*)"
+      "Bash(./gradlew clean:*)",
+      "Bash(rm:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

@@ -25,17 +25,17 @@ public final class SceneConstants {
     // ═══════════════════════════════════════════════════════════════════
 
     public static final class Sun {
-        /** Posición X del sol (negativo = izquierda) */
-        public static final float POSITION_X = -8.0f;
+        /** Posición X del sol (hacia la izquierda) */
+        public static final float POSITION_X = -1.5f;
 
-        /** Posición Y del sol (positivo = arriba) */
-        public static final float POSITION_Y = 4.0f;
+        /** Posición Y del sol (centro vertical) */
+        public static final float POSITION_Y = 0.5f;
 
-        /** Posición Z del sol (negativo = lejos) */
-        public static final float POSITION_Z = -15.0f;
+        /** Posición Z del sol (profundidad) */
+        public static final float POSITION_Z = -5.0f;
 
-        /** Escala del sol */
-        public static final float SCALE = 1.5f;
+        /** Escala del sol - MÁS GRANDE que la Tierra (realista) */
+        public static final float SCALE = 0.8f;
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -43,32 +43,32 @@ public final class SceneConstants {
     // ═══════════════════════════════════════════════════════════════════
 
     public static final class Earth {
-        /** Posición X de la Tierra (centro horizontal) */
+        /** Posición X inicial de la Tierra (será modificada por órbita) */
         public static final float POSITION_X = 0.0f;
 
-        /** Posición Y de la Tierra (altura en pantalla) */
-        public static final float POSITION_Y = 1.8f;
+        /** Posición Y de la Tierra (misma altura que el Sol para órbita horizontal) */
+        public static final float POSITION_Y = 0.5f;
 
-        /** Posición Z de la Tierra (profundidad) */
-        public static final float POSITION_Z = 0.0f;
+        /** Posición Z inicial (será modificada por órbita) */
+        public static final float POSITION_Z = -5.0f;
 
-        /** Tamaño/escala de la Tierra */
-        public static final float SCALE = 1.2f;
+        /** Tamaño/escala de la Tierra - MENOR que el Sol (realista) */
+        public static final float SCALE = 0.25f;
 
-        /** Velocidad de rotación (grados/segundo) */
-        public static final float ROTATION_SPEED = 8.0f;
+        /** Velocidad de rotación sobre su eje (grados/segundo) */
+        public static final float ROTATION_SPEED = 5.0f;
 
         /** HP máximo de la Tierra */
         public static final int MAX_HP = 200;
 
-        /** Radio de órbita X (0 = sin órbita) */
-        public static final float ORBIT_RADIUS_X = 0.0f;
+        /** Radio de órbita X (horizontal) - La Tierra orbita el Sol */
+        public static final float ORBIT_RADIUS_X = 1.8f;
 
-        /** Radio de órbita Z (0 = sin órbita) */
-        public static final float ORBIT_RADIUS_Z = 0.0f;
+        /** Radio de órbita Z (profundidad) - Órbita elíptica */
+        public static final float ORBIT_RADIUS_Z = 1.2f;
 
-        /** Velocidad de órbita (0 = estático) */
-        public static final float ORBIT_SPEED = 0.0f;
+        /** Velocidad de órbita alrededor del Sol */
+        public static final float ORBIT_SPEED = 0.15f;
 
         /** Variación de escala (0 = sin pulsación) */
         public static final float SCALE_VARIATION = 0.0f;

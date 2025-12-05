@@ -56,8 +56,11 @@ public class MusicStars implements SceneObject {
         float baseSize;       // Tamaño base
         float currentSize;    // Tamaño actual (con pulsación)
         float targetSize;     // Tamaño objetivo
-        float[] color;        // Color RGBA
+        float[] color;        // Color RGBA actual
+        float[] baseColor;    // Color base original
         int freqType;         // 0=graves, 1=medios, 2=agudos
+        float colorPhase;     // Fase para mezcla de colores (único por estrella)
+        float swirlAngle;     // Ángulo de remolino
     }
 
     private Star[] stars;
@@ -66,6 +69,19 @@ public class MusicStars implements SceneObject {
     private float bassLevel = 0f;
     private float midLevel = 0f;
     private float trebleLevel = 0f;
+
+    // Tiempo global para efectos
+    private float globalTime = 0f;
+
+    // Colores para mezcla tipo pintura (paleta de nebulosa)
+    private static final float[][] SWIRL_COLORS = {
+        {0.2f, 0.5f, 1.0f},    // Azul eléctrico
+        {1.0f, 0.4f, 0.8f},    // Rosa/Magenta
+        {0.6f, 0.2f, 0.9f},    // Púrpura
+        {1.0f, 0.9f, 0.3f},    // Dorado
+        {0.3f, 1.0f, 0.8f},    // Cyan/Turquesa
+        {1.0f, 0.5f, 0.2f},    // Naranja
+    };
 
     // Shader
     private int programId;
@@ -152,8 +168,13 @@ public class MusicStars implements SceneObject {
             stars[index].targetSize = stars[index].baseSize;
             stars[index].freqType = 0;  // Graves
 
-            // Color: Azul eléctrico para graves (bajo, bombo)
-            stars[index].color = new float[]{0.2f, 0.5f, 1.0f, 0.8f};  // Azul brillante
+            // Color base: Azul eléctrico para graves (bajo, bombo)
+            stars[index].baseColor = new float[]{0.2f, 0.5f, 1.0f};
+            stars[index].color = new float[]{0.2f, 0.5f, 1.0f, 0.8f};
+
+            // Fase única para efecto de remolino
+            stars[index].colorPhase = rand.nextFloat() * (float)Math.PI * 2f;
+            stars[index].swirlAngle = rand.nextFloat() * (float)Math.PI * 2f;
 
             index++;
         }
@@ -170,8 +191,13 @@ public class MusicStars implements SceneObject {
             stars[index].targetSize = stars[index].baseSize;
             stars[index].freqType = 1;  // Medios
 
-            // Color: Dorado/Amarillo para medios (guitarra, piano, voces)
-            stars[index].color = new float[]{1.0f, 0.9f, 0.3f, 0.85f};  // Dorado
+            // Color base: Dorado/Amarillo para medios
+            stars[index].baseColor = new float[]{1.0f, 0.9f, 0.3f};
+            stars[index].color = new float[]{1.0f, 0.9f, 0.3f, 0.85f};
+
+            // Fase única para efecto de remolino
+            stars[index].colorPhase = rand.nextFloat() * (float)Math.PI * 2f;
+            stars[index].swirlAngle = rand.nextFloat() * (float)Math.PI * 2f;
 
             index++;
         }
@@ -188,8 +214,13 @@ public class MusicStars implements SceneObject {
             stars[index].targetSize = stars[index].baseSize;
             stars[index].freqType = 2;  // Agudos
 
-            // Color: Blanco brillante para agudos (vientos, voces agudas, platillos)
-            stars[index].color = new float[]{1.0f, 1.0f, 1.0f, 0.9f};  // Blanco puro
+            // Color base: Cyan/Blanco para agudos
+            stars[index].baseColor = new float[]{0.8f, 1.0f, 1.0f};
+            stars[index].color = new float[]{0.8f, 1.0f, 1.0f, 0.9f};
+
+            // Fase única para efecto de remolino
+            stars[index].colorPhase = rand.nextFloat() * (float)Math.PI * 2f;
+            stars[index].swirlAngle = rand.nextFloat() * (float)Math.PI * 2f;
 
             index++;
         }
@@ -215,6 +246,7 @@ public class MusicStars implements SceneObject {
     @Override
     public void update(float deltaTime) {
         frameCount++;
+        globalTime += deltaTime;
 
         // Actualizar cada estrella según su tipo de frecuencia
         for (Star star : stars) {
@@ -240,6 +272,44 @@ public class MusicStars implements SceneObject {
             // Suavizar transición de tamaño
             star.currentSize = star.currentSize * SMOOTHING_FACTOR +
                               star.targetSize * (1f - SMOOTHING_FACTOR);
+
+            // ════════════════════════════════════════════════════════════════
+            // 🌀 EFECTO REMOLINO DE POLVO ESTELAR
+            // ════════════════════════════════════════════════════════════════
+
+            // Actualizar ángulo de remolino (velocidad variable por estrella)
+            float swirlSpeed = 0.3f + (star.colorPhase * 0.2f);  // Cada estrella gira diferente
+            star.swirlAngle += swirlSpeed * deltaTime;
+
+            // Calcular índice de color en la paleta usando onda sinusoidal
+            float colorWave = (float) Math.sin(globalTime * 0.5f + star.colorPhase);
+            int colorIndex1 = (int) ((star.colorPhase / (Math.PI * 2f)) * SWIRL_COLORS.length) % SWIRL_COLORS.length;
+            int colorIndex2 = (colorIndex1 + 1) % SWIRL_COLORS.length;
+
+            // Factor de mezcla que oscila suavemente (0.0 a 0.4 para mantener color base dominante)
+            float mixFactor = (colorWave * 0.5f + 0.5f) * 0.4f;
+
+            // Intensidad de la música afecta cuánto se mezclan los colores
+            float musicMix = intensidad * 0.3f;  // Más música = más mezcla
+            mixFactor = Math.min(0.5f, mixFactor + musicMix);
+
+            // Mezclar color base con color del remolino
+            float[] swirlColor = SWIRL_COLORS[colorIndex1];
+            float[] swirlColor2 = SWIRL_COLORS[colorIndex2];
+
+            // Interpolar entre los dos colores de la paleta
+            float t = (colorWave * 0.5f + 0.5f);
+            float sR = swirlColor[0] * (1f - t) + swirlColor2[0] * t;
+            float sG = swirlColor[1] * (1f - t) + swirlColor2[1] * t;
+            float sB = swirlColor[2] * (1f - t) + swirlColor2[2] * t;
+
+            // Mezclar con el color base (el color base domina ~60-80%)
+            star.color[0] = star.baseColor[0] * (1f - mixFactor) + sR * mixFactor;
+            star.color[1] = star.baseColor[1] * (1f - mixFactor) + sG * mixFactor;
+            star.color[2] = star.baseColor[2] * (1f - mixFactor) + sB * mixFactor;
+
+            // Mantener alpha original
+            star.color[3] = 0.85f + intensidad * 0.15f;  // Más brillante con música
         }
     }
 

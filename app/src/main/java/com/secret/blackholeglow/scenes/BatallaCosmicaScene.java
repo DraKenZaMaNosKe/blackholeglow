@@ -5,20 +5,19 @@ import android.util.Log;
 
 import com.secret.blackholeglow.AvatarLoader;
 import com.secret.blackholeglow.AvatarSphere;
+import com.secret.blackholeglow.BackgroundStars;
 import com.secret.blackholeglow.BatteryPowerBar;
 import com.secret.blackholeglow.BirthdayMarquee;
 import com.secret.blackholeglow.CameraAware;
 import com.secret.blackholeglow.CameraController;
-import com.secret.blackholeglow.EarthShield;
+// EarthShield REMOVIDO
 import com.secret.blackholeglow.EstrellaBailarina;
-import com.secret.blackholeglow.ForceField;
+// ForceField REMOVIDO
 import com.secret.blackholeglow.GreetingText;
 import com.secret.blackholeglow.HPBar;
 import com.secret.blackholeglow.LeaderboardManager;
 import com.secret.blackholeglow.MagicLeaderboard;
 import com.secret.blackholeglow.MeteorShower;
-import com.secret.blackholeglow.MusicIndicator;
-import com.secret.blackholeglow.MusicIndicator3D;
 import com.secret.blackholeglow.EqualizerBarsDJ;
 import com.secret.blackholeglow.Planeta;
 import com.secret.blackholeglow.PlayerStats;
@@ -26,10 +25,13 @@ import com.secret.blackholeglow.PlayerWeapon;
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.SceneObject;
 import com.secret.blackholeglow.SimpleTextRenderer;
+import com.secret.blackholeglow.SolMeshy;
 import com.secret.blackholeglow.SolProcedural;
 import com.secret.blackholeglow.Spaceship3D;
+import com.secret.blackholeglow.TierraMeshy;
+import com.secret.blackholeglow.DefenderShip;
 import com.secret.blackholeglow.StarryBackground;
-import com.secret.blackholeglow.SunHeatEffect;
+// SunHeatEffect REMOVIDO
 import com.secret.blackholeglow.TextureManager;
 
 import java.util.ArrayList;
@@ -63,10 +65,14 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
     // 🎮 REFERENCIAS DE OBJETOS DEL JUEGO
     // ═══════════════════════════════════════════════════════════════
     private Planeta tierra;
-    private Planeta planetaTierra;  // Referencia para colisiones
-    private ForceField forceField;
-    private EarthShield earthShield;
+    private Planeta planetaTierra;  // Referencia para colisiones (legacy)
+
+    // 🌍☀️ NUEVOS MODELOS DE MESHY AI
+    private TierraMeshy tierraMeshy;
+    private SolMeshy solMeshy;
+
     private Spaceship3D ovni;
+    private DefenderShip defenderShip;  // 🚀 Nave defensora
     private MeteorShower meteorShower;
     private PlayerWeapon playerWeapon;
     private BatteryPowerBar powerBar;
@@ -75,9 +81,7 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
     // 📊 UI Y ESTADÍSTICAS
     // ═══════════════════════════════════════════════════════════════
     private HPBar hpBarTierra;
-    private HPBar hpBarForceField;
-    private MusicIndicator musicIndicator;           // 2D (legacy, deshabilitado)
-    private MusicIndicator3D musicIndicator3D;       // 🎵 3D con cubos (deshabilitado)
+    // hpBarForceField REMOVIDO
     private EqualizerBarsDJ equalizerDJ;             // 🎵 Ecualizador estilo DJ
     private SimpleTextRenderer planetsDestroyedCounter;
     private MagicLeaderboard magicLeaderboard;  // ✨ Leaderboard mágico con partículas
@@ -87,6 +91,7 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
     // ✨ EFECTOS VISUALES
     // ═══════════════════════════════════════════════════════════════
     private List<EstrellaBailarina> estrellasBailarinas = new ArrayList<>();
+    private BackgroundStars backgroundStars;  // ✨ Estrellas parpadeantes de fondo
 
     // ═══════════════════════════════════════════════════════════════
     // 🏆 LEADERBOARD
@@ -138,14 +143,19 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         setupEarth();
 
         // ═══════════════════════════════════════════════════════════
-        // 4️⃣ ESCUDO Y CAMPO DE FUERZA
+        // 4️⃣ ESCUDO Y CAMPO DE FUERZA - REMOVIDOS
         // ═══════════════════════════════════════════════════════════
-        setupShields();
+        // setupShields(); // DESHABILITADO - Tierra y Sol serán modelos de Meshy
 
         // ═══════════════════════════════════════════════════════════
         // 5️⃣ OVNI CON IA
         // ═══════════════════════════════════════════════════════════
         setupOvni();
+
+        // ═══════════════════════════════════════════════════════════
+        // 5.5️⃣ NAVE DEFENSORA
+        // ═══════════════════════════════════════════════════════════
+        setupDefenderShip();
 
         // ═══════════════════════════════════════════════════════════
         // 6️⃣ ESTRELLAS BAILARINAS
@@ -188,6 +198,11 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
             );
             addSceneObject(starryBg);
             Log.d(TAG, "  ✓ Fondo estrellado agregado");
+
+            // ✨ Estrellas parpadeantes de fondo (efecto de profundidad)
+            backgroundStars = new BackgroundStars(context);
+            addSceneObject(backgroundStars);
+            Log.d(TAG, "  ✓ ✨ Estrellas de fondo parpadeantes agregadas");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creando fondo: " + e.getMessage());
         }
@@ -195,123 +210,84 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
 
     private void setupSun() {
         try {
-            SolProcedural solProcedural = new SolProcedural(context, textureManager);
-            solProcedural.setPosition(
+            // ☀️ SOL MESHY - Modelo 3D realista de Meshy AI
+            solMeshy = new SolMeshy(context, textureManager);
+            solMeshy.setPosition(
                 SceneConstants.Sun.POSITION_X,
                 SceneConstants.Sun.POSITION_Y,
                 SceneConstants.Sun.POSITION_Z
             );
-            solProcedural.setScale(SceneConstants.Sun.SCALE);
-            solProcedural.setCameraController(camera);
-            addSceneObject(solProcedural);
-            Log.d(TAG, "  ✓ ☀️ Sol procedural agregado");
-
-            // Efecto de calor
-            SunHeatEffect sunHeat = new SunHeatEffect(context);
-            sunHeat.setSunPosition(
-                SceneConstants.Sun.POSITION_X,
-                SceneConstants.Sun.POSITION_Y,
-                SceneConstants.Sun.POSITION_Z,
-                SceneConstants.Sun.SCALE
-            );
-            sunHeat.setCameraController(camera);
-            addSceneObject(sunHeat);
-            Log.d(TAG, "  ✓ 🔥 Efecto de calor agregado");
+            solMeshy.setScale(SceneConstants.Sun.SCALE);
+            solMeshy.setSpinSpeed(3.0f);  // Rotación lenta del sol
+            solMeshy.setCameraController(camera);
+            addSceneObject(solMeshy);
+            Log.d(TAG, "  ✓ ☀️ Sol Meshy agregado (modelo 3D realista)");
         } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creando sol: " + e.getMessage());
+            Log.e(TAG, "  ✗ Error creando sol Meshy: " + e.getMessage());
         }
     }
 
     private void setupEarth() {
         try {
+            // 🌍 TIERRA MESHY - Modelo 3D realista de Meshy AI
+            tierraMeshy = new TierraMeshy(context, textureManager);
+            // Posición inicial (será modificada por órbita)
+            tierraMeshy.setPosition(
+                SceneConstants.Earth.POSITION_X,
+                SceneConstants.Earth.POSITION_Y,
+                SceneConstants.Earth.POSITION_Z
+            );
+            tierraMeshy.setScale(SceneConstants.Earth.SCALE);
+            tierraMeshy.setSpinSpeed(SceneConstants.Earth.ROTATION_SPEED);
+            tierraMeshy.setMaxHP(SceneConstants.Earth.MAX_HP);
+            tierraMeshy.setCameraController(camera);
+
+            // 🌍 CONFIGURAR ÓRBITA ALREDEDOR DEL SOL
+            tierraMeshy.setOrbit(
+                SceneConstants.Sun.POSITION_X,   // Centro X = posición del Sol
+                SceneConstants.Sun.POSITION_Y,   // Centro Y
+                SceneConstants.Sun.POSITION_Z,   // Centro Z
+                SceneConstants.Earth.ORBIT_RADIUS_X,  // Radio horizontal
+                SceneConstants.Earth.ORBIT_RADIUS_Z,  // Radio en profundidad
+                SceneConstants.Earth.ORBIT_SPEED      // Velocidad de órbita
+            );
+
+            // Callback de explosión
+            tierraMeshy.setExplosionCallback((x, y, z) -> {
+                onExplosion(x, y, z, 1.0f);  // Intensidad máxima
+            });
+
+            addSceneObject(tierraMeshy);
+
+            // También mantener referencia legacy para sistemas que usan Planeta
+            // (como MeteorShower que verifica sol.isDead())
             tierra = new Planeta(
                     context, textureManager,
                     "shaders/tierra_vertex.glsl",
                     "shaders/tierra_fragment.glsl",
                     R.drawable.texturaplanetatierra,
-                    SceneConstants.Earth.ORBIT_RADIUS_X,
-                    SceneConstants.Earth.ORBIT_RADIUS_Z,
-                    SceneConstants.Earth.ORBIT_SPEED,
+                    0, 0, 0,  // Sin órbita
                     SceneConstants.Earth.POSITION_Y,
-                    SceneConstants.Earth.SCALE_VARIATION,
-                    SceneConstants.Earth.SCALE,
-                    SceneConstants.Earth.ROTATION_SPEED,
-                    false, null, 1.0f,
+                    0, 0.001f,  // Escala mínima (invisible)
+                    0, false, null, 0.0f,
                     null, 1.0f
             );
-
-            if (tierra instanceof CameraAware) {
-                ((CameraAware) tierra).setCameraController(camera);
-            }
-
             tierra.setMaxHealth(SceneConstants.Earth.MAX_HP);
             tierra.setOnExplosionListener(this);
-
-            // Cargar HP guardado
             tierra.setPlayerStats(playerStats);
             int savedPlanetHP = playerStats.getSavedPlanetHealth();
             tierra.setHealth(savedPlanetHP);
-
-            tierra.setRealTimeRotation(false);
-
-            addSceneObject(tierra);
             planetaTierra = tierra;
+            // NO agregar a la escena (es solo para referencia de sistemas legacy)
 
-            Log.d(TAG, "  ✓ 🌍 Tierra agregada con HP: " + savedPlanetHP + "/" + SceneConstants.Earth.MAX_HP);
+            Log.d(TAG, "  ✓ 🌍 Tierra Meshy agregada (modelo 3D realista)");
         } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creando Tierra: " + e.getMessage());
+            Log.e(TAG, "  ✗ Error creando Tierra Meshy: " + e.getMessage());
         }
     }
 
-    private void setupShields() {
-        // EarthShield - Escudo invisible para impactos
-        try {
-            earthShield = new EarthShield(
-                    context, textureManager,
-                    SceneConstants.Earth.POSITION_X,
-                    SceneConstants.Earth.POSITION_Y,
-                    SceneConstants.Earth.POSITION_Z,
-                    SceneConstants.Shield.EARTH_SHIELD_RADIUS
-            );
-            if (earthShield instanceof CameraAware) {
-                ((CameraAware) earthShield).setCameraController(camera);
-            }
-            addSceneObject(earthShield);
-            Log.d(TAG, "  ✓ 🛡️ EarthShield agregado");
-        } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creando EarthShield: " + e.getMessage());
-        }
-
-        // ForceField - Campo de fuerza visible
-        try {
-            forceField = new ForceField(
-                    context, textureManager,
-                    SceneConstants.Earth.POSITION_X,
-                    SceneConstants.Earth.POSITION_Y,
-                    SceneConstants.Earth.POSITION_Z,
-                    SceneConstants.Shield.FORCE_FIELD_RADIUS,
-                    R.drawable.fondo_transparente,
-                    new float[]{
-                        SceneConstants.Shield.FORCE_FIELD_COLOR_R,
-                        SceneConstants.Shield.FORCE_FIELD_COLOR_G,
-                        SceneConstants.Shield.FORCE_FIELD_COLOR_B
-                    },
-                    SceneConstants.Shield.FORCE_FIELD_INTENSITY,
-                    SceneConstants.Shield.FORCE_FIELD_PULSE_SPEED,
-                    SceneConstants.Shield.FORCE_FIELD_PULSE_AMPLITUDE
-            );
-            forceField.setCameraController(camera);
-
-            forceField.setPlayerStats(playerStats);
-            int savedForceFieldHP = playerStats.getSavedForceFieldHealth();
-            forceField.setHealth(savedForceFieldHP);
-
-            addSceneObject(forceField);
-            Log.d(TAG, "  ✓ 🛡️ ForceField agregado con HP: " + savedForceFieldHP + "/" + SceneConstants.Shield.FORCE_FIELD_MAX_HP);
-        } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creando ForceField: " + e.getMessage());
-        }
-    }
+    // setupShields() REMOVIDO COMPLETAMENTE
+    // ForceField y EarthShield serán reemplazados por modelos de Meshy
 
     private void setupOvni() {
         try {
@@ -341,14 +317,48 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
                 SceneConstants.Ufo.ORBIT_PHASE
             );
 
-            if (earthShield != null) {
-                ovni.setEarthShield(earthShield);
-            }
+            // EarthShield REMOVIDO
 
             addSceneObject(ovni);
             Log.d(TAG, "  ✓ 🛸 OVNI agregado con IA");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creando OVNI: " + e.getMessage());
+        }
+    }
+
+    private void setupDefenderShip() {
+        try {
+            defenderShip = new DefenderShip(
+                    context,
+                    textureManager,
+                    SceneConstants.Earth.POSITION_X + 2.0f,  // Empezar a un lado de la Tierra
+                    SceneConstants.Earth.POSITION_Y,
+                    SceneConstants.Earth.POSITION_Z,
+                    0.25f  // Escala más grande para que sea visible
+            );
+            defenderShip.setCameraController(camera);
+
+            // Configurar posición de la Tierra para órbita
+            defenderShip.setEarthPosition(
+                SceneConstants.Earth.POSITION_X,
+                SceneConstants.Earth.POSITION_Y,
+                SceneConstants.Earth.POSITION_Z
+            );
+
+            // Configurar parámetros de órbita
+            defenderShip.setOrbitParams(1.8f, 0.6f);  // Radio 1.8, velocidad 0.6
+
+            // Establecer el OVNI como objetivo
+            if (ovni != null) {
+                defenderShip.setTargetUfo(ovni);
+                // También hacer que el OVNI ataque a la DefenderShip
+                ovni.setDefenderShip(defenderShip);
+            }
+
+            addSceneObject(defenderShip);
+            Log.d(TAG, "  ✓ 🚀 Nave defensora agregada (batalla bidireccional configurada)");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creando DefenderShip: " + e.getMessage(), e);
         }
     }
 
@@ -393,7 +403,7 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
             Log.e(TAG, "  ✗ Error creando Greeting: " + e.getMessage());
         }
 
-        // HP Bars (ocultas pero funcionales)
+        // HP Bar de Tierra (ForceField HP Bar REMOVIDA)
         try {
             hpBarTierra = new HPBar(
                     context, "🌍 TIERRA",
@@ -406,21 +416,12 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
                     SceneConstants.Colors.HP_EARTH_EMPTY
             );
 
-            hpBarForceField = new HPBar(
-                    context, "ESCUDO",
-                    SceneConstants.UI.HP_BAR_SHIELD_X,
-                    SceneConstants.UI.HP_BAR_SHIELD_Y,
-                    SceneConstants.UI.HP_BAR_SHIELD_WIDTH,
-                    SceneConstants.UI.HP_BAR_SHIELD_HEIGHT,
-                    SceneConstants.Shield.FORCE_FIELD_MAX_HP,
-                    SceneConstants.Colors.HP_SHIELD_FULL,
-                    SceneConstants.Colors.HP_SHIELD_EMPTY
-            );
+            // hpBarForceField REMOVIDA
 
-            // No agregar a sceneObjects (ocultas)
-            Log.d(TAG, "  ✓ HP Bars creadas (ocultas)");
+            // No agregar a sceneObjects (oculta)
+            Log.d(TAG, "  ✓ HP Bar Tierra creada (oculta)");
         } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creando HP Bars: " + e.getMessage());
+            Log.e(TAG, "  ✗ Error creando HP Bar: " + e.getMessage());
         }
 
         // 🎵 Ecualizador DJ (barras en la parte inferior)
@@ -432,43 +433,6 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creando EqualizerBarsDJ: " + e.getMessage());
         }
-
-        // Music Indicator 3D (DESHABILITADO - reemplazado por EqualizerBarsDJ)
-        /*
-        try {
-            musicIndicator3D = new MusicIndicator3D(
-                    context,
-                    SceneConstants.UI.MUSIC_INDICATOR_3D_X,
-                    SceneConstants.UI.MUSIC_INDICATOR_3D_Y,
-                    SceneConstants.UI.MUSIC_INDICATOR_3D_Z
-            );
-            musicIndicator3D.setDimensions(
-                    SceneConstants.UI.MUSIC_INDICATOR_3D_WIDTH,
-                    SceneConstants.UI.MUSIC_INDICATOR_3D_HEIGHT,
-                    SceneConstants.UI.MUSIC_INDICATOR_3D_DEPTH
-            );
-            musicIndicator3D.setCameraController(camera);
-            addSceneObject(musicIndicator3D);
-            Log.d(TAG, "  ✓ 🎵 MusicIndicator3D agregado (ecualizador con cubos)");
-        } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creando MusicIndicator3D: " + e.getMessage());
-        }
-        */
-
-        // Music Indicator 2D (legacy - DESHABILITADO)
-        // try {
-        //     musicIndicator = new MusicIndicator(
-        //             context,
-        //             SceneConstants.UI.MUSIC_INDICATOR_X,
-        //             SceneConstants.UI.MUSIC_INDICATOR_Y,
-        //             SceneConstants.UI.MUSIC_INDICATOR_WIDTH,
-        //             SceneConstants.UI.MUSIC_INDICATOR_HEIGHT
-        //     );
-        //     addSceneObject(musicIndicator);
-        //     Log.d(TAG, "  ✓ 🎵 MusicIndicator 2D agregado");
-        // } catch (Exception e) {
-        //     Log.e(TAG, "  ✗ Error creando MusicIndicator 2D: " + e.getMessage());
-        // }
 
         // Planets Destroyed Counter
         try {
@@ -531,13 +495,14 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
                 meteorShower.setPowerBar(powerBar);
             }
 
-            if (tierra != null && forceField != null && hpBarTierra != null && hpBarForceField != null) {
-                meteorShower.setHPSystem(tierra, forceField, hpBarTierra, hpBarForceField);
+            // Sistema HP simplificado (sin ForceField)
+            if (tierra != null && hpBarTierra != null) {
+                meteorShower.setHPSystem(tierra, null, hpBarTierra, null);
             }
 
-            // Registrar objetos colisionables
+            // Registrar solo planetas como colisionables
             for (SceneObject obj : sceneObjects) {
-                if (obj instanceof Planeta || obj instanceof ForceField) {
+                if (obj instanceof Planeta) {
                     meteorShower.registrarObjetoColisionable(obj);
                 }
             }
@@ -546,8 +511,13 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
                 meteorShower.setOvni(ovni);
             }
 
+            // 🌍 Conectar Tierra para posición dinámica (órbita)
+            if (tierraMeshy != null) {
+                meteorShower.setTierra(tierraMeshy);
+            }
+
             addSceneObject(meteorShower);
-            Log.d(TAG, "  ✓ ☄️ Sistema de meteoritos agregado");
+            Log.d(TAG, "  ✓ ☄️ Sistema de meteoritos agregado (sin ForceField)");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creando MeteorShower: " + e.getMessage());
         }
@@ -601,14 +571,14 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         // Limpiar referencias
         tierra = null;
         planetaTierra = null;
-        forceField = null;
-        earthShield = null;
+        // forceField y earthShield REMOVIDOS
         ovni = null;
+        defenderShip = null;
         meteorShower = null;
         playerWeapon = null;
         powerBar = null;
-        musicIndicator = null;
-        musicIndicator3D = null;
+        equalizerDJ = null;
+        backgroundStars = null;
 
         // Liberar MagicLeaderboard
         if (magicLeaderboard != null) {
@@ -652,17 +622,9 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
      * Actualiza los niveles de música en el indicador
      */
     public void updateMusicLevels(float bass, float mid, float treble) {
-        // 🎵 EqualizerBarsDJ (nuevo estilo DJ)
+        // 🎵 EqualizerBarsDJ
         if (equalizerDJ != null) {
             equalizerDJ.updateMusicLevels(bass, mid, treble);
-        }
-        // MusicIndicator 3D (deshabilitado)
-        if (musicIndicator3D != null) {
-            musicIndicator3D.updateMusicLevels(bass, mid, treble);
-        }
-        // MusicIndicator 2D (legacy, deshabilitado)
-        if (musicIndicator != null) {
-            musicIndicator.updateMusicLevels(bass, mid, treble);
         }
     }
 
@@ -672,14 +634,9 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
     public void updateMusicBands(float[] bands) {
         if (bands == null) return;
 
-        // 🎵 EqualizerBarsDJ usa las 32 bandas directamente (PRINCIPAL)
+        // 🎵 EqualizerBarsDJ usa las 32 bandas directamente
         if (equalizerDJ != null) {
             equalizerDJ.updateFromBands(bands);
-        }
-
-        // MusicIndicator 2D usa bandas directamente para variación realista
-        if (musicIndicator != null) {
-            musicIndicator.updateFromBands(bands);
         }
     }
 
@@ -691,24 +648,22 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         return tierra;
     }
 
-    public ForceField getForceField() {
-        return forceField;
-    }
+    // getForceField() REMOVIDO
 
     public Spaceship3D getOvni() {
         return ovni;
+    }
+
+    public DefenderShip getDefenderShip() {
+        return defenderShip;
     }
 
     public MeteorShower getMeteorShower() {
         return meteorShower;
     }
 
-    public MusicIndicator getMusicIndicator() {
-        return musicIndicator;
-    }
-
-    public MusicIndicator3D getMusicIndicator3D() {
-        return musicIndicator3D;
+    public EqualizerBarsDJ getEqualizerDJ() {
+        return equalizerDJ;
     }
 
     /**

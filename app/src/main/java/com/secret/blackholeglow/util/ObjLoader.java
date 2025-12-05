@@ -121,114 +121,87 @@ public class ObjLoader {
         Log.d(TAG, "ObjLoader: Caras leídas = " + faceList.size());
 
         // ═══════════════════════════════════════════════════════════
-        // Aplanar vértices
+        // ✅ EXPANDIR VÉRTICES PARA UV MAPPING CORRECTO
         // ═══════════════════════════════════════════════════════════
-        float[] vertsArr = new float[vCount * 3];
-        for (int i = 0; i < vCount; i++) {
-            float[] v = tmpVerts.get(i);
-            vertsArr[i * 3] = v[0];
-            vertsArr[i * 3 + 1] = v[1];
-            vertsArr[i * 3 + 2] = v[2];
-        }
+        // El problema: En OBJ, un mismo vértice puede tener diferentes UVs
+        // dependiendo de la cara. Necesitamos crear vértices duplicados
+        // para cada combinación única de vértice+UV.
 
-        // ═══════════════════════════════════════════════════════════
-        // ✅ CONSTRUIR UVs CORRECTAMENTE
-        // ═══════════════════════════════════════════════════════════
-        float[] uvArr = new float[vCount * 2];
         boolean hasValidUVs = !tmpUVs.isEmpty();
 
-        if (hasValidUVs) {
-            // ┌─────────────────────────────────────────────────────┐
-            // │ MÉTODO 1: Usar UVs del archivo .obj                │
-            // │ ✅ Usar los índices UV correctos de cada cara       │
-            // └─────────────────────────────────────────────────────┘
-            Log.d(TAG, "ObjLoader: ✓ Usando UVs desde archivo .obj");
-
-            // Inicializar con -1 para detectar vértices sin UV
-            for (int i = 0; i < vCount; i++) {
-                uvArr[i * 2] = -1f;
-                uvArr[i * 2 + 1] = -1f;
-            }
-
-            // Asignar UVs usando los índices correctos de las caras
-            for (Face face : faceList) {
-                if (face.uvIndices != null) {
-                    for (int i = 0; i < face.vertexIndices.length; i++) {
-                        int vertIdx = face.vertexIndices[i];
-                        int uvIdx = face.uvIndices[i];
-
-                        if (uvIdx >= 0 && uvIdx < tmpUVs.size()) {
-                            float[] uv = tmpUVs.get(uvIdx);
-                            uvArr[vertIdx * 2] = uv[0];
-                            uvArr[vertIdx * 2 + 1] = uv[1];
-                        }
-                    }
-                }
-            }
-
-            // Verificar si hay vértices sin UV asignado
-            int unassigned = 0;
-            for (int i = 0; i < vCount; i++) {
-                if (uvArr[i * 2] < 0) {
-                    unassigned++;
-                    // Fallback: generar UV esférico
-                    float[] v = tmpVerts.get(i);
-                    float[] sphericalUV = generateSphericalUV(v[0], v[1], v[2]);
-                    uvArr[i * 2] = sphericalUV[0];
-                    uvArr[i * 2 + 1] = sphericalUV[1];
-                }
-            }
-
-            if (unassigned > 0) {
-                Log.w(TAG, "ObjLoader: ⚠️  " + unassigned + " vértices sin UV, usando UVs esféricos");
-            }
-
-        } else {
-            // ┌─────────────────────────────────────────────────────┐
-            // │ MÉTODO 2: Generar UVs esféricos proceduralmente    │
-            // │ Para esferas sin UVs en el archivo                 │
-            // └─────────────────────────────────────────────────────┘
-            Log.w(TAG, "ObjLoader: ⚠️  No hay UVs en archivo, generando UVs esféricos proceduralmente");
-
-            for (int i = 0; i < vCount; i++) {
-                float[] v = tmpVerts.get(i);
-                float[] sphericalUV = generateSphericalUV(v[0], v[1], v[2]);
-                uvArr[i * 2] = sphericalUV[0];
-                uvArr[i * 2 + 1] = sphericalUV[1];
-            }
-
-            Log.d(TAG, "ObjLoader: ✓ UVs esféricos generados para " + vCount + " vértices");
+        // Contar total de vértices expandidos (cada vértice de cada cara = único)
+        int expandedVertCount = 0;
+        for (Face face : faceList) {
+            expandedVertCount += face.vertexIndices.length;
         }
 
-        // Crear vertexBuffer
+        Log.d(TAG, "ObjLoader: Expandiendo " + vCount + " vértices a " + expandedVertCount + " (para UVs correctos)");
+
+        // Arrays expandidos
+        float[] expandedVerts = new float[expandedVertCount * 3];
+        float[] expandedUVs = new float[expandedVertCount * 2];
+
+        // Nuevas caras con índices actualizados
+        List<int[]> newFaceList = new ArrayList<>();
+
+        int currentIndex = 0;
+        for (Face face : faceList) {
+            int[] newFaceIndices = new int[face.vertexIndices.length];
+
+            for (int i = 0; i < face.vertexIndices.length; i++) {
+                int vertIdx = face.vertexIndices[i];
+
+                // Copiar posición del vértice
+                float[] vert = tmpVerts.get(vertIdx);
+                expandedVerts[currentIndex * 3] = vert[0];
+                expandedVerts[currentIndex * 3 + 1] = vert[1];
+                expandedVerts[currentIndex * 3 + 2] = vert[2];
+
+                // Copiar UV
+                if (hasValidUVs && face.uvIndices != null && face.uvIndices[i] >= 0 && face.uvIndices[i] < tmpUVs.size()) {
+                    float[] uv = tmpUVs.get(face.uvIndices[i]);
+                    expandedUVs[currentIndex * 2] = uv[0];
+                    expandedUVs[currentIndex * 2 + 1] = uv[1];
+                } else {
+                    // Fallback: generar UV esférico
+                    float[] sphericalUV = generateSphericalUV(vert[0], vert[1], vert[2]);
+                    expandedUVs[currentIndex * 2] = sphericalUV[0];
+                    expandedUVs[currentIndex * 2 + 1] = sphericalUV[1];
+                }
+
+                newFaceIndices[i] = currentIndex;
+                currentIndex++;
+            }
+
+            newFaceList.add(newFaceIndices);
+        }
+
+        Log.d(TAG, "ObjLoader: ✓ Vértices expandidos: " + expandedVertCount);
+        Log.d(TAG, "ObjLoader: ✓ UVs asignados correctamente");
+
+        // Crear vertexBuffer con vértices expandidos
         FloatBuffer vBuf = ByteBuffer
-                .allocateDirect(vertsArr.length * Float.BYTES)
+                .allocateDirect(expandedVerts.length * Float.BYTES)
                 .order(ByteOrder.nativeOrder())
                 .asFloatBuffer()
-                .put(vertsArr);
+                .put(expandedVerts);
         vBuf.position(0);
 
-        // Crear uvBuffer
+        // Crear uvBuffer con UVs expandidos
         FloatBuffer uvBuf = ByteBuffer
-                .allocateDirect(uvArr.length * Float.BYTES)
+                .allocateDirect(expandedUVs.length * Float.BYTES)
                 .order(ByteOrder.nativeOrder())
                 .asFloatBuffer()
-                .put(uvArr);
+                .put(expandedUVs);
         uvBuf.position(0);
 
         Log.d(TAG, "ObjLoader: buffers preparados (vBuf, uvBuf).");
-
-        // Convertir Face list a int[] list
-        List<int[]> faceIndexList = new ArrayList<>();
-        for (Face face : faceList) {
-            faceIndexList.add(face.vertexIndices);
-        }
 
         Log.d(TAG, "════════════════════════════════════════════════");
         Log.d(TAG, "ObjLoader: ✓ Carga completada exitosamente");
         Log.d(TAG, "════════════════════════════════════════════════");
 
-        return new Mesh(vBuf, vertsArr, faceIndexList, uvBuf, vCount);
+        return new Mesh(vBuf, expandedVerts, newFaceList, uvBuf, expandedVertCount);
     }
 
     /**

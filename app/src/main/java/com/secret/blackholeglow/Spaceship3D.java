@@ -61,10 +61,15 @@ public class Spaceship3D implements SceneObject, CameraAware {
     private float maxSpeed = 0.6f;
     private float minSpeed = 0.2f;
 
-    // Comportamiento orgánico
+    // Comportamiento orgánico e inteligente
     private float directionChangeTimer = 0f;
     private float directionChangeInterval = 3.0f;
     private float wanderAngle = 0f;             // Ángulo de deambulación suave
+
+    // 🧠 IA TÁCTICA
+    private float tacticalTimer = 0f;
+    private float tacticalInterval = 2.0f;      // Revaluar táctica cada 2 segundos
+    private int currentTactic = 0;              // 0=orbitar, 1=atacar defender, 2=atacar tierra, 3=evadir
 
     // 🌍 LÍMITES VISIBLES (para pantalla portrait)
     private float minX = -2.0f;
@@ -111,10 +116,11 @@ public class Spaceship3D implements SceneObject, CameraAware {
     private CameraController cameraRef;         // Para pasar MVP a láseres
 
     // 💔 SISTEMA DE VIDA
-    private int health = 3;                     // 3 golpes = destruido
+    private int health = 6;                     // 6 golpes = destruido (más resistente)
+    private int maxHealth = 6;
     private boolean destroyed = false;
     private float respawnTimer = 0f;
-    private float respawnDelay = 8.0f;          // Reaparece después de 8 segundos
+    private float respawnDelay = 5.0f;          // Reaparece después de 5 segundos
     private float invincibilityTimer = 0f;      // Invencibilidad después de golpe
     private float invincibilityDuration = 1.5f;
 
@@ -125,6 +131,20 @@ public class Spaceship3D implements SceneObject, CameraAware {
 
     // 🌍 Referencia al escudo para impactos
     private EarthShield earthShieldRef;
+
+    // 🚀 Referencia a la nave defensora (enemigo)
+    private DefenderShip defenderShipRef;
+
+    // 💚 BARRA DE VIDA
+    private HealthBar healthBar;
+    private float targetSwitchTimer = 0f;
+    private float targetSwitchInterval = 6.0f;  // Cambiar objetivo cada 6 segundos
+    private boolean targetingDefender = false;  // true = atacar defender, false = atacar Tierra
+
+    // 🔍 Estado público para que DefenderShip sepa si OVNI está visible
+    public boolean isTeleportingNow() {
+        return isTeleporting;
+    }
 
     // Cámara
     private CameraController camera;
@@ -169,6 +189,9 @@ public class Spaceship3D implements SceneObject, CameraAware {
 
         // 3. Crear shaders
         createShaders();
+
+        // 4. Crear barra de vida (OVNI = enemigo, 6 HP)
+        healthBar = new HealthBar(6, true);
 
         Log.d(TAG, "✅ Spaceship3D creado exitosamente");
         Log.d(TAG, "   Posición: (" + x + ", " + y + ", " + z + ")");
@@ -485,7 +508,16 @@ public class Spaceship3D implements SceneObject, CameraAware {
         // 🛸 EXPLORACIÓN LIBRE CON IA INTELIGENTE (OPTIMIZADO)
         // ═══════════════════════════════════════════════════════════
 
-        if (destroyed) return;
+        // 💀 RESPAWN AUTOMÁTICO
+        if (destroyed) {
+            respawnTimer += deltaTime;
+            if (respawnTimer >= respawnDelay) {
+                respawn();
+                respawnTimer = 0f;
+                Log.d(TAG, "🛸 OVNI respawneó automáticamente después de " + respawnDelay + " segundos");
+            }
+            return;
+        }
 
         // ⚡ OPTIMIZACIÓN: Actualizar cache de random cada 10 frames
         frameCounter++;
@@ -569,26 +601,133 @@ public class Spaceship3D implements SceneObject, CameraAware {
             }
         }
 
-        // 1️⃣ DEAMBULACIÓN ORGÁNICA (cambio gradual de dirección)
+        // ═══════════════════════════════════════════════════════════
+        // 🚫 EVITAR COLISIÓN CON DEFENDER
+        // ═══════════════════════════════════════════════════════════
+        if (defenderShipRef != null && !defenderShipRef.isDestroyed()) {
+            float dxD = x - defenderShipRef.x;
+            float dyD = y - defenderShipRef.y;
+            float dzD = z - defenderShipRef.z;
+            float distToDefender = (float) Math.sqrt(dxD*dxD + dyD*dyD + dzD*dzD);
+
+            // Si está muy cerca, alejarse y considerar teletransportarse
+            if (distToDefender < 0.6f) {
+                // Empujar fuera
+                if (distToDefender > 0.01f) {
+                    float pushForce = 3.0f;
+                    velocityX += (dxD / distToDefender) * pushForce;
+                    velocityY += (dyD / distToDefender) * pushForce * 0.5f;
+                    velocityZ += (dzD / distToDefender) * pushForce;
+                }
+
+                // 🌀 TELETRANSPORTACIÓN DE EMERGENCIA si HP bajo
+                if (health <= 3 && !isTeleporting && random.nextFloat() < 0.3f) {
+                    isTeleporting = true;
+                    teleportFadeTimer = 0f;
+                    Log.d(TAG, "✨ ¡TELETRANSPORTACIÓN DE ESCAPE!");
+                }
+            }
+        }
+
+        // 🧠 SISTEMA DE IA TÁCTICA
+        tacticalTimer += deltaTime;
+        if (tacticalTimer >= tacticalInterval) {
+            tacticalTimer = 0f;
+            chooseTactic();
+        }
+
+        // 1️⃣ MOVIMIENTO SEGÚN TÁCTICA ACTUAL (más agresivo)
+        float targetX = x, targetY = y, targetZ = z;
+
         if (!isApproachingCamera) {
-            wanderAngle += randomCache1 * 2.0f * deltaTime;
-            velocityX += (float) Math.cos(wanderAngle) * 0.1f * deltaTime;
-            velocityZ += (float) Math.sin(wanderAngle) * 0.1f * deltaTime;
-            velocityY += randomCache2 * 0.05f * deltaTime;
+            switch (currentTactic) {
+                case 0: // ORBITAR - movimiento circular AMPLIO por toda la escena
+                    wanderAngle += 1.2f * deltaTime;
+                    float orbitRadius = 2.0f + (float)Math.sin(wanderAngle * 0.5f) * 0.8f;
+                    targetX = earthX + (float) Math.cos(wanderAngle) * orbitRadius;
+                    targetZ = earthZ + (float) Math.sin(wanderAngle) * orbitRadius;
+                    targetY = earthY + (float) Math.sin(wanderAngle * 1.5f) * 1.0f;
+                    break;
+
+                case 1: // ATACAR DEFENDER - persecución AGRESIVA
+                    if (defenderShipRef != null && !defenderShipRef.isDestroyed()) {
+                        // Apuntar donde estará la nave (predicción básica)
+                        targetX = defenderShipRef.x;
+                        targetY = defenderShipRef.y;
+                        targetZ = defenderShipRef.z;
+
+                        float distToD = distanceTo(targetX, targetY, targetZ);
+
+                        // Mantener distancia de ataque (0.8 - 2.0)
+                        if (distToD < 0.8f) {
+                            // Muy cerca - alejarse
+                            float dxA = x - defenderShipRef.x;
+                            float dzA = z - defenderShipRef.z;
+                            float distA = (float)Math.sqrt(dxA*dxA + dzA*dzA);
+                            if (distA > 0.01f) {
+                                targetX = x + (dxA / distA) * 1.5f;
+                                targetZ = z + (dzA / distA) * 1.5f;
+                            }
+                        } else if (distToD < 2.0f) {
+                            // Distancia perfecta - orbitar alrededor
+                            float angle = (float)Math.atan2(z - defenderShipRef.z, x - defenderShipRef.x);
+                            angle += 3.0f * deltaTime;
+                            targetX = defenderShipRef.x + (float)Math.cos(angle) * 1.5f;
+                            targetZ = defenderShipRef.z + (float)Math.sin(angle) * 1.5f;
+                        }
+                    }
+                    break;
+
+                case 2: // ATACAR TIERRA - posicionarse estratégicamente
+                    wanderAngle += 0.8f * deltaTime;
+                    float attackDist = safeDistanceEarth + 0.5f;
+                    targetX = earthX + (float) Math.cos(wanderAngle) * attackDist;
+                    targetZ = earthZ + (float) Math.sin(wanderAngle) * attackDist;
+                    targetY = earthY + 1.0f + (float) Math.sin(wanderAngle * 2f) * 0.5f;
+                    break;
+
+                case 3: // EVADIR - movimiento errático para escapar
+                    if (defenderShipRef != null) {
+                        float dxE = x - defenderShipRef.x;
+                        float dyE = y - defenderShipRef.y;
+                        float dzE = z - defenderShipRef.z;
+                        float distE = (float) Math.sqrt(dxE*dxE + dyE*dyE + dzE*dzE);
+
+                        if (distE > 0.1f) {
+                            // Huir en dirección opuesta + zigzag
+                            float zigzag = (float)Math.sin(System.currentTimeMillis() * 0.01f) * 1.5f;
+                            targetX = x + (dxE / distE) * 2.0f + zigzag;
+                            targetY = y + (dyE / distE) * 0.5f;
+                            targetZ = z + (dzE / distE) * 2.0f;
+                        }
+
+                        // Si muy cerca y HP bajo, teletransportarse
+                        if (distE < 1.5f && health <= 2 && !isTeleporting) {
+                            isTeleporting = true;
+                            teleportFadeTimer = 0f;
+                            Log.d(TAG, "✨ ¡TELETRANSPORTACIÓN DE ESCAPE CRÍTICO!");
+                        }
+                    }
+                    break;
+            }
+
+            // Acelerar hacia el objetivo
+            float dxT = targetX - x;
+            float dyT = targetY - y;
+            float dzT = targetZ - z;
+            float distT = (float)Math.sqrt(dxT*dxT + dyT*dyT + dzT*dzT);
+
+            if (distT > 0.1f) {
+                float accel = 2.0f;
+                velocityX += (dxT / distT) * accel * deltaTime;
+                velocityY += (dyT / distT) * accel * 0.5f * deltaTime;
+                velocityZ += (dzT / distT) * accel * deltaTime;
+            }
         }
 
-        // 2️⃣ CAMBIO DE DIRECCIÓN PERIÓDICO
-        directionChangeTimer += deltaTime;
-        if (directionChangeTimer >= directionChangeInterval && !isApproachingCamera) {
-            float angle = random.nextFloat() * (float) (Math.PI * 2);
-            float elevation = (random.nextFloat() - 0.5f) * 0.5f;
-            velocityX = (float) Math.cos(angle) * currentSpeed;
-            velocityZ = (float) Math.sin(angle) * currentSpeed;
-            velocityY = elevation * currentSpeed;
-
-            directionChangeTimer = 0f;
-            directionChangeInterval = 2.0f + random.nextFloat() * 3.0f;
-        }
+        // 2️⃣ DEAMBULACIÓN ORGÁNICA adicional
+        velocityX += randomCache1 * 0.15f * deltaTime;
+        velocityZ += randomCache2 * 0.15f * deltaTime;
 
         // 3️⃣ 🌍 ESQUIVAR LA TIERRA (CRÍTICO - nunca atravesar)
         float dx = x - earthX;
@@ -682,13 +821,23 @@ public class Spaceship3D implements SceneObject, CameraAware {
             shootInterval = minShootInterval + random.nextFloat() * (maxShootInterval - minShootInterval);
         }
 
-        // 🔟 ACTUALIZAR LÁSERES
+        // 🔟 ACTUALIZAR LÁSERES Y VERIFICAR COLISIONES
         for (int i = lasers.size() - 1; i >= 0; i--) {
             UfoLaser laser = lasers.get(i);
             laser.update(deltaTime, earthX, earthY, earthZ, earthRadius);
 
+            // Colisión con EarthShield
             if (laser.hitTarget && earthShieldRef != null) {
                 earthShieldRef.registerImpact(laser.x, laser.y, laser.z);
+            }
+
+            // 🚀 Colisión con DefenderShip
+            if (laser.active && defenderShipRef != null && !defenderShipRef.isDestroyed()) {
+                if (defenderShipRef.checkLaserCollision(laser.x, laser.y, laser.z, 0.15f)) {
+                    laser.active = false;
+                    defenderShipRef.takeDamage();
+                    Log.d(TAG, "💥 ¡Láser impactó a DefenderShip!");
+                }
             }
 
             if (!laser.active) {
@@ -696,9 +845,87 @@ public class Spaceship3D implements SceneObject, CameraAware {
             }
         }
 
+        // 1️⃣1️⃣ CAMBIAR OBJETIVO PERIÓDICAMENTE (Tierra <-> DefenderShip)
+        if (defenderShipRef != null) {
+            targetSwitchTimer += deltaTime;
+            if (targetSwitchTimer >= targetSwitchInterval) {
+                targetSwitchTimer = 0f;
+                // Cambiar objetivo solo si la DefenderShip está viva
+                if (!defenderShipRef.isDestroyed()) {
+                    targetingDefender = !targetingDefender;
+                    targetSwitchInterval = 4.0f + random.nextFloat() * 4.0f;  // 4-8 segundos
+                    Log.d(TAG, "🎯 OVNI cambia objetivo a: " + (targetingDefender ? "DEFENDER" : "TIERRA"));
+                } else {
+                    targetingDefender = false;  // Si está destruida, atacar Tierra
+                }
+            }
+        }
+
         // 1️⃣1️⃣ INVENCIBILIDAD POST-GOLPE
         if (invincibilityTimer > 0) {
             invincibilityTimer -= deltaTime;
+        }
+    }
+
+    /**
+     * 📏 Distancia a un punto
+     */
+    private float distanceTo(float tx, float ty, float tz) {
+        float dx = x - tx;
+        float dy = y - ty;
+        float dz = z - tz;
+        return (float)Math.sqrt(dx*dx + dy*dy + dz*dz);
+    }
+
+    /**
+     * 🧠 Elegir táctica basada en la situación
+     */
+    private void chooseTactic() {
+        // Si HP bajo, evadir más frecuentemente
+        if (health <= 2) {
+            if (random.nextFloat() < 0.6f) {
+                currentTactic = 3;  // EVADIR
+                tacticalInterval = 1.5f + random.nextFloat() * 2.0f;
+                Log.d(TAG, "🧠 Táctica: EVADIR (HP bajo)");
+                return;
+            }
+        }
+
+        // Si Defender está cerca, decidir atacar o evadir
+        if (defenderShipRef != null && !defenderShipRef.isDestroyed()) {
+            float distToDefender = (float) Math.sqrt(
+                (x - defenderShipRef.x) * (x - defenderShipRef.x) +
+                (y - defenderShipRef.y) * (y - defenderShipRef.y) +
+                (z - defenderShipRef.z) * (z - defenderShipRef.z)
+            );
+
+            if (distToDefender < 2.0f) {
+                // Muy cerca - 50% atacar, 50% evadir
+                currentTactic = random.nextBoolean() ? 1 : 3;
+                tacticalInterval = 1.0f + random.nextFloat() * 1.5f;
+                Log.d(TAG, "🧠 Táctica: " + (currentTactic == 1 ? "ATACAR DEFENDER" : "EVADIR"));
+                return;
+            }
+        }
+
+        // Elección normal de táctica
+        float roll = random.nextFloat();
+        if (roll < 0.35f) {
+            currentTactic = 0;  // ORBITAR (35%)
+            tacticalInterval = 3.0f + random.nextFloat() * 3.0f;
+            Log.d(TAG, "🧠 Táctica: ORBITAR");
+        } else if (roll < 0.60f) {
+            currentTactic = 1;  // ATACAR DEFENDER (25%)
+            tacticalInterval = 2.0f + random.nextFloat() * 2.0f;
+            Log.d(TAG, "🧠 Táctica: ATACAR DEFENDER");
+        } else if (roll < 0.90f) {
+            currentTactic = 2;  // ATACAR TIERRA (30%)
+            tacticalInterval = 2.5f + random.nextFloat() * 2.5f;
+            Log.d(TAG, "🧠 Táctica: ATACAR TIERRA");
+        } else {
+            currentTactic = 3;  // EVADIR (10%)
+            tacticalInterval = 1.5f + random.nextFloat() * 1.5f;
+            Log.d(TAG, "🧠 Táctica: EVADIR");
         }
     }
 
@@ -746,15 +973,27 @@ public class Spaceship3D implements SceneObject, CameraAware {
     }
 
     /**
-     * 🔫 Disparar láser hacia la Tierra
+     * 🔫 Disparar láser - ATACA A AMBOS: Tierra Y DefenderShip
      */
     private void shootLaser() {
         if (destroyed) return;
 
-        // Crear láser desde la posición actual hacia la Tierra
-        UfoLaser laser = new UfoLaser(x, y - 0.05f, z, earthX, earthY, earthZ);
-        lasers.add(laser);
-        Log.d(TAG, "🔫 OVNI disparó láser! Total activos: " + lasers.size());
+        // 🌍 SIEMPRE disparar a la Tierra
+        UfoLaser laserEarth = new UfoLaser(x, y - 0.05f, z, earthX, earthY, earthZ);
+        lasers.add(laserEarth);
+
+        // 🚀 TAMBIÉN disparar a la nave defensora si está viva y visible
+        if (defenderShipRef != null && !defenderShipRef.isDestroyed()) {
+            // Pequeño delay para el segundo disparo (efecto ráfaga)
+            UfoLaser laserDefender = new UfoLaser(
+                x + 0.05f, y - 0.03f, z,  // Ligero offset para verse como 2 disparos
+                defenderShipRef.x, defenderShipRef.y, defenderShipRef.z
+            );
+            lasers.add(laserDefender);
+            Log.d(TAG, "🔫 OVNI dispara ráfaga: TIERRA + DEFENDER!");
+        } else {
+            Log.d(TAG, "🔫 OVNI dispara a TIERRA!");
+        }
     }
 
     /**
@@ -781,7 +1020,7 @@ public class Spaceship3D implements SceneObject, CameraAware {
     public void respawn() {
         destroyed = false;
         exploding = false;
-        health = 3;
+        health = maxHealth;
         invincibilityTimer = invincibilityDuration;
 
         // Posición aleatoria segura
@@ -797,6 +1036,14 @@ public class Spaceship3D implements SceneObject, CameraAware {
      */
     public void setEarthShield(EarthShield shield) {
         this.earthShieldRef = shield;
+    }
+
+    /**
+     * 🚀 Establecer referencia a la nave defensora (para atacarla)
+     */
+    public void setDefenderShip(DefenderShip defender) {
+        this.defenderShipRef = defender;
+        Log.d(TAG, "🎯 Nave defensora establecida como objetivo alternativo");
     }
 
     /**
@@ -909,11 +1156,18 @@ public class Spaceship3D implements SceneObject, CameraAware {
         // Usar shader
         GLES20.glUseProgram(shaderProgram);
 
-        // 👀 Calcular escala dinámica (más grande cuando se acerca a cámara)
-        float dynamicScale = scale;
+        // 👀 Calcular escala basada en distancia (perspectiva realista)
+        // Más lejos de la cámara = más pequeño
+        float distanceToCamera = (float)Math.sqrt(x*x + y*y + z*z);
+        float distanceScale = 1.0f / (1.0f + distanceToCamera * 0.15f);
+        distanceScale = Math.max(0.3f, Math.min(1.2f, distanceScale)); // Clamp
+
+        float dynamicScale = scale * distanceScale;
+
+        // Más grande cuando se acerca a cámara (efecto dramático)
         if (isApproachingCamera) {
             float approachPhase = approachTimer / approachDuration;
-            dynamicScale = scale * (1.0f + approachPhase * 0.8f);  // Hasta 80% más grande
+            dynamicScale *= (1.0f + approachPhase * 0.5f);
         }
 
         // ✨ Efecto de escala durante teletransportación
@@ -967,6 +1221,12 @@ public class Spaceship3D implements SceneObject, CameraAware {
         GLES20.glDisableVertexAttribArray(aPositionHandle);
         if (aTexCoordHandle >= 0) {
             GLES20.glDisableVertexAttribArray(aTexCoordHandle);
+        }
+
+        // 💚 DIBUJAR BARRA DE VIDA
+        if (healthBar != null && !destroyed) {
+            healthBar.setHP(health);
+            healthBar.drawSegmented(x, y, z, mvpMatrix);
         }
     }
 }

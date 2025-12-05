@@ -196,9 +196,21 @@ public class MusicVisualizer {
 
             float avgMagnitude = count > 0 ? sum / count : 0f;
 
-            // Normalizar con compensación por frecuencia (las altas necesitan más boost)
-            // Las frecuencias altas tienen menos energía naturalmente
-            float freqCompensation = 1.0f + (band / (float) NUM_BANDS) * 2.5f;
+            // Normalizar con compensación por frecuencia (las altas necesitan MUCHO más boost)
+            // Las frecuencias altas tienen mucha menos energía naturalmente
+            // Las últimas 7 bandas (25-31) reciben boost extra exponencial
+            float freqCompensation;
+            if (band >= 25) {
+                // Boost AGRESIVO para las últimas 7 barras (treble alto)
+                float extraBoost = 1.0f + ((band - 25) / 6.0f) * 4.0f;  // 1x a 5x extra
+                freqCompensation = 3.5f + extraBoost;  // Total: 4.5x a 8.5x
+            } else if (band >= 20) {
+                // Boost alto para treble medio
+                freqCompensation = 2.5f + (band - 20) * 0.2f;  // 2.5x a 3.5x
+            } else {
+                // Boost normal para bass y mid
+                freqCompensation = 1.0f + (band / (float) NUM_BANDS) * 2.0f;
+            }
             float normalized = (avgMagnitude / 128f) * freqCompensation;
 
             // Aplicar curva de compresión para mejor rango dinámico

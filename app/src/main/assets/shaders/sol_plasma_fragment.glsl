@@ -33,13 +33,13 @@ varying vec3 v_Normal;
 varying vec3 v_WorldPos;
 
 // ═══════════════════════════════════════════════════════════════
-// CONFIGURACIÓN DE EFECTOS
+// CONFIGURACIÓN DE EFECTOS - VERSIÓN SUTIL
 // ═══════════════════════════════════════════════════════════════
-const float PLASMA_SPEED = 0.1;          // Velocidad de plasma
-const float PLASMA_INTENSITY = 0.8;      // Intensidad del plasma
-const float SUNSPOT_SCALE = 5.0;         // Escala de manchas solares
-const float CORONA_SIZE = 1.3;           // Tamaño de la corona
-const float FLARE_INTENSITY = 0.5;       // Intensidad de erupciones
+const float PLASMA_SPEED = 0.05;         // Velocidad de plasma (más lento)
+const float PLASMA_INTENSITY = 0.25;     // Intensidad del plasma (muy reducida)
+const float SUNSPOT_SCALE = 4.0;         // Escala de manchas solares
+const float CORONA_SIZE = 0.3;           // Tamaño de la corona (reducido)
+const float FLARE_INTENSITY = 0.15;      // Intensidad de erupciones (reducida)
 
 // ═══════════════════════════════════════════════════════════════
 // FUNCIONES DE LA SHADER LIBRARY
@@ -179,6 +179,11 @@ float temperatureMap(vec2 uv, float plasma) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// UNIFORMS ADICIONALES
+// ═══════════════════════════════════════════════════════════════
+uniform sampler2D u_Texture;
+
+// ═══════════════════════════════════════════════════════════════
 // MAIN
 // ═══════════════════════════════════════════════════════════════
 
@@ -187,86 +192,61 @@ void main() {
     // 1. CONFIGURACIÓN BÁSICA
     // ═══════════════════════════════════════════════════════════
     vec2 uv = v_TexCoord;
+    // Invertir V para compatibilidad con modelos Meshy
+    vec2 texUV = vec2(uv.x, 1.0 - uv.y);
+
     vec3 normal = normalize(v_Normal);
     vec3 viewDir = normalize(-v_WorldPos);
 
     // ═══════════════════════════════════════════════════════════
-    // 2. GENERAR PLASMA ANIMADO
+    // 2. TEXTURA BASE DEL SOL (principal)
+    // ═══════════════════════════════════════════════════════════
+    vec4 texColor = texture2D(u_Texture, texUV);
+    vec3 baseColor = texColor.rgb * 1.2;  // Textura original brillante
+
+    // ═══════════════════════════════════════════════════════════
+    // 3. EFECTO DE PLASMA SUTIL (aparece de vez en cuando)
     // ═══════════════════════════════════════════════════════════
     float plasma = plasmaPattern(uv, u_Time);
 
-    // ═══════════════════════════════════════════════════════════
-    // 3. GENERAR MANCHAS SOLARES
-    // ═══════════════════════════════════════════════════════════
-    float spots = sunspots(uv, u_Time);
+    // Onda que controla cuándo aparece el plasma (cada ~8 segundos)
+    float plasmaWave = sin(u_Time * 0.4) * 0.5 + 0.5;  // 0 a 1
+    plasmaWave = smoothstep(0.6, 1.0, plasmaWave);  // Solo activo parte del tiempo
 
-    // Las manchas oscurecen el plasma
-    float darkenSpots = mix(1.0, 0.6, 1.0 - spots);
-
-    // ═══════════════════════════════════════════════════════════
-    // 4. MAPA DE TEMPERATURA (núcleo → superficie)
-    // ═══════════════════════════════════════════════════════════
-    float temp = temperatureMap(uv, plasma);
+    // Color del plasma (naranja brillante)
+    vec3 plasmaColor = vec3(1.0, 0.6, 0.2) * plasma;
 
     // ═══════════════════════════════════════════════════════════
-    // 5. COLOR BASE USANDO HSB (amarillo → naranja → rojo)
+    // 4. DISTORSIÓN DE CALOR SUTIL
     // ═══════════════════════════════════════════════════════════
+    float heatDistort = sin(uv.y * 20.0 + u_Time * 2.0) * 0.02;
+    heatDistort *= sin(u_Time * 0.5) * 0.5 + 0.5;  // Intermitente
 
-    // Temperatura determina el color:
-    // - Alta temp (núcleo): Amarillo-blanco (hue ~0.15)
-    // - Media temp: Naranja (hue ~0.08)
-    // - Baja temp (manchas): Rojo oscuro (hue ~0.0)
-
-    float hue = mix(0.0, 0.15, temp);  // De rojo a amarillo
-    float saturation = mix(0.8, 0.5, temp);  // Núcleo menos saturado (más blanco)
-    float brightness = 0.8 + plasma * 0.2;  // Plasma añade brillo
-
-    vec3 surfaceColor = hsb2rgb(vec3(hue, saturation, brightness));
-
-    // Aplicar manchas solares
-    surfaceColor *= darkenSpots;
+    vec2 distortedUV = texUV + vec2(heatDistort, 0.0);
+    vec3 distortedColor = texture2D(u_Texture, distortedUV).rgb;
 
     // ═══════════════════════════════════════════════════════════
-    // 6. CORONA SOLAR (halo brillante en los bordes)
+    // 5. MEZCLAR: 90% textura + 10% efectos
     // ═══════════════════════════════════════════════════════════
-    float coronaGlow = corona(normal, viewDir, u_Time);
+    vec3 finalColor = baseColor;
 
-    // Color de la corona: amarillo brillante
-    vec3 coronaColor = hsb2rgb(vec3(0.12, 0.8, 1.0));
-    surfaceColor += coronaColor * coronaGlow * CORONA_SIZE;
+    // Añadir distorsión de calor muy sutil
+    finalColor = mix(finalColor, distortedColor * 1.2, 0.15);
 
-    // ═══════════════════════════════════════════════════════════
-    // 7. ERUPCIONES SOLARES (flares en el borde)
-    // ═══════════════════════════════════════════════════════════
-    float flares = solarFlares(uv, normal, viewDir, u_Time);
-
-    // Color de erupciones: naranja-rojo intenso
-    vec3 flareColor = hsb2rgb(vec3(0.05, 1.0, 1.0));
-    surfaceColor += flareColor * flares * FLARE_INTENSITY;
+    // Añadir plasma solo cuando la onda lo permite
+    finalColor += plasmaColor * plasmaWave * 0.2;
 
     // ═══════════════════════════════════════════════════════════
-    // 8. EMISIÓN DE LUZ (el sol emite luz propia, no necesita iluminación)
+    // 6. BRILLO EN LOS BORDES (corona muy sutil)
     // ═══════════════════════════════════════════════════════════
-
-    // El sol es autoiluminado, no aplicar lambert/diffuse
-    vec3 finalColor = surfaceColor;
-
-    // Aumentar brillo general (emisión)
-    finalColor *= 1.5;  // El sol es MUY brillante
+    float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 3.0);
+    finalColor += vec3(1.0, 0.8, 0.4) * fresnel * 0.15;
 
     // ═══════════════════════════════════════════════════════════
-    // 9. EFECTO DE SOBRESATURACIÓN (HDR simulado)
+    // 7. SALIDA FINAL
     // ═══════════════════════════════════════════════════════════
-    // En las zonas más brillantes, tender hacia blanco puro
-    float luminance = dot(finalColor, vec3(0.299, 0.587, 0.114));
-    if (luminance > 1.0) {
-        finalColor = mix(finalColor, vec3(1.0), (luminance - 1.0) * 0.5);
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // 10. SALIDA FINAL
-    // ═══════════════════════════════════════════════════════════
-    gl_FragColor = vec4(finalColor, u_Alpha);
+    finalColor = clamp(finalColor, 0.0, 1.0);
+    gl_FragColor = vec4(finalColor, texColor.a * u_Alpha);
 }
 
 /**

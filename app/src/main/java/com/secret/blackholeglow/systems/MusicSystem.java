@@ -3,7 +3,6 @@ package com.secret.blackholeglow.systems;
 import android.content.Context;
 import android.util.Log;
 
-import com.secret.blackholeglow.MusicIndicator;
 import com.secret.blackholeglow.MusicVisualizer;
 
 /**
@@ -16,7 +15,7 @@ import com.secret.blackholeglow.MusicVisualizer;
  * ║  • Captura de audio del sistema                                  ║
  * ║  • Análisis de frecuencias (bass, mid, treble)                   ║
  * ║  • Detección de beats                                            ║
- * ║  • Visualizador (MusicIndicator)                                 ║
+ * ║  • Visualización de audio (EqualizerBarsDJ)                      ║
  * ║  • Publicación de eventos musicales                              ║
  * ║                                                                  ║
  * ║  RESPONSABILIDADES:                                              ║
@@ -41,7 +40,6 @@ public class MusicSystem {
     // ═══════════════════════════════════════════════════════════════
 
     private MusicVisualizer visualizer;
-    private MusicIndicator indicator;
     private boolean enabled = true;
 
     // ═══════════════════════════════════════════════════════════════
@@ -92,28 +90,6 @@ public class MusicSystem {
         Log.d(TAG, "🎵 MusicSystem inicializado");
     }
 
-    /**
-     * Inicializar indicador visual (llamar desde GL thread)
-     * @param ctx Context
-     * @param x Posición X (NDC)
-     * @param y Posición Y (NDC)
-     * @param width Ancho (NDC)
-     * @param height Alto (NDC)
-     */
-    public void initIndicator(Context ctx, float x, float y, float width, float height) {
-        if (indicator == null) {
-            indicator = new MusicIndicator(ctx, x, y, width, height);
-            Log.d(TAG, "🎵 MusicIndicator creado en (" + x + "," + y + ")");
-        }
-    }
-
-    /**
-     * Inyectar indicador existente (para compatibilidad con SceneRenderer)
-     */
-    public void setIndicator(MusicIndicator existingIndicator) {
-        this.indicator = existingIndicator;
-    }
-
     // ═══════════════════════════════════════════════════════════════
     // 🔄 UPDATE
     // ═══════════════════════════════════════════════════════════════
@@ -132,11 +108,6 @@ public class MusicSystem {
         beatIntensity = visualizer.getBeatIntensity();
         isBeat = visualizer.isBeat();
 
-        // Actualizar indicador visual
-        if (indicator != null) {
-            indicator.updateMusicLevels(bassLevel, midLevel, trebleLevel);
-        }
-
         // Publicar evento de beat si hay uno
         if (isBeat) {
             EventBus.get().publish(EventBus.MUSIC_BEAT,
@@ -145,29 +116,6 @@ public class MusicSystem {
                     .put("bass", bassLevel)
                     .put("mid", midLevel)
                     .put("treble", trebleLevel));
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // 🎨 DRAW
-    // ═══════════════════════════════════════════════════════════════
-
-    /**
-     * Dibujar indicador de música
-     * MusicIndicator implementa SceneObject, usa draw() sin parámetros
-     */
-    public void drawIndicator() {
-        if (indicator != null) {
-            indicator.draw();
-        }
-    }
-
-    /**
-     * Actualizar indicador visual (llamar antes de draw)
-     */
-    public void updateIndicator(float deltaTime) {
-        if (indicator != null) {
-            indicator.update(deltaTime);
         }
     }
 
@@ -201,10 +149,6 @@ public class MusicSystem {
 
     public boolean isEnabled() {
         return enabled;
-    }
-
-    public MusicIndicator getIndicator() {
-        return indicator;
     }
 
     public MusicVisualizer getVisualizer() {
@@ -254,7 +198,6 @@ public class MusicSystem {
             visualizer.release();
             visualizer = null;
         }
-        indicator = null;
         initialized = false;
         Log.d(TAG, "🧹 MusicSystem liberado");
     }

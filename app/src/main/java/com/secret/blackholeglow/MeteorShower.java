@@ -16,11 +16,11 @@ import java.util.List;
 public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     private static final String TAG = "depurar";
 
-    // Configuración ULTRA OPTIMIZADA para dispositivos de gama baja
-    private static final int MAX_METEORITOS = 2;  // Pool de 2 meteoritos (ULTRA performance)
-    private static final int METEORITOS_ACTIVOS_MAX = 1;  // Máximo 1 activo (ULTRA optimizado)
-    private static final float SPAWN_INTERVAL = 4.0f;  // Spawn cada 4 segundos (más lento)
-    private static final float SPAWN_DISTANCE = 12.0f;  // Distancia de spawn
+    // Configuración NATURAL - Asteroides ocasionales y realistas
+    private static final int MAX_METEORITOS = 2;  // Pool de 2 meteoritos
+    private static final int METEORITOS_ACTIVOS_MAX = 1;  // Máximo 1 activo a la vez
+    private static final float SPAWN_INTERVAL = 12.0f;  // Spawn cada 12 segundos (más natural)
+    private static final float SPAWN_DISTANCE = 15.0f;  // Distancia de spawn (más lejos)
 
     // Pool de asteroides realistas
     private final List<AsteroideRealista> poolMeteorites = new ArrayList<>();
@@ -55,12 +55,15 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     // 🛸 REFERENCIA AL OVNI (para colisiones)
     private Spaceship3D ovniRef = null;
 
+    // 🌍 REFERENCIA A LA TIERRA (para posición dinámica durante órbita)
+    private TierraMeshy tierraRef = null;
+
     // ⚡ OPTIMIZACIÓN: Lista reutilizable para evitar allocaciones en update()
     private final List<AsteroideRealista> paraRemover = new ArrayList<>();
 
-    // ⚡ OPTIMIZACIÓN: Arrays estáticos para verificarColisiones (evita allocaciones)
-    // 🌍 NUEVA POSICIÓN DE LA TIERRA (Y=1.8, centrada en X y Z)
-    private static final float[] POS_TIERRA = {0f, 1.8f, 0f};
+    // ⚡ OPTIMIZACIÓN: Arrays reutilizables para verificarColisiones (evita allocaciones)
+    // 🌍 POSICIÓN DE LA TIERRA (se actualiza dinámicamente si hay tierraRef)
+    private final float[] posTierra = {0f, 0.5f, -5.0f};
     private static final float[] POS_PLANETA_ORBITANTE = {3.2f, 0f, 0f};
 
     // 🌍 GRAVEDAD DE LA TIERRA - Atrae meteoritos cercanos
@@ -74,22 +77,17 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     // 🎮 SISTEMA DE ESTADÍSTICAS DEL JUGADOR
     private PlayerStats playerStats;
 
-    // ⚡ BARRA DE COMBO Y LLUVIA DE METEORITOS ÉPICA
+    // ⚡ BARRA DE COMBO (sin lluvia épica)
     private ComboBar comboBar;
-    // 🌟 LLUVIA DE METEORITOS ÉPICA (COMBO x10)
-    private boolean epicMeteorShowerActive = false;
-    private float epicMeteorShowerDuration = 0f;
-    private static final float EPIC_SHOWER_DURATION = 3.0f;  // 3 segundos de lluvia épica
-    private static final int EPIC_METEOR_COUNT = 30;  // 30 meteoritos en la lluvia épica
 
     // ===== SISTEMA DE REACTIVIDAD MUSICAL =====
     private boolean musicReactive = true;
     private float musicIntensityBoost = 0f;  // Boost de intensidad por música
 
-    // ===== 💥 SISTEMA DE METEORITOS A PANTALLA (GRIETAS) 💥 =====
-    private float screenMeteorTimer = 0f;           // Tiempo desde último meteorito a pantalla
-    private float screenMeteorInterval = 40f;       // Intervalo aleatorio (30-60 segundos)
-    private final List<AsteroideRealista> screenDirectedMeteors = new ArrayList<>();  // Asteroides hacia pantalla
+    // Sistema de meteoritos a pantalla DESACTIVADO
+    // private float screenMeteorTimer = 0f;
+    // private float screenMeteorInterval = 40f;
+    // private final List<AsteroideRealista> screenDirectedMeteors = new ArrayList<>();
 
     public MeteorShower(Context context, TextureManager textureManager) {
         this.context = context;
@@ -160,6 +158,14 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     }
 
     /**
+     * 🌍 Conecta la Tierra para tracking dinámico de posición (órbita)
+     */
+    public void setTierra(TierraMeshy tierra) {
+        this.tierraRef = tierra;
+        Log.d(TAG, "[MeteorShower] 🌍 Tierra conectada para posición dinámica");
+    }
+
+    /**
      * Registra objetos para detectar colisiones
      */
     public void registrarObjetoColisionable(SceneObject objeto) {
@@ -204,79 +210,36 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     public void update(float deltaTime) {
         if (!activo) return;
 
+        // 🌍 ACTUALIZAR POSICIÓN DE LA TIERRA (si está orbitando)
+        if (tierraRef != null) {
+            posTierra[0] = tierraRef.getX();
+            posTierra[1] = tierraRef.getY();
+            posTierra[2] = tierraRef.getZ();
+        }
+
         // 🎮 ACTUALIZAR SISTEMA DE COMBOS (timeout automático)
         playerStats.updateCombo();
 
-        // ⚡ ACTUALIZAR BARRA DE COMBO Y RAYO LÁSER
+        // ⚡ ACTUALIZAR BARRA DE COMBO (sin lluvia épica)
         if (comboBar != null) {
             int currentCombo = playerStats.getCurrentCombo();
             comboBar.updateCombo(currentCombo, playerStats.getTotalScore());
             comboBar.update(deltaTime);
 
-            // Si el combo se perdió, resetear la barra visual también
             if (currentCombo == 0 && comboBar.getCurrentCombo() > 0) {
                 comboBar.resetCombo();
-            }
-
-            // Si el combo llega a x10, ¡ACTIVAR LLUVIA DE METEORITOS ÉPICA!
-            if (comboBar.isLaserReady() && !epicMeteorShowerActive) {
-                fireEpicMeteorShower();
-            }
-        }
-
-        // 🌟 ACTUALIZAR LLUVIA DE METEORITOS ÉPICA
-        if (epicMeteorShowerActive) {
-            epicMeteorShowerDuration -= deltaTime;
-
-            // Generar asteroides más frecuentemente durante la lluvia épica
-            if (epicMeteorShowerDuration > 0) {
-                // Lanzar 10 asteroides por segundo durante la lluvia épica
-                if (tiempoDesdeUltimoSpawn > 0.1f) {  // Cada 0.1 segundos
-                    for (int i = 0; i < 3; i++) {  // 3 asteroides a la vez
-                        AsteroideRealista nuevo = lanzarMeteoritoEpico();
-                        if (nuevo != null) {
-                            meteoritosActivos.add(nuevo);
-                        }
-                    }
-                    tiempoDesdeUltimoSpawn = 0;
-                }
-            } else {
-                // Terminar la lluvia épica
-                epicMeteorShowerActive = false;
-                epicMeteorShowerDuration = 0;
-                Log.d(TAG, "🌟 Lluvia de meteoritos épica terminada");
             }
         }
 
         // Actualizar tiempo de spawn
         tiempoDesdeUltimoSpawn += deltaTime;
 
-        // Spawn de nuevos meteoritos con boost musical
-        float effectiveIntensity = intensidad;
-        if (musicReactive && musicIntensityBoost > 0) {
-            effectiveIntensity *= (1.0f + musicIntensityBoost);
-        }
-
-        if (tiempoDesdeUltimoSpawn > SPAWN_INTERVAL / effectiveIntensity &&
+        // Spawn de meteoritos ocasionales (sin boost musical, sin lluvia)
+        if (tiempoDesdeUltimoSpawn > SPAWN_INTERVAL &&
             meteoritosActivos.size() < METEORITOS_ACTIVOS_MAX) {
 
             spawnMeteorito();
             tiempoDesdeUltimoSpawn = 0;
-        }
-
-        // 💥 SISTEMA DE METEORITO A PANTALLA 💥
-        screenMeteorTimer += deltaTime;
-
-        // Actualizar barra de countdown visual
-        if (countdownBar != null) {
-            countdownBar.setProgress(screenMeteorTimer, screenMeteorInterval);
-        }
-
-        if (screenMeteorTimer >= screenMeteorInterval && !poolMeteorites.isEmpty()) {
-            spawnScreenMeteor();
-            screenMeteorTimer = 0f;
-            // Nuevo intervalo aleatorio entre 30-60 segundos
-            screenMeteorInterval = 30f + (float)(Math.random() * 30f);
         }
 
         // Actualizar asteroides activos
@@ -290,15 +253,6 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
             }
 
             m.update(deltaTime);
-
-            // 💥 VERIFICAR IMPACTO EN PANTALLA (asteroides dirigidos a pantalla)
-            if (screenDirectedMeteors.contains(m) && m.getEstado() == AsteroideRealista.Estado.ACTIVO) {
-                if (verificarImpactoPantalla(m)) {
-                    paraRemover.add(m);
-                    // NO hacer remove aquí, se hará después del loop
-                    continue;  // No verificar otras colisiones
-                }
-            }
 
             // Verificar colisiones solo si está activo
             if (m.getEstado() == AsteroideRealista.Estado.ACTIVO) {
@@ -325,7 +279,6 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         // Devolver al pool
         for (AsteroideRealista m : paraRemover) {
             meteoritosActivos.remove(m);
-            screenDirectedMeteors.remove(m);  // Asegurar que se remueva de ambas listas
             poolMeteorites.add(m);
         }
 
@@ -370,10 +323,10 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         float y = SPAWN_DISTANCE * (float) (Math.sin(angulo2) * Math.sin(angulo1));
         float z = SPAWN_DISTANCE * (float) Math.cos(angulo2);
 
-        // Velocidad hacia la Tierra con variación natural
-        // Más velocidad si hay más batería
+        // Velocidad hacia la Tierra - MÁS LENTA y natural
+        // Los asteroides viajan lentamente por el espacio
         float powerBoost = powerBar != null ? powerBar.getPowerMultiplier() : 1.0f;
-        float velocidadBase = (2.0f + (float) Math.random() * 3.0f) * powerBoost;
+        float velocidadBase = (0.8f + (float) Math.random() * 1.2f) * powerBoost;  // 0.8-2.0 (muy lento)
 
         // 🌍 TARGET: La Tierra está en Y=1.8 - Variación para trayectorias naturales
         // 70% de meteoritos van hacia la Tierra, 30% pasan cerca
@@ -382,9 +335,9 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
 
         if (targetBias < 0.7f) {
             // 70% - Directo hacia la Tierra con pequeña variación
-            targetX = POS_TIERRA[0] + (float)(Math.random() * 1.0 - 0.5);  // ±0.5
-            targetY = POS_TIERRA[1] + (float)(Math.random() * 0.6 - 0.3);  // ±0.3 de Y=1.8
-            targetZ = POS_TIERRA[2] + (float)(Math.random() * 1.0 - 0.5);  // ±0.5
+            targetX = posTierra[0] + (float)(Math.random() * 1.0 - 0.5);  // ±0.5
+            targetY = posTierra[1] + (float)(Math.random() * 0.6 - 0.3);  // ±0.3 de Y=1.8
+            targetZ = posTierra[2] + (float)(Math.random() * 1.0 - 0.5);  // ±0.5
         } else {
             // 30% - Pasan cerca pero no directos (más variado/natural)
             targetX = (float)(Math.random() * 3.0 - 1.5);   // -1.5 a 1.5
@@ -401,22 +354,21 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         float vy = (dy / dist) * velocidadBase;
         float vz = (dz / dist) * velocidadBase;
 
-        // Tamaño VARIABLE (pequeños, medianos, grandes) - ✅ MÁS PEQUEÑOS QUE LA LUNA
-        // 50% pequeños, 30% medianos, 20% grandes
-        // Luna = 0.27, asteroides MAX = 0.20
+        // Tamaño PEQUEÑO y natural - asteroides diminutos en el espacio
+        // 70% muy pequeños, 25% pequeños, 5% medianos
         float sizeRoll = (float) Math.random();
         float tamaño;
-        if (sizeRoll < 0.5f) {
-            // Pequeños (50%)
-            tamaño = 0.015f + (float) Math.random() * 0.025f;  // 0.015-0.04
-        } else if (sizeRoll < 0.8f) {
-            // Medianos (30%)
-            tamaño = 0.04f + (float) Math.random() * 0.05f;  // 0.04-0.09
+        if (sizeRoll < 0.70f) {
+            // Muy pequeños (70%) - como rocas espaciales
+            tamaño = 0.02f + (float) Math.random() * 0.02f;  // 0.02-0.04
+        } else if (sizeRoll < 0.95f) {
+            // Pequeños (25%)
+            tamaño = 0.04f + (float) Math.random() * 0.03f;  // 0.04-0.07
         } else {
-            // Grandes (20%)
-            tamaño = 0.09f + (float) Math.random() * 0.06f;  // 0.09-0.15
+            // Medianos (5%) - raros
+            tamaño = 0.07f + (float) Math.random() * 0.03f;  // 0.07-0.10
         }
-        tamaño *= (0.9f + powerBoost * 0.2f);  // Boost de batería (MAX ~0.18)
+        // Sin boost de batería para mantener tamaños naturales
 
         m.activar(x, y, z, vx, vy, vz, tamaño);
         meteoritosActivos.add(m);
@@ -458,9 +410,9 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         float velocidadBase = 5.0f + (power * 10.0f);  // 5-15 unidades/seg según potencia
 
         // 🌍 TARGET: La Tierra ahora está en Y=1.8
-        float targetX = POS_TIERRA[0];  // 0.0
-        float targetY = POS_TIERRA[1];  // 1.8
-        float targetZ = POS_TIERRA[2];  // 0.0
+        float targetX = posTierra[0];  // 0.0
+        float targetY = posTierra[1];  // 1.8
+        float targetZ = posTierra[2];  // 0.0
 
         // Calcular vector de dirección
         float dx = targetX - x;
@@ -515,171 +467,11 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         }
     }
 
-    /**
-     * 💥💥💥 LANZA UN ASTEROIDE HACIA LA PANTALLA DEL USUARIO 💥💥💥
-     * El asteroide vuela directo hacia la cámara y causa grietas en la pantalla
-     * VISIBLE: Se ve acercándose para crear SUSPENSO
-     */
-    private void spawnScreenMeteor() {
-        if (poolMeteorites.isEmpty()) {
-            Log.w(TAG, "[spawnScreenMeteor] ⚠️ Pool vacío");
-            return;
-        }
-
-        AsteroideRealista m = poolMeteorites.remove(0);
-
-        // 📍 POSICIÓN INICIAL: DENTRO DEL CAMPO DE VISIÓN
-        // Cámara está en (4, 3, 6) mirando hacia (0, 0, 0)
-        // El asteroide debe venir desde ADELANTE (Z negativo) hacia la cámara (Z=6)
-
-        float spawnType = (float) Math.random();
-        float x, y, z;
-
-        // Spawn en posiciones VISIBLES dentro del frustum de la cámara
-        // Rango visible aproximado: X(-3 a 3), Y(-2 a 4), Z(-5 a 5)
-
-        if (spawnType < 0.25f) {
-            // Desde la DERECHA (visible)
-            x = 2.5f + (float)(Math.random() * 1.5f);  // 2.5 a 4.0
-            y = (float)(Math.random() * 4f) - 1f;      // -1 a 3
-            z = -4f - (float)(Math.random() * 2f);     // -4 a -6 (LEJOS, adelante)
-        } else if (spawnType < 0.5f) {
-            // Desde la IZQUIERDA (visible)
-            x = -2.5f - (float)(Math.random() * 1.5f); // -2.5 a -4.0
-            y = (float)(Math.random() * 4f) - 1f;      // -1 a 3
-            z = -4f - (float)(Math.random() * 2f);     // -4 a -6 (LEJOS, adelante)
-        } else if (spawnType < 0.75f) {
-            // Desde ARRIBA (visible)
-            x = (float)(Math.random() * 4f) - 2f;      // -2 a 2
-            y = 3f + (float)(Math.random() * 2f);      // 3 a 5 (arriba)
-            z = -4f - (float)(Math.random() * 2f);     // -4 a -6 (LEJOS, adelante)
-        } else {
-            // Desde el CENTRO (directo)
-            x = (float)(Math.random() * 2f) - 1f;      // -1 a 1 (centro)
-            y = (float)(Math.random() * 2f);           // 0 a 2
-            z = -5f - (float)(Math.random() * 3f);     // -5 a -8 (MUY LEJOS)
-        }
-
-        // 🎯 OBJETIVO: La posición de la CÁMARA (para que vuele directo a la pantalla)
-        float targetX = 4f + (float)(Math.random() * 0.5f) - 0.25f;  // Cerca de cámara X
-        float targetY = 3f + (float)(Math.random() * 0.5f) - 0.25f;  // Cerca de cámara Y
-        float targetZ = 6f + (float)(Math.random() * 0.3f);          // Hacia/pasando la cámara
-
-        // 🚀 VELOCIDAD: MÁS LENTO para dar tiempo de verlo y crear SUSPENSO
-        float velocidadBase = 4.0f + (float)(Math.random() * 2f);  // 4-6 unidades/seg (REDUCIDO)
-
-        float dx = targetX - x;
-        float dy = targetY - y;
-        float dz = targetZ - z;
-        float dist = (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
-
-        float vx = (dx / dist) * velocidadBase;
-        float vy = (dy / dist) * velocidadBase;
-        float vz = (dz / dist) * velocidadBase;
-
-        // 💪 TAMAÑO VARIABLE: MÁS GRANDE para que sea MUY VISIBLE - ✅ MÁS PEQUEÑOS QUE LA LUNA
-        // 50% grandes, 30% muy grandes, 20% gigantes
-        // Luna = 0.27, asteroides MAX = 0.25
-        float sizeRoll = (float) Math.random();
-        float tamaño;
-        if (sizeRoll < 0.5f) {
-            // Grandes (50%)
-            tamaño = 0.10f + (float) Math.random() * 0.04f;  // 0.10-0.14
-        } else if (sizeRoll < 0.8f) {
-            // Muy grandes (30%)
-            tamaño = 0.14f + (float) Math.random() * 0.05f;  // 0.14-0.19
-        } else {
-            // Gigantes (20%)
-            tamaño = 0.19f + (float) Math.random() * 0.06f;  // 0.19-0.25
-        }
-
-        // Activar el meteorito
-        m.activar(x, y, z, vx, vy, vz, tamaño);
-        meteoritosActivos.add(m);
-        screenDirectedMeteors.add(m);  // Marcar como dirigido a pantalla
-
-        totalMeteoritosLanzados++;
-        Log.d(TAG, "╔════════════════════════════════════════════════════════╗");
-        Log.d(TAG, "║                                                        ║");
-        Log.d(TAG, "║   💥💥💥 ASTEROIDE VISIBLE LANZADO! 💥💥💥          ║");
-        Log.d(TAG, "║   ¡MIRA CÓMO SE ACERCA A LA PANTALLA!                ║");
-        Log.d(TAG, "║                                                        ║");
-        Log.d(TAG, String.format("║   Desde: (%.1f, %.1f, %.1f) [VISIBLE]                ║", x, y, z));
-        Log.d(TAG, String.format("║   Hacia: (%.1f, %.1f, %.1f) [CÁMARA]                 ║", targetX, targetY, targetZ));
-        Log.d(TAG, String.format("║   Velocidad: %.1f u/s (LENTO = SUSPENSO)            ║", velocidadBase));
-        Log.d(TAG, String.format("║   Tamaño: %.3f (GRANDE Y VISIBLE)                    ║", tamaño));
-        Log.d(TAG, String.format("║   Distancia: %.1f unidades                            ║", dist));
-        Log.d(TAG, String.format("║   Tiempo aprox: %.1f segundos                         ║", dist / velocidadBase));
-        Log.d(TAG, String.format("║   Próximo en: %.0f segundos                          ║", screenMeteorInterval));
-        Log.d(TAG, "║                                                        ║");
-        Log.d(TAG, "╚════════════════════════════════════════════════════════╝");
-    }
-
-    /**
-     * 💥 VERIFICA SI UN ASTEROIDE DIRIGIDO A PANTALLA HA IMPACTADO
-     * Cuando el asteroide alcanza la posición Z de la cámara, activa las grietas
-     * @return true si impactó (para removerlo de la lista)
-     */
-    private boolean verificarImpactoPantalla(AsteroideRealista m) {
-        if (camera == null) return false;
-
-        float[] pos = m.getPosicion();
-
-        // UMBRAL DE IMPACTO: Cuando el asteroide llega CERCA de la cámara
-        // Cámara está en Z=6, impactar cuando llegue a Z >= 5.7
-        // (Más cerca = más dramático, parece que va a golpear la pantalla de verdad)
-        float cameraZ = 6.0f;  // Posición Z de la cámara
-        float impactThreshold = cameraZ - 0.3f;  // Impactar 0.3 unidades antes (MÁS CERCA)
-
-        if (pos[2] >= impactThreshold) {
-            // ¡IMPACTO EN PANTALLA!
-
-            // Calcular coordenadas de pantalla (0-1) basadas en posición 3D
-            // La cámara mira hacia (0,0,0) desde (4,3,6)
-            // Proyectar la posición XY del asteroide a coordenadas de pantalla
-
-            // Mapear X: -4 a +4 → 0 a 1 (rango ajustado para mejor precisión)
-            float screenX = (pos[0] + 4f) / 8f;
-            screenX = Math.max(0f, Math.min(1f, screenX));  // Clamp 0-1
-
-            // Mapear Y: -2 a +5 → 0 a 1 (invertido porque OpenGL Y+ es arriba)
-            float screenY = 1f - ((pos[1] + 2f) / 7f);
-            screenY = Math.max(0f, Math.min(1f, screenY));  // Clamp 0-1
-
-            // Intensidad basada en tamaño del asteroide (0.25-0.40 → 0.8-0.95)
-            // Los asteroides de pantalla son MÁS GRANDES, así que más intensos
-            float sizeNormalized = (m.getTamaño() - 0.25f) / 0.15f;  // 0-1
-            float intensity = 0.8f + sizeNormalized * 0.15f;
-            intensity = Math.max(0.8f, Math.min(0.95f, intensity));  // Clamp 0.8-0.95
-
-            // 💥💥💥 ACTIVAR GRIETAS EN LA PANTALLA via EventBus 💥💥💥
-            EventBus.get().publish(EventBus.SCREEN_CRACK,
-                new EventBus.EventData()
-                    .put("x", screenX)
-                    .put("y", screenY)
-                    .put("intensity", intensity));
-
-            // Marcar el asteroide como impactado
-            m.impactar();
-
-            totalImpactos++;
-            Log.d(TAG, "╔════════════════════════════════════════════════════════╗");
-            Log.d(TAG, "║                                                        ║");
-            Log.d(TAG, "║   💥💥💥 ¡IMPACTO EN PANTALLA! 💥💥💥                ║");
-            Log.d(TAG, "║   ¡EL ASTEROIDE GOLPEÓ LA PANTALLA!                   ║");
-            Log.d(TAG, "║                                                        ║");
-            Log.d(TAG, String.format("║   Posición 3D: (%.2f, %.2f, %.2f)                    ║", pos[0], pos[1], pos[2]));
-            Log.d(TAG, String.format("║   Pantalla: (%.2f, %.2f)                             ║", screenX, screenY));
-            Log.d(TAG, String.format("║   Tamaño: %.3f                                        ║", m.getTamaño()));
-            Log.d(TAG, String.format("║   Intensidad: %.0f%%                                  ║", intensity * 100));
-            Log.d(TAG, "║                                                        ║");
-            Log.d(TAG, "╚════════════════════════════════════════════════════════╝");
-
-            return true;  // Impactó, remover de lista
-        }
-
-        return false;  // Aún no impacta
-    }
+    // ═══════════════════════════════════════════════════════════════════
+    // FUNCIONES DE LLUVIA DE METEORITOS Y PANTALLA - DESACTIVADAS
+    // ═══════════════════════════════════════════════════════════════════
+    // spawnScreenMeteor() - ELIMINADO
+    // verificarImpactoPantalla() - ELIMINADO
 
     /**
      * Verifica colisiones con objetos de la escena
@@ -721,15 +513,20 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         }
 
         // PRIORIDAD 2: Colisión con la TIERRA (si existe y no está muerta)
+        // NOTA: AsteroideRealista ahora maneja su propia colisión con la Tierra internamente
+        // Pero MeteorShower necesita detectarla para aplicar daño y efectos
         if (sol != null && !sol.isDead()) {
-            // ⚡ OPTIMIZACIÓN: Usa array estático en vez de crear nuevo
-            float radioTierra = 0.5f;       // Tamaño de la Tierra (1.0 de escala)
+            // Radio de colisión consistente con AsteroideRealista.EARTH_RADIUS (0.55f)
+            float radioTierra = 0.55f;      // Mismo que EARTH_RADIUS en AsteroideRealista
 
-            float distancia = calcularDistancia(posMeteorito, POS_TIERRA);
+            float distancia = calcularDistancia(posMeteorito, posTierra);
 
-            if (distancia < (radioMeteorito + radioTierra)) {
+            // Detectar si está explotando (ya impactó) o está muy cerca
+            if (distancia < (radioMeteorito + radioTierra) || m.isExploding()) {
                 // ¡IMPACTO CON LA TIERRA!
-                m.impactar();
+                if (!m.isExploding()) {
+                    m.impactar();  // Solo llamar impactar si no está ya explotando
+                }
                 crearEfectoImpacto(posMeteorito[0], posMeteorito[1], posMeteorito[2], true);
 
                 // 🌍💥 ACTIVAR EFECTO ÉPICO DE IMPACTO EN LA TIERRA via EventBus
@@ -802,9 +599,9 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         float[] vel = m.getVelocidad();
 
         // Calcular distancia a la Tierra
-        float dx = POS_TIERRA[0] - pos[0];
-        float dy = POS_TIERRA[1] - pos[1];
-        float dz = POS_TIERRA[2] - pos[2];
+        float dx = posTierra[0] - pos[0];
+        float dy = posTierra[1] - pos[1];
+        float dz = posTierra[2] - pos[2];
         float distancia = (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
 
         // Solo aplicar gravedad si está dentro del rango
@@ -926,133 +723,30 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         }
     }
 
-    // ===== IMPLEMENTACIÓN DE MUSICREACTIVE =====
+    // ===== IMPLEMENTACIÓN DE MUSICREACTIVE (DESACTIVADA) =====
+    // Los meteoritos ya no reaccionan a la música para mantener un ritmo natural
 
     @Override
     public void onMusicData(float bassLevel, float midLevel, float trebleLevel,
                             float volumeLevel, float beatIntensity, boolean isBeat) {
-        if (!musicReactive) return;
-
-        // VOLUMEN GENERAL → Aumenta intensidad de la lluvia
-        // Más música = más meteoritos
-        musicIntensityBoost = volumeLevel * 1.5f;  // Hasta 150% más meteoritos
-
-        // BEATS → Spawn instantáneo de meteoritos extra
-        if (isBeat && beatIntensity > 0.7f && poolMeteorites.size() > 0) {
-            // En beats fuertes, lanzar meteorito extra
-            if (meteoritosActivos.size() < METEORITOS_ACTIVOS_MAX + 1) {  // Permitir uno extra
-                spawnMeteorito();
-                Log.v(TAG, "[MeteorShower] 🎵 BEAT SPAWN! Meteorito extra lanzado");
-            }
-        }
+        // DESACTIVADO - Los asteroides aparecen a ritmo constante, no con la música
     }
 
     @Override
     public void setMusicReactive(boolean enabled) {
-        this.musicReactive = enabled;
-        if (!enabled) {
-            musicIntensityBoost = 0f;
-        }
-        Log.d(TAG, "[MeteorShower] Reactividad musical " + (enabled ? "ACTIVADA" : "DESACTIVADA"));
+        this.musicReactive = false;  // Siempre desactivado
     }
 
     @Override
     public boolean isMusicReactive() {
-        return musicReactive;
+        return false;  // Siempre desactivado
     }
 
-    /**
-     * 🌟💥 DISPARA LA LLUVIA DE METEORITOS ÉPICA 💥🌟
-     *
-     * Cuando el combo llega a x10, se desata una lluvia masiva
-     * de 30 meteoritos durante 3 segundos - ¡DESTRUCCIÓN TOTAL!
-     */
-    private void fireEpicMeteorShower() {
-        if (comboBar == null) return;
-
-        // Resetear combo en la barra
-        comboBar.fireLaser(); // Usa el mismo método para resetear
-
-        // ACTIVAR LLUVIA ÉPICA
-        epicMeteorShowerActive = true;
-        epicMeteorShowerDuration = EPIC_SHOWER_DURATION;
-        tiempoDesdeUltimoSpawn = 0; // Resetear timer para spawn inmediato
-
-        Log.d(TAG, "╔════════════════════════════════════════════╗");
-        Log.d(TAG, "║                                            ║");
-        Log.d(TAG, "║  🌟💥 LLUVIA DE METEORITOS ÉPICA! 💥🌟    ║");
-        Log.d(TAG, "║  ¡COMBO x10 ACTIVADO!                      ║");
-        Log.d(TAG, "║  30 METEORITOS CAYENDO DURANTE 3 SEGUNDOS  ║");
-        Log.d(TAG, "║                                            ║");
-        Log.d(TAG, "╚════════════════════════════════════════════╝");
-
-        // Registrar evento especial en estadísticas
-        playerStats.onSpecialAttack("EPIC_METEOR_SHOWER");
-    }
-
-    /**
-     * 🎮 VERIFICA SI EL COMBO ESTÁ LISTO (x10) PARA DISPARO ÉPICO
-     */
-    public boolean isComboReady() {
-        return comboBar != null && comboBar.isLaserReady();
-    }
-
-    /**
-     * 🎮 RESETEA EL COMBO (cuando se dispara el ataque épico del jugador)
-     */
-    public void resetCombo() {
-        if (comboBar != null) {
-            comboBar.fireLaser();  // Usa el método existente para resetear
-            Log.d(TAG, "[MeteorShower] Combo reseteado por disparo épico del jugador");
-        }
-    }
-
-    /**
-     * 🌟 LANZA UN ASTEROIDE ÉPICO (parte de la lluvia x10)
-     * Asteroides más grandes, más rápidos y más destructivos
-     */
-    private AsteroideRealista lanzarMeteoritoEpico() {
-        if (poolMeteorites.isEmpty()) return null;
-
-        AsteroideRealista m = poolMeteorites.remove(0);
-
-        // Posición aleatoria en esfera alrededor de la escena
-        // Vienen desde TODAS las direcciones para máximo caos
-        float angulo1 = (float) (Math.random() * Math.PI * 2);
-        float angulo2 = (float) (Math.random() * Math.PI * 0.5); // Solo hemisferio superior
-
-        float distance = SPAWN_DISTANCE * 0.7f; // Más cerca para impacto más rápido
-        float x = distance * (float) (Math.sin(angulo2) * Math.cos(angulo1));
-        float y = distance * (float) Math.abs(Math.sin(angulo2) * Math.sin(angulo1)); // Solo desde arriba
-        float z = distance * (float) Math.cos(angulo2);
-
-        // VELOCIDAD ÉPICA - Mucho más rápido que meteoritos normales
-        float velocidadBase = 8.0f + (float) Math.random() * 4.0f; // 8-12 unidades/seg (RÁPIDO!)
-
-        // 🌍 Apuntar directamente a la Tierra (Y=1.8) con pequeña variación
-        float targetX = POS_TIERRA[0] + (float)(Math.random() * 0.5 - 0.25);  // Pequeña variación
-        float targetY = POS_TIERRA[1] + (float)(Math.random() * 0.3 - 0.15);  // Cerca de Y=1.8
-        float targetZ = POS_TIERRA[2] + (float)(Math.random() * 0.5 - 0.25);
-
-        float dx = targetX - x;
-        float dy = targetY - y;
-        float dz = targetZ - z;
-        float dist = (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
-
-        float vx = (dx / dist) * velocidadBase;
-        float vy = (dy / dist) * velocidadBase;
-        float vz = (dz / dist) * velocidadBase;
-
-        // TAMAÑO ÉPICO - Todos son GRANDES para máximo daño - ✅ MÁS PEQUEÑOS QUE LA LUNA
-        // Luna = 0.27, asteroides MAX = 0.20
-        float tamaño = 0.10f + (float) Math.random() * 0.10f;  // 0.10-0.20 (GRANDES!)
-
-        m.activar(x, y, z, vx, vy, vz, tamaño);
-
-        totalMeteoritosLanzados++;
-        Log.d(TAG, "🌟 Asteroide ÉPICO #" + totalMeteoritosLanzados + " - Tamaño: " +
-                   String.format("%.2f", tamaño) + " - Velocidad: " + String.format("%.1f", velocidadBase));
-
-        return m;
-    }
+    // ═══════════════════════════════════════════════════════════════════
+    // FUNCIONES DE LLUVIA ÉPICA - ELIMINADAS
+    // ═══════════════════════════════════════════════════════════════════
+    // fireEpicMeteorShower() - ELIMINADO
+    // isComboReady() - ELIMINADO
+    // resetCombo() - ELIMINADO
+    // lanzarMeteoritoEpico() - ELIMINADO
 }

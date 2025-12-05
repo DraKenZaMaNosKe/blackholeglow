@@ -30,7 +30,7 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     // CONFIGURACIÓN DE BARRAS
     // ════════════════════════════════════════════════════════════════════════
     private static final int NUM_BARS = 32;
-    private static final float BAR_SPACING = 0.006f;
+    private static final float BAR_SPACING = 0.0f;  // Sin separación entre barras
     private static final float MAX_HEIGHT = 0.38f;
     private static final float MIN_HEIGHT = 0.025f;
     private static final float BASE_Y = -0.95f;
@@ -98,32 +98,57 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     private int beatCounter = 0;
 
     // ════════════════════════════════════════════════════════════════════════
-    // ✨ SISTEMA DE PARTÍCULAS - Chispas que explotan en los beats
+    // ⚡ SISTEMA DE RAYOS ELÉCTRICOS - Conectan barras altas en los beats
     // ════════════════════════════════════════════════════════════════════════
-    private static final int MAX_PARTICLES = 100;  // Más partículas
-    private float[] particleX = new float[MAX_PARTICLES];
-    private float[] particleY = new float[MAX_PARTICLES];
-    private float[] particleVX = new float[MAX_PARTICLES];
-    private float[] particleVY = new float[MAX_PARTICLES];
-    private float[] particleLife = new float[MAX_PARTICLES];
-    private float[] particleR = new float[MAX_PARTICLES];
-    private float[] particleG = new float[MAX_PARTICLES];
-    private float[] particleB = new float[MAX_PARTICLES];
-    private int particleCount = 0;
+    private static final int MAX_LIGHTNINGS = 8;   // Máximo de rayos simultáneos
+    private static final int LIGHTNING_SEGMENTS = 6;  // Segmentos por rayo (zigzag)
+
+    // Cada rayo tiene: posición inicio/fin, vida, color, puntos del zigzag
+    private float[] lightningStartX = new float[MAX_LIGHTNINGS];
+    private float[] lightningStartY = new float[MAX_LIGHTNINGS];
+    private float[] lightningEndX = new float[MAX_LIGHTNINGS];
+    private float[] lightningEndY = new float[MAX_LIGHTNINGS];
+    private float[] lightningLife = new float[MAX_LIGHTNINGS];
+    private float[] lightningR = new float[MAX_LIGHTNINGS];
+    private float[] lightningG = new float[MAX_LIGHTNINGS];
+    private float[] lightningB = new float[MAX_LIGHTNINGS];
+    private float[] lightningIntensity = new float[MAX_LIGHTNINGS];
+    // Puntos intermedios del zigzag (para cada rayo)
+    private float[][] lightningPointsX = new float[MAX_LIGHTNINGS][LIGHTNING_SEGMENTS + 1];
+    private float[][] lightningPointsY = new float[MAX_LIGHTNINGS][LIGHTNING_SEGMENTS + 1];
+
+    private int lightningCount = 0;
     private java.util.Random random = new java.util.Random();
 
     // ════════════════════════════════════════════════════════════════════════
-    // 🌊 ONDAS DE ENERGÍA - Se expanden en los beats
+    // ✨ CHISPAS ENTRE PEAKS - Mini rayos que saltan entre peaks cercanos
     // ════════════════════════════════════════════════════════════════════════
-    private static final int MAX_WAVES = 5;  // Más ondas
+    private static final int MAX_PEAK_SPARKS = 12;
+    private float[] sparkStartX = new float[MAX_PEAK_SPARKS];
+    private float[] sparkStartY = new float[MAX_PEAK_SPARKS];
+    private float[] sparkEndX = new float[MAX_PEAK_SPARKS];
+    private float[] sparkEndY = new float[MAX_PEAK_SPARKS];
+    private float[] sparkLife = new float[MAX_PEAK_SPARKS];
+    private float[] sparkR = new float[MAX_PEAK_SPARKS];
+    private float[] sparkG = new float[MAX_PEAK_SPARKS];
+    private float[] sparkB = new float[MAX_PEAK_SPARKS];
+    private int sparkCount = 0;
+    private float sparkTimer = 0f;
+    private static final float SPARK_INTERVAL = 0.08f;  // Generar chispas cada 80ms
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 🌊 ONDAS DE ENERGÍA - Se expanden en los beats (MEJORADAS)
+    // ════════════════════════════════════════════════════════════════════════
+    private static final int MAX_WAVES = 3;  // Menos ondas pero más visibles
     private float[] waveRadius = new float[MAX_WAVES];
     private float[] waveAlpha = new float[MAX_WAVES];
     private float[] waveR = new float[MAX_WAVES];
     private float[] waveG = new float[MAX_WAVES];
     private float[] waveB = new float[MAX_WAVES];
     private int waveIndex = 0;
-    private static final float WAVE_SPEED = 0.8f;  // Más lento para verse mejor
-    private static final float WAVE_MAX_RADIUS = 0.8f;  // Más grande
+    private static final float WAVE_SPEED = 1.2f;  // Velocidad moderada
+    private static final float WAVE_MAX_RADIUS = 0.6f;  // Tamaño máximo
+    private static final float WAVE_THICKNESS = 0.025f;  // Grosor de la onda
 
     // ════════════════════════════════════════════════════════════════════════
     // OPENGL
@@ -140,9 +165,13 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     private FloatBuffer peakVertexBuffer;
     private FloatBuffer peakColorBuffer;
 
-    // Buffers para partículas
-    private FloatBuffer particleVertexBuffer;
-    private FloatBuffer particleColorBuffer;
+    // Buffers para rayos eléctricos
+    private FloatBuffer lightningVertexBuffer;
+    private FloatBuffer lightningColorBuffer;
+
+    // Buffers para chispas entre peaks
+    private FloatBuffer sparkVertexBuffer;
+    private FloatBuffer sparkColorBuffer;
 
     // Buffers para ondas de energía
     private static final int WAVE_SEGMENTS = 32;
@@ -250,9 +279,14 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         peakVertexBuffer = createFloatBuffer(vertexCount);
         peakColorBuffer = createFloatBuffer(NUM_BARS * 4 * 4);
 
-        // Buffers para partículas (cada partícula es un quad = 4 vértices) - 100 max
-        particleVertexBuffer = createFloatBuffer(100 * 4 * 3);
-        particleColorBuffer = createFloatBuffer(100 * 4 * 4);
+        // Buffers para rayos eléctricos (cada rayo = LIGHTNING_SEGMENTS líneas = SEGMENTS*2 vértices)
+        // MAX_LIGHTNINGS rayos * (SEGMENTS+1) puntos * 2 (para líneas gruesas) * 3 coords
+        lightningVertexBuffer = createFloatBuffer(MAX_LIGHTNINGS * (LIGHTNING_SEGMENTS + 1) * 4 * 3);
+        lightningColorBuffer = createFloatBuffer(MAX_LIGHTNINGS * (LIGHTNING_SEGMENTS + 1) * 4 * 4);
+
+        // Buffers para chispas entre peaks (cada chispa = 3 segmentos zigzag * 4 vértices)
+        sparkVertexBuffer = createFloatBuffer(MAX_PEAK_SPARKS * 3 * 4 * 3);
+        sparkColorBuffer = createFloatBuffer(MAX_PEAK_SPARKS * 3 * 4 * 4);
 
         // Buffers para ondas (cada onda es un círculo de líneas)
         waveVertexBuffer = createFloatBuffer(MAX_WAVES * WAVE_SEGMENTS * 2 * 3);
@@ -352,7 +386,7 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
             beatCounter++;
 
             // Crear efectos visuales
-            spawnBeatParticles(beatIntensity);
+            spawnLightning(beatIntensity);
             spawnEnergyWave(beatIntensity);
         }
 
@@ -381,8 +415,10 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
             }
 
             // Micro variación solo cuando hay nivel real
+            // Usar módulo para evitar overflow de time (ciclo cada ~10 segundos)
             if (level > 0.05f) {
-                float microVariation = (float) Math.sin(i * 1.2f + System.currentTimeMillis() * 0.006f) * 0.015f;
+                long safeTime = System.currentTimeMillis() % 10000;  // Ciclo cada 10 segundos
+                float microVariation = (float) Math.sin(i * 1.2f + safeTime * 0.006f) * 0.015f;
                 level += microVariation * level;
             }
 
@@ -392,35 +428,187 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     }
 
     /**
-     * ✨ Genera chispas cuando hay un beat
+     * ⚡ Genera rayos eléctricos entre barras altas cuando hay un beat
      */
-    private void spawnBeatParticles(float intensity) {
-        int numParticles = 15 + (int)(intensity * 20);  // 15-35 chispas por beat
+    private void spawnLightning(float intensity) {
+        // Encontrar las barras más altas para conectar con rayos
+        int numLightnings = 2 + (int)(intensity * 4);  // 2-6 rayos por beat
 
-        for (int i = 0; i < numParticles && particleCount < MAX_PARTICLES; i++) {
-            int idx = particleCount;
+        // Buscar índices de barras con nivel alto
+        int[] highBars = new int[NUM_BARS];
+        int highBarCount = 0;
+        float threshold = 0.4f;  // Umbral para considerar una barra "alta"
 
-            // Posición inicial: desde las barras que tienen más energía
-            float xRange = aspectRatio * 0.85f;
-            particleX[idx] = (random.nextFloat() - 0.5f) * 2f * xRange;
-            particleY[idx] = BASE_Y + MAX_HEIGHT * (0.5f + random.nextFloat() * 0.4f);
+        for (int i = 0; i < NUM_BARS; i++) {
+            if (barLevels[i] > threshold) {
+                highBars[highBarCount++] = i;
+            }
+        }
 
-            // Velocidad: explotan en todas direcciones hacia arriba
-            float angle = (float)(Math.PI * 0.2f + random.nextFloat() * Math.PI * 0.6f);  // 36-144 grados
-            float speed = 0.4f + random.nextFloat() * 0.6f * (0.5f + intensity);
-            particleVX[idx] = (float)Math.cos(angle) * speed * (random.nextBoolean() ? 1 : -1);
-            particleVY[idx] = (float)Math.abs(Math.sin(angle)) * speed * 1.2f;  // Siempre hacia arriba
+        // Si no hay suficientes barras altas, usar posiciones aleatorias
+        if (highBarCount < 2) {
+            highBarCount = NUM_BARS;
+            for (int i = 0; i < NUM_BARS; i++) {
+                highBars[i] = i;
+            }
+        }
 
-            // Vida más larga para que se vean
-            particleLife[idx] = 0.8f + random.nextFloat() * 0.7f;
+        // Calcular ancho de barras para posiciones X
+        float totalWidth = aspectRatio * 2f * 0.92f;
+        float barWidth = (totalWidth - (NUM_BARS - 1) * BAR_SPACING) / NUM_BARS;
+        float startX = -totalWidth / 2f;
 
-            // Color: rosa/cyan según posición
-            float colorMix = random.nextFloat();
-            particleR[idx] = COLOR_BASS[0] * (1-colorMix) + COLOR_TREBLE[0] * colorMix;
-            particleG[idx] = COLOR_BASS[1] * (1-colorMix) + COLOR_TREBLE[1] * colorMix;
-            particleB[idx] = COLOR_BASS[2] * (1-colorMix) + COLOR_TREBLE[2] * colorMix;
+        for (int i = 0; i < numLightnings && lightningCount < MAX_LIGHTNINGS; i++) {
+            int idx = lightningCount;
 
-            particleCount++;
+            // Seleccionar dos barras aleatorias para conectar
+            int bar1Idx = highBars[random.nextInt(highBarCount)];
+            int bar2Idx = highBars[random.nextInt(highBarCount)];
+
+            // Asegurar que sean diferentes y no muy cercanas
+            int attempts = 0;
+            while (Math.abs(bar1Idx - bar2Idx) < 3 && attempts < 10) {
+                bar2Idx = highBars[random.nextInt(highBarCount)];
+                attempts++;
+            }
+
+            // Calcular posiciones X de las barras
+            float x1 = startX + bar1Idx * (barWidth + BAR_SPACING) + barWidth / 2f;
+            float x2 = startX + bar2Idx * (barWidth + BAR_SPACING) + barWidth / 2f;
+
+            // Posiciones Y basadas en la altura de las barras
+            float y1 = BASE_Y + MIN_HEIGHT + barLevels[bar1Idx] * (MAX_HEIGHT - MIN_HEIGHT);
+            float y2 = BASE_Y + MIN_HEIGHT + barLevels[bar2Idx] * (MAX_HEIGHT - MIN_HEIGHT);
+
+            // Guardar inicio y fin
+            lightningStartX[idx] = x1;
+            lightningStartY[idx] = y1;
+            lightningEndX[idx] = x2;
+            lightningEndY[idx] = y2;
+
+            // Vida del rayo (corta para efecto eléctrico)
+            lightningLife[idx] = 0.15f + random.nextFloat() * 0.2f;  // 0.15-0.35 segundos
+            lightningIntensity[idx] = intensity;
+
+            // Color: cyan/blanco eléctrico o rosa/magenta
+            if (random.nextFloat() > 0.3f) {
+                // Cyan eléctrico (70% de probabilidad)
+                lightningR[idx] = 0.3f + random.nextFloat() * 0.3f;
+                lightningG[idx] = 0.8f + random.nextFloat() * 0.2f;
+                lightningB[idx] = 1.0f;
+            } else {
+                // Rosa/magenta eléctrico (30%)
+                lightningR[idx] = 1.0f;
+                lightningG[idx] = 0.3f + random.nextFloat() * 0.3f;
+                lightningB[idx] = 0.8f + random.nextFloat() * 0.2f;
+            }
+
+            // Generar puntos del zigzag
+            generateLightningPath(idx);
+
+            lightningCount++;
+        }
+    }
+
+    /**
+     * ⚡ Genera el camino zigzagueante del rayo
+     */
+    private void generateLightningPath(int idx) {
+        float x1 = lightningStartX[idx];
+        float y1 = lightningStartY[idx];
+        float x2 = lightningEndX[idx];
+        float y2 = lightningEndY[idx];
+
+        // Primer punto = inicio
+        lightningPointsX[idx][0] = x1;
+        lightningPointsY[idx][0] = y1;
+
+        // Último punto = fin
+        lightningPointsX[idx][LIGHTNING_SEGMENTS] = x2;
+        lightningPointsY[idx][LIGHTNING_SEGMENTS] = y2;
+
+        // Puntos intermedios con desplazamiento aleatorio (zigzag)
+        for (int i = 1; i < LIGHTNING_SEGMENTS; i++) {
+            float t = (float) i / LIGHTNING_SEGMENTS;
+
+            // Posición base (interpolación lineal)
+            float baseX = x1 + (x2 - x1) * t;
+            float baseY = y1 + (y2 - y1) * t;
+
+            // Calcular perpendicular para el desplazamiento
+            float dx = x2 - x1;
+            float dy = y2 - y1;
+            float len = (float) Math.sqrt(dx * dx + dy * dy);
+            float perpX = -dy / len;
+            float perpY = dx / len;
+
+            // Desplazamiento aleatorio perpendicular (más en el centro, menos en extremos)
+            float maxOffset = 0.08f * (1.0f - Math.abs(t - 0.5f) * 2f);  // Máximo en el centro
+            float offset = (random.nextFloat() - 0.5f) * 2f * maxOffset;
+
+            lightningPointsX[idx][i] = baseX + perpX * offset;
+            lightningPointsY[idx][i] = baseY + perpY * offset;
+        }
+    }
+
+    /**
+     * ✨ Genera chispas eléctricas entre peaks cercanos con nivel alto
+     */
+    private void spawnPeakSparks() {
+        // Calcular posiciones de las barras
+        float totalWidth = aspectRatio * 2f * 0.92f;
+        float barWidth = (totalWidth - (NUM_BARS - 1) * BAR_SPACING) / NUM_BARS;
+        float startX = -totalWidth / 2f;
+
+        // Buscar pares de peaks cercanos con nivel alto para conectar
+        float minPeakLevel = 0.35f;  // Umbral mínimo para generar chispa
+
+        for (int i = 0; i < NUM_BARS - 1 && sparkCount < MAX_PEAK_SPARKS; i++) {
+            // Verificar si este peak y alguno cercano están altos
+            if (peakLevels[i] < minPeakLevel) continue;
+
+            // Buscar un peak cercano (1-4 barras de distancia)
+            int maxDist = 4;
+            for (int j = i + 1; j <= Math.min(i + maxDist, NUM_BARS - 1); j++) {
+                if (peakLevels[j] < minPeakLevel) continue;
+
+                // Probabilidad de generar chispa basada en los niveles
+                float avgLevel = (peakLevels[i] + peakLevels[j]) / 2f;
+                if (random.nextFloat() > avgLevel * 0.5f) continue;  // Mayor nivel = más probabilidad
+
+                int idx = sparkCount;
+
+                // Calcular posiciones
+                float x1 = startX + i * (barWidth + BAR_SPACING) + barWidth / 2f;
+                float y1 = BASE_Y + MIN_HEIGHT + peakLevels[i] * (MAX_HEIGHT - MIN_HEIGHT);
+                float x2 = startX + j * (barWidth + BAR_SPACING) + barWidth / 2f;
+                float y2 = BASE_Y + MIN_HEIGHT + peakLevels[j] * (MAX_HEIGHT - MIN_HEIGHT);
+
+                sparkStartX[idx] = x1;
+                sparkStartY[idx] = y1;
+                sparkEndX[idx] = x2;
+                sparkEndY[idx] = y2;
+
+                // Vida corta para efecto de chispa rápida
+                sparkLife[idx] = 0.06f + random.nextFloat() * 0.08f;  // 60-140ms
+
+                // Color: mezcla de los colores de ambas barras
+                float[] color1 = getBarColor(i, 1.0f);
+                float[] color2 = getBarColor(j, 1.0f);
+                sparkR[idx] = (color1[0] + color2[0]) / 2f;
+                sparkG[idx] = (color1[1] + color2[1]) / 2f;
+                sparkB[idx] = (color1[2] + color2[2]) / 2f;
+
+                // Hacer más brillante
+                sparkR[idx] = Math.min(1.0f, sparkR[idx] * 1.5f);
+                sparkG[idx] = Math.min(1.0f, sparkG[idx] * 1.5f);
+                sparkB[idx] = Math.min(1.0f, sparkB[idx] * 1.5f);
+
+                sparkCount++;
+
+                // Solo una chispa por peak origen en esta iteración
+                break;
+            }
         }
     }
 
@@ -428,23 +616,22 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
      * 🌊 Genera una onda de energía cuando hay un beat
      */
     private void spawnEnergyWave(float intensity) {
-        waveRadius[waveIndex] = 0.02f;
-        waveAlpha[waveIndex] = 0.9f * intensity;  // Más visible
+        waveRadius[waveIndex] = 0.05f;  // Empezar más grande
+        waveAlpha[waveIndex] = 1.0f;  // Alpha máximo
 
-        // Color de la onda basado en intensidad
-        if (intensity > 0.5f) {
-            // Beat fuerte: blanco/cyan brillante
-            waveR[waveIndex] = 1.0f;
+        // Color de la onda basado en intensidad - siempre brillante
+        if (intensity > 0.6f) {
+            // Beat fuerte: cyan brillante
+            waveR[waveIndex] = 0.3f;
             waveG[waveIndex] = 1.0f;
             waveB[waveIndex] = 1.0f;
         } else {
-            // Beat normal: rosa/magenta
+            // Beat normal: rosa/magenta brillante
             waveR[waveIndex] = 1.0f;
-            waveG[waveIndex] = 0.4f;
-            waveB[waveIndex] = 0.8f;
+            waveG[waveIndex] = 0.3f;
+            waveB[waveIndex] = 0.9f;
         }
 
-        Log.d(TAG, "🌊 Wave spawned at index " + waveIndex + " alpha=" + waveAlpha[waveIndex]);
         waveIndex = (waveIndex + 1) % MAX_WAVES;
     }
 
@@ -496,39 +683,68 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         beatDetected = false;
 
         // ════════════════════════════════════════════════════════════════════════
-        // ✨ ACTUALIZAR PARTÍCULAS
+        // ⚡ ACTUALIZAR RAYOS ELÉCTRICOS
         // ════════════════════════════════════════════════════════════════════════
-        int aliveParticles = 0;
-        for (int i = 0; i < particleCount; i++) {
-            particleLife[i] -= deltaTime;
+        int aliveLightnings = 0;
+        for (int i = 0; i < lightningCount; i++) {
+            lightningLife[i] -= deltaTime;
 
-            if (particleLife[i] > 0) {
-                // Mover partícula
-                particleX[i] += particleVX[i] * deltaTime;
-                particleY[i] += particleVY[i] * deltaTime;
-
-                // Gravedad suave
-                particleVY[i] -= 0.8f * deltaTime;
-
-                // Fricción del aire
-                particleVX[i] *= 0.98f;
-                particleVY[i] *= 0.98f;
-
-                // Compactar array (mover partículas vivas al frente)
-                if (aliveParticles != i) {
-                    particleX[aliveParticles] = particleX[i];
-                    particleY[aliveParticles] = particleY[i];
-                    particleVX[aliveParticles] = particleVX[i];
-                    particleVY[aliveParticles] = particleVY[i];
-                    particleLife[aliveParticles] = particleLife[i];
-                    particleR[aliveParticles] = particleR[i];
-                    particleG[aliveParticles] = particleG[i];
-                    particleB[aliveParticles] = particleB[i];
+            if (lightningLife[i] > 0) {
+                // Regenerar zigzag periódicamente para efecto de "parpadeo"
+                if (random.nextFloat() < 0.3f) {  // 30% de probabilidad por frame
+                    generateLightningPath(i);
                 }
-                aliveParticles++;
+
+                // Compactar array
+                if (aliveLightnings != i) {
+                    lightningStartX[aliveLightnings] = lightningStartX[i];
+                    lightningStartY[aliveLightnings] = lightningStartY[i];
+                    lightningEndX[aliveLightnings] = lightningEndX[i];
+                    lightningEndY[aliveLightnings] = lightningEndY[i];
+                    lightningLife[aliveLightnings] = lightningLife[i];
+                    lightningR[aliveLightnings] = lightningR[i];
+                    lightningG[aliveLightnings] = lightningG[i];
+                    lightningB[aliveLightnings] = lightningB[i];
+                    lightningIntensity[aliveLightnings] = lightningIntensity[i];
+                    // Copiar puntos del zigzag
+                    for (int p = 0; p <= LIGHTNING_SEGMENTS; p++) {
+                        lightningPointsX[aliveLightnings][p] = lightningPointsX[i][p];
+                        lightningPointsY[aliveLightnings][p] = lightningPointsY[i][p];
+                    }
+                }
+                aliveLightnings++;
             }
         }
-        particleCount = aliveParticles;
+        lightningCount = aliveLightnings;
+
+        // ════════════════════════════════════════════════════════════════════════
+        // ✨ ACTUALIZAR CHISPAS ENTRE PEAKS
+        // ════════════════════════════════════════════════════════════════════════
+        sparkTimer += deltaTime;
+        if (sparkTimer >= SPARK_INTERVAL) {
+            sparkTimer = 0f;
+            spawnPeakSparks();
+        }
+
+        // Actualizar vida de chispas existentes
+        int aliveSparks = 0;
+        for (int i = 0; i < sparkCount; i++) {
+            sparkLife[i] -= deltaTime;
+            if (sparkLife[i] > 0) {
+                if (aliveSparks != i) {
+                    sparkStartX[aliveSparks] = sparkStartX[i];
+                    sparkStartY[aliveSparks] = sparkStartY[i];
+                    sparkEndX[aliveSparks] = sparkEndX[i];
+                    sparkEndY[aliveSparks] = sparkEndY[i];
+                    sparkLife[aliveSparks] = sparkLife[i];
+                    sparkR[aliveSparks] = sparkR[i];
+                    sparkG[aliveSparks] = sparkG[i];
+                    sparkB[aliveSparks] = sparkB[i];
+                }
+                aliveSparks++;
+            }
+        }
+        sparkCount = aliveSparks;
 
         // ════════════════════════════════════════════════════════════════════════
         // 🌊 ACTUALIZAR ONDAS DE ENERGÍA
@@ -575,11 +791,14 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         updatePeakGeometry();
         drawBuffers(peakVertexBuffer, peakColorBuffer);
 
-        // 4. 🌊 Dibujar ondas de energía (detrás de las partículas)
+        // 4. 🌊 Dibujar ondas de energía
         drawEnergyWaves();
 
-        // 5. ✨ Dibujar partículas explosivas
-        drawParticles();
+        // 5. ⚡ Dibujar rayos eléctricos
+        drawLightning();
+
+        // 6. ✨ Dibujar chispas entre peaks
+        drawPeakSparks();
 
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
     }
@@ -772,7 +991,8 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     }
 
     /**
-     * Actualiza la geometría de los peak markers
+     * Actualiza la geometría de los peak markers con colores heredados de la barra
+     * Rosa en el centro, Cyan en los lados - NO BLANCOS
      */
     private void updatePeakGeometry() {
         float[] vertices = new float[NUM_BARS * 4 * 3];
@@ -782,9 +1002,16 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         float barWidth = (totalWidth - (NUM_BARS - 1) * BAR_SPACING) / NUM_BARS;
         float startX = -totalWidth / 2f;
 
+        // Tiempo para efecto de pulso/brillo
+        long safeTime = System.currentTimeMillis() % 5000;
+        float pulse = 0.85f + 0.15f * (float)Math.sin(safeTime * 0.008f);
+
         for (int i = 0; i < NUM_BARS; i++) {
             float x = startX + i * (barWidth + BAR_SPACING);
             float peakY = BASE_Y + MIN_HEIGHT + peakLevels[i] * (MAX_HEIGHT - MIN_HEIGHT);
+
+            // Peak delgado
+            float peakHeight = PEAK_HEIGHT;
 
             int vi = i * 12;
             int ci = i * 16;
@@ -799,23 +1026,42 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
             vertices[vi + 5] = 0f;
 
             vertices[vi + 6] = x;
-            vertices[vi + 7] = peakY + PEAK_HEIGHT;
+            vertices[vi + 7] = peakY + peakHeight;
             vertices[vi + 8] = 0f;
 
             vertices[vi + 9] = x + barWidth;
-            vertices[vi + 10] = peakY + PEAK_HEIGHT;
+            vertices[vi + 10] = peakY + peakHeight;
             vertices[vi + 11] = 0f;
 
-            // Color del peak (blanco brillante con el tono de la barra)
-            float[] peakColor = getBarColor(i, 1.0f);
-            float alpha = 0.9f;
+            // ═══════════════════════════════════════════════════════════════
+            // COLOR DEL PEAK - Mismo gradiente que las barras (rosa→cyan)
+            // ═══════════════════════════════════════════════════════════════
+            float t = (float) i / (NUM_BARS - 1);  // 0 a 1
+            float distFromCenter = Math.abs(t - 0.5f) * 2f;  // 0 = centro, 1 = lados
 
-            // Todos los vértices del peak con el mismo color brillante
-            for (int j = 0; j < 4; j++) {
-                colors[ci + j * 4 + 0] = Math.min(1.0f, peakColor[0] * 1.3f);
-                colors[ci + j * 4 + 1] = Math.min(1.0f, peakColor[1] * 1.3f);
-                colors[ci + j * 4 + 2] = Math.min(1.0f, peakColor[2] * 1.3f);
-                colors[ci + j * 4 + 3] = alpha;
+            // Interpolar entre rosa (centro) y cyan (lados) - SIN BLANCO
+            float r = COLOR_BASS[0] + (COLOR_TREBLE[0] - COLOR_BASS[0]) * distFromCenter;
+            float g = COLOR_BASS[1] + (COLOR_TREBLE[1] - COLOR_BASS[1]) * distFromCenter;
+            float b = COLOR_BASS[2] + (COLOR_TREBLE[2] - COLOR_BASS[2]) * distFromCenter;
+
+            // Aplicar pulso y brillo
+            r = r * pulse * 1.2f;
+            g = g * pulse * 1.2f;
+            b = b * pulse * 1.2f;
+
+            // Clamp sin llegar a blanco
+            r = Math.min(0.95f, r);
+            g = Math.min(0.95f, g);
+            b = Math.min(0.95f, b);
+
+            float alpha = 0.95f;
+
+            // Todos los vértices con el mismo color (sin gradiente vertical)
+            for (int v = 0; v < 4; v++) {
+                colors[ci + v * 4 + 0] = r;
+                colors[ci + v * 4 + 1] = g;
+                colors[ci + v * 4 + 2] = b;
+                colors[ci + v * 4 + 3] = alpha;
             }
         }
 
@@ -841,110 +1087,179 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // ✨ DIBUJO DE PARTÍCULAS
+    // ⚡ DIBUJO DE RAYOS ELÉCTRICOS
     // ════════════════════════════════════════════════════════════════════════
 
     /**
-     * Dibuja las partículas explosivas que salen de las barras en los beats
+     * Dibuja los rayos eléctricos zigzagueantes entre las barras
      */
-    private void drawParticles() {
-        if (particleCount == 0) return;
-
-        // Log siempre que hay partículas
-        Log.d(TAG, "🎆 DRAW " + particleCount + " particles at Y=" +
-              String.format("%.2f", particleY[0]));
+    private void drawLightning() {
+        if (lightningCount == 0) return;
 
         // Asegurar que el shader y matriz estén activos
         GLES20.glUseProgram(shaderProgram);
         GLES20.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, projectionMatrix, 0);
 
-        // Usar blending aditivo para que las partículas brillen
+        // Usar blending aditivo para que los rayos brillen intensamente
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
 
-        float[] vertices = new float[particleCount * 4 * 3];
-        float[] colors = new float[particleCount * 4 * 4];
+        // Dibujar cada rayo como una serie de quads conectados (línea delgada)
+        float lineThickness = 0.003f;  // Grosor del rayo (más fino)
 
-        float particleSize = 0.03f;  // Tamaño visible
+        for (int l = 0; l < lightningCount; l++) {
+            float life = lightningLife[l];
+            float maxLife = 0.35f;  // Vida máxima aproximada
+            float lifeRatio = Math.min(1.0f, life / maxLife);
 
-        for (int i = 0; i < particleCount; i++) {
-            float x = particleX[i];
-            float y = particleY[i];
-            float life = particleLife[i];
+            // Alpha basado en vida (fade out)
+            float alpha = lifeRatio;
 
-            // Tamaño basado en vida
-            float size = particleSize * (0.6f + life * 0.4f);
+            // Color del rayo con brillo
+            float r = lightningR[l];
+            float g = lightningG[l];
+            float b = lightningB[l];
 
-            int vi = i * 12;
-            int ci = i * 16;
+            // Cada segmento del rayo es un quad
+            int numQuads = LIGHTNING_SEGMENTS;
+            float[] vertices = new float[numQuads * 4 * 3];
+            float[] colors = new float[numQuads * 4 * 4];
 
-            // Quad de la partícula
-            vertices[vi + 0] = x - size;
-            vertices[vi + 1] = y - size;
-            vertices[vi + 2] = 0f;
+            int vi = 0;
+            int ci = 0;
 
-            vertices[vi + 3] = x + size;
-            vertices[vi + 4] = y - size;
-            vertices[vi + 5] = 0f;
+            for (int s = 0; s < LIGHTNING_SEGMENTS; s++) {
+                float x1 = lightningPointsX[l][s];
+                float y1 = lightningPointsY[l][s];
+                float x2 = lightningPointsX[l][s + 1];
+                float y2 = lightningPointsY[l][s + 1];
 
-            vertices[vi + 6] = x - size;
-            vertices[vi + 7] = y + size;
-            vertices[vi + 8] = 0f;
+                // Calcular perpendicular para el grosor
+                float dx = x2 - x1;
+                float dy = y2 - y1;
+                float len = (float) Math.sqrt(dx * dx + dy * dy);
+                if (len < 0.001f) len = 0.001f;
+                float perpX = (-dy / len) * lineThickness;
+                float perpY = (dx / len) * lineThickness;
 
-            vertices[vi + 9] = x + size;
-            vertices[vi + 10] = y + size;
-            vertices[vi + 11] = 0f;
+                // 4 vértices del quad (línea gruesa)
+                vertices[vi++] = x1 - perpX; vertices[vi++] = y1 - perpY; vertices[vi++] = 0f;
+                vertices[vi++] = x1 + perpX; vertices[vi++] = y1 + perpY; vertices[vi++] = 0f;
+                vertices[vi++] = x2 - perpX; vertices[vi++] = y2 - perpY; vertices[vi++] = 0f;
+                vertices[vi++] = x2 + perpX; vertices[vi++] = y2 + perpY; vertices[vi++] = 0f;
 
-            // Color MUY brillante (blanco/rosa)
-            float alpha = Math.min(1.0f, life * 1.5f);
+                // Colores con brillo en el centro (efecto glow)
+                // Los vértices exteriores tienen el color base
+                // Efecto de brillo: centro más blanco
+                float centerBrightness = 0.5f + lifeRatio * 0.5f;
 
-            // Colores muy saturados y brillantes
-            for (int j = 0; j < 4; j++) {
-                colors[ci + j * 4 + 0] = 1.0f;  // R máximo
-                colors[ci + j * 4 + 1] = 0.5f + life * 0.5f;  // G
-                colors[ci + j * 4 + 2] = 1.0f;  // B máximo (rosa/magenta brillante)
-                colors[ci + j * 4 + 3] = alpha;
+                colors[ci++] = r; colors[ci++] = g; colors[ci++] = b; colors[ci++] = alpha;
+                colors[ci++] = Math.min(1f, r + centerBrightness);
+                colors[ci++] = Math.min(1f, g + centerBrightness);
+                colors[ci++] = Math.min(1f, b + centerBrightness);
+                colors[ci++] = alpha;
+                colors[ci++] = r; colors[ci++] = g; colors[ci++] = b; colors[ci++] = alpha;
+                colors[ci++] = Math.min(1f, r + centerBrightness);
+                colors[ci++] = Math.min(1f, g + centerBrightness);
+                colors[ci++] = Math.min(1f, b + centerBrightness);
+                colors[ci++] = alpha;
             }
+
+            // Actualizar buffers
+            lightningVertexBuffer.clear();
+            lightningVertexBuffer.put(vertices);
+            lightningVertexBuffer.position(0);
+
+            lightningColorBuffer.clear();
+            lightningColorBuffer.put(colors);
+            lightningColorBuffer.position(0);
+
+            // Dibujar
+            GLES20.glEnableVertexAttribArray(aPositionHandle);
+            GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, lightningVertexBuffer);
+
+            GLES20.glEnableVertexAttribArray(aColorHandle);
+            GLES20.glVertexAttribPointer(aColorHandle, 4, GLES20.GL_FLOAT, false, 0, lightningColorBuffer);
+
+            for (int s = 0; s < LIGHTNING_SEGMENTS; s++) {
+                GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, s * 4, 4);
+            }
+
+            GLES20.glDisableVertexAttribArray(aPositionHandle);
+            GLES20.glDisableVertexAttribArray(aColorHandle);
+
+            // === DIBUJAR GLOW (versión más grande y transparente) ===
+            float glowThickness = lineThickness * 2.5f;
+
+            vi = 0;
+            ci = 0;
+
+            for (int s = 0; s < LIGHTNING_SEGMENTS; s++) {
+                float x1 = lightningPointsX[l][s];
+                float y1 = lightningPointsY[l][s];
+                float x2 = lightningPointsX[l][s + 1];
+                float y2 = lightningPointsY[l][s + 1];
+
+                float dx = x2 - x1;
+                float dy = y2 - y1;
+                float len = (float) Math.sqrt(dx * dx + dy * dy);
+                if (len < 0.001f) len = 0.001f;
+                float perpX = (-dy / len) * glowThickness;
+                float perpY = (dx / len) * glowThickness;
+
+                vertices[vi++] = x1 - perpX; vertices[vi++] = y1 - perpY; vertices[vi++] = 0f;
+                vertices[vi++] = x1 + perpX; vertices[vi++] = y1 + perpY; vertices[vi++] = 0f;
+                vertices[vi++] = x2 - perpX; vertices[vi++] = y2 - perpY; vertices[vi++] = 0f;
+                vertices[vi++] = x2 + perpX; vertices[vi++] = y2 + perpY; vertices[vi++] = 0f;
+
+                // Glow con alpha bajo
+                float glowAlpha = alpha * 0.3f;
+                for (int v = 0; v < 4; v++) {
+                    colors[ci++] = r;
+                    colors[ci++] = g;
+                    colors[ci++] = b;
+                    colors[ci++] = glowAlpha;
+                }
+            }
+
+            // Dibujar glow
+            lightningVertexBuffer.clear();
+            lightningVertexBuffer.put(vertices);
+            lightningVertexBuffer.position(0);
+
+            lightningColorBuffer.clear();
+            lightningColorBuffer.put(colors);
+            lightningColorBuffer.position(0);
+
+            GLES20.glEnableVertexAttribArray(aPositionHandle);
+            GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, lightningVertexBuffer);
+
+            GLES20.glEnableVertexAttribArray(aColorHandle);
+            GLES20.glVertexAttribPointer(aColorHandle, 4, GLES20.GL_FLOAT, false, 0, lightningColorBuffer);
+
+            for (int s = 0; s < LIGHTNING_SEGMENTS; s++) {
+                GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, s * 4, 4);
+            }
+
+            GLES20.glDisableVertexAttribArray(aPositionHandle);
+            GLES20.glDisableVertexAttribArray(aColorHandle);
         }
-
-        // Actualizar buffers
-        particleVertexBuffer.clear();
-        particleVertexBuffer.put(vertices);
-        particleVertexBuffer.position(0);
-
-        particleColorBuffer.clear();
-        particleColorBuffer.put(colors);
-        particleColorBuffer.position(0);
-
-        // Dibujar
-        GLES20.glEnableVertexAttribArray(aPositionHandle);
-        GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, particleVertexBuffer);
-
-        GLES20.glEnableVertexAttribArray(aColorHandle);
-        GLES20.glVertexAttribPointer(aColorHandle, 4, GLES20.GL_FLOAT, false, 0, particleColorBuffer);
-
-        for (int i = 0; i < particleCount; i++) {
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, i * 4, 4);
-        }
-
-        GLES20.glDisableVertexAttribArray(aPositionHandle);
-        GLES20.glDisableVertexAttribArray(aColorHandle);
 
         // Restaurar blending normal
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // 🌊 DIBUJO DE ONDAS DE ENERGÍA
+    // 🌊 DIBUJO DE ONDAS DE ENERGÍA (ARCOS GRUESOS)
     // ════════════════════════════════════════════════════════════════════════
 
     /**
-     * Dibuja las ondas de energía que se expanden desde las barras en los beats
+     * Dibuja las ondas de energía como arcos semicirculares gruesos
      */
     private void drawEnergyWaves() {
         // Contar ondas activas
         int activeWaves = 0;
         for (int i = 0; i < MAX_WAVES; i++) {
-            if (waveAlpha[i] > 0) activeWaves++;
+            if (waveAlpha[i] > 0.01f) activeWaves++;
         }
         if (activeWaves == 0) return;
 
@@ -955,92 +1270,227 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         // Usar blending aditivo para ondas brillantes
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
 
-        // Centro de las ondas (donde están las barras)
+        // Centro de las ondas (base de las barras)
         float centerX = 0f;
-        float centerY = BASE_Y + 0.15f;
+        float centerY = BASE_Y + 0.08f;
 
-        float[] vertices = new float[MAX_WAVES * WAVE_SEGMENTS * 2 * 3];
-        float[] colors = new float[MAX_WAVES * WAVE_SEGMENTS * 2 * 4];
-
-        int vertexIndex = 0;
-        int colorIndex = 0;
-        int segmentsDrawn = 0;
-
+        // Dibujar cada onda como un arco grueso (quad strip)
         for (int w = 0; w < MAX_WAVES; w++) {
-            if (waveAlpha[w] <= 0) continue;
+            if (waveAlpha[w] <= 0.01f) continue;
 
             float radius = waveRadius[w];
             float alpha = waveAlpha[w];
 
-            // Dibujar círculo como una serie de líneas
-            for (int s = 0; s < WAVE_SEGMENTS; s++) {
-                float angle1 = (float)(s * 2 * Math.PI / WAVE_SEGMENTS);
-                float angle2 = (float)((s + 1) * 2 * Math.PI / WAVE_SEGMENTS);
+            // Calcular fade basado en radio
+            float fadeFactor = 1.0f - (radius / WAVE_MAX_RADIUS);
+            float finalAlpha = alpha * fadeFactor * 0.8f;
 
-                // Solo dibujar la mitad superior del círculo (semicírculo hacia arriba)
-                if (angle1 > Math.PI) continue;
+            // Radio interno y externo para el arco grueso
+            float innerRadius = radius;
+            float outerRadius = radius + WAVE_THICKNESS;
 
-                float x1 = centerX + (float)Math.cos(angle1) * radius * aspectRatio;
-                float y1 = centerY + (float)Math.sin(angle1) * radius;
-                float x2 = centerX + (float)Math.cos(angle2) * radius * aspectRatio;
-                float y2 = centerY + (float)Math.sin(angle2) * radius;
+            // Crear arco semicircular (solo parte superior)
+            int numSegments = 24;
+            float[] vertices = new float[numSegments * 4 * 3];  // 4 vértices por segmento (quad)
+            float[] colors = new float[numSegments * 4 * 4];
 
-                // Línea (2 vértices)
-                vertices[vertexIndex++] = x1;
-                vertices[vertexIndex++] = y1;
-                vertices[vertexIndex++] = 0f;
+            int vi = 0;
+            int ci = 0;
 
-                vertices[vertexIndex++] = x2;
-                vertices[vertexIndex++] = y2;
-                vertices[vertexIndex++] = 0f;
+            for (int s = 0; s < numSegments; s++) {
+                // Ángulos para el arco (0 a PI = semicírculo superior)
+                float angle1 = (float)(s * Math.PI / numSegments);
+                float angle2 = (float)((s + 1) * Math.PI / numSegments);
 
-                // Colores con fade hacia afuera
-                float fadeOuter = 1.0f - (radius / WAVE_MAX_RADIUS);
-                float finalAlpha = alpha * fadeOuter;
+                // Puntos del quad (inner y outer radius)
+                float x1Inner = centerX + (float)Math.cos(angle1) * innerRadius * aspectRatio * 1.5f;
+                float y1Inner = centerY + (float)Math.sin(angle1) * innerRadius;
+                float x1Outer = centerX + (float)Math.cos(angle1) * outerRadius * aspectRatio * 1.5f;
+                float y1Outer = centerY + (float)Math.sin(angle1) * outerRadius;
 
-                // Color 1
-                colors[colorIndex++] = waveR[w];
-                colors[colorIndex++] = waveG[w];
-                colors[colorIndex++] = waveB[w];
-                colors[colorIndex++] = finalAlpha;
+                float x2Inner = centerX + (float)Math.cos(angle2) * innerRadius * aspectRatio * 1.5f;
+                float y2Inner = centerY + (float)Math.sin(angle2) * innerRadius;
+                float x2Outer = centerX + (float)Math.cos(angle2) * outerRadius * aspectRatio * 1.5f;
+                float y2Outer = centerY + (float)Math.sin(angle2) * outerRadius;
 
-                // Color 2
-                colors[colorIndex++] = waveR[w];
-                colors[colorIndex++] = waveG[w];
-                colors[colorIndex++] = waveB[w];
-                colors[colorIndex++] = finalAlpha;
+                // Quad como triangle strip (4 vértices)
+                vertices[vi++] = x1Inner; vertices[vi++] = y1Inner; vertices[vi++] = 0f;
+                vertices[vi++] = x1Outer; vertices[vi++] = y1Outer; vertices[vi++] = 0f;
+                vertices[vi++] = x2Inner; vertices[vi++] = y2Inner; vertices[vi++] = 0f;
+                vertices[vi++] = x2Outer; vertices[vi++] = y2Outer; vertices[vi++] = 0f;
 
-                segmentsDrawn++;
+                // Colores - borde interno más brillante, externo con fade
+                float r = waveR[w];
+                float g = waveG[w];
+                float b = waveB[w];
+
+                // Inner vertices - más brillantes
+                colors[ci++] = r; colors[ci++] = g; colors[ci++] = b; colors[ci++] = finalAlpha;
+                // Outer vertices - fade
+                colors[ci++] = r; colors[ci++] = g; colors[ci++] = b; colors[ci++] = finalAlpha * 0.3f;
+                colors[ci++] = r; colors[ci++] = g; colors[ci++] = b; colors[ci++] = finalAlpha;
+                colors[ci++] = r; colors[ci++] = g; colors[ci++] = b; colors[ci++] = finalAlpha * 0.3f;
             }
+
+            // Actualizar buffers
+            waveVertexBuffer.clear();
+            waveVertexBuffer.put(vertices);
+            waveVertexBuffer.position(0);
+
+            waveColorBuffer.clear();
+            waveColorBuffer.put(colors);
+            waveColorBuffer.position(0);
+
+            // Dibujar quads
+            GLES20.glEnableVertexAttribArray(aPositionHandle);
+            GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, waveVertexBuffer);
+
+            GLES20.glEnableVertexAttribArray(aColorHandle);
+            GLES20.glVertexAttribPointer(aColorHandle, 4, GLES20.GL_FLOAT, false, 0, waveColorBuffer);
+
+            // Dibujar cada segmento como triangle strip
+            for (int s = 0; s < numSegments; s++) {
+                GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, s * 4, 4);
+            }
+
+            GLES20.glDisableVertexAttribArray(aPositionHandle);
+            GLES20.glDisableVertexAttribArray(aColorHandle);
         }
 
-        if (segmentsDrawn == 0) {
-            GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
-            return;
+        // Restaurar blending normal
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ✨ DIBUJO DE CHISPAS ENTRE PEAKS
+    // ════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Dibuja las chispas eléctricas entre peaks cercanos
+     * Cada chispa es un pequeño zigzag de 3 segmentos que conecta dos peaks
+     */
+    private void drawPeakSparks() {
+        if (sparkCount == 0) return;
+
+        // Asegurar shader y matriz activos
+        GLES20.glUseProgram(shaderProgram);
+        GLES20.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, projectionMatrix, 0);
+
+        // Usar blending aditivo para chispas brillantes
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
+
+        float sparkThickness = 0.002f;  // Grosor de la chispa (muy fina)
+
+        for (int sp = 0; sp < sparkCount; sp++) {
+            float life = sparkLife[sp];
+            float maxLife = 0.14f;  // Vida máxima aproximada
+            float lifeRatio = Math.min(1.0f, life / maxLife);
+
+            // Alpha basado en vida (fade out rápido)
+            float alpha = lifeRatio * 0.9f;
+
+            // Color de la chispa
+            float r = sparkR[sp];
+            float g = sparkG[sp];
+            float b = sparkB[sp];
+
+            // Posiciones inicio y fin
+            float x1 = sparkStartX[sp];
+            float y1 = sparkStartY[sp];
+            float x2 = sparkEndX[sp];
+            float y2 = sparkEndY[sp];
+
+            // Generar zigzag de 3 segmentos (4 puntos)
+            float[] pointsX = new float[4];
+            float[] pointsY = new float[4];
+
+            pointsX[0] = x1;
+            pointsY[0] = y1;
+            pointsX[3] = x2;
+            pointsY[3] = y2;
+
+            // Puntos intermedios con desplazamiento aleatorio para zigzag
+            float dx = x2 - x1;
+            float dy = y2 - y1;
+            float len = (float) Math.sqrt(dx * dx + dy * dy);
+            if (len < 0.001f) len = 0.001f;
+
+            // Perpendicular para desplazamiento
+            float perpX = -dy / len;
+            float perpY = dx / len;
+
+            // Offset aleatorio pero consistente durante la vida de la chispa
+            // Usar la vida como seed para que el zigzag cambie mientras vive
+            float offset1 = (float) Math.sin(life * 50f) * 0.03f;
+            float offset2 = (float) Math.cos(life * 70f) * 0.03f;
+
+            // Puntos 1 y 2 (intermedios)
+            pointsX[1] = x1 + dx * 0.33f + perpX * offset1;
+            pointsY[1] = y1 + dy * 0.33f + perpY * offset1;
+            pointsX[2] = x1 + dx * 0.66f + perpX * offset2;
+            pointsY[2] = y1 + dy * 0.66f + perpY * offset2;
+
+            // Crear quads para los 3 segmentos
+            int numSegments = 3;
+            float[] vertices = new float[numSegments * 4 * 3];
+            float[] colors = new float[numSegments * 4 * 4];
+
+            int vi = 0;
+            int ci = 0;
+
+            for (int s = 0; s < numSegments; s++) {
+                float sx1 = pointsX[s];
+                float sy1 = pointsY[s];
+                float sx2 = pointsX[s + 1];
+                float sy2 = pointsY[s + 1];
+
+                // Calcular perpendicular para el grosor
+                float sdx = sx2 - sx1;
+                float sdy = sy2 - sy1;
+                float slen = (float) Math.sqrt(sdx * sdx + sdy * sdy);
+                if (slen < 0.001f) slen = 0.001f;
+                float sperpX = (-sdy / slen) * sparkThickness;
+                float sperpY = (sdx / slen) * sparkThickness;
+
+                // 4 vértices del quad
+                vertices[vi++] = sx1 - sperpX; vertices[vi++] = sy1 - sperpY; vertices[vi++] = 0f;
+                vertices[vi++] = sx1 + sperpX; vertices[vi++] = sy1 + sperpY; vertices[vi++] = 0f;
+                vertices[vi++] = sx2 - sperpX; vertices[vi++] = sy2 - sperpY; vertices[vi++] = 0f;
+                vertices[vi++] = sx2 + sperpX; vertices[vi++] = sy2 + sperpY; vertices[vi++] = 0f;
+
+                // Colores con brillo en el centro
+                float brightness = 0.4f + lifeRatio * 0.6f;
+                for (int v = 0; v < 4; v++) {
+                    colors[ci++] = Math.min(1f, r + brightness * 0.3f);
+                    colors[ci++] = Math.min(1f, g + brightness * 0.3f);
+                    colors[ci++] = Math.min(1f, b + brightness * 0.3f);
+                    colors[ci++] = alpha;
+                }
+            }
+
+            // Actualizar buffers
+            sparkVertexBuffer.clear();
+            sparkVertexBuffer.put(vertices);
+            sparkVertexBuffer.position(0);
+
+            sparkColorBuffer.clear();
+            sparkColorBuffer.put(colors);
+            sparkColorBuffer.position(0);
+
+            // Dibujar
+            GLES20.glEnableVertexAttribArray(aPositionHandle);
+            GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, sparkVertexBuffer);
+
+            GLES20.glEnableVertexAttribArray(aColorHandle);
+            GLES20.glVertexAttribPointer(aColorHandle, 4, GLES20.GL_FLOAT, false, 0, sparkColorBuffer);
+
+            for (int s = 0; s < numSegments; s++) {
+                GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, s * 4, 4);
+            }
+
+            GLES20.glDisableVertexAttribArray(aPositionHandle);
+            GLES20.glDisableVertexAttribArray(aColorHandle);
         }
-
-        // Actualizar buffers
-        waveVertexBuffer.clear();
-        waveVertexBuffer.put(vertices, 0, vertexIndex);
-        waveVertexBuffer.position(0);
-
-        waveColorBuffer.clear();
-        waveColorBuffer.put(colors, 0, colorIndex);
-        waveColorBuffer.position(0);
-
-        // Dibujar líneas
-        GLES20.glLineWidth(3.0f);
-
-        GLES20.glEnableVertexAttribArray(aPositionHandle);
-        GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, waveVertexBuffer);
-
-        GLES20.glEnableVertexAttribArray(aColorHandle);
-        GLES20.glVertexAttribPointer(aColorHandle, 4, GLES20.GL_FLOAT, false, 0, waveColorBuffer);
-
-        GLES20.glDrawArrays(GLES20.GL_LINES, 0, segmentsDrawn * 2);
-
-        GLES20.glDisableVertexAttribArray(aPositionHandle);
-        GLES20.glDisableVertexAttribArray(aColorHandle);
 
         // Restaurar blending normal
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
