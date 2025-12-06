@@ -80,6 +80,13 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
     private float originalScale = 1.0f;  // Tamaño original al spawnearse
     private static final float PROXIMITY_RANGE = 8.0f;  // Rango donde empieza el efecto
 
+    // ⚡ Arrays reutilizables (evita GC pressure)
+    private final float[] posicionCache = new float[3];
+    private final float[] velocidadCache = new float[3];
+
+    // ⚡ Tiempo acumulado (evita System.currentTimeMillis() en draw)
+    private float timeAccumulator = 0f;
+
     public AsteroideRealista(Context context, TextureManager textureManager) {
         super(context, "shaders/asteroide_vertex.glsl", "shaders/asteroide_textured_fragment.glsl");
 
@@ -238,9 +245,12 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
         return exploding;
     }
 
-    // Getters para el sistema de colisiones
+    // Getters para el sistema de colisiones (⚡ reutiliza arrays)
     public float[] getPosicion() {
-        return new float[]{posX, posY, posZ};
+        posicionCache[0] = posX;
+        posicionCache[1] = posY;
+        posicionCache[2] = posZ;
+        return posicionCache;
     }
 
     public float getTamaño() {
@@ -250,9 +260,13 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
     /**
      * 🌍 Obtiene la velocidad actual del asteroide
      * Usado por el sistema de gravedad de MeteorShower
+     * ⚡ Reutiliza array para evitar GC pressure
      */
     public float[] getVelocidad() {
-        return new float[]{velocityX, velocityY, velocityZ};
+        velocidadCache[0] = velocityX;
+        velocidadCache[1] = velocityY;
+        velocidadCache[2] = velocityZ;
+        return velocidadCache;
     }
 
     /**
@@ -277,6 +291,9 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
     @Override
     public void update(float dt) {
         if (estado == Estado.INACTIVO) return;
+
+        // ⚡ Acumular tiempo (para uso en draw sin System.currentTimeMillis)
+        timeAccumulator += dt;
 
         // ═══════════════════════════════════════════════════════════
         // 💥 MODO EXPLOSIÓN - Asteroide explotando en superficie
@@ -414,8 +431,8 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
         int uMVPLoc = GLES20.glGetUniformLocation(programId, "u_MVP");
         GLES20.glUniformMatrix4fv(uMVPLoc, 1, false, mvpMatrix, 0);
 
-        // Pasar tiempo
-        setTime((System.currentTimeMillis() % 60000) / 1000.0f);
+        // ⚡ Pasar tiempo (usa acumulador en lugar de System.currentTimeMillis)
+        setTime(timeAccumulator % 60.0f);
 
         // Pasar alpha (desvanecimiento durante explosión)
         int uAlphaLoc = GLES20.glGetUniformLocation(programId, "u_Alpha");
@@ -425,11 +442,6 @@ public class AsteroideRealista extends BaseShaderProgram implements SceneObject,
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
         GLES20.glUniform1i(uTexLoc, 0);
-
-        // Debug: Log texture binding cada 60 frames (~1 segundo)
-        if (System.currentTimeMillis() % 1000 < 17) {
-            Log.d(TAG, "🎨 Dibujando asteroide - TextureID: " + textureId + " | uTexLoc: " + uTexLoc);
-        }
 
         // Configurar atributos
         GLES20.glEnableVertexAttribArray(aPosLoc);

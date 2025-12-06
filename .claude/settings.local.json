@@ -30,7 +30,10 @@
       "Bash(timeout 8 D:/adb/platform-tools/adb.exe shell am force-stop:*)",
       "Bash(./gradlew clean:*)",
       "Bash(rm:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(timeout 6 D:/adb/platform-tools/adb.exe logcat:*)",
+      "Bash(timeout 8 D:/adb/platform-tools/adb.exe shell am broadcast:*)"
     ],
     "deny": [],
     "ask": []

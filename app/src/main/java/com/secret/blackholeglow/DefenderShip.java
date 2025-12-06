@@ -15,6 +15,7 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 /**
@@ -82,28 +83,85 @@ public class DefenderShip implements SceneObject, CameraAware {
     private float earthRadius = 1.2f;           // Radio visual de la Tierra
     private float safeDistanceEarth = 2.0f;     // Distancia mínima segura a la Tierra
 
+    // 🛰️ ESTACIÓN ESPACIAL (para esquivarla)
+    private SpaceStation spaceStationRef;
+    private float stationRadius = 0.9f;         // Radio de colisión de la estación
+    private float safeDistanceStation = 1.5f;   // Distancia mínima a la estación
+
     // ═══════════════════════════════════════════════════════════
-    // 🎯 SISTEMA DE COMBATE
+    // 🎯 SISTEMA DE COMBATE (NAVE1 - dispara a UfoScout)
     // ═══════════════════════════════════════════════════════════
-    private Spaceship3D targetUfo;          // Referencia al OVNI enemigo
+    private UfoScout targetUfoScout;        // 🛸 Referencia al OVNI1 (UfoScout)
     private float shootTimer = 0f;
-    private float shootInterval = 2.5f;     // Dispara cada 2.5 segundos
-    private float minShootInterval = 1.5f;
-    private float maxShootInterval = 3.5f;
-
-    // Láseres
-    private ArrayList<DefenderLaser> lasers = new ArrayList<>();
+    private float shootInterval = 2.0f;     // Dispara cada 2 segundos (más rápido)
+    private float minShootInterval = 1.2f;
+    private float maxShootInterval = 2.5f;
 
     // ═══════════════════════════════════════════════════════════
-    // 💔 SISTEMA DE VIDA
+    // 🔫 SISTEMA DE DISPAROS (TEAM HUMAN - LÁSER AZUL)
     // ═══════════════════════════════════════════════════════════
-    private int health = 3;
-    private int maxHealth = 3;
+    private static final int MAX_LASERS = 5;
+    private final List<Laser> lasers = new ArrayList<>();
+    private static final float MIN_SHOOT_INTERVAL = 1.5f;
+    private static final float MAX_SHOOT_INTERVAL = 3.0f;
+
+
+    // ═══════════════════════════════════════════════════════════
+    // 💔 SISTEMA DE VIDA (AUMENTADO)
+    // ═══════════════════════════════════════════════════════════
+    private int health = 5;  // 5 HP para durar más
+
+    // ═══════════════════════════════════════════════════════════════
+    // 💥 SISTEMA DE EXPLOSIÓN
+    // ═══════════════════════════════════════════════════════════════
+    private static final int EXPLOSION_PARTICLES = 30;
+    private float[] explosionX = new float[EXPLOSION_PARTICLES];
+    private float[] explosionY = new float[EXPLOSION_PARTICLES];
+    private float[] explosionZ = new float[EXPLOSION_PARTICLES];
+    private float[] explosionVX = new float[EXPLOSION_PARTICLES];
+    private float[] explosionVY = new float[EXPLOSION_PARTICLES];
+    private float[] explosionVZ = new float[EXPLOSION_PARTICLES];
+    private float[] explosionLife = new float[EXPLOSION_PARTICLES];
+    private float[] explosionSize = new float[EXPLOSION_PARTICLES];
+    private float[] explosionR = new float[EXPLOSION_PARTICLES];
+    private float[] explosionG = new float[EXPLOSION_PARTICLES];
+    private float[] explosionB = new float[EXPLOSION_PARTICLES];
+    private boolean explosionActive = false;
+    private float explosionTimer = 0f;
+    private static final float EXPLOSION_DURATION = 1.5f;
+
+    // Shader para explosión
+    private int explosionProgram;
+    private int expPositionLoc;
+    private int expColorLoc;
+    private int expPointSizeLoc;
+    private FloatBuffer explosionVertexBuffer;
+    private FloatBuffer explosionColorBuffer;
+    private int maxHealth = 5;  // 5 HP máximo
     private boolean destroyed = false;
     private float respawnTimer = 0f;
     private float respawnDelay = 6.0f;
     private float invincibilityTimer = 0f;
     private float invincibilityDuration = 1.5f;
+
+    // ═══════════════════════════════════════════════════════════
+    // 🧠 IA DE VUELO ORGÁNICO
+    // ═══════════════════════════════════════════════════════════
+    private float baseScale;  // Escala original para perspectiva
+    private float curvePhase = 0f;
+    private float curveFrequency = 1.2f;
+    private float curveAmplitude = 0.25f;
+    private float depthChangeTimer = 0f;
+    private float depthChangeInterval = 5.0f;
+    private float wanderTimer = 0f;
+    private float wanderInterval = 3.0f;
+
+    // Límites de movimiento (modo vertical)
+    private static final float BOUND_X = 2.0f;
+    private static final float BOUND_Y_MIN = 0.3f;
+    private static final float BOUND_Y_MAX = 3.2f;
+    private static final float BOUND_Z_MIN = -3.0f;
+    private static final float BOUND_Z_MAX = 2.0f;
 
     // ═══════════════════════════════════════════════════════════
     // 🎉 SISTEMA DE CELEBRACIÓN
@@ -149,6 +207,7 @@ public class DefenderShip implements SceneObject, CameraAware {
         this.y = y;
         this.z = z;
         this.scale = scale;
+        this.baseScale = scale;  // Guardar escala original para perspectiva
 
         Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         Log.d(TAG, "🚀 Creando DefenderShip");
@@ -165,6 +224,12 @@ public class DefenderShip implements SceneObject, CameraAware {
 
         // 4. Crear barra de vida (Defender = aliado)
         healthBar = new HealthBar(3, false);
+
+        // 5. Crear shader de explosión
+        createExplosionShader();
+
+        // 6. Inicializar láseres
+        initLasers();
 
         Log.d(TAG, "✅ DefenderShip creado exitosamente");
     }
@@ -491,17 +556,288 @@ public class DefenderShip implements SceneObject, CameraAware {
         return shader;
     }
 
+    /**
+     * 💥 Crear shader para efecto de explosión
+     */
+    private void createExplosionShader() {
+        String vertexShader =
+            "attribute vec3 a_Position;\n" +
+            "attribute vec4 a_Color;\n" +
+            "uniform mat4 u_MVP;\n" +
+            "uniform float u_PointSize;\n" +
+            "varying vec4 v_Color;\n" +
+            "void main() {\n" +
+            "    v_Color = a_Color;\n" +
+            "    gl_Position = u_MVP * vec4(a_Position, 1.0);\n" +
+            "    gl_PointSize = u_PointSize;\n" +
+            "}\n";
+
+        String fragmentShader =
+            "#ifdef GL_ES\n" +
+            "precision mediump float;\n" +
+            "#endif\n" +
+            "varying vec4 v_Color;\n" +
+            "void main() {\n" +
+            "    vec2 coord = gl_PointCoord - vec2(0.5);\n" +
+            "    float dist = length(coord);\n" +
+            "    float alpha = v_Color.a * (1.0 - smoothstep(0.0, 0.5, dist));\n" +
+            "    // Brillo en el centro\n" +
+            "    float glow = 1.0 + (1.0 - dist * 2.0) * 0.8;\n" +
+            "    gl_FragColor = vec4(v_Color.rgb * glow, alpha);\n" +
+            "}\n";
+
+        explosionProgram = ShaderUtils.createProgram(vertexShader, fragmentShader);
+        if (explosionProgram != 0) {
+            expPositionLoc = GLES20.glGetAttribLocation(explosionProgram, "a_Position");
+            expColorLoc = GLES20.glGetAttribLocation(explosionProgram, "a_Color");
+            expPointSizeLoc = GLES20.glGetUniformLocation(explosionProgram, "u_PointSize");
+        }
+
+        // Crear buffers para partículas
+        ByteBuffer bb = ByteBuffer.allocateDirect(EXPLOSION_PARTICLES * 3 * 4);
+        bb.order(ByteOrder.nativeOrder());
+        explosionVertexBuffer = bb.asFloatBuffer();
+
+        ByteBuffer cb = ByteBuffer.allocateDirect(EXPLOSION_PARTICLES * 4 * 4);
+        cb.order(ByteOrder.nativeOrder());
+        explosionColorBuffer = cb.asFloatBuffer();
+
+        Log.d(TAG, "💥 Shader de explosión creado");
+    }
+
+    /**
+     * 🔫 Inicializa el pool de láseres
+     */
+    private void initLasers() {
+        for (int i = 0; i < MAX_LASERS; i++) {
+            lasers.add(new Laser(Laser.TEAM_HUMAN));
+        }
+        // Intervalo inicial aleatorio
+        shootInterval = MIN_SHOOT_INTERVAL + (float)(Math.random() * (MAX_SHOOT_INTERVAL - MIN_SHOOT_INTERVAL));
+        Log.d(TAG, "🔫 Sistema de láseres inicializado (" + MAX_LASERS + " láseres azules)");
+    }
+
+    /**
+     * 🔫 Dispara un láser hacia una posición
+     */
+    private void shootAt(float targetX, float targetY, float targetZ) {
+        // Buscar láser inactivo
+        for (Laser laser : lasers) {
+            if (!laser.isActive()) {
+                laser.setCameraController(camera);
+                laser.fire(x, y, z, targetX, targetY, targetZ);
+                Log.d(TAG, "🔫 NAVE1 disparó láser azul hacia OVNI1!");
+                return;
+            }
+        }
+    }
+
+    /**
+     * 🔫 Actualiza todos los láseres (activos y efectos de impacto)
+     */
+    private void updateLasers(float deltaTime) {
+        for (Laser laser : lasers) {
+            // Siempre actualizar para efectos de impacto
+            laser.update(deltaTime);
+
+            // Solo verificar colisiones si está activo
+            if (laser.isActive()) {
+                // Verificar colisión con UfoScout
+                if (targetUfoScout != null && !targetUfoScout.isTeleportingNow() && !targetUfoScout.isDestroyed()) {
+                    if (laser.checkCollision(targetUfoScout.x, targetUfoScout.y, targetUfoScout.z, 0.3f)) {
+                        laser.deactivate();
+                        targetUfoScout.takeDamage();  // Aplicar daño al OVNI
+                        Log.d(TAG, "💥 ¡Láser azul impactó a OVNI1!");
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 🔫 Dibuja todos los láseres activos y sus efectos
+     */
+    private void drawLasers() {
+        for (Laser laser : lasers) {
+            if (laser.hasActiveEffect()) {
+                laser.draw();
+            }
+        }
+    }
+
+    /**
+     * 🔫 Obtiene la lista de láseres
+     */
+    public List<Laser> getLasers() {
+        return lasers;
+    }
+
+    /**
+     * 💥 Iniciar explosión en la posición actual
+     */
+    private void startExplosion() {
+        explosionActive = true;
+        explosionTimer = 0f;
+
+        for (int i = 0; i < EXPLOSION_PARTICLES; i++) {
+            // Posición inicial = posición de la nave
+            explosionX[i] = x;
+            explosionY[i] = y;
+            explosionZ[i] = z;
+
+            // Velocidad en dirección aleatoria (esfera)
+            float theta = random.nextFloat() * (float)(Math.PI * 2);
+            float phi = random.nextFloat() * (float)Math.PI;
+            float speed = 1.5f + random.nextFloat() * 2.5f;
+
+            explosionVX[i] = speed * (float)(Math.sin(phi) * Math.cos(theta));
+            explosionVY[i] = speed * (float)(Math.sin(phi) * Math.sin(theta));
+            explosionVZ[i] = speed * (float)(Math.cos(phi));
+
+            // Vida inicial
+            explosionLife[i] = 1.0f;
+
+            // Tamaño aleatorio
+            explosionSize[i] = 8.0f + random.nextFloat() * 15.0f;
+
+            // Colores: naranja, amarillo, rojo, blanco (explosión)
+            float colorType = random.nextFloat();
+            if (colorType < 0.3f) {
+                // Naranja brillante
+                explosionR[i] = 1.0f;
+                explosionG[i] = 0.5f + random.nextFloat() * 0.3f;
+                explosionB[i] = 0.0f;
+            } else if (colorType < 0.6f) {
+                // Amarillo
+                explosionR[i] = 1.0f;
+                explosionG[i] = 0.9f + random.nextFloat() * 0.1f;
+                explosionB[i] = 0.2f + random.nextFloat() * 0.3f;
+            } else if (colorType < 0.8f) {
+                // Rojo fuego
+                explosionR[i] = 1.0f;
+                explosionG[i] = 0.2f + random.nextFloat() * 0.2f;
+                explosionB[i] = 0.0f;
+            } else {
+                // Blanco caliente (centro)
+                explosionR[i] = 1.0f;
+                explosionG[i] = 1.0f;
+                explosionB[i] = 0.8f + random.nextFloat() * 0.2f;
+            }
+        }
+
+        Log.d(TAG, "💥 ¡EXPLOSIÓN INICIADA!");
+    }
+
+    /**
+     * 💥 Actualizar partículas de explosión
+     */
+    private void updateExplosion(float deltaTime) {
+        if (!explosionActive) return;
+
+        explosionTimer += deltaTime;
+
+        for (int i = 0; i < EXPLOSION_PARTICLES; i++) {
+            // Mover partícula
+            explosionX[i] += explosionVX[i] * deltaTime;
+            explosionY[i] += explosionVY[i] * deltaTime;
+            explosionZ[i] += explosionVZ[i] * deltaTime;
+
+            // Desacelerar (fricción del espacio)
+            explosionVX[i] *= 0.98f;
+            explosionVY[i] *= 0.98f;
+            explosionVZ[i] *= 0.98f;
+
+            // Reducir vida
+            explosionLife[i] -= deltaTime / EXPLOSION_DURATION;
+            if (explosionLife[i] < 0) explosionLife[i] = 0;
+        }
+
+        // Terminar explosión
+        if (explosionTimer >= EXPLOSION_DURATION) {
+            explosionActive = false;
+            Log.d(TAG, "💥 Explosión terminada");
+        }
+    }
+
+    /**
+     * 💥 Dibujar partículas de explosión
+     */
+    private void drawExplosion() {
+        if (!explosionActive || explosionProgram == 0 || camera == null) return;
+
+        GLES20.glUseProgram(explosionProgram);
+
+        // Blending aditivo para brillo
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
+
+        // Llenar buffers
+        explosionVertexBuffer.position(0);
+        explosionColorBuffer.position(0);
+
+        int aliveCount = 0;
+        for (int i = 0; i < EXPLOSION_PARTICLES; i++) {
+            if (explosionLife[i] <= 0) continue;
+
+            explosionVertexBuffer.put(explosionX[i]);
+            explosionVertexBuffer.put(explosionY[i]);
+            explosionVertexBuffer.put(explosionZ[i]);
+
+            float alpha = explosionLife[i];
+            explosionColorBuffer.put(explosionR[i]);
+            explosionColorBuffer.put(explosionG[i]);
+            explosionColorBuffer.put(explosionB[i]);
+            explosionColorBuffer.put(alpha);
+
+            aliveCount++;
+        }
+
+        if (aliveCount == 0) return;
+
+        explosionVertexBuffer.position(0);
+        explosionColorBuffer.position(0);
+
+        // MVP matrix (identidad para modelo, usar viewProj de cámara)
+        Matrix.setIdentityM(identityModel, 0);
+        camera.computeMvp(identityModel, laserMvp);
+
+        int uMVPLoc = GLES20.glGetUniformLocation(explosionProgram, "u_MVP");
+        GLES20.glUniformMatrix4fv(uMVPLoc, 1, false, laserMvp, 0);
+
+        // Tamaño de partícula
+        float sizeMultiplier = 1.0f + (1.0f - explosionTimer / EXPLOSION_DURATION) * 0.5f;
+        GLES20.glUniform1f(expPointSizeLoc, 15.0f * sizeMultiplier);
+
+        // Atributos
+        GLES20.glEnableVertexAttribArray(expPositionLoc);
+        GLES20.glVertexAttribPointer(expPositionLoc, 3, GLES20.GL_FLOAT, false, 0, explosionVertexBuffer);
+
+        GLES20.glEnableVertexAttribArray(expColorLoc);
+        GLES20.glVertexAttribPointer(expColorLoc, 4, GLES20.GL_FLOAT, false, 0, explosionColorBuffer);
+
+        // Dibujar
+        GLES20.glDrawArrays(GLES20.GL_POINTS, 0, aliveCount);
+
+        // Limpiar
+        GLES20.glDisableVertexAttribArray(expPositionLoc);
+        GLES20.glDisableVertexAttribArray(expColorLoc);
+
+        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+    }
+
     @Override
     public void setCameraController(CameraController camera) {
         this.camera = camera;
     }
 
     /**
-     * Establecer el OVNI enemigo como objetivo
+     * 🛸 Establece el UfoScout (OVNI1) como objetivo
      */
-    public void setTargetUfo(Spaceship3D ufo) {
-        this.targetUfo = ufo;
-        Log.d(TAG, "🎯 Objetivo establecido: OVNI enemigo");
+    public void setTargetUfoScout(UfoScout ufoScout) {
+        this.targetUfoScout = ufoScout;
+        Log.d(TAG, "🎯 NAVE1: Objetivo OVNI1 (UfoScout) establecido");
     }
 
     /**
@@ -521,15 +857,29 @@ public class DefenderShip implements SceneObject, CameraAware {
         this.orbitSpeed = speed;
     }
 
+    /**
+     * 🛰️ Establece referencia a la Estación Espacial (para esquivarla)
+     */
+    public void setSpaceStation(SpaceStation station) {
+        this.spaceStationRef = station;
+        if (station != null) {
+            this.stationRadius = station.getCollisionRadius();
+            this.safeDistanceStation = stationRadius + 0.5f;  // Margen de seguridad
+            Log.d(TAG, "🛰️ Estación Espacial conectada para esquivar (radio=" + stationRadius + ")");
+        }
+    }
+
     @Override
     public void update(float deltaTime) {
+        // 💥 SIEMPRE actualizar explosión (aunque esté destruida)
+        updateExplosion(deltaTime);
+
         // Si está destruida, esperar respawn
         if (destroyed) {
             respawnTimer += deltaTime;
             if (respawnTimer >= respawnDelay) {
                 respawn();
             }
-            updateLasers(deltaTime);
             return;
         }
 
@@ -547,7 +897,6 @@ public class DefenderShip implements SceneObject, CameraAware {
                 celebrationTimer = 0f;
                 rotationZ = 0f;
             }
-            updateLasers(deltaTime);
             return;
         }
 
@@ -557,24 +906,24 @@ public class DefenderShip implements SceneObject, CameraAware {
         float targetX, targetY, targetZ;
         boolean hasVisibleTarget = false;
 
-        // Verificar si el OVNI está visible (no destruido, no teletransportándose)
-        boolean ufoVisible = targetUfo != null && !targetUfo.isDestroyed() && !targetUfo.isTeleportingNow();
+        // Verificar si el UfoScout está visible (no teletransportándose)
+        boolean ufoVisible = targetUfoScout != null && !targetUfoScout.isTeleportingNow();
 
         if (ufoVisible) {
             hasVisibleTarget = true;
-            // Apuntar al OVNI
-            targetX = targetUfo.x;
-            targetY = targetUfo.y;
-            targetZ = targetUfo.z;
+            // Apuntar al UfoScout
+            targetX = targetUfoScout.x;
+            targetY = targetUfoScout.y;
+            targetZ = targetUfoScout.z;
 
             float distToUfo = distanceTo(targetX, targetY, targetZ);
 
             // 🚫 EVITAR COLISIÓN - mantener distancia mínima de 0.8
             if (distToUfo < 0.8f) {
                 // Alejarse del OVNI
-                float dx = x - targetUfo.x;
-                float dy = y - targetUfo.y;
-                float dz = z - targetUfo.z;
+                float dx = x - targetUfoScout.x;
+                float dy = y - targetUfoScout.y;
+                float dz = z - targetUfoScout.z;
                 float dist = (float)Math.sqrt(dx*dx + dy*dy + dz*dz);
                 if (dist > 0.01f) {
                     targetX = x + (dx / dist) * 2.0f;
@@ -583,11 +932,11 @@ public class DefenderShip implements SceneObject, CameraAware {
                 }
             } else if (distToUfo < 1.5f) {
                 // Rodear al OVNI a distancia de ataque
-                float angle = (float)Math.atan2(z - targetUfo.z, x - targetUfo.x);
+                float angle = (float)Math.atan2(z - targetUfoScout.z, x - targetUfoScout.x);
                 angle += 2.0f * deltaTime;
-                targetX = targetUfo.x + (float)Math.cos(angle) * 1.5f;
-                targetZ = targetUfo.z + (float)Math.sin(angle) * 1.5f;
-                targetY = targetUfo.y + 0.3f;
+                targetX = targetUfoScout.x + (float)Math.cos(angle) * 1.5f;
+                targetZ = targetUfoScout.z + (float)Math.sin(angle) * 1.5f;
+                targetY = targetUfoScout.y + 0.3f;
             }
         } else {
             // 🔍 MODO BÚSQUEDA ACTIVA - OVNI no visible (teletransportándose o destruido)
@@ -684,18 +1033,60 @@ public class DefenderShip implements SceneObject, CameraAware {
         }
 
         // ═══════════════════════════════════════════════════════════
-        // 📍 LÍMITES DE LA ESCENA
+        // 🛰️ EVITAR COLISIÓN CON LA ESTACIÓN ESPACIAL
         // ═══════════════════════════════════════════════════════════
-        float minX = -2.5f, maxX = 2.5f;
-        float minY = -0.5f, maxY = 3.5f;
-        float minZ = -2.5f, maxZ = 2.5f;
+        if (spaceStationRef != null) {
+            float stationX = spaceStationRef.getX();
+            float stationY = spaceStationRef.getY();
+            float stationZ = spaceStationRef.getZ();
 
-        if (x < minX) { x = minX; velocityX = Math.abs(velocityX) * 0.5f; }
-        if (x > maxX) { x = maxX; velocityX = -Math.abs(velocityX) * 0.5f; }
-        if (y < minY) { y = minY; velocityY = Math.abs(velocityY) * 0.5f; }
-        if (y > maxY) { y = maxY; velocityY = -Math.abs(velocityY) * 0.5f; }
-        if (z < minZ) { z = minZ; velocityZ = Math.abs(velocityZ) * 0.5f; }
-        if (z > maxZ) { z = maxZ; velocityZ = -Math.abs(velocityZ) * 0.5f; }
+            float dxS = x - stationX;
+            float dyS = y - stationY;
+            float dzS = z - stationZ;
+            float distToStation = (float) Math.sqrt(dxS * dxS + dyS * dyS + dzS * dzS);
+
+            if (distToStation < safeDistanceStation) {
+                // Fuerza de escape proporcional a qué tan cerca está
+                float escapeForce = (safeDistanceStation - distToStation) / safeDistanceStation;
+                escapeForce = escapeForce * escapeForce * 5.0f;  // Cuadrático y fuerte
+
+                if (distToStation > 0.01f) {
+                    // Empujar en dirección opuesta a la estación
+                    velocityX += (dxS / distToStation) * escapeForce;
+                    velocityY += (dyS / distToStation) * escapeForce;
+                    velocityZ += (dzS / distToStation) * escapeForce;
+                }
+
+                // Si está MUY cerca, reposicionar instantáneamente
+                if (distToStation < stationRadius + 0.2f) {
+                    float safeRadius = safeDistanceStation + 0.3f;
+                    x = stationX + (dxS / distToStation) * safeRadius;
+                    y = stationY + (dyS / distToStation) * safeRadius;
+                    z = stationZ + (dzS / distToStation) * safeRadius;
+                    Log.d(TAG, "🛰️ DefenderShip evitó colisión con Estación Espacial!");
+                }
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // 📍 LÍMITES DE LA ESCENA (modo vertical)
+        // ═══════════════════════════════════════════════════════════
+        if (x < -BOUND_X) { x = -BOUND_X; velocityX = Math.abs(velocityX) * 0.5f; }
+        if (x > BOUND_X) { x = BOUND_X; velocityX = -Math.abs(velocityX) * 0.5f; }
+        if (y < BOUND_Y_MIN) { y = BOUND_Y_MIN; velocityY = Math.abs(velocityY) * 0.5f; }
+        if (y > BOUND_Y_MAX) { y = BOUND_Y_MAX; velocityY = -Math.abs(velocityY) * 0.5f; }
+        if (z < BOUND_Z_MIN) { z = BOUND_Z_MIN; velocityZ = Math.abs(velocityZ) * 0.5f; }
+        if (z > BOUND_Z_MAX) { z = BOUND_Z_MAX; velocityZ = -Math.abs(velocityZ) * 0.5f; }
+
+        // ═══════════════════════════════════════════════════════════
+        // 📐 ESCALA DINÁMICA SEGÚN PROFUNDIDAD (Z)
+        // ═══════════════════════════════════════════════════════════
+        // Más cerca (Z mayor) = más grande, más lejos (Z menor) = más pequeño
+        if (baseScale > 0) {
+            float zNormalized = (z - BOUND_Z_MIN) / (BOUND_Z_MAX - BOUND_Z_MIN);  // 0 a 1
+            float scaleMultiplier = 0.6f + zNormalized * 0.8f;  // 0.6 a 1.4
+            scale = baseScale * scaleMultiplier;
+        }
 
         // ═══════════════════════════════════════════════════════════
         // 🔄 ROTACIÓN NATURAL (yaw, pitch, roll)
@@ -725,72 +1116,28 @@ public class DefenderShip implements SceneObject, CameraAware {
         }
 
         // ═══════════════════════════════════════════════════════════
-        // 🔫 SISTEMA DE DISPARO AGRESIVO
+        // 🔫 SISTEMA DE COMBATE - DISPARAR A OVNI1
         // ═══════════════════════════════════════════════════════════
         shootTimer += deltaTime;
-        if (targetUfo != null && !targetUfo.isDestroyed() && !targetUfo.isTeleportingNow()) {
-            float distToUfo = distanceTo(targetUfo.x, targetUfo.y, targetUfo.z);
+        updateLasers(deltaTime);
 
-            // Disparar más frecuentemente cuando está cerca
-            float effectiveInterval = shootInterval;
-            if (distToUfo < 2.0f) effectiveInterval *= 0.5f;  // Doble velocidad de disparo
-
-            if (shootTimer >= effectiveInterval && distToUfo < 6.0f) {
-                shootLaser();
+        // Disparar si hay objetivo válido
+        if (targetUfoScout != null && !targetUfoScout.isTeleportingNow()) {
+            if (shootTimer >= shootInterval) {
                 shootTimer = 0f;
-                shootInterval = minShootInterval + random.nextFloat() * (maxShootInterval - minShootInterval);
+                // Nuevo intervalo aleatorio
+                shootInterval = MIN_SHOOT_INTERVAL + random.nextFloat() * (MAX_SHOOT_INTERVAL - MIN_SHOOT_INTERVAL);
+
+                // Disparar al OVNI1
+                shootAt(targetUfoScout.x, targetUfoScout.y, targetUfoScout.z);
             }
         }
-
-        updateLasers(deltaTime);
 
         if (invincibilityTimer > 0) {
             invincibilityTimer -= deltaTime;
         }
     }
 
-    /**
-     * Actualizar láseres
-     */
-    private void updateLasers(float deltaTime) {
-        for (int i = lasers.size() - 1; i >= 0; i--) {
-            DefenderLaser laser = lasers.get(i);
-            laser.update(deltaTime);
-
-            // Verificar impacto con OVNI
-            if (laser.active && targetUfo != null && !targetUfo.isDestroyed()) {
-                float dist = laser.distanceTo(targetUfo.x, targetUfo.y, targetUfo.z);
-                if (dist < 0.4f) {  // Radio de colisión
-                    laser.active = false;
-                    targetUfo.takeDamage();
-                    Log.d(TAG, "💥 ¡Impacto en OVNI!");
-
-                    // Si destruimos al OVNI, celebrar!
-                    if (targetUfo.isDestroyed()) {
-                        startCelebration();
-                    }
-                }
-            }
-
-            if (!laser.active) {
-                lasers.remove(i);
-            }
-        }
-    }
-
-    /**
-     * Disparar láser hacia el OVNI
-     */
-    private void shootLaser() {
-        if (targetUfo == null) return;
-
-        DefenderLaser laser = new DefenderLaser(
-            x, y, z,
-            targetUfo.x, targetUfo.y, targetUfo.z
-        );
-        lasers.add(laser);
-        Log.d(TAG, "🔫 Defender disparó! Láseres activos: " + lasers.size());
-    }
 
     /**
      * Iniciar celebración por destruir al OVNI
@@ -815,6 +1162,8 @@ public class DefenderShip implements SceneObject, CameraAware {
         if (health <= 0) {
             destroyed = true;
             respawnTimer = 0f;
+            // 💥 INICIAR EXPLOSIÓN
+            startExplosion();
             Log.d(TAG, "💥 ¡DEFENDER DESTRUIDO!");
         }
     }
@@ -860,20 +1209,13 @@ public class DefenderShip implements SceneObject, CameraAware {
     public boolean isDestroyed() { return destroyed; }
     public boolean isCelebrating() { return celebrating; }
     public int getHealth() { return health; }
-    public ArrayList<DefenderLaser> getLasers() { return lasers; }
 
     @Override
     public void draw() {
         if (camera == null) return;
 
-        // Dibujar láseres siempre
-        Matrix.setIdentityM(identityModel, 0);
-        camera.computeMvp(identityModel, laserMvp);
-        for (DefenderLaser laser : lasers) {
-            if (laser.active) {
-                laser.draw(laserMvp);
-            }
-        }
+        // 💥 SIEMPRE dibujar explosión (incluso si la nave está destruida)
+        drawExplosion();
 
         // No dibujar nave si está destruida
         if (destroyed) return;
@@ -948,10 +1290,14 @@ public class DefenderShip implements SceneObject, CameraAware {
             GLES20.glDisableVertexAttribArray(aTexCoordHandle);
         }
 
-        // 💚 DIBUJAR BARRA DE VIDA
-        if (healthBar != null && !destroyed) {
-            healthBar.setHP(health);
-            healthBar.drawSegmented(x, y, z, mvpMatrix);
-        }
+        // 💚 BARRA DE VIDA - OCULTA VISUALMENTE
+        // La funcionalidad de HP sigue activa, solo no se muestra la barra
+        // if (healthBar != null && !destroyed) {
+        //     healthBar.setHP(health);
+        //     healthBar.drawSegmented(x, y, z, mvpMatrix);
+        // }
+
+        // ═══ 🔫 DIBUJAR LÁSERES ═══
+        drawLasers();
     }
 }

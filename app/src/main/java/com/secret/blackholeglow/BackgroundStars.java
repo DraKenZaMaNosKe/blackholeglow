@@ -10,8 +10,8 @@ import java.nio.FloatBuffer;
 
 /**
  * ╔════════════════════════════════════════════════════════════════════════╗
- * ║  ✨ ESTRELLAS DE FONDO - Efecto de Profundidad                        ║
- * ║  Estrellas pequeñas que parpadean suavemente                          ║
+ * ║  ✨ ESTRELLAS DE FONDO - Efecto de Profundidad + PARALLAX             ║
+ * ║  Estrellas que se mueven creando ilusión de viaje espacial            ║
  * ╚════════════════════════════════════════════════════════════════════════╝
  *
  * Características:
@@ -20,6 +20,8 @@ import java.nio.FloatBuffer;
  * - Colores blancos/azulados como estrellas reales
  * - MUY OPTIMIZADO: Un solo draw call para todas las estrellas
  * - Sin texturas, solo puntos GL
+ * - 🚀 PARALLAX: Capas de estrellas que se mueven a diferentes velocidades
+ *   simulando que el sistema solar viaja por el espacio
  */
 public class BackgroundStars implements SceneObject {
     private static final String TAG = "BackgroundStars";
@@ -27,18 +29,33 @@ public class BackgroundStars implements SceneObject {
     // ════════════════════════════════════════════════════════════════════════
     // CONFIGURACIÓN - Optimizado para bajo consumo de GPU
     // ════════════════════════════════════════════════════════════════════════
-    private static final int NUM_STARS = 60;           // Cantidad moderada
+    private static final int NUM_STARS = 80;           // Más estrellas para efecto parallax
     private static final float MIN_SIZE = 1.5f;        // Tamaño mínimo (muy pequeñas)
     private static final float MAX_SIZE = 3.5f;        // Tamaño máximo
     private static final float TWINKLE_SPEED = 1.5f;   // Velocidad de parpadeo
 
     // ════════════════════════════════════════════════════════════════════════
+    // 🚀 PARALLAX - Ilusión de viaje espacial
+    // ════════════════════════════════════════════════════════════════════════
+    private static final float TRAVEL_DIRECTION_X = -1.0f;  // Viajamos hacia la derecha (estrellas van a izquierda)
+    private static final float TRAVEL_DIRECTION_Y = -0.15f; // Ligera inclinación hacia arriba
+
+    // Velocidades por capa (más lento = más lejos)
+    // 🚀 AUMENTADAS x5 para que el efecto sea VISIBLE
+    private static final float LAYER_FAR_SPEED = 0.008f;    // Capa lejana
+    private static final float LAYER_MID_SPEED = 0.020f;    // Capa media
+    private static final float LAYER_NEAR_SPEED = 0.045f;   // Capa cercana (más rápido)
+
+    // ════════════════════════════════════════════════════════════════════════
     // DATOS
     // ════════════════════════════════════════════════════════════════════════
     private float[] positions;      // x, y por estrella
+    private float[] basePositions;  // 🚀 Posición original (para wrapping)
     private float[] phases;         // Fase de parpadeo única
     private float[] baseBrightness; // Brillo base (0.3 - 1.0)
     private float[] colors;         // RGB por estrella (blanco/azulado)
+    private int[] layers;           // 🚀 Capa de cada estrella (0=lejana, 1=media, 2=cercana)
+    private float[] speeds;         // 🚀 Velocidad de cada estrella según su capa
 
     private float time = 0f;
 
@@ -109,23 +126,46 @@ public class BackgroundStars implements SceneObject {
 
     private void initStars() {
         positions = new float[NUM_STARS * 2];
+        basePositions = new float[NUM_STARS * 2];  // 🚀 Guardar posición original
         phases = new float[NUM_STARS];
         baseBrightness = new float[NUM_STARS];
         colors = new float[NUM_STARS * 3];
+        layers = new int[NUM_STARS];              // 🚀 Capa de parallax
+        speeds = new float[NUM_STARS];            // 🚀 Velocidad individual
 
         // Semilla fija para reproducibilidad
         java.util.Random rand = new java.util.Random(12345);
 
         for (int i = 0; i < NUM_STARS; i++) {
             // Posición aleatoria en pantalla (NDC: -1 a 1)
-            positions[i * 2] = -0.95f + rand.nextFloat() * 1.9f;      // X
-            positions[i * 2 + 1] = -0.95f + rand.nextFloat() * 1.9f;  // Y
+            // 🚀 Extendemos el rango para que entren nuevas estrellas por la derecha
+            float x = -1.2f + rand.nextFloat() * 2.4f;      // X (extendido)
+            float y = -0.95f + rand.nextFloat() * 1.9f;     // Y
+
+            positions[i * 2] = x;
+            positions[i * 2 + 1] = y;
+            basePositions[i * 2] = x;      // 🚀 Guardar original
+            basePositions[i * 2 + 1] = y;
 
             // Fase única para cada estrella (parpadeo desfasado)
             phases[i] = rand.nextFloat() * (float) Math.PI * 2f;
 
-            // Brillo base variable (algunas más tenues, otras más brillantes)
-            baseBrightness[i] = 0.4f + rand.nextFloat() * 0.6f;
+            // 🚀 ASIGNAR CAPA DE PARALLAX
+            // 50% lejanas (lentas, tenues), 35% medias, 15% cercanas (rápidas, brillantes)
+            float layerRoll = rand.nextFloat();
+            if (layerRoll < 0.50f) {
+                layers[i] = 0;  // Capa lejana
+                speeds[i] = LAYER_FAR_SPEED * (0.8f + rand.nextFloat() * 0.4f);  // Variación
+                baseBrightness[i] = 0.25f + rand.nextFloat() * 0.25f;  // Más tenue
+            } else if (layerRoll < 0.85f) {
+                layers[i] = 1;  // Capa media
+                speeds[i] = LAYER_MID_SPEED * (0.8f + rand.nextFloat() * 0.4f);
+                baseBrightness[i] = 0.4f + rand.nextFloat() * 0.35f;
+            } else {
+                layers[i] = 2;  // Capa cercana
+                speeds[i] = LAYER_NEAR_SPEED * (0.8f + rand.nextFloat() * 0.4f);
+                baseBrightness[i] = 0.6f + rand.nextFloat() * 0.4f;  // Más brillante
+            }
 
             // Colores: mayoría blancas, algunas azuladas, algunas amarillentas
             float colorType = rand.nextFloat();
@@ -146,6 +186,8 @@ public class BackgroundStars implements SceneObject {
                 colors[i * 3 + 2] = 0.7f;
             }
         }
+
+        Log.d(TAG, "🚀 Estrellas inicializadas con parallax de 3 capas");
     }
 
     private void initBuffers() {
@@ -176,10 +218,40 @@ public class BackgroundStars implements SceneObject {
         frameCount++;
         time += deltaTime;
 
+        // ════════════════════════════════════════════════════════════════════════
+        // 🚀 PARALLAX - Mover estrellas creando ilusión de viaje espacial
+        // ════════════════════════════════════════════════════════════════════════
+        for (int i = 0; i < NUM_STARS; i++) {
+            // Mover estrella según su velocidad y dirección de viaje
+            positions[i * 2] += TRAVEL_DIRECTION_X * speeds[i];
+            positions[i * 2 + 1] += TRAVEL_DIRECTION_Y * speeds[i];
+
+            // 🔄 WRAPPING: Si sale por la izquierda, reaparece por la derecha
+            if (positions[i * 2] < -1.3f) {
+                positions[i * 2] = 1.3f;  // Reaparece a la derecha
+                // Posición Y aleatoria para variedad
+                positions[i * 2 + 1] = -0.95f + (float)(Math.random() * 1.9f);
+            }
+
+            // También hacer wrap vertical si se sale mucho
+            if (positions[i * 2 + 1] < -1.1f) {
+                positions[i * 2 + 1] = 1.0f;
+            } else if (positions[i * 2 + 1] > 1.1f) {
+                positions[i * 2 + 1] = -1.0f;
+            }
+        }
+
+        // Actualizar buffer de posiciones
+        positionBuffer.position(0);
+        positionBuffer.put(positions);
+        positionBuffer.position(0);
+
         // Optimización: actualizar parpadeo cada N frames
         if (frameCount % UPDATE_EVERY_N_FRAMES != 0) return;
 
-        // Actualizar colores con efecto de parpadeo
+        // ════════════════════════════════════════════════════════════════════════
+        // ✨ PARPADEO - Efecto de twinkle
+        // ════════════════════════════════════════════════════════════════════════
         colorBuffer.position(0);
 
         for (int i = 0; i < NUM_STARS; i++) {

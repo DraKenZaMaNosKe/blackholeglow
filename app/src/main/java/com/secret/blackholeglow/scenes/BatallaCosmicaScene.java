@@ -18,6 +18,7 @@ import com.secret.blackholeglow.HPBar;
 import com.secret.blackholeglow.LeaderboardManager;
 import com.secret.blackholeglow.MagicLeaderboard;
 import com.secret.blackholeglow.MeteorShower;
+import com.secret.blackholeglow.MusicStars;
 import com.secret.blackholeglow.EqualizerBarsDJ;
 import com.secret.blackholeglow.Planeta;
 import com.secret.blackholeglow.PlayerStats;
@@ -27,9 +28,11 @@ import com.secret.blackholeglow.SceneObject;
 import com.secret.blackholeglow.SimpleTextRenderer;
 import com.secret.blackholeglow.SolMeshy;
 import com.secret.blackholeglow.SolProcedural;
-import com.secret.blackholeglow.Spaceship3D;
+import com.secret.blackholeglow.SpaceDust;
+import com.secret.blackholeglow.SpaceStation;
 import com.secret.blackholeglow.TierraMeshy;
 import com.secret.blackholeglow.DefenderShip;
+import com.secret.blackholeglow.UfoScout;
 import com.secret.blackholeglow.StarryBackground;
 // SunHeatEffect REMOVIDO
 import com.secret.blackholeglow.TextureManager;
@@ -71,8 +74,9 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
     private TierraMeshy tierraMeshy;
     private SolMeshy solMeshy;
 
-    private Spaceship3D ovni;
     private DefenderShip defenderShip;  // 🚀 Nave defensora
+    private SpaceStation spaceStation;  // 🛰️ Estación espacial
+    private UfoScout ufoScout;          // 🛸 UFO Scout (Meshy model)
     private MeteorShower meteorShower;
     private PlayerWeapon playerWeapon;
     private BatteryPowerBar powerBar;
@@ -91,7 +95,9 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
     // ✨ EFECTOS VISUALES
     // ═══════════════════════════════════════════════════════════════
     private List<EstrellaBailarina> estrellasBailarinas = new ArrayList<>();
-    private BackgroundStars backgroundStars;  // ✨ Estrellas parpadeantes de fondo
+    private BackgroundStars backgroundStars;  // ✨ Estrellas parpadeantes de fondo (con parallax)
+    private SpaceDust spaceDust;              // 🚀 Polvo espacial (ilusión de viaje)
+    private MusicStars musicStars;  // 🌀 Estrellas espirales musicales
 
     // ═══════════════════════════════════════════════════════════════
     // 🏆 LEADERBOARD
@@ -148,14 +154,23 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         // setupShields(); // DESHABILITADO - Tierra y Sol serán modelos de Meshy
 
         // ═══════════════════════════════════════════════════════════
-        // 5️⃣ OVNI CON IA
+        // 5️⃣ OVNI - Solo usamos UfoScout (modelo Meshy)
         // ═══════════════════════════════════════════════════════════
-        setupOvni();
 
         // ═══════════════════════════════════════════════════════════
         // 5.5️⃣ NAVE DEFENSORA
         // ═══════════════════════════════════════════════════════════
-        setupDefenderShip();
+        setupDefenderShip();  // NAVE1 - el objetivo del UfoScout
+
+        // ═══════════════════════════════════════════════════════════
+        // 5.6️⃣ 🛰️ ESTACIÓN ESPACIAL
+        // ═══════════════════════════════════════════════════════════
+        setupSpaceStation();
+
+        // ═══════════════════════════════════════════════════════════
+        // 5.7️⃣ 🛸 UFO SCOUT (NUEVO MODELO MESHY)
+        // ═══════════════════════════════════════════════════════════
+        setupUfoScout();
 
         // ═══════════════════════════════════════════════════════════
         // 6️⃣ ESTRELLAS BAILARINAS
@@ -199,10 +214,15 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
             addSceneObject(starryBg);
             Log.d(TAG, "  ✓ Fondo estrellado agregado");
 
-            // ✨ Estrellas parpadeantes de fondo (efecto de profundidad)
+            // ✨ Estrellas parpadeantes de fondo (efecto de profundidad + PARALLAX)
             backgroundStars = new BackgroundStars(context);
             addSceneObject(backgroundStars);
-            Log.d(TAG, "  ✓ ✨ Estrellas de fondo parpadeantes agregadas");
+            Log.d(TAG, "  ✓ ✨ Estrellas de fondo con parallax agregadas");
+
+            // 🚀 POLVO ESPACIAL - Partículas que pasan creando ilusión de viaje
+            spaceDust = new SpaceDust(context);
+            addSceneObject(spaceDust);
+            Log.d(TAG, "  ✓ 🚀 Polvo espacial agregado (ilusión de viaje)");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creando fondo: " + e.getMessage());
         }
@@ -289,42 +309,7 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
     // setupShields() REMOVIDO COMPLETAMENTE
     // ForceField y EarthShield serán reemplazados por modelos de Meshy
 
-    private void setupOvni() {
-        try {
-            ovni = new Spaceship3D(
-                    context,
-                    textureManager,
-                    SceneConstants.Ufo.START_POSITION_X,
-                    SceneConstants.Ufo.START_POSITION_Y,
-                    SceneConstants.Ufo.START_POSITION_Z,
-                    SceneConstants.Ufo.SCALE
-            );
-            ovni.setCameraController(camera);
-
-            ovni.setEarthPosition(
-                SceneConstants.Earth.POSITION_X,
-                SceneConstants.Earth.POSITION_Y,
-                SceneConstants.Earth.POSITION_Z
-            );
-            ovni.setSunPosition(
-                SceneConstants.Sun.POSITION_X,
-                SceneConstants.Sun.POSITION_Y,
-                SceneConstants.Sun.POSITION_Z
-            );
-            ovni.setOrbitParams(
-                SceneConstants.Ufo.ORBIT_RADIUS,
-                SceneConstants.Ufo.ORBIT_SPEED,
-                SceneConstants.Ufo.ORBIT_PHASE
-            );
-
-            // EarthShield REMOVIDO
-
-            addSceneObject(ovni);
-            Log.d(TAG, "  ✓ 🛸 OVNI agregado con IA");
-        } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creando OVNI: " + e.getMessage());
-        }
-    }
+    // setupOvni() REMOVIDO - Solo usamos UfoScout (modelo Meshy)
 
     private void setupDefenderShip() {
         try {
@@ -348,17 +333,108 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
             // Configurar parámetros de órbita
             defenderShip.setOrbitParams(1.8f, 0.6f);  // Radio 1.8, velocidad 0.6
 
-            // Establecer el OVNI como objetivo
-            if (ovni != null) {
-                defenderShip.setTargetUfo(ovni);
-                // También hacer que el OVNI ataque a la DefenderShip
-                ovni.setDefenderShip(defenderShip);
-            }
-
             addSceneObject(defenderShip);
             Log.d(TAG, "  ✓ 🚀 Nave defensora agregada (batalla bidireccional configurada)");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creando DefenderShip: " + e.getMessage(), e);
+        }
+    }
+
+    private void setupSpaceStation() {
+        try {
+            // ═══════════════════════════════════════════════════════════
+            // 🛰️ ESTACIÓN ESPACIAL FUTURISTA - CONFIGURACIÓN
+            // ═══════════════════════════════════════════════════════════
+            // POSICIÓN:
+            float stationX = -1.2f;   // Horizontal: -izquierda, +derecha
+            float stationY = 2.5f;    // Vertical: -abajo, +arriba
+            float stationZ = 0.3f;    // Profundidad: -lejos, +cerca cámara
+
+            // TAMAÑO:
+            float stationScale = 0.75f;  // Escala general (0.1=pequeño, 0.5=grande)
+
+            // ═══════════════════════════════════════════════════════════
+
+            spaceStation = new SpaceStation(
+                    context,
+                    textureManager,
+                    stationX,
+                    stationY,
+                    stationZ,
+                    stationScale
+            );
+            spaceStation.setCameraController(camera);
+
+            // Posición fija (sin órbita) - solo rota sobre sí misma
+            spaceStation.setFixedPosition(stationX, stationY, stationZ);
+
+            addSceneObject(spaceStation);
+
+            // ═══════════════════════════════════════════════════════════
+            // 🛰️ CONECTAR ESTACIÓN A OTROS OBJETOS PARA COLISIONES
+            // ═══════════════════════════════════════════════════════════
+            // DefenderShip debe esquivar la estación
+            if (defenderShip != null) {
+                defenderShip.setSpaceStation(spaceStation);
+                Log.d(TAG, "    → DefenderShip conectado para esquivar estación");
+            }
+
+            Log.d(TAG, "  ✓ 🛰️ Estación espacial: pos(" + stationX + "," + stationY + "," + stationZ + ") scale=" + stationScale);
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creando SpaceStation: " + e.getMessage(), e);
+        }
+    }
+
+    private void setupUfoScout() {
+        try {
+            // ═══════════════════════════════════════════════════════════
+            // 🛸 OVNI1 - PLATILLO VOLADOR CLÁSICO DE MESHY AI
+            // ═══════════════════════════════════════════════════════════
+            // POSICIÓN INICIAL:
+            float scoutX = 2.5f;    // Lado derecho de la escena
+            float scoutY = 1.5f;    // A media altura
+            float scoutZ = -1.0f;   // Un poco hacia atrás
+
+            // TAMAÑO: Reducido para que se vea proporcional
+            float scoutScale = 0.18f;  // Más pequeño
+
+            // ═══════════════════════════════════════════════════════════
+
+            ufoScout = new UfoScout(
+                    context,
+                    textureManager,
+                    scoutX,
+                    scoutY,
+                    scoutZ,
+                    scoutScale
+            );
+            ufoScout.setCameraController(camera);
+
+            // Configurar referencia de la Tierra para colisiones de láser
+            if (tierraMeshy != null) {
+                ufoScout.setEarthReference(
+                    tierraMeshy.getX(),
+                    tierraMeshy.getY(),
+                    tierraMeshy.getZ(),
+                    tierraMeshy.getScale() * 0.5f  // Radio aproximado
+                );
+            }
+
+            // Configurar DefenderShip como objetivo
+            if (defenderShip != null) {
+                ufoScout.setTarget(defenderShip);
+                Log.d(TAG, "    → OVNI1 tiene a NAVE1 como objetivo");
+
+                // 🔗 Conectar NAVE1 para que dispare a OVNI1
+                defenderShip.setTargetUfoScout(ufoScout);
+                Log.d(TAG, "    → NAVE1 tiene a OVNI1 como objetivo adicional");
+            }
+
+            addSceneObject(ufoScout);
+
+            Log.d(TAG, "  ✓ 🛸 OVNI1 agregado: pos(" + scoutX + "," + scoutY + "," + scoutZ + ") scale=" + scoutScale);
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creando UfoScout: " + e.getMessage(), e);
         }
     }
 
@@ -381,6 +457,15 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
             Log.d(TAG, "  ✓ ✨ " + estrellasBailarinas.size() + " estrellas bailarinas agregadas");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creando estrellas: " + e.getMessage());
+        }
+
+        // 🌀 MusicStars - Estrellas con efecto espiral galáctico
+        try {
+            musicStars = new MusicStars(context);
+            addSceneObject(musicStars);
+            Log.d(TAG, "  ✓ 🌀 MusicStars agregadas (efecto espiral galáctico)");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creando MusicStars: " + e.getMessage());
         }
     }
 
@@ -507,17 +592,24 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
                 }
             }
 
-            if (ovni != null) {
-                meteorShower.setOvni(ovni);
-            }
 
             // 🌍 Conectar Tierra para posición dinámica (órbita)
             if (tierraMeshy != null) {
                 meteorShower.setTierra(tierraMeshy);
             }
 
+            // 🛰️ Conectar Estación Espacial para colisiones
+            if (spaceStation != null) {
+                meteorShower.setSpaceStation(spaceStation);
+            }
+
+            // ☀️ Conectar Sol Meshy para colisiones (asteroides explotan al impactar)
+            if (solMeshy != null) {
+                meteorShower.setSolMeshy(solMeshy);
+            }
+
             addSceneObject(meteorShower);
-            Log.d(TAG, "  ✓ ☄️ Sistema de meteoritos agregado (sin ForceField)");
+            Log.d(TAG, "  ✓ ☄️ Sistema de meteoritos agregado (con colisiones en estación y sol)");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creando MeteorShower: " + e.getMessage());
         }
@@ -572,13 +664,15 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         tierra = null;
         planetaTierra = null;
         // forceField y earthShield REMOVIDOS
-        ovni = null;
         defenderShip = null;
+        spaceStation = null;
+        ufoScout = null;
         meteorShower = null;
         playerWeapon = null;
         powerBar = null;
         equalizerDJ = null;
         backgroundStars = null;
+        musicStars = null;
 
         // Liberar MagicLeaderboard
         if (magicLeaderboard != null) {
@@ -626,6 +720,10 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         if (equalizerDJ != null) {
             equalizerDJ.updateMusicLevels(bass, mid, treble);
         }
+        // 🌀 MusicStars - espirales galácticas
+        if (musicStars != null) {
+            musicStars.updateMusicLevels(bass, mid, treble);
+        }
     }
 
     /**
@@ -649,10 +747,7 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
     }
 
     // getForceField() REMOVIDO
-
-    public Spaceship3D getOvni() {
-        return ovni;
-    }
+    // getOvni() REMOVIDO - Solo usamos UfoScout
 
     public DefenderShip getDefenderShip() {
         return defenderShip;

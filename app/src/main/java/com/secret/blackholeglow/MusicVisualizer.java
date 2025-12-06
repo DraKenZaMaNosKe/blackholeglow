@@ -370,6 +370,7 @@ public class MusicVisualizer {
     /**
      * Intenta reconectar el visualizer (útil cuando pierde conexión)
      * Retorna true si la reconexión fue exitosa
+     * ⚡ Remueve listener correctamente antes de reconectar
      */
     public boolean reconnect() {
         Log.d(TAG, "[MusicVisualizer] 🔄 Intentando reconectar...");
@@ -377,6 +378,8 @@ public class MusicVisualizer {
         // Liberar visualizer existente
         if (visualizer != null) {
             try {
+                // ⚡ CRÍTICO: Remover listener antes de liberar
+                visualizer.setDataCaptureListener(null, 0, false, false);
                 visualizer.setEnabled(false);
                 visualizer.release();
             } catch (Exception e) {
@@ -398,16 +401,22 @@ public class MusicVisualizer {
     /**
      * Libera recursos del visualizer
      * IMPORTANTE: Llamar cuando el wallpaper se pause o destruya
+     * ⚡ Remueve listener ANTES de liberar para evitar memory leaks
      */
     public void release() {
         if (visualizer != null) {
             try {
+                // ⚡ CRÍTICO: Remover listener ANTES de liberar
+                // Evita que el listener siga referenciando este objeto
+                visualizer.setDataCaptureListener(null, 0, false, false);
                 visualizer.setEnabled(false);
                 visualizer.release();
                 isEnabled = false;
-                Log.d(TAG, "[MusicVisualizer] ✓ Recursos liberados");
+                Log.d(TAG, "[MusicVisualizer] ✓ Recursos liberados (listener removido)");
             } catch (Exception e) {
                 Log.e(TAG, "[MusicVisualizer] Error liberando recursos: " + e.getMessage());
+            } finally {
+                visualizer = null;  // Asegurar que no queden referencias
             }
         }
     }

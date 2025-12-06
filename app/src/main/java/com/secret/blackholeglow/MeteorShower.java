@@ -52,11 +52,16 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     // NOTA: Efectos de pantalla ahora se comunican via EventBus
     private MeteorCountdownBar countdownBar;  // Barra visual de countdown
 
-    // 🛸 REFERENCIA AL OVNI (para colisiones)
-    private Spaceship3D ovniRef = null;
+    // 🛸 REFERENCIA AL OVNI REMOVIDA - UfoScout maneja sus propias colisiones
 
     // 🌍 REFERENCIA A LA TIERRA (para posición dinámica durante órbita)
     private TierraMeshy tierraRef = null;
+
+    // 🛰️ REFERENCIA A LA ESTACIÓN ESPACIAL (para colisiones)
+    private SpaceStation spaceStationRef = null;
+
+    // ☀️ REFERENCIA AL SOL PROCEDURAL (para colisiones - alternativa a Planeta sol)
+    private SolMeshy solMeshyRef = null;
 
     // ⚡ OPTIMIZACIÓN: Lista reutilizable para evitar allocaciones en update()
     private final List<AsteroideRealista> paraRemover = new ArrayList<>();
@@ -149,13 +154,7 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         Log.d(TAG, "[MeteorShower] 💥 Barra de countdown conectada");
     }
 
-    /**
-     * 🛸 Conecta el OVNI para detección de colisiones
-     */
-    public void setOvni(Spaceship3D ovni) {
-        this.ovniRef = ovni;
-        Log.d(TAG, "[MeteorShower] 🛸 OVNI conectado para colisiones");
-    }
+    // setOvni() REMOVIDO - UfoScout maneja sus propias colisiones
 
     /**
      * 🌍 Conecta la Tierra para tracking dinámico de posición (órbita)
@@ -163,6 +162,22 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     public void setTierra(TierraMeshy tierra) {
         this.tierraRef = tierra;
         Log.d(TAG, "[MeteorShower] 🌍 Tierra conectada para posición dinámica");
+    }
+
+    /**
+     * 🛰️ Conecta la Estación Espacial para detección de colisiones
+     */
+    public void setSpaceStation(SpaceStation station) {
+        this.spaceStationRef = station;
+        Log.d(TAG, "[MeteorShower] 🛰️ Estación Espacial conectada para colisiones");
+    }
+
+    /**
+     * ☀️ Conecta el Sol Procedural para detección de colisiones
+     */
+    public void setSolMeshy(SolMeshy solMeshy) {
+        this.solMeshyRef = solMeshy;
+        Log.d(TAG, "[MeteorShower] ☀️ Sol Meshy conectado para colisiones");
     }
 
     /**
@@ -257,17 +272,7 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
             // Verificar colisiones solo si está activo
             if (m.getEstado() == AsteroideRealista.Estado.ACTIVO) {
                 verificarColisiones(m);
-
-                // 🛸 VERIFICAR COLISIÓN CON OVNI
-                if (ovniRef != null && !ovniRef.isDestroyed()) {
-                    float[] pos = m.getPosicion();
-                    float meteorRadius = m.getTamaño() * 0.5f;
-                    if (ovniRef.checkMeteorCollision(pos[0], pos[1], pos[2], meteorRadius)) {
-                        ovniRef.takeDamage();
-                        m.desactivar();  // Desactivar el meteorito
-                        Log.d(TAG, "🛸💥 Meteorito impactó al OVNI!");
-                    }
-                }
+                // 🛸 Colisiones con UfoScout se manejan en UfoScout.java
             }
 
             // Si está inactivo, devolverlo al pool
@@ -574,6 +579,67 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
                 m.impactar();
                 crearEfectoImpacto(posMeteorito[0], posMeteorito[1], posMeteorito[2], false);
                 Log.d(TAG, "[MeteorShower] ¡Impacto en planeta!");
+                return;
+            }
+        }
+
+        // PRIORIDAD 4: 🛰️ Colisión con ESTACIÓN ESPACIAL
+        if (spaceStationRef != null) {
+            float stationX = spaceStationRef.getX();
+            float stationY = spaceStationRef.getY();
+            float stationZ = spaceStationRef.getZ();
+            float stationRadius = spaceStationRef.getCollisionRadius();
+
+            // Calcular distancia al centro de la estación
+            float dx = posMeteorito[0] - stationX;
+            float dy = posMeteorito[1] - stationY;
+            float dz = posMeteorito[2] - stationZ;
+            float distToStation = (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+            if (distToStation < (radioMeteorito + stationRadius)) {
+                // ¡IMPACTO EN ESTACIÓN ESPACIAL!
+                m.impactar();
+                crearEfectoImpacto(posMeteorito[0], posMeteorito[1], posMeteorito[2], false);
+
+                totalImpactos++;
+                Log.d(TAG, "[MeteorShower] 🛰️💥 ¡¡IMPACTO EN ESTACIÓN ESPACIAL!!");
+
+                // Efecto de impacto visual via EventBus
+                float intensityStation = 0.2f + (radioMeteorito / 0.20f) * 0.15f;
+                intensityStation = Math.min(0.4f, Math.max(0.2f, intensityStation));
+                EventBus.get().publish(EventBus.SCREEN_IMPACT,
+                    new EventBus.EventData().put("intensity", intensityStation));
+                return;
+            }
+        }
+
+        // PRIORIDAD 5: ☀️ Colisión con SOL PROCEDURAL (SolMeshy)
+        if (solMeshyRef != null) {
+            float solX = solMeshyRef.getX();
+            float solY = solMeshyRef.getY();
+            float solZ = solMeshyRef.getZ();
+            float solRadius = solMeshyRef.getScale() * 0.8f;  // Radio aproximado del sol
+
+            // Calcular distancia al centro del sol
+            float dx = posMeteorito[0] - solX;
+            float dy = posMeteorito[1] - solY;
+            float dz = posMeteorito[2] - solZ;
+            float distToSol = (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+            if (distToSol < (radioMeteorito + solRadius)) {
+                // ¡IMPACTO EN SOL!
+                m.impactar();
+                crearEfectoImpacto(posMeteorito[0], posMeteorito[1], posMeteorito[2], true);
+
+                totalImpactos++;
+                Log.d(TAG, "[MeteorShower] ☀️💥 ¡¡IMPACTO EN EL SOL!! Asteroide vaporizado!");
+
+                // Efecto de impacto visual intenso via EventBus
+                float intensitySol = 0.35f + (radioMeteorito / 0.20f) * 0.25f;
+                intensitySol = Math.min(0.6f, Math.max(0.35f, intensitySol));
+                EventBus.get().publish(EventBus.SCREEN_IMPACT,
+                    new EventBus.EventData().put("intensity", intensitySol));
+                return;
             }
         }
     }

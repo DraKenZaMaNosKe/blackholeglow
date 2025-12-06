@@ -1,4 +1,5 @@
-// SpaceBattleScene.java - Escena con OVNI sin materiales
+// SpaceBattleScene.java - Escena de batalla espacial (DEPRECATED)
+// Esta escena ya no se usa - usar BatallaCosmicaScene en su lugar
 package com.secret.blackholeglow;
 
 import android.content.Context;
@@ -6,8 +7,11 @@ import android.util.Log;
 import android.view.MotionEvent;
 
 /**
- * Escena de batalla espacial - OVNI sin materiales (debugging)
+ * Escena de batalla espacial - DEPRECATED
+ * Esta escena ya no se usa, se mantiene por compatibilidad.
+ * Usar BatallaCosmicaScene para la experiencia completa.
  */
+@Deprecated
 public class SpaceBattleScene implements SceneObject, CameraAware {
     private static final String TAG = "SpaceBattleScene";
 
@@ -17,9 +21,6 @@ public class SpaceBattleScene implements SceneObject, CameraAware {
 
     // Camera
     private CameraController camera;
-
-    // OVNI spaceship (sin materiales)
-    private Spaceship3D spaceship;
 
     // ✨ Fondo de nebulosa animada
     private UniverseBackground nebulaBackground;
@@ -31,14 +32,14 @@ public class SpaceBattleScene implements SceneObject, CameraAware {
         this.context = context;
         this.textureLoader = textureLoader;
 
-        Log.d(TAG, "✨ SpaceBattleScene creada - OVNI sin materiales");
+        Log.d(TAG, "⚠️ SpaceBattleScene está DEPRECATED - usar BatallaCosmicaScene");
     }
 
     /**
      * Inicializa la escena (llamar después de setear la cámara)
      */
     public void initialize() {
-        Log.d(TAG, "📦 Inicializando escena con OVNI + Nebulosa...");
+        Log.d(TAG, "📦 Inicializando escena con Nebulosa...");
 
         // ═══════════════════════════════════════════════════════════════
         // 1. 🌌 FONDO DE NEBULOSA ANIMADA
@@ -66,24 +67,7 @@ public class SpaceBattleScene implements SceneObject, CameraAware {
             Log.e(TAG, "  ✗ Error creando nebulosa: " + e.getMessage());
         }
 
-        // ═══════════════════════════════════════════════════════════════
-        // 2. 🛸 OVNI ÉPICO
-        // ═══════════════════════════════════════════════════════════════
-        spaceship = new Spaceship3D(
-            context,
-            textureLoader,
-            0.0f,   // x - centro
-            0.3f,   // y - un poco arriba
-            -1.0f,  // z - más cerca de la cámara
-            0.3f    // escala - tamaño visible
-        );
-
-        // Asignar cámara al spaceship
-        if (camera != null) {
-            spaceship.setCameraController(camera);
-        }
-
-        Log.d(TAG, "✅ Escena inicializada: OVNI + Nebulosa");
+        Log.d(TAG, "✅ Escena inicializada: Solo Nebulosa (OVNI removido)");
     }
 
     @Override
@@ -95,19 +79,11 @@ public class SpaceBattleScene implements SceneObject, CameraAware {
         if (nebulaBackground != null) {
             nebulaBackground.setCameraController(camera);
         }
-
-        // Asignar cámara al spaceship si ya existe
-        if (spaceship != null) {
-            spaceship.setCameraController(camera);
-        }
     }
 
     @Override
     public void update(float deltaTime) {
-        if (spaceship != null) {
-            // Actualizar IA y movimiento del OVNI
-            spaceship.update(deltaTime);
-        }
+        // Sin OVNI, no hay nada que actualizar
     }
 
     @Override
@@ -125,13 +101,6 @@ public class SpaceBattleScene implements SceneObject, CameraAware {
         // ═══════════════════════════════════════════════════════════════
         if (nebulaBackground != null) {
             nebulaBackground.draw();
-        }
-
-        // ═══════════════════════════════════════════════════════════════
-        // 2. DIBUJAR OVNI ENCIMA (más cercano)
-        // ═══════════════════════════════════════════════════════════════
-        if (spaceship != null) {
-            spaceship.draw();
         }
     }
 

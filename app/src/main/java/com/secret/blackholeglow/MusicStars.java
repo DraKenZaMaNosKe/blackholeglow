@@ -7,378 +7,283 @@ import android.util.Log;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.util.Random;
 
 /**
  * ╔════════════════════════════════════════════════════════════════════════╗
- * ║  🌟 LLUVIA DE ESTRELLAS MUSICAL                                       ║
- * ║  Estrellas que pulsan según frecuencias musicales                     ║
+ * ║  🌀 GALAXIAS ESPIRALES MUSICALES - OPTIMIZADO                         ║
+ * ╠════════════════════════════════════════════════════════════════════════╣
+ * ║  OPTIMIZACIONES:                                                       ║
+ * ║  • Buffers pre-allocados (sin GC pressure)                            ║
+ * ║  • Un solo draw call para todas las galaxias                          ║
+ * ║  • Tiempo con módulo para evitar overflow                             ║
+ * ║  • Velocidades de giro individuales                                   ║
+ * ║  • Direcciones de giro alternadas                                     ║
  * ╚════════════════════════════════════════════════════════════════════════╝
- *
- * Distribución por frecuencia:
- * - GRAVES (bajo, bombo):     Estrellas grandes, zona INFERIOR (cerca de Tierra)
- * - MEDIOS (guitarra, piano): Estrellas medianas, zona CENTRO
- * - AGUDOS (voces, vientos):  Estrellas pequeñas, zona SUPERIOR (cerca del Sol)
  */
 public class MusicStars implements SceneObject {
-    private static final String TAG = "depurar";
+    private static final String TAG = "MusicStars";
 
     // ════════════════════════════════════════════════════════════════════════
-    // CONFIGURACIÓN DE ESTRELLAS
+    // CONFIGURACIÓN
     // ════════════════════════════════════════════════════════════════════════
-    private static final int NUM_ESTRELLAS_GRAVES = 8;   // Estrellas grandes (bajo, bombo)
-    private static final int NUM_ESTRELLAS_MEDIOS = 12;  // Estrellas medianas (guitarra, piano, voces)
-    private static final int NUM_ESTRELLAS_AGUDOS = 15;  // Estrellas pequeñas (vientos, platillos)
-    private static final int TOTAL_ESTRELLAS = NUM_ESTRELLAS_GRAVES + NUM_ESTRELLAS_MEDIOS + NUM_ESTRELLAS_AGUDOS;
-
-    private static final float SMOOTHING_FACTOR = 0.7f;  // Suavizado de pulsaciones
-
-    // Tamaños base de las estrellas (en coordenadas NDC)
-    private static final float SIZE_GRAVES_BASE = 0.015f;   // Grandes
-    private static final float SIZE_MEDIOS_BASE = 0.010f;   // Medianas
-    private static final float SIZE_AGUDOS_BASE = 0.006f;   // Pequeñas
-
-    // Zonas verticales (NDC: -1.0 a +1.0)
-    private static final float ZONA_GRAVES_MIN = -0.9f;  // Zona inferior (cerca de Tierra)
-    private static final float ZONA_GRAVES_MAX = -0.3f;
-
-    private static final float ZONA_MEDIOS_MIN = -0.4f;  // Zona central
-    private static final float ZONA_MEDIOS_MAX = 0.4f;
-
-    private static final float ZONA_AGUDOS_MIN = 0.3f;   // Zona superior (cerca del Sol)
-    private static final float ZONA_AGUDOS_MAX = 0.9f;
+    private static final int TOTAL_GALAXIAS = 7;
+    private static final float TWO_PI = (float)(Math.PI * 2.0);
+    private static final float TIME_WRAP = 1000f;  // Reiniciar tiempo cada 1000 segundos
 
     // ════════════════════════════════════════════════════════════════════════
-    // DATOS DE CADA ESTRELLA
+    // 🌀 CONFIGURACIÓN DE CADA GALAXIA
+    // Formato: {x, y, freqType, tamaño, velocidadGiro, direccion, alpha}
+    // direccion: 1.0 = horario, -1.0 = antihorario
+    // alpha: 0.0 = invisible, 1.0 = completamente visible
     // ════════════════════════════════════════════════════════════════════════
-    private static class Star {
-        float x, y;           // Posición
-        float baseSize;       // Tamaño base
-        float currentSize;    // Tamaño actual (con pulsación)
-        float targetSize;     // Tamaño objetivo
-        float[] color;        // Color RGBA actual
-        float[] baseColor;    // Color base original
-        int freqType;         // 0=graves, 1=medios, 2=agudos
-        float colorPhase;     // Fase para mezcla de colores (único por estrella)
-        float swirlAngle;     // Ángulo de remolino
-    }
+    private static final float[][] GALAXY_CONFIG = {
+        //    X       Y     freq   size   speed   dir   alpha
+        { 0.48f,  0.04f,   0,    150f,   0.50f,  -1f,   0.50f},  // Galaxia 0
+        {-0.10f,  0.07f,   0,     95f,   0.4f,   1f,   0.85f}, // Galaxia 1
+        {-0.44f,  0.31f,   1,    100f,   0.25f, -1f,   0.9f},  // Galaxia 2
+        {-0.75f, -0.12f,   1,    110f,   0.35f,  1f,   0.8f},  // Galaxia 3
+        {-0.50f, -0.38f,   2,    100f,   0.45f, -1f,   0.85f}, // Galaxia 4
+        { 0.14f, -0.34f,   2,     80f,   0.3f,   1f,   0.9f},  // Galaxia 5
+        { 0.66f, -0.44f,   1,     80f,   0.5f,  -1f,   0.8f},  // Galaxia 6
+    };
 
-    private Star[] stars;
+    // Colores sutiles que coinciden con galaxias del fondo (blancos/azulados)
+    private static final float[][] FREQ_COLORS = {
+        {0.7f, 0.8f, 1.0f},    // 0: Azul claro (galaxias azuladas)
+        {0.9f, 0.9f, 1.0f},    // 1: Blanco azulado (galaxias blancas)
+        {0.8f, 0.85f, 1.0f},   // 2: Azul muy claro
+    };
+
+    // ════════════════════════════════════════════════════════════════════════
+    // DATOS PRE-ALLOCADOS (evita GC)
+    // ════════════════════════════════════════════════════════════════════════
+    private final float[] positions = new float[TOTAL_GALAXIAS * 2];  // x,y por galaxia
+    private final float[] colors = new float[TOTAL_GALAXIAS * 4];     // RGBA por galaxia
+    private final float[] sizes = new float[TOTAL_GALAXIAS];          // tamaño por galaxia
+    private final float[] speeds = new float[TOTAL_GALAXIAS];         // velocidad giro
+    private final float[] directions = new float[TOTAL_GALAXIAS];     // dirección giro
+    private final float[] alphas = new float[TOTAL_GALAXIAS];         // transparencia base
+    private final int[] freqTypes = new int[TOTAL_GALAXIAS];          // tipo frecuencia
+    private final float[] phases = new float[TOTAL_GALAXIAS];         // fase inicial
+
+    // Buffers OpenGL (pre-allocados una sola vez)
+    private FloatBuffer positionBuffer;
+    private FloatBuffer colorBuffer;
 
     // Niveles de música
     private float bassLevel = 0f;
     private float midLevel = 0f;
     private float trebleLevel = 0f;
 
-    // Tiempo global para efectos
-    private float globalTime = 0f;
-
-    // Colores para mezcla tipo pintura (paleta de nebulosa)
-    private static final float[][] SWIRL_COLORS = {
-        {0.2f, 0.5f, 1.0f},    // Azul eléctrico
-        {1.0f, 0.4f, 0.8f},    // Rosa/Magenta
-        {0.6f, 0.2f, 0.9f},    // Púrpura
-        {1.0f, 0.9f, 0.3f},    // Dorado
-        {0.3f, 1.0f, 0.8f},    // Cyan/Turquesa
-        {1.0f, 0.5f, 0.2f},    // Naranja
-    };
+    // Tiempo (con wrap para evitar overflow)
+    private float time = 0f;
 
     // Shader
     private int programId;
-    private int aPositionLoc;
-    private int aColorLoc;
-
-    private int frameCount = 0;
+    private int uTimeLoc;
+    private int uPointSizeLoc;
+    private int uSpeedLoc;
+    private int uDirectionLoc;
 
     public MusicStars(Context context) {
-        Log.d(TAG, "╔══════════════════════════════════════════════╗");
-        Log.d(TAG, "║      CREANDO LLUVIA DE ESTRELLAS MUSICAL    ║");
-        Log.d(TAG, "╚══════════════════════════════════════════════╝");
+        Log.d(TAG, "🌀 Inicializando " + TOTAL_GALAXIAS + " galaxias espirales...");
 
-        initShader(context);
-        initStars();
+        initData();
+        initBuffers();
+        initShader();
 
-        Log.d(TAG, "[MusicStars] ✓ Constructor completado");
-        Log.d(TAG, "[MusicStars] Total estrellas: " + TOTAL_ESTRELLAS);
-        Log.d(TAG, "[MusicStars]   Graves: " + NUM_ESTRELLAS_GRAVES + " (grandes, zona inferior)");
-        Log.d(TAG, "[MusicStars]   Medios: " + NUM_ESTRELLAS_MEDIOS + " (medianas, zona centro)");
-        Log.d(TAG, "[MusicStars]   Agudos: " + NUM_ESTRELLAS_AGUDOS + " (pequeñas, zona superior)");
+        Log.d(TAG, "✓ MusicStars optimizado listo");
     }
 
-    private void initShader(Context context) {
-        // Vertex shader para puntos
+    private void initData() {
+        for (int i = 0; i < TOTAL_GALAXIAS; i++) {
+            float[] cfg = GALAXY_CONFIG[i];
+
+            // Posiciones
+            positions[i * 2] = cfg[0];      // X
+            positions[i * 2 + 1] = cfg[1];  // Y
+
+            // Tipo de frecuencia y propiedades
+            freqTypes[i] = (int) cfg[2];
+            sizes[i] = cfg[3];
+            speeds[i] = cfg[4];
+            directions[i] = cfg[5];
+            alphas[i] = cfg[6];  // Transparencia individual
+
+            // Fase inicial aleatoria (pero determinista por índice)
+            phases[i] = (i * 0.9f) % TWO_PI;
+
+            // Colores iniciales
+            float[] baseColor = FREQ_COLORS[freqTypes[i]];
+            colors[i * 4] = baseColor[0];
+            colors[i * 4 + 1] = baseColor[1];
+            colors[i * 4 + 2] = baseColor[2];
+            colors[i * 4 + 3] = alphas[i];  // Usar alpha configurado
+        }
+    }
+
+    private void initBuffers() {
+        // Buffer de posiciones (estático)
+        ByteBuffer pbb = ByteBuffer.allocateDirect(positions.length * 4);
+        pbb.order(ByteOrder.nativeOrder());
+        positionBuffer = pbb.asFloatBuffer();
+        positionBuffer.put(positions);
+        positionBuffer.position(0);
+
+        // Buffer de colores (dinámico pero pre-allocado)
+        ByteBuffer cbb = ByteBuffer.allocateDirect(colors.length * 4);
+        cbb.order(ByteOrder.nativeOrder());
+        colorBuffer = cbb.asFloatBuffer();
+        colorBuffer.put(colors);
+        colorBuffer.position(0);
+    }
+
+    private void initShader() {
         String vertexShader =
             "attribute vec2 a_Position;\n" +
             "attribute vec4 a_Color;\n" +
+            "uniform float u_PointSize;\n" +
             "varying vec4 v_Color;\n" +
             "void main() {\n" +
             "    v_Color = a_Color;\n" +
             "    gl_Position = vec4(a_Position, 0.0, 1.0);\n" +
-            "    gl_PointSize = 8.0;\n" +  // Tamaño de punto para estrellas
+            "    gl_PointSize = u_PointSize;\n" +
             "}\n";
 
-        // Fragment shader con efecto de brillo
+        // Fragment shader: SOLO BRAZOS ESPIRALES (sin núcleo) para mezclarse con fondo
         String fragmentShader =
             "#ifdef GL_ES\n" +
             "precision mediump float;\n" +
             "#endif\n" +
             "varying vec4 v_Color;\n" +
+            "uniform float u_Time;\n" +
+            "uniform float u_Speed;\n" +
+            "uniform float u_Direction;\n" +
             "\n" +
             "void main() {\n" +
-            "    // Calcular distancia desde el centro del punto\n" +
-            "    vec2 coord = gl_PointCoord - vec2(0.5);\n" +
-            "    float dist = length(coord);\n" +
+            "    vec2 uv = gl_PointCoord - vec2(0.5);\n" +
+            "    float dist = length(uv);\n" +
+            "    float angle = atan(uv.y, uv.x);\n" +
             "    \n" +
-            "    // Crear efecto de estrella (más brillante en el centro)\n" +
-            "    float alpha = v_Color.a * (1.0 - smoothstep(0.0, 0.5, dist));\n" +
+            "    // Espiral con brazos más definidos (como galaxia real)\n" +
+            "    float spiral = angle + dist * 8.0 + u_Time * u_Speed * u_Direction;\n" +
+            "    float arms = sin(spiral * 2.0) * 0.5 + 0.5;\n" +
+            "    arms = pow(arms, 0.8);  // Brazos más suaves\n" +
             "    \n" +
-            "    // Aumentar brillo en el centro\n" +
-            "    vec3 color = v_Color.rgb * (1.0 + (1.0 - dist * 2.0) * 0.5);\n" +
+            "    // SIN núcleo brillante - solo los brazos\n" +
+            "    // Fade desde el centro hacia afuera (más visible en el medio)\n" +
+            "    float innerFade = smoothstep(0.05, 0.2, dist);  // Evitar centro\n" +
+            "    float outerFade = 1.0 - smoothstep(0.3, 0.5, dist);  // Fade en bordes\n" +
             "    \n" +
+            "    // Solo los brazos, muy sutiles\n" +
+            "    float brightness = arms * innerFade * outerFade * 0.4;\n" +
+            "    \n" +
+            "    // Color sutil, casi transparente\n" +
+            "    vec3 color = v_Color.rgb;\n" +
+            "    float alpha = v_Color.a * brightness * 0.5;  // Muy transparente\n" +
+            "    \n" +
+            "    if (alpha < 0.01) discard;\n" +
             "    gl_FragColor = vec4(color, alpha);\n" +
             "}\n";
 
         programId = ShaderUtils.createProgram(vertexShader, fragmentShader);
 
         if (programId == 0) {
-            Log.e(TAG, "[MusicStars] ✗✗✗ ERROR CRÍTICO: Shader NO se pudo crear!");
+            Log.e(TAG, "✗ Error creando shader");
             return;
         }
 
-        aPositionLoc = GLES20.glGetAttribLocation(programId, "a_Position");
-        aColorLoc = GLES20.glGetAttribLocation(programId, "a_Color");
+        uTimeLoc = GLES20.glGetUniformLocation(programId, "u_Time");
+        uPointSizeLoc = GLES20.glGetUniformLocation(programId, "u_PointSize");
+        uSpeedLoc = GLES20.glGetUniformLocation(programId, "u_Speed");
+        uDirectionLoc = GLES20.glGetUniformLocation(programId, "u_Direction");
 
-        Log.d(TAG, "[MusicStars] ✓ Shader inicializado (programId: " + programId + ")");
+        Log.d(TAG, "✓ Shader compilado");
     }
 
-    private void initStars() {
-        stars = new Star[TOTAL_ESTRELLAS];
-        Random rand = new Random();
-        int index = 0;
-
-        // ════════════════════════════════════════════════════════════════════════
-        // ESTRELLAS GRAVES (zona inferior, grandes, colores cálidos)
-        // ════════════════════════════════════════════════════════════════════════
-        for (int i = 0; i < NUM_ESTRELLAS_GRAVES; i++) {
-            stars[index] = new Star();
-            stars[index].x = -0.9f + rand.nextFloat() * 1.8f;  // Ancho completo
-            stars[index].y = ZONA_GRAVES_MIN + rand.nextFloat() * (ZONA_GRAVES_MAX - ZONA_GRAVES_MIN);
-            stars[index].baseSize = SIZE_GRAVES_BASE;
-            stars[index].currentSize = stars[index].baseSize;
-            stars[index].targetSize = stars[index].baseSize;
-            stars[index].freqType = 0;  // Graves
-
-            // Color base: Azul eléctrico para graves (bajo, bombo)
-            stars[index].baseColor = new float[]{0.2f, 0.5f, 1.0f};
-            stars[index].color = new float[]{0.2f, 0.5f, 1.0f, 0.8f};
-
-            // Fase única para efecto de remolino
-            stars[index].colorPhase = rand.nextFloat() * (float)Math.PI * 2f;
-            stars[index].swirlAngle = rand.nextFloat() * (float)Math.PI * 2f;
-
-            index++;
-        }
-
-        // ════════════════════════════════════════════════════════════════════════
-        // ESTRELLAS MEDIOS (zona central, medianas, colores variados)
-        // ════════════════════════════════════════════════════════════════════════
-        for (int i = 0; i < NUM_ESTRELLAS_MEDIOS; i++) {
-            stars[index] = new Star();
-            stars[index].x = -0.9f + rand.nextFloat() * 1.8f;
-            stars[index].y = ZONA_MEDIOS_MIN + rand.nextFloat() * (ZONA_MEDIOS_MAX - ZONA_MEDIOS_MIN);
-            stars[index].baseSize = SIZE_MEDIOS_BASE;
-            stars[index].currentSize = stars[index].baseSize;
-            stars[index].targetSize = stars[index].baseSize;
-            stars[index].freqType = 1;  // Medios
-
-            // Color base: Dorado/Amarillo para medios
-            stars[index].baseColor = new float[]{1.0f, 0.9f, 0.3f};
-            stars[index].color = new float[]{1.0f, 0.9f, 0.3f, 0.85f};
-
-            // Fase única para efecto de remolino
-            stars[index].colorPhase = rand.nextFloat() * (float)Math.PI * 2f;
-            stars[index].swirlAngle = rand.nextFloat() * (float)Math.PI * 2f;
-
-            index++;
-        }
-
-        // ════════════════════════════════════════════════════════════════════════
-        // ESTRELLAS AGUDOS (zona superior, pequeñas, colores fríos)
-        // ════════════════════════════════════════════════════════════════════════
-        for (int i = 0; i < NUM_ESTRELLAS_AGUDOS; i++) {
-            stars[index] = new Star();
-            stars[index].x = -0.9f + rand.nextFloat() * 1.8f;
-            stars[index].y = ZONA_AGUDOS_MIN + rand.nextFloat() * (ZONA_AGUDOS_MAX - ZONA_AGUDOS_MIN);
-            stars[index].baseSize = SIZE_AGUDOS_BASE;
-            stars[index].currentSize = stars[index].baseSize;
-            stars[index].targetSize = stars[index].baseSize;
-            stars[index].freqType = 2;  // Agudos
-
-            // Color base: Cyan/Blanco para agudos
-            stars[index].baseColor = new float[]{0.8f, 1.0f, 1.0f};
-            stars[index].color = new float[]{0.8f, 1.0f, 1.0f, 0.9f};
-
-            // Fase única para efecto de remolino
-            stars[index].colorPhase = rand.nextFloat() * (float)Math.PI * 2f;
-            stars[index].swirlAngle = rand.nextFloat() * (float)Math.PI * 2f;
-
-            index++;
-        }
-
-        Log.d(TAG, "[MusicStars] ✓ " + TOTAL_ESTRELLAS + " estrellas inicializadas");
-    }
-
-    /**
-     * Actualiza los niveles de música
-     */
     public void updateMusicLevels(float bass, float mid, float treble) {
         this.bassLevel = bass;
         this.midLevel = mid;
         this.trebleLevel = treble;
-
-        // Log cada 300 frames
-        if (frameCount % 300 == 0 && (bass > 0.05f || mid > 0.05f || treble > 0.05f)) {
-            Log.d(TAG, String.format("[MusicStars] 🎵 Bass:%.2f Mid:%.2f Treble:%.2f",
-                    bass, mid, treble));
-        }
     }
 
     @Override
     public void update(float deltaTime) {
-        frameCount++;
-        globalTime += deltaTime;
+        // Actualizar tiempo con wrap para evitar overflow
+        time += deltaTime;
+        if (time > TIME_WRAP) {
+            time -= TIME_WRAP;
+        }
 
-        // Actualizar cada estrella según su tipo de frecuencia
-        for (Star star : stars) {
-            float intensidad = 0f;
-
-            switch (star.freqType) {
-                case 0:  // Graves (bajo, bombo)
-                    intensidad = bassLevel;
-                    break;
-                case 1:  // Medios (guitarra, piano, voces)
-                    intensidad = midLevel;
-                    break;
-                case 2:  // Agudos (vientos, platillos, voces agudas)
-                    intensidad = trebleLevel;
-                    break;
+        // Actualizar colores basado en música (sin crear objetos nuevos)
+        for (int i = 0; i < TOTAL_GALAXIAS; i++) {
+            float intensity;
+            switch (freqTypes[i]) {
+                case 0: intensity = bassLevel; break;
+                case 1: intensity = midLevel; break;
+                default: intensity = trebleLevel; break;
             }
 
-            // Calcular tamaño objetivo (base + pulsación por intensidad)
-            // Multiplicador: 1.0 (sin música) a 3.0 (música máxima)
-            float pulseFactor = 1.0f + intensidad * 2.0f;
-            star.targetSize = star.baseSize * pulseFactor;
+            // Modular alpha según intensidad de música (respetando alpha base)
+            float[] baseColor = FREQ_COLORS[freqTypes[i]];
+            float brightnessMod = 0.85f + intensity * 0.15f;
 
-            // Suavizar transición de tamaño
-            star.currentSize = star.currentSize * SMOOTHING_FACTOR +
-                              star.targetSize * (1f - SMOOTHING_FACTOR);
-
-            // ════════════════════════════════════════════════════════════════
-            // 🌀 EFECTO REMOLINO DE POLVO ESTELAR
-            // ════════════════════════════════════════════════════════════════
-
-            // Actualizar ángulo de remolino (velocidad variable por estrella)
-            float swirlSpeed = 0.3f + (star.colorPhase * 0.2f);  // Cada estrella gira diferente
-            star.swirlAngle += swirlSpeed * deltaTime;
-
-            // Calcular índice de color en la paleta usando onda sinusoidal
-            float colorWave = (float) Math.sin(globalTime * 0.5f + star.colorPhase);
-            int colorIndex1 = (int) ((star.colorPhase / (Math.PI * 2f)) * SWIRL_COLORS.length) % SWIRL_COLORS.length;
-            int colorIndex2 = (colorIndex1 + 1) % SWIRL_COLORS.length;
-
-            // Factor de mezcla que oscila suavemente (0.0 a 0.4 para mantener color base dominante)
-            float mixFactor = (colorWave * 0.5f + 0.5f) * 0.4f;
-
-            // Intensidad de la música afecta cuánto se mezclan los colores
-            float musicMix = intensidad * 0.3f;  // Más música = más mezcla
-            mixFactor = Math.min(0.5f, mixFactor + musicMix);
-
-            // Mezclar color base con color del remolino
-            float[] swirlColor = SWIRL_COLORS[colorIndex1];
-            float[] swirlColor2 = SWIRL_COLORS[colorIndex2];
-
-            // Interpolar entre los dos colores de la paleta
-            float t = (colorWave * 0.5f + 0.5f);
-            float sR = swirlColor[0] * (1f - t) + swirlColor2[0] * t;
-            float sG = swirlColor[1] * (1f - t) + swirlColor2[1] * t;
-            float sB = swirlColor[2] * (1f - t) + swirlColor2[2] * t;
-
-            // Mezclar con el color base (el color base domina ~60-80%)
-            star.color[0] = star.baseColor[0] * (1f - mixFactor) + sR * mixFactor;
-            star.color[1] = star.baseColor[1] * (1f - mixFactor) + sG * mixFactor;
-            star.color[2] = star.baseColor[2] * (1f - mixFactor) + sB * mixFactor;
-
-            // Mantener alpha original
-            star.color[3] = 0.85f + intensidad * 0.15f;  // Más brillante con música
+            colors[i * 4] = baseColor[0] * brightnessMod;
+            colors[i * 4 + 1] = baseColor[1] * brightnessMod;
+            colors[i * 4 + 2] = baseColor[2] * brightnessMod;
+            // Alpha base + boost por música (máximo alpha configurado)
+            colors[i * 4 + 3] = alphas[i] * (0.85f + intensity * 0.15f);
         }
+
+        // Actualizar buffer de colores
+        colorBuffer.position(0);
+        colorBuffer.put(colors);
+        colorBuffer.position(0);
     }
 
     @Override
     public void draw() {
-        if (!GLES20.glIsProgram(programId)) {
-            return;
-        }
+        if (programId == 0) return;
 
         GLES20.glUseProgram(programId);
 
-        // Configurar estados OpenGL para puntos brillantes
+        // Estados OpenGL
         GLES20.glDisable(GLES20.GL_DEPTH_TEST);
         GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);  // Blending aditivo para brillo
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
 
-        // Dibujar cada estrella como un punto
-        for (Star star : stars) {
-            drawStar(star);
+        // Tiempo global
+        GLES20.glUniform1f(uTimeLoc, time);
+
+        int aPositionLoc = GLES20.glGetAttribLocation(programId, "a_Position");
+        int aColorLoc = GLES20.glGetAttribLocation(programId, "a_Color");
+
+        // Dibujar cada galaxia (necesario por tamaños diferentes)
+        for (int i = 0; i < TOTAL_GALAXIAS; i++) {
+            // Uniforms específicos de esta galaxia
+            GLES20.glUniform1f(uPointSizeLoc, sizes[i]);
+            GLES20.glUniform1f(uSpeedLoc, speeds[i]);
+            GLES20.glUniform1f(uDirectionLoc, directions[i]);
+
+            // Posición de esta galaxia
+            positionBuffer.position(i * 2);
+            GLES20.glEnableVertexAttribArray(aPositionLoc);
+            GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 0, positionBuffer);
+
+            // Color de esta galaxia
+            colorBuffer.position(i * 4);
+            GLES20.glEnableVertexAttribArray(aColorLoc);
+            GLES20.glVertexAttribPointer(aColorLoc, 4, GLES20.GL_FLOAT, false, 0, colorBuffer);
+
+            // Dibujar
+            GLES20.glDrawArrays(GLES20.GL_POINTS, 0, 1);
         }
+
+        GLES20.glDisableVertexAttribArray(aPositionLoc);
+        GLES20.glDisableVertexAttribArray(aColorLoc);
 
         // Restaurar estados
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
-    }
-
-    /**
-     * Dibuja una estrella individual
-     */
-    private void drawStar(Star star) {
-        // Crear un punto en la posición de la estrella
-        float[] position = {star.x, star.y};
-
-        // Calcular alpha basado en el tamaño (más grande = más brillante)
-        float sizeRatio = star.currentSize / star.baseSize;
-        float alpha = star.color[3] * Math.min(1.0f, sizeRatio * 0.6f);
-
-        float[] color = {
-            star.color[0],
-            star.color[1],
-            star.color[2],
-            alpha
-        };
-
-        // Crear buffers
-        ByteBuffer vbb = ByteBuffer.allocateDirect(position.length * 4);
-        vbb.order(ByteOrder.nativeOrder());
-        FloatBuffer vb = vbb.asFloatBuffer();
-        vb.put(position);
-        vb.position(0);
-
-        ByteBuffer cbb = ByteBuffer.allocateDirect(color.length * 4);
-        cbb.order(ByteOrder.nativeOrder());
-        FloatBuffer cb = cbb.asFloatBuffer();
-        cb.put(color);
-        cb.position(0);
-
-        // Configurar atributos
-        GLES20.glEnableVertexAttribArray(aPositionLoc);
-        GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 0, vb);
-
-        GLES20.glEnableVertexAttribArray(aColorLoc);
-        GLES20.glVertexAttribPointer(aColorLoc, 4, GLES20.GL_FLOAT, false, 0, cb);
-
-        // Dibujar punto
-        GLES20.glDrawArrays(GLES20.GL_POINTS, 0, 1);
-
-        // Limpiar
-        GLES20.glDisableVertexAttribArray(aPositionLoc);
-        GLES20.glDisableVertexAttribArray(aColorLoc);
     }
 }

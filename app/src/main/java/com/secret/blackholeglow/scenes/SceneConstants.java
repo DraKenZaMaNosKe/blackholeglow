@@ -25,17 +25,17 @@ public final class SceneConstants {
     // ═══════════════════════════════════════════════════════════════════
 
     public static final class Sun {
-        /** Posición X del sol (hacia la izquierda) */
-        public static final float POSITION_X = -1.5f;
+        /** Posición X del sol (más centrado para que la Tierra no se salga) */
+        public static final float POSITION_X = -0.9f;
 
-        /** Posición Y del sol (centro vertical) */
-        public static final float POSITION_Y = 0.5f;
+        /** Posición Y del sol (un poco más arriba) */
+        public static final float POSITION_Y = 0.8f;
 
         /** Posición Z del sol (profundidad) */
         public static final float POSITION_Z = -5.0f;
 
         /** Escala del sol - MÁS GRANDE que la Tierra (realista) */
-        public static final float SCALE = 0.8f;
+        public static final float SCALE = 1.2f;
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -53,7 +53,7 @@ public final class SceneConstants {
         public static final float POSITION_Z = -5.0f;
 
         /** Tamaño/escala de la Tierra - MENOR que el Sol (realista) */
-        public static final float SCALE = 0.25f;
+        public static final float SCALE = 0.4f;
 
         /** Velocidad de rotación sobre su eje (grados/segundo) */
         public static final float ROTATION_SPEED = 5.0f;
@@ -62,13 +62,13 @@ public final class SceneConstants {
         public static final int MAX_HP = 200;
 
         /** Radio de órbita X (horizontal) - La Tierra orbita el Sol */
-        public static final float ORBIT_RADIUS_X = 1.8f;
+        public static final float ORBIT_RADIUS_X = 2.8f;
 
         /** Radio de órbita Z (profundidad) - Órbita elíptica */
-        public static final float ORBIT_RADIUS_Z = 1.2f;
+        public static final float ORBIT_RADIUS_Z = 2.0f;
 
-        /** Velocidad de órbita alrededor del Sol */
-        public static final float ORBIT_SPEED = 0.15f;
+        /** Velocidad de órbita alrededor del Sol (más lento = más tiempo visible) */
+        public static final float ORBIT_SPEED = 0.04f;
 
         /** Variación de escala (0 = sin pulsación) */
         public static final float SCALE_VARIATION = 0.0f;
