@@ -89,21 +89,28 @@ public class DefenderShip implements SceneObject, CameraAware {
     private float safeDistanceStation = 1.5f;   // Distancia mínima a la estación
 
     // ═══════════════════════════════════════════════════════════
-    // 🎯 SISTEMA DE COMBATE (NAVE1 - dispara a UfoScout)
+    // 🎯 SISTEMA DE COMBATE (Objetivos: UfoScout y UfoAttacker)
     // ═══════════════════════════════════════════════════════════
-    private UfoScout targetUfoScout;        // 🛸 Referencia al OVNI1 (UfoScout)
+    private UfoScout targetUfoScout;        // 🛸 Objetivo primario (UfoScout)
+    private UfoAttacker targetUfoAttacker;  // 👾 Objetivo secundario (UfoAttacker)
     private float shootTimer = 0f;
     private float shootInterval = 2.0f;     // Dispara cada 2 segundos (más rápido)
     private float minShootInterval = 1.2f;
     private float maxShootInterval = 2.5f;
 
     // ═══════════════════════════════════════════════════════════
+    // 🚧 REFERENCIAS A OTRAS NAVES (para evitar colisiones)
+    // ═══════════════════════════════════════════════════════════
+    private HumanInterceptor allyInterceptor = null;
+    private float safeDistance = 1.2f;  // Distancia mínima entre naves
+
+    // ═══════════════════════════════════════════════════════════
     // 🔫 SISTEMA DE DISPAROS (TEAM HUMAN - LÁSER AZUL)
     // ═══════════════════════════════════════════════════════════
-    private static final int MAX_LASERS = 5;
+    private static final int MAX_LASERS = 8;
     private final List<Laser> lasers = new ArrayList<>();
-    private static final float MIN_SHOOT_INTERVAL = 1.5f;
-    private static final float MAX_SHOOT_INTERVAL = 3.0f;
+    private static final float MIN_SHOOT_INTERVAL = 0.8f;
+    private static final float MAX_SHOOT_INTERVAL = 1.8f;
 
 
     // ═══════════════════════════════════════════════════════════
@@ -143,6 +150,49 @@ public class DefenderShip implements SceneObject, CameraAware {
     private float respawnDelay = 6.0f;
     private float invincibilityTimer = 0f;
     private float invincibilityDuration = 1.5f;
+
+    // ═══════════════════════════════════════════════════════════
+    // 🛡️ HABILIDAD 1: ESCUDO DE ENERGÍA
+    // ═══════════════════════════════════════════════════════════
+    private boolean shieldActive = false;
+    private float shieldTimer = 0f;
+    private float shieldDuration = 4.0f;        // 4 segundos de invencibilidad
+    private float shieldCooldown = 0f;
+    private float shieldCooldownMax = 15.0f;    // 15 segundos de cooldown
+    private float shieldPulse = 0f;             // Para efecto visual pulsante
+    private float shieldRadius = 0.8f;          // Radio del escudo
+
+    // ═══════════════════════════════════════════════════════════
+    // 🎯 HABILIDAD 2: MISILES RASTREADORES
+    // ═══════════════════════════════════════════════════════════
+    private static final int MAX_MISSILES = 4;
+    private float[] missileX = new float[MAX_MISSILES];
+    private float[] missileY = new float[MAX_MISSILES];
+    private float[] missileZ = new float[MAX_MISSILES];
+    private float[] missileVX = new float[MAX_MISSILES];
+    private float[] missileVY = new float[MAX_MISSILES];
+    private float[] missileVZ = new float[MAX_MISSILES];
+    private boolean[] missileActive = new boolean[MAX_MISSILES];
+    private float[] missileLife = new float[MAX_MISSILES];
+    private float missileSpeed = 4.0f;
+    private float missileTurnRate = 3.0f;       // Velocidad de giro hacia objetivo
+    private float missileCooldown = 0f;
+    private float missileCooldownMax = 12.0f;   // 12 segundos entre ráfagas
+    private float missileLifeMax = 5.0f;        // Duración máxima del misil
+
+    // ═══════════════════════════════════════════════════════════
+    // 🔄 BUFFERS PRE-ASIGNADOS (evita GC en draw loops)
+    // ═══════════════════════════════════════════════════════════
+    private static final int SHIELD_SEGMENTS = 32;
+    private static final int MISSILE_TRAIL_POINTS = 6;
+    private final float[] shieldVertices = new float[SHIELD_SEGMENTS * 3];
+    private final float[] shieldColors = new float[SHIELD_SEGMENTS * 4];
+    private FloatBuffer shieldVertexBuffer;
+    private FloatBuffer shieldColorBuffer;
+    private final float[] missileTrailVerts = new float[MISSILE_TRAIL_POINTS * 3];
+    private final float[] missileTrailCols = new float[MISSILE_TRAIL_POINTS * 4];
+    private FloatBuffer missileTrailVertexBuffer;
+    private FloatBuffer missileTrailColorBuffer;
 
     // ═══════════════════════════════════════════════════════════
     // 🧠 IA DE VUELO ORGÁNICO
@@ -602,7 +652,25 @@ public class DefenderShip implements SceneObject, CameraAware {
         cb.order(ByteOrder.nativeOrder());
         explosionColorBuffer = cb.asFloatBuffer();
 
-        Log.d(TAG, "💥 Shader de explosión creado");
+        // Crear buffers pre-asignados para escudo (evita GC en draw)
+        ByteBuffer svb = ByteBuffer.allocateDirect(SHIELD_SEGMENTS * 3 * 4);
+        svb.order(ByteOrder.nativeOrder());
+        shieldVertexBuffer = svb.asFloatBuffer();
+
+        ByteBuffer scb = ByteBuffer.allocateDirect(SHIELD_SEGMENTS * 4 * 4);
+        scb.order(ByteOrder.nativeOrder());
+        shieldColorBuffer = scb.asFloatBuffer();
+
+        // Crear buffers pre-asignados para misiles (evita GC en draw)
+        ByteBuffer mvb = ByteBuffer.allocateDirect(MISSILE_TRAIL_POINTS * 3 * 4);
+        mvb.order(ByteOrder.nativeOrder());
+        missileTrailVertexBuffer = mvb.asFloatBuffer();
+
+        ByteBuffer mcb = ByteBuffer.allocateDirect(MISSILE_TRAIL_POINTS * 4 * 4);
+        mcb.order(ByteOrder.nativeOrder());
+        missileTrailColorBuffer = mcb.asFloatBuffer();
+
+        Log.d(TAG, "💥 Shader de explosión creado + buffers pre-asignados");
     }
 
     /**
@@ -642,12 +710,22 @@ public class DefenderShip implements SceneObject, CameraAware {
 
             // Solo verificar colisiones si está activo
             if (laser.isActive()) {
-                // Verificar colisión con UfoScout
+                // Verificar colisión con UfoScout (objetivo primario)
                 if (targetUfoScout != null && !targetUfoScout.isTeleportingNow() && !targetUfoScout.isDestroyed()) {
-                    if (laser.checkCollision(targetUfoScout.x, targetUfoScout.y, targetUfoScout.z, 0.3f)) {
+                    if (laser.checkCollision(targetUfoScout.getX(), targetUfoScout.getY(), targetUfoScout.getZ(), 0.3f)) {
                         laser.deactivate();
-                        targetUfoScout.takeDamage();  // Aplicar daño al OVNI
-                        Log.d(TAG, "💥 ¡Láser azul impactó a OVNI1!");
+                        targetUfoScout.takeDamage();
+                        Log.d(TAG, "💥 ¡Láser azul impactó a UfoScout!");
+                        continue;  // No verificar más colisiones para este láser
+                    }
+                }
+
+                // Verificar colisión con UfoAttacker (objetivo secundario)
+                if (targetUfoAttacker != null && !targetUfoAttacker.isDestroyed()) {
+                    if (laser.checkCollision(targetUfoAttacker.getX(), targetUfoAttacker.getY(), targetUfoAttacker.getZ(), 0.35f)) {
+                        laser.deactivate();
+                        targetUfoAttacker.takeDamage();
+                        Log.d(TAG, "💥 ¡Láser azul impactó a UfoAttacker!");
                     }
                 }
             }
@@ -837,7 +915,55 @@ public class DefenderShip implements SceneObject, CameraAware {
      */
     public void setTargetUfoScout(UfoScout ufoScout) {
         this.targetUfoScout = ufoScout;
-        Log.d(TAG, "🎯 NAVE1: Objetivo OVNI1 (UfoScout) establecido");
+        Log.d(TAG, "🎯 NAVE1: Objetivo primario OVNI1 (UfoScout) establecido");
+    }
+
+    public void setTargetUfoAttacker(UfoAttacker ufoAttacker) {
+        this.targetUfoAttacker = ufoAttacker;
+        Log.d(TAG, "🎯 NAVE1: Objetivo secundario OVNI2 (UfoAttacker) establecido");
+    }
+
+    /**
+     * 🎯 Obtiene el objetivo activo (primario o secundario)
+     */
+    private Object getActiveTarget() {
+        // Prioridad: UfoScout si existe y no está destruido/teletransportándose
+        if (targetUfoScout != null && !targetUfoScout.isDestroyed() && !targetUfoScout.isTeleportingNow()) {
+            return targetUfoScout;
+        }
+        // Fallback: UfoAttacker
+        if (targetUfoAttacker != null && !targetUfoAttacker.isDestroyed()) {
+            return targetUfoAttacker;
+        }
+        return null;
+    }
+
+    private float getTargetX() {
+        Object target = getActiveTarget();
+        if (target instanceof UfoScout) return ((UfoScout) target).getX();
+        if (target instanceof UfoAttacker) return ((UfoAttacker) target).getX();
+        return x;
+    }
+
+    private float getTargetY() {
+        Object target = getActiveTarget();
+        if (target instanceof UfoScout) return ((UfoScout) target).getY();
+        if (target instanceof UfoAttacker) return ((UfoAttacker) target).getY();
+        return y;
+    }
+
+    private float getTargetZ() {
+        Object target = getActiveTarget();
+        if (target instanceof UfoScout) return ((UfoScout) target).getZ();
+        if (target instanceof UfoAttacker) return ((UfoAttacker) target).getZ();
+        return z;
+    }
+
+    /**
+     * 🚧 Establece referencia al aliado HumanInterceptor para evitar colisiones
+     */
+    public void setAllyInterceptor(HumanInterceptor ally) {
+        this.allyInterceptor = ally;
     }
 
     /**
@@ -997,6 +1123,61 @@ public class DefenderShip implements SceneObject, CameraAware {
         velocityY *= friction;
         velocityZ *= friction;
 
+        // ═══════════════════════════════════════════════════════════
+        // 🚧 ANTI-COLISIÓN CON OTRAS NAVES
+        // ═══════════════════════════════════════════════════════════
+        float avoidX = 0, avoidY = 0, avoidZ = 0;
+
+        // Evitar al aliado HumanInterceptor
+        if (allyInterceptor != null && !allyInterceptor.isDestroyed()) {
+            float adx = x - allyInterceptor.getX();
+            float ady = y - allyInterceptor.getY();
+            float adz = z - allyInterceptor.getZ();
+            float adist = (float) Math.sqrt(adx * adx + ady * ady + adz * adz);
+
+            if (adist < safeDistance && adist > 0.01f) {
+                float pushForce = (safeDistance - adist) / adist * 3.0f;
+                avoidX += adx * pushForce;
+                avoidY += ady * pushForce;
+                avoidZ += adz * pushForce;
+            }
+        }
+
+        // Evitar a UfoScout (enemigo)
+        if (targetUfoScout != null && !targetUfoScout.isDestroyed() && !targetUfoScout.isTeleportingNow()) {
+            float adx = x - targetUfoScout.getX();
+            float ady = y - targetUfoScout.getY();
+            float adz = z - targetUfoScout.getZ();
+            float adist = (float) Math.sqrt(adx * adx + ady * ady + adz * adz);
+
+            if (adist < safeDistance * 0.7f && adist > 0.01f) {
+                float pushForce = (safeDistance * 0.7f - adist) / adist * 4.0f;
+                avoidX += adx * pushForce;
+                avoidY += ady * pushForce;
+                avoidZ += adz * pushForce;
+            }
+        }
+
+        // Evitar a UfoAttacker (enemigo secundario)
+        if (targetUfoAttacker != null && !targetUfoAttacker.isDestroyed()) {
+            float adx = x - targetUfoAttacker.getX();
+            float ady = y - targetUfoAttacker.getY();
+            float adz = z - targetUfoAttacker.getZ();
+            float adist = (float) Math.sqrt(adx * adx + ady * ady + adz * adz);
+
+            if (adist < safeDistance * 0.7f && adist > 0.01f) {
+                float pushForce = (safeDistance * 0.7f - adist) / adist * 4.0f;
+                avoidX += adx * pushForce;
+                avoidY += ady * pushForce;
+                avoidZ += adz * pushForce;
+            }
+        }
+
+        // Aplicar fuerza de evasión
+        velocityX += avoidX * deltaTime * 5.0f;
+        velocityY += avoidY * deltaTime * 5.0f;
+        velocityZ += avoidZ * deltaTime * 5.0f;
+
         // Aplicar movimiento
         x += velocityX * deltaTime;
         y += velocityY * deltaTime;
@@ -1121,21 +1302,32 @@ public class DefenderShip implements SceneObject, CameraAware {
         shootTimer += deltaTime;
         updateLasers(deltaTime);
 
-        // Disparar si hay objetivo válido
-        if (targetUfoScout != null && !targetUfoScout.isTeleportingNow()) {
+        // Disparar si hay objetivo válido (prioridad: UfoScout, luego UfoAttacker)
+        Object activeTarget = getActiveTarget();
+        if (activeTarget != null) {
             if (shootTimer >= shootInterval) {
                 shootTimer = 0f;
                 // Nuevo intervalo aleatorio
                 shootInterval = MIN_SHOOT_INTERVAL + random.nextFloat() * (MAX_SHOOT_INTERVAL - MIN_SHOOT_INTERVAL);
 
-                // Disparar al OVNI1
-                shootAt(targetUfoScout.x, targetUfoScout.y, targetUfoScout.z);
+                // Disparar al objetivo activo
+                shootAt(getTargetX(), getTargetY(), getTargetZ());
             }
         }
 
         if (invincibilityTimer > 0) {
             invincibilityTimer -= deltaTime;
         }
+
+        // ═══════════════════════════════════════════════════════════
+        // 🛡️ ACTUALIZAR ESCUDO DE ENERGÍA
+        // ═══════════════════════════════════════════════════════════
+        updateShield(deltaTime);
+
+        // ═══════════════════════════════════════════════════════════
+        // 🎯 ACTUALIZAR MISILES RASTREADORES
+        // ═══════════════════════════════════════════════════════════
+        updateMissiles(deltaTime);
     }
 
 
@@ -1154,6 +1346,12 @@ public class DefenderShip implements SceneObject, CameraAware {
      */
     public void takeDamage() {
         if (destroyed || invincibilityTimer > 0) return;
+
+        // 🛡️ Si el escudo está activo, absorbe el daño
+        if (shieldActive) {
+            Log.d(TAG, "🛡️ ¡Escudo absorbió el impacto!");
+            return;
+        }
 
         health--;
         invincibilityTimer = invincibilityDuration;
@@ -1299,5 +1497,371 @@ public class DefenderShip implements SceneObject, CameraAware {
 
         // ═══ 🔫 DIBUJAR LÁSERES ═══
         drawLasers();
+
+        // ═══ 🛡️ DIBUJAR ESCUDO ═══
+        if (shieldActive) {
+            drawShield();
+        }
+
+        // ═══ 🎯 DIBUJAR MISILES ═══
+        drawMissiles();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🛡️ ESCUDO DE ENERGÍA - MÉTODOS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * 🛡️ Actualiza el estado del escudo
+     */
+    private void updateShield(float deltaTime) {
+        // Actualizar cooldown
+        if (shieldCooldown > 0) {
+            shieldCooldown -= deltaTime;
+        }
+
+        // Si el escudo está activo
+        if (shieldActive) {
+            shieldTimer += deltaTime;
+            shieldPulse += deltaTime * 8f;  // Pulsación rápida
+
+            // Desactivar cuando termine la duración
+            if (shieldTimer >= shieldDuration) {
+                shieldActive = false;
+                shieldTimer = 0f;
+                shieldCooldown = shieldCooldownMax;
+                Log.d(TAG, "🛡️ Escudo desactivado");
+            }
+        } else {
+            // Activar automáticamente cuando recibe mucho daño o en combate intenso
+            if (shieldCooldown <= 0 && health <= 2 && health > 0) {
+                // Activar escudo de emergencia cuando tiene poca vida
+                if (Math.random() < 0.02 * deltaTime * 60) {  // ~2% por segundo
+                    activateShield();
+                }
+            }
+        }
+    }
+
+    /**
+     * 🛡️ Activa el escudo de energía
+     */
+    public void activateShield() {
+        if (shieldCooldown <= 0 && !shieldActive && !destroyed) {
+            shieldActive = true;
+            shieldTimer = 0f;
+            shieldPulse = 0f;
+            Log.d(TAG, "🛡️ ¡ESCUDO DE ENERGÍA ACTIVADO!");
+        }
+    }
+
+    /**
+     * 🛡️ Dibuja el escudo visual (esfera pulsante)
+     * OPTIMIZADO: Usa buffers pre-asignados para evitar GC
+     */
+    private void drawShield() {
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
+
+        // Dibujar múltiples anillos para efecto de escudo
+        float pulse = (float)(0.7f + 0.3f * Math.sin(shieldPulse));
+        float alpha = 0.4f * pulse;
+
+        // Radio pulsante
+        float currentRadius = shieldRadius * (0.9f + 0.1f * (float)Math.sin(shieldPulse * 2));
+
+        for (int ring = 0; ring < 3; ring++) {
+            float ringRadius = currentRadius * (0.8f + ring * 0.15f);
+            float ringAlpha = alpha * (1f - ring * 0.25f);
+
+            // Usar arrays pre-asignados (no crear new cada frame)
+            for (int i = 0; i < SHIELD_SEGMENTS; i++) {
+                float angle = (float)(i * Math.PI * 2 / SHIELD_SEGMENTS);
+                shieldVertices[i * 3] = x + (float)Math.cos(angle) * ringRadius;
+                shieldVertices[i * 3 + 1] = y + (float)Math.sin(angle + shieldPulse * 0.5f) * ringRadius * 0.3f;
+                shieldVertices[i * 3 + 2] = z + (float)Math.sin(angle) * ringRadius;
+
+                // Color azul brillante
+                shieldColors[i * 4] = 0.3f;
+                shieldColors[i * 4 + 1] = 0.7f;
+                shieldColors[i * 4 + 2] = 1.0f;
+                shieldColors[i * 4 + 3] = ringAlpha;
+            }
+
+            // Usar buffers pre-asignados (no ByteBuffer.allocateDirect cada frame)
+            shieldVertexBuffer.clear();
+            shieldVertexBuffer.put(shieldVertices).position(0);
+
+            shieldColorBuffer.clear();
+            shieldColorBuffer.put(shieldColors).position(0);
+
+            if (explosionProgram > 0) {
+                GLES20.glUseProgram(explosionProgram);
+                GLES20.glUniform1f(expPointSizeLoc, 12.0f * pulse);
+                GLES20.glVertexAttribPointer(expPositionLoc, 3, GLES20.GL_FLOAT, false, 0, shieldVertexBuffer);
+                GLES20.glEnableVertexAttribArray(expPositionLoc);
+                GLES20.glVertexAttribPointer(expColorLoc, 4, GLES20.GL_FLOAT, false, 0, shieldColorBuffer);
+                GLES20.glEnableVertexAttribArray(expColorLoc);
+                GLES20.glDrawArrays(GLES20.GL_POINTS, 0, SHIELD_SEGMENTS);
+            }
+        }
+
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+    }
+
+    public boolean isShieldActive() {
+        return shieldActive;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎯 MISILES RASTREADORES - MÉTODOS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * 🎯 Actualiza los misiles rastreadores
+     */
+    private void updateMissiles(float deltaTime) {
+        // Actualizar cooldown
+        if (missileCooldown > 0) {
+            missileCooldown -= deltaTime;
+        }
+
+        // Actualizar misiles activos
+        for (int i = 0; i < MAX_MISSILES; i++) {
+            if (missileActive[i]) {
+                missileLife[i] -= deltaTime;
+
+                if (missileLife[i] <= 0) {
+                    missileActive[i] = false;
+                    continue;
+                }
+
+                // Buscar objetivo más cercano
+                float targetMX = missileX[i];
+                float targetMY = missileY[i];
+                float targetMZ = missileZ[i];
+                float closestDist = Float.MAX_VALUE;
+                boolean hasTarget = false;
+
+                // Buscar UfoScout
+                if (targetUfoScout != null && !targetUfoScout.isDestroyed() && !targetUfoScout.isTeleportingNow()) {
+                    float dx = targetUfoScout.getX() - missileX[i];
+                    float dy = targetUfoScout.getY() - missileY[i];
+                    float dz = targetUfoScout.getZ() - missileZ[i];
+                    float dist = dx * dx + dy * dy + dz * dz;
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        targetMX = targetUfoScout.getX();
+                        targetMY = targetUfoScout.getY();
+                        targetMZ = targetUfoScout.getZ();
+                        hasTarget = true;
+                    }
+                }
+
+                // Buscar UfoAttacker
+                if (targetUfoAttacker != null && !targetUfoAttacker.isDestroyed()) {
+                    float dx = targetUfoAttacker.getX() - missileX[i];
+                    float dy = targetUfoAttacker.getY() - missileY[i];
+                    float dz = targetUfoAttacker.getZ() - missileZ[i];
+                    float dist = dx * dx + dy * dy + dz * dz;
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        targetMX = targetUfoAttacker.getX();
+                        targetMY = targetUfoAttacker.getY();
+                        targetMZ = targetUfoAttacker.getZ();
+                        hasTarget = true;
+                    }
+                }
+
+                if (hasTarget) {
+                    // Girar hacia el objetivo
+                    float dx = targetMX - missileX[i];
+                    float dy = targetMY - missileY[i];
+                    float dz = targetMZ - missileZ[i];
+                    float dist = (float)Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+                    if (dist > 0.01f) {
+                        float targetVX = dx / dist;
+                        float targetVY = dy / dist;
+                        float targetVZ = dz / dist;
+
+                        // Interpolar hacia la dirección objetivo
+                        float turn = missileTurnRate * deltaTime;
+                        missileVX[i] += (targetVX - missileVX[i]) * turn;
+                        missileVY[i] += (targetVY - missileVY[i]) * turn;
+                        missileVZ[i] += (targetVZ - missileVZ[i]) * turn;
+
+                        // Normalizar velocidad
+                        float vLen = (float)Math.sqrt(missileVX[i]*missileVX[i] + missileVY[i]*missileVY[i] + missileVZ[i]*missileVZ[i]);
+                        if (vLen > 0.01f) {
+                            missileVX[i] /= vLen;
+                            missileVY[i] /= vLen;
+                            missileVZ[i] /= vLen;
+                        }
+                    }
+
+                    // Verificar colisión
+                    if (dist < 0.4f) {
+                        missileActive[i] = false;
+                        // Aplicar daño
+                        if (targetUfoScout != null && !targetUfoScout.isDestroyed()) {
+                            float dxs = targetUfoScout.getX() - missileX[i];
+                            float dys = targetUfoScout.getY() - missileY[i];
+                            float dzs = targetUfoScout.getZ() - missileZ[i];
+                            if (dxs*dxs + dys*dys + dzs*dzs < 0.5f) {
+                                targetUfoScout.takeDamage();
+                                targetUfoScout.takeDamage();  // Doble daño de misil
+                                Log.d(TAG, "🎯💥 ¡Misil impactó a UfoScout!");
+                            }
+                        }
+                        if (targetUfoAttacker != null && !targetUfoAttacker.isDestroyed()) {
+                            float dxa = targetUfoAttacker.getX() - missileX[i];
+                            float dya = targetUfoAttacker.getY() - missileY[i];
+                            float dza = targetUfoAttacker.getZ() - missileZ[i];
+                            if (dxa*dxa + dya*dya + dza*dza < 0.5f) {
+                                targetUfoAttacker.takeDamage();
+                                targetUfoAttacker.takeDamage();  // Doble daño de misil
+                                Log.d(TAG, "🎯💥 ¡Misil impactó a UfoAttacker!");
+                            }
+                        }
+                        continue;
+                    }
+                }
+
+                // Mover misil
+                missileX[i] += missileVX[i] * missileSpeed * deltaTime;
+                missileY[i] += missileVY[i] * missileSpeed * deltaTime;
+                missileZ[i] += missileVZ[i] * missileSpeed * deltaTime;
+            }
+        }
+
+        // Lanzar misiles automáticamente cuando hay enemigos cerca
+        if (missileCooldown <= 0 && !destroyed) {
+            boolean enemyNearby = false;
+            if (targetUfoScout != null && !targetUfoScout.isDestroyed()) enemyNearby = true;
+            if (targetUfoAttacker != null && !targetUfoAttacker.isDestroyed()) enemyNearby = true;
+
+            if (enemyNearby && Math.random() < 0.01 * deltaTime * 60) {  // ~1% por segundo
+                fireMissiles();
+            }
+        }
+    }
+
+    /**
+     * 🎯 Dispara una ráfaga de misiles rastreadores
+     */
+    public void fireMissiles() {
+        if (missileCooldown > 0 || destroyed) return;
+
+        Log.d(TAG, "🎯🚀 ¡MISILES RASTREADORES LANZADOS!");
+        missileCooldown = missileCooldownMax;
+
+        // Lanzar todos los misiles en diferentes direcciones
+        for (int i = 0; i < MAX_MISSILES; i++) {
+            missileActive[i] = true;
+            missileLife[i] = missileLifeMax;
+            missileX[i] = x;
+            missileY[i] = y;
+            missileZ[i] = z;
+
+            // Dirección inicial en abanico
+            float angle = (float)(i * Math.PI * 0.3f - Math.PI * 0.45f);
+            missileVX[i] = (float)Math.sin(rotationY * Math.PI / 180 + angle);
+            missileVY[i] = 0.2f;
+            missileVZ[i] = (float)Math.cos(rotationY * Math.PI / 180 + angle);
+        }
+    }
+
+    /**
+     * 🎯 Dibuja los misiles activos
+     * OPTIMIZADO: Usa buffers pre-asignados para evitar GC
+     */
+    private void drawMissiles() {
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
+
+        for (int i = 0; i < MAX_MISSILES; i++) {
+            if (missileActive[i]) {
+                // Usar arrays pre-asignados (no crear new cada frame)
+                for (int j = 0; j < MISSILE_TRAIL_POINTS; j++) {
+                    float t = j * 0.05f;
+                    missileTrailVerts[j * 3] = missileX[i] - missileVX[i] * t;
+                    missileTrailVerts[j * 3 + 1] = missileY[i] - missileVY[i] * t;
+                    missileTrailVerts[j * 3 + 2] = missileZ[i] - missileVZ[i] * t;
+
+                    float alpha = 1f - j * 0.15f;
+                    missileTrailCols[j * 4] = 1.0f;      // Rojo
+                    missileTrailCols[j * 4 + 1] = 0.5f - j * 0.08f;  // Naranja a rojo
+                    missileTrailCols[j * 4 + 2] = 0.1f;
+                    missileTrailCols[j * 4 + 3] = alpha;
+                }
+
+                // Usar buffers pre-asignados (no ByteBuffer.allocateDirect cada frame)
+                missileTrailVertexBuffer.clear();
+                missileTrailVertexBuffer.put(missileTrailVerts).position(0);
+
+                missileTrailColorBuffer.clear();
+                missileTrailColorBuffer.put(missileTrailCols).position(0);
+
+                if (explosionProgram > 0) {
+                    GLES20.glUseProgram(explosionProgram);
+                    GLES20.glUniform1f(expPointSizeLoc, 15.0f);
+                    GLES20.glVertexAttribPointer(expPositionLoc, 3, GLES20.GL_FLOAT, false, 0, missileTrailVertexBuffer);
+                    GLES20.glEnableVertexAttribArray(expPositionLoc);
+                    GLES20.glVertexAttribPointer(expColorLoc, 4, GLES20.GL_FLOAT, false, 0, missileTrailColorBuffer);
+                    GLES20.glEnableVertexAttribArray(expColorLoc);
+                    GLES20.glDrawArrays(GLES20.GL_POINTS, 0, MISSILE_TRAIL_POINTS);
+                }
+            }
+        }
+
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+    }
+
+    // =========================================================================
+    // LIMPIEZA DE RECURSOS OPENGL
+    // =========================================================================
+
+    /**
+     * Libera todos los recursos OpenGL asociados a esta nave.
+     * DEBE llamarse cuando la escena se destruye o la nave ya no se usa.
+     */
+    public void cleanup() {
+        Log.d(TAG, "=== CLEANUP DefenderShip ===");
+
+        // Eliminar shader programs
+        if (shaderProgram != 0) {
+            GLES20.glDeleteProgram(shaderProgram);
+            Log.d(TAG, "  Shader program eliminado: " + shaderProgram);
+            shaderProgram = 0;
+        }
+
+        if (explosionProgram != 0) {
+            GLES20.glDeleteProgram(explosionProgram);
+            Log.d(TAG, "  Explosion program eliminado: " + explosionProgram);
+            explosionProgram = 0;
+        }
+
+        // Eliminar textura
+        if (textureId != 0) {
+            GLES20.glDeleteTextures(1, new int[]{textureId}, 0);
+            Log.d(TAG, "  Textura eliminada: " + textureId);
+            textureId = 0;
+        }
+
+        // Limpiar buffers (Java memory, no necesitan glDelete)
+        vertexBuffer = null;
+        texCoordBuffer = null;
+        indexBuffer = null;
+
+        // Limpiar laseres
+        if (lasers != null) {
+            for (Laser laser : lasers) {
+                laser.cleanup();
+            }
+            lasers.clear();
+        }
+
+        Log.d(TAG, "=== CLEANUP COMPLETADO ===");
     }
 }

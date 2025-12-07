@@ -86,8 +86,8 @@ public class GlowDreamService extends DreamService {
 
         glSurfaceView = new GLSurfaceView(this);
 
-        // Configurar OpenGL ES 2.0
-        glSurfaceView.setEGLContextClientVersion(2);
+        // Configurar OpenGL ES 3.0
+        glSurfaceView.setEGLContextClientVersion(3);
 
         // Configurar fondo transparente (para efectos de blend)
         glSurfaceView.setEGLConfigChooser(8, 8, 8, 8, 16, 0);

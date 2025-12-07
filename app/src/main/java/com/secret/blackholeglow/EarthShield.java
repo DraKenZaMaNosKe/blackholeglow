@@ -53,6 +53,11 @@ public class EarthShield implements SceneObject, CameraAware {
     private final float[] impactIntensities = new float[MAX_IMPACTS];
     private int currentImpactIndex = 0;
 
+    // ⚡ OPTIMIZACIÓN: Matrices reutilizables (evitar allocations en draw)
+    private final float[] modelMatrixCache = new float[16];
+    private final float[] mvpMatrixCache = new float[16];
+    private final float[] impactColorCache = new float[3];
+
     /**
      * Constructor del EarthShield
      * @param x Posición X (centro de la Tierra)
@@ -188,19 +193,17 @@ public class EarthShield implements SceneObject, CameraAware {
         GLES20.glEnable(GLES20.GL_BLEND);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
 
-        // Construir matriz de modelo
-        float[] modelMatrix = new float[16];
-        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
-        android.opengl.Matrix.translateM(modelMatrix, 0, position[0], position[1], position[2]);
-        android.opengl.Matrix.rotateM(modelMatrix, 0, rotationAngle, 0, 1, 0);
-        android.opengl.Matrix.scaleM(modelMatrix, 0, scale, scale, scale);
+        // Construir matriz de modelo (⚡ OPTIMIZADO: usar caches)
+        android.opengl.Matrix.setIdentityM(modelMatrixCache, 0);
+        android.opengl.Matrix.translateM(modelMatrixCache, 0, position[0], position[1], position[2]);
+        android.opengl.Matrix.rotateM(modelMatrixCache, 0, rotationAngle, 0, 1, 0);
+        android.opengl.Matrix.scaleM(modelMatrixCache, 0, scale, scale, scale);
 
         // Construir matriz MVP
-        float[] mvpMatrix = new float[16];
-        camera.computeMvp(modelMatrix, mvpMatrix);
+        camera.computeMvp(modelMatrixCache, mvpMatrixCache);
 
         // Enviar uniforms
-        GLES20.glUniformMatrix4fv(uMvpLoc, 1, false, mvpMatrix, 0);
+        GLES20.glUniformMatrix4fv(uMvpLoc, 1, false, mvpMatrixCache, 0);
         GLES20.glUniform1f(uTimeLoc, rotationAngle);
 
         // Textura
@@ -208,9 +211,11 @@ public class EarthShield implements SceneObject, CameraAware {
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
         GLES20.glUniform1i(uTextureLoc, 0);
 
-        // Color base ROJO VOLCÁNICO (diferente del forcefield azul)
-        float[] impactColor = {0.8f, 0.2f, 0.0f};  // Rojo volcánico
-        GLES20.glUniform3fv(uColorLoc, 1, impactColor, 0);
+        // Color base ROJO VOLCÁNICO (⚡ OPTIMIZADO: usar cache)
+        impactColorCache[0] = 0.8f;
+        impactColorCache[1] = 0.2f;
+        impactColorCache[2] = 0.0f;
+        GLES20.glUniform3fv(uColorLoc, 1, impactColorCache, 0);
 
         // Alpha = 0.0 (COMPLETAMENTE INVISIBLE - solo se ven grietas/ondas/calor)
         GLES20.glUniform1f(uAlphaLoc, 0.0f);

@@ -44,6 +44,11 @@ public class ComboBar {
     private final float[] COLOR_MAX = {1.0f, 0.0f, 0.0f, 1.0f};    // Rojo pulsante
     private final float[] COLOR_LASER = {0.0f, 0.8f, 1.0f, 1.0f};  // Cyan eléctrico
 
+    // ⚡ OPTIMIZACIÓN: Arrays cacheados para evitar allocations en draw()
+    private final float[] fillCoordsCache = new float[12];  // 4 vértices * 3 coords
+    private final float[] laserFlashColorCache = new float[4];
+    private final float[] glowColorCache = new float[4];
+
     // OpenGL
     private int shaderProgram;
     private FloatBuffer vertexBuffer;
@@ -243,31 +248,38 @@ public class ComboBar {
 
         // 2. Dibujar el relleno de la barra
         if (currentFill > 0) {
-            // Actualizar vértices del relleno según currentFill
+            // ⚡ OPTIMIZADO: Usar array cacheado para vértices
             float fillWidth = BAR_WIDTH * currentFill;
-            float[] fillCoords = {
-                BAR_X + 0.01f + shakeX, BAR_Y - BAR_HEIGHT/2 + 0.01f, 0.0f,
-                BAR_X + fillWidth - 0.01f + shakeX, BAR_Y - BAR_HEIGHT/2 + 0.01f, 0.0f,
-                BAR_X + fillWidth - 0.01f + shakeX, BAR_Y + BAR_HEIGHT/2 - 0.01f, 0.0f,
-                BAR_X + 0.01f + shakeX, BAR_Y + BAR_HEIGHT/2 - 0.01f, 0.0f,
-            };
+            fillCoordsCache[0] = BAR_X + 0.01f + shakeX;
+            fillCoordsCache[1] = BAR_Y - BAR_HEIGHT/2 + 0.01f;
+            fillCoordsCache[2] = 0.0f;
+            fillCoordsCache[3] = BAR_X + fillWidth - 0.01f + shakeX;
+            fillCoordsCache[4] = BAR_Y - BAR_HEIGHT/2 + 0.01f;
+            fillCoordsCache[5] = 0.0f;
+            fillCoordsCache[6] = BAR_X + fillWidth - 0.01f + shakeX;
+            fillCoordsCache[7] = BAR_Y + BAR_HEIGHT/2 - 0.01f;
+            fillCoordsCache[8] = 0.0f;
+            fillCoordsCache[9] = BAR_X + 0.01f + shakeX;
+            fillCoordsCache[10] = BAR_Y + BAR_HEIGHT/2 - 0.01f;
+            fillCoordsCache[11] = 0.0f;
 
-            fillVertexBuffer.put(fillCoords);
+            fillVertexBuffer.clear();
+            fillVertexBuffer.put(fillCoordsCache);
             fillVertexBuffer.position(0);
 
             GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 12, fillVertexBuffer);
 
             // Color según nivel de combo (adaptado para x5)
+            // ⚡ OPTIMIZADO: Usar arrays cacheados
             float[] color;
             if (isLaserReady) {
                 // Parpadeo cyan-blanco cuando está listo (x5)
                 float flash = glowIntensity;
-                color = new float[] {
-                    COLOR_LASER[0] * (1-flash) + flash,
-                    COLOR_LASER[1] * (1-flash) + flash,
-                    COLOR_LASER[2] * (1-flash) + flash,
-                    1.0f
-                };
+                laserFlashColorCache[0] = COLOR_LASER[0] * (1-flash) + flash;
+                laserFlashColorCache[1] = COLOR_LASER[1] * (1-flash) + flash;
+                laserFlashColorCache[2] = COLOR_LASER[2] * (1-flash) + flash;
+                laserFlashColorCache[3] = 1.0f;
+                color = laserFlashColorCache;
             } else if (currentCombo == 4) {
                 color = COLOR_HIGH;  // Naranja para x4 (casi listo)
             } else if (currentCombo == 3) {
@@ -280,9 +292,13 @@ public class ComboBar {
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 4);
 
             // Efecto de brillo adicional si está casi llena
+            // ⚡ OPTIMIZADO: Usar array cacheado para glow
             if (currentFill > 0.8f) {
-                float[] glowColor = {color[0], color[1], color[2], color[3] * 0.3f * glowIntensity};
-                GLES20.glUniform4fv(colorHandle, 1, glowColor, 0);
+                glowColorCache[0] = color[0];
+                glowColorCache[1] = color[1];
+                glowColorCache[2] = color[2];
+                glowColorCache[3] = color[3] * 0.3f * glowIntensity;
+                GLES20.glUniform4fv(colorHandle, 1, glowColorCache, 0);
                 GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 4);
             }
         }

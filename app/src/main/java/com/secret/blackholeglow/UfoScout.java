@@ -74,15 +74,31 @@ public class UfoScout implements SceneObject, CameraAware {
     private float curveAmplitude = 0.3f;
     private float curveFrequency = 1.5f;
 
-    // Estados
-    public enum State { EXPLORING, ATTACKING, EVADING, TELEPORTING, CIRCLING }
+    // Estados - Con PATROLLING para visitar POIs
+    public enum State {
+        EXPLORING,     // 🌌 Explorando libremente
+        ATTACKING,     // Atacando
+        EVADING,       // Evadiendo
+        TELEPORTING,   // Teletransportándose
+        CIRCLING,      // Circulando objetivo
+        PATROLLING     // 🛸 Patrullando POIs
+    }
     private State currentState = State.EXPLORING;
 
-    // Objetivo
-    private DefenderShip targetShip = null;
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎯 SISTEMA DE OBJETIVOS (Primario y Secundario)
+    // ═══════════════════════════════════════════════════════════════════════
+    private DefenderShip primaryTarget = null;      // Objetivo principal
+    private HumanInterceptor secondaryTarget = null; // Objetivo secundario
     private float attackRange = 15f;
     private float evadeRange = 1.2f;
     private float circleRange = 3.0f;  // Distancia para orbitar al enemigo
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🚧 REFERENCIAS A OTRAS NAVES (para evitar colisiones)
+    // ═══════════════════════════════════════════════════════════════════════
+    private UfoAttacker allyAttacker = null;
+    private float safeDistance = 1.0f;  // Distancia mínima entre naves
 
     // ═══════════════════════════════════════════════════════════════════════
     // 💔 SISTEMA DE VIDA (HP)
@@ -117,12 +133,34 @@ public class UfoScout implements SceneObject, CameraAware {
     // Tiempo acumulado para efectos
     private float timeAccumulator = 0f;
 
-    // Límites de movimiento - ÁREA VISIBLE de la escena (modo vertical)
-    private static final float BOUND_X = 2.0f;       // Límites horizontales
-    private static final float BOUND_Y_MIN = 0.3f;   // Abajo
-    private static final float BOUND_Y_MAX = 3.2f;   // Arriba (más espacio vertical)
-    private static final float BOUND_Z_MIN = -3.0f;  // Lejos (más pequeño)
-    private static final float BOUND_Z_MAX = 2.0f;   // Cerca (más grande)
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌌 LÍMITES DE MOVIMIENTO EXPANDIDOS - TODA LA ESCENA
+    // ═══════════════════════════════════════════════════════════════════════
+    private static final float BOUND_X = 3.5f;        // Más ancho
+    private static final float BOUND_Y_MIN = -2.5f;   // ¡Hasta el ecualizador!
+    private static final float BOUND_Y_MAX = 3.5f;    // Hasta arriba
+    private static final float BOUND_Z_MIN = -4.0f;   // Más profundidad
+    private static final float BOUND_Z_MAX = 3.0f;    // Más cerca de cámara
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎯 PUNTOS DE INTERÉS (POIs) - Lugares a explorar
+    // ═══════════════════════════════════════════════════════════════════════
+    private static final float[][] POINTS_OF_INTEREST = {
+        {-2.5f, 2.5f, -1.5f},    // 🛰️ Cerca de la estación espacial
+        {3.0f, 2.0f, -2.0f},     // ☀️ Cerca del sol
+        {-0.5f, 0.5f, 0.0f},     // 🌍 Cerca de la Tierra
+        {-2.5f, -2.0f, 2.0f},    // 🎵 Zona del ecualizador (izquierda)
+        {2.5f, -2.0f, 2.0f},     // 🎵 Zona del ecualizador (derecha)
+        {0.0f, -2.3f, 2.5f},     // 🎵 Centro del ecualizador (frente)
+        {-3.0f, 0.5f, -3.5f},    // 🌌 Galaxias lejanas
+        {3.0f, 0.5f, -3.5f},     // 🌌 Galaxias lejanas
+        {0.0f, 3.2f, 0.0f},      // ⬆️ Zona superior
+        {-2.0f, 1.0f, 2.0f},     // 📍 Frente izquierda
+        {2.0f, 1.0f, 2.0f},      // 📍 Frente derecha
+    };
+    private int currentPOI = 0;
+    private float poiTimer = 0f;
+    private float poiInterval = 4.0f;
 
     // Referencia a la Tierra para colisiones láser
     private float earthX = 0f, earthY = 0f, earthZ = 0f, earthRadius = 1.0f;
@@ -130,12 +168,12 @@ public class UfoScout implements SceneObject, CameraAware {
     // ═══════════════════════════════════════════════════════════════════════
     // 🔫 SISTEMA DE DISPAROS (TEAM ALIEN - LÁSER VERDE)
     // ═══════════════════════════════════════════════════════════════════════
-    private static final int MAX_LASERS = 5;
+    private static final int MAX_LASERS = 8;
     private final List<Laser> lasers = new ArrayList<>();
     private float shootTimer = 0f;
-    private float shootInterval = 3.0f;  // Dispara cada 3 segundos
-    private static final float MIN_SHOOT_INTERVAL = 2.0f;
-    private static final float MAX_SHOOT_INTERVAL = 4.0f;
+    private float shootInterval = 1.0f;  // Dispara cada 1 segundo
+    private static final float MIN_SHOOT_INTERVAL = 0.7f;
+    private static final float MAX_SHOOT_INTERVAL = 1.5f;
 
     /**
      * Constructor
@@ -358,10 +396,74 @@ public class UfoScout implements SceneObject, CameraAware {
     }
 
     /**
-     * Establece el objetivo a atacar
+     * 🎯 Establece el objetivo primario (DefenderShip)
+     */
+    public void setPrimaryTarget(DefenderShip target) {
+        this.primaryTarget = target;
+    }
+
+    /**
+     * 🎯 Establece el objetivo primario (método legacy)
      */
     public void setTarget(DefenderShip target) {
-        this.targetShip = target;
+        this.primaryTarget = target;
+    }
+
+    /**
+     * 🎯 Establece el objetivo secundario (HumanInterceptor)
+     */
+    public void setSecondaryTarget(HumanInterceptor target) {
+        this.secondaryTarget = target;
+    }
+
+    /**
+     * 🚧 Establece referencia al aliado UfoAttacker para evitar colisiones
+     */
+    public void setAllyAttacker(UfoAttacker ally) {
+        this.allyAttacker = ally;
+    }
+
+    /**
+     * 🎯 Obtiene el objetivo activo actual (primario si existe, sino secundario)
+     */
+    private Object getActiveTarget() {
+        if (primaryTarget != null && !primaryTarget.isDestroyed()) {
+            return primaryTarget;
+        }
+        if (secondaryTarget != null && !secondaryTarget.isDestroyed()) {
+            return secondaryTarget;
+        }
+        return null;
+    }
+
+    /**
+     * 🎯 Obtiene la posición X del objetivo activo
+     */
+    private float getTargetX() {
+        Object target = getActiveTarget();
+        if (target instanceof DefenderShip) return ((DefenderShip) target).x;
+        if (target instanceof HumanInterceptor) return ((HumanInterceptor) target).getX();
+        return x;
+    }
+
+    /**
+     * 🎯 Obtiene la posición Y del objetivo activo
+     */
+    private float getTargetY() {
+        Object target = getActiveTarget();
+        if (target instanceof DefenderShip) return ((DefenderShip) target).y;
+        if (target instanceof HumanInterceptor) return ((HumanInterceptor) target).getY();
+        return y;
+    }
+
+    /**
+     * 🎯 Obtiene la posición Z del objetivo activo
+     */
+    private float getTargetZ() {
+        Object target = getActiveTarget();
+        if (target instanceof DefenderShip) return ((DefenderShip) target).z;
+        if (target instanceof HumanInterceptor) return ((HumanInterceptor) target).getZ();
+        return z;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -474,15 +576,36 @@ public class UfoScout implements SceneObject, CameraAware {
     private void updateShooting(float deltaTime) {
         shootTimer += deltaTime;
 
-        // Solo disparar si hay objetivo y está en modo ataque
-        if (targetShip != null && !targetShip.isDestroyed() && currentState == State.ATTACKING) {
-            if (shootTimer >= shootInterval) {
+        // Obtener objetivo activo (primario o secundario)
+        Object target = getActiveTarget();
+
+        // Disparar si hay objetivo válido
+        if (target != null) {
+            float tx = getTargetX();
+            float ty = getTargetY();
+            float tz = getTargetZ();
+
+            // Disparar en modos: ATTACKING, CIRCLING, y EXPLORING (si está cerca)
+            boolean canShoot = (currentState == State.ATTACKING || currentState == State.CIRCLING);
+
+            // También disparar en modo EXPLORING si está dentro del rango de ataque
+            if (currentState == State.EXPLORING) {
+                float dx = tx - x;
+                float dy = ty - y;
+                float dz = tz - z;
+                float dist = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+                if (dist < attackRange) {
+                    canShoot = true;
+                }
+            }
+
+            if (canShoot && shootTimer >= shootInterval) {
                 shootTimer = 0f;
                 // Nuevo intervalo aleatorio
                 shootInterval = MIN_SHOOT_INTERVAL + (float)(Math.random() * (MAX_SHOOT_INTERVAL - MIN_SHOOT_INTERVAL));
 
-                // Disparar al objetivo
-                shootAt(targetShip.x, targetShip.y, targetShip.z);
+                // Disparar al objetivo activo
+                shootAt(tx, ty, tz);
             }
         }
     }
@@ -512,12 +635,22 @@ public class UfoScout implements SceneObject, CameraAware {
 
             // Solo verificar colisiones si está activo
             if (laser.isActive()) {
-                // Verificar colisión con DefenderShip
-                if (targetShip != null && !targetShip.isDestroyed()) {
-                    if (laser.checkCollision(targetShip.x, targetShip.y, targetShip.z, 0.3f)) {
+                // Verificar colisión con DefenderShip (objetivo primario)
+                if (primaryTarget != null && !primaryTarget.isDestroyed()) {
+                    if (laser.checkCollision(primaryTarget.x, primaryTarget.y, primaryTarget.z, 0.3f)) {
                         laser.deactivate();
-                        targetShip.takeDamage();
-                        Log.d(TAG, "💥 ¡Láser verde impactó a NAVE1!");
+                        primaryTarget.takeDamage();
+                        Log.d(TAG, "💥 ¡Láser verde impactó a DefenderShip!");
+                        continue;  // No verificar más colisiones para este láser
+                    }
+                }
+
+                // Verificar colisión con HumanInterceptor (objetivo secundario)
+                if (secondaryTarget != null && !secondaryTarget.isDestroyed()) {
+                    if (laser.checkCollision(secondaryTarget.getX(), secondaryTarget.getY(), secondaryTarget.getZ(), 0.25f)) {
+                        laser.deactivate();
+                        secondaryTarget.takeDamage();
+                        Log.d(TAG, "💥 ¡Láser verde impactó a HumanInterceptor!");
                     }
                 }
             }
@@ -596,17 +729,22 @@ public class UfoScout implements SceneObject, CameraAware {
         teleportDestY = (float)(Math.random() * (BOUND_Y_MAX - BOUND_Y_MIN) + BOUND_Y_MIN);
         teleportDestZ = (float)(Math.random() * (BOUND_Z_MAX - BOUND_Z_MIN) + BOUND_Z_MIN);
 
-        // Evitar teletransportarse muy cerca del objetivo
-        if (targetShip != null && !targetShip.isDestroyed()) {
-            float dx = teleportDestX - targetShip.x;
-            float dy = teleportDestY - targetShip.y;
-            float dz = teleportDestZ - targetShip.z;
+        // Evitar teletransportarse muy cerca del objetivo activo
+        Object activeTarget = getActiveTarget();
+        if (activeTarget != null) {
+            float tx = getTargetX();
+            float ty = getTargetY();
+            float tz = getTargetZ();
+
+            float dx = teleportDestX - tx;
+            float dy = teleportDestY - ty;
+            float dz = teleportDestZ - tz;
             float dist = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
 
             if (dist < 2.0f) {
                 // Ajustar destino más lejos
-                teleportDestX = targetShip.x + (float)(Math.random() > 0.5 ? 3 : -3);
-                teleportDestZ = targetShip.z + (float)(Math.random() > 0.5 ? 3 : -3);
+                teleportDestX = tx + (float)(Math.random() > 0.5 ? 3 : -3);
+                teleportDestZ = tz + (float)(Math.random() > 0.5 ? 3 : -3);
             }
         }
 
@@ -628,10 +766,17 @@ public class UfoScout implements SceneObject, CameraAware {
         depthChangeTimer -= deltaTime;
         curvePhase += deltaTime * curveFrequency;
 
-        if (targetShip != null && !targetShip.isDestroyed()) {
-            float dx = targetShip.x - x;
-            float dy = targetShip.y - y;
-            float dz = targetShip.z - z;
+        // Usar sistema de objetivos dinámico
+        Object activeTarget = getActiveTarget();
+
+        if (activeTarget != null) {
+            float tx = getTargetX();
+            float ty = getTargetY();
+            float tz = getTargetZ();
+
+            float dx = tx - x;
+            float dy = ty - y;
+            float dz = tz - z;
             float dist = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
 
             if (dist < evadeRange) {
@@ -651,13 +796,13 @@ public class UfoScout implements SceneObject, CameraAware {
                 maxSpeed = 1.5f;
 
                 // Movimiento circular alrededor del objetivo
-                float circleAngle = (float) Math.atan2(x - targetShip.x, z - targetShip.z);
+                float circleAngle = (float) Math.atan2(x - tx, z - tz);
                 circleAngle += deltaTime * 1.2f;  // Rotar alrededor
 
                 float orbitRadius = 2.0f + (float) Math.sin(curvePhase) * 0.5f;
-                targetX = targetShip.x + (float) Math.sin(circleAngle) * orbitRadius;
-                targetZ = targetShip.z + (float) Math.cos(circleAngle) * orbitRadius;
-                targetY = targetShip.y + 0.3f + (float) Math.sin(curvePhase * 0.7f) * 0.4f;
+                targetX = tx + (float) Math.sin(circleAngle) * orbitRadius;
+                targetZ = tz + (float) Math.cos(circleAngle) * orbitRadius;
+                targetY = ty + 0.3f + (float) Math.sin(curvePhase * 0.7f) * 0.4f;
 
             } else if (dist < attackRange) {
                 // ═══ ATACAR - Acercarse en zigzag ═══
@@ -669,9 +814,9 @@ public class UfoScout implements SceneObject, CameraAware {
 
                     // Zigzag hacia el objetivo
                     float zigzag = (float)(Math.random() - 0.5) * 2.5f;
-                    targetX = targetShip.x + zigzag;
-                    targetZ = targetShip.z + (float)(Math.random() - 0.5) * 2f;
-                    targetY = targetShip.y + (float)(Math.random()) * 1.2f;
+                    targetX = tx + zigzag;
+                    targetZ = tz + (float)(Math.random() - 0.5) * 2f;
+                    targetY = ty + (float)(Math.random()) * 1.2f;
                 }
             } else {
                 // ═══ EXPLORAR - Vuelo libre orgánico ═══
@@ -683,21 +828,42 @@ public class UfoScout implements SceneObject, CameraAware {
 
                     // Destino aleatorio con preferencia hacia el objetivo
                     float bias = 0.3f;  // 30% de bias hacia el enemigo
-                    targetX = x + (targetShip.x - x) * bias + (float)(Math.random() - 0.5) * 4f;
+                    targetX = x + (tx - x) * bias + (float)(Math.random() - 0.5) * 4f;
                     targetY = (float)(Math.random() * (BOUND_Y_MAX - BOUND_Y_MIN) + BOUND_Y_MIN);
-                    targetZ = z + (targetShip.z - z) * bias + (float)(Math.random() - 0.5) * 4f;
+                    targetZ = z + (tz - z) * bias + (float)(Math.random() - 0.5) * 4f;
                 }
             }
         } else {
-            // ═══ SIN OBJETIVO - Exploración libre ═══
-            currentState = State.EXPLORING;
-            maxSpeed = 1.0f;
+            // ═══ SIN OBJETIVO - Exploración libre con POIs ═══
+            poiTimer -= deltaTime;
+            maxSpeed = 1.2f;
 
-            if (wanderTimer <= 0) {
-                wanderTimer = wanderInterval + (float)(Math.random() * 3f);
-                targetX = (float)(Math.random() * BOUND_X * 2 - BOUND_X);
-                targetY = (float)(Math.random() * (BOUND_Y_MAX - BOUND_Y_MIN) + BOUND_Y_MIN);
-                targetZ = (float)(Math.random() * (BOUND_Z_MAX - BOUND_Z_MIN) + BOUND_Z_MIN);
+            if (poiTimer <= 0) {
+                poiTimer = poiInterval + (float)(Math.random() * 3f);
+
+                // 60% ir a POI, 40% movimiento libre
+                if (Math.random() < 0.6) {
+                    currentState = State.PATROLLING;
+                    currentPOI = (int)(Math.random() * POINTS_OF_INTEREST.length);
+                    float[] poi = POINTS_OF_INTEREST[currentPOI];
+                    targetX = poi[0] + (float)(Math.random() - 0.5) * 1.0f;
+                    targetY = poi[1] + (float)(Math.random() - 0.5) * 0.8f;
+                    targetZ = poi[2] + (float)(Math.random() - 0.5) * 1.0f;
+                } else {
+                    currentState = State.EXPLORING;
+                    targetX = (float)(Math.random() * BOUND_X * 2 - BOUND_X);
+                    targetY = (float)(Math.random() * (BOUND_Y_MAX - BOUND_Y_MIN) + BOUND_Y_MIN);
+                    targetZ = (float)(Math.random() * (BOUND_Z_MAX - BOUND_Z_MIN) + BOUND_Z_MIN);
+                }
+            }
+
+            // Verificar si llegó al destino
+            float dx = targetX - x;
+            float dy = targetY - y;
+            float dz = targetZ - z;
+            float dist = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+            if (dist < 0.8f) {
+                poiTimer = 0f;  // Elegir nuevo destino
             }
         }
 
@@ -718,6 +884,63 @@ public class UfoScout implements SceneObject, CameraAware {
      * 🚀 Actualiza el movimiento ORGÁNICO con aceleración y curvas
      */
     private void updateMovement(float deltaTime) {
+        // ═══════════════════════════════════════════════════════════
+        // 🚧 ANTI-COLISIÓN CON OTRAS NAVES
+        // ═══════════════════════════════════════════════════════════
+        float avoidX = 0, avoidY = 0, avoidZ = 0;
+
+        // Evitar al aliado UfoAttacker
+        if (allyAttacker != null && !allyAttacker.isDestroyed()) {
+            float adx = x - allyAttacker.getX();
+            float ady = y - allyAttacker.getY();
+            float adz = z - allyAttacker.getZ();
+            float adist = (float) Math.sqrt(adx * adx + ady * ady + adz * adz);
+
+            if (adist < safeDistance && adist > 0.01f) {
+                float pushForce = (safeDistance - adist) / adist * 3.0f;
+                avoidX += adx * pushForce;
+                avoidY += ady * pushForce;
+                avoidZ += adz * pushForce;
+            }
+        }
+
+        // Evitar a DefenderShip (enemigo)
+        if (primaryTarget != null && !primaryTarget.isDestroyed()) {
+            float adx = x - primaryTarget.x;
+            float ady = y - primaryTarget.y;
+            float adz = z - primaryTarget.z;
+            float adist = (float) Math.sqrt(adx * adx + ady * ady + adz * adz);
+
+            if (adist < safeDistance * 0.7f && adist > 0.01f) {
+                float pushForce = (safeDistance * 0.7f - adist) / adist * 4.0f;
+                avoidX += adx * pushForce;
+                avoidY += ady * pushForce;
+                avoidZ += adz * pushForce;
+            }
+        }
+
+        // Evitar a HumanInterceptor (enemigo secundario)
+        if (secondaryTarget != null && !secondaryTarget.isDestroyed()) {
+            float adx = x - secondaryTarget.getX();
+            float ady = y - secondaryTarget.getY();
+            float adz = z - secondaryTarget.getZ();
+            float adist = (float) Math.sqrt(adx * adx + ady * ady + adz * adz);
+
+            if (adist < safeDistance * 0.7f && adist > 0.01f) {
+                float pushForce = (safeDistance * 0.7f - adist) / adist * 4.0f;
+                avoidX += adx * pushForce;
+                avoidY += ady * pushForce;
+                avoidZ += adz * pushForce;
+            }
+        }
+
+        // Aplicar fuerza de evasión a la velocidad
+        velocityX += avoidX * deltaTime * 5.0f;
+        velocityY += avoidY * deltaTime * 5.0f;
+        velocityZ += avoidZ * deltaTime * 5.0f;
+
+        // ═══════════════════════════════════════════════════════════
+
         float dx = targetX - x;
         float dy = targetY - y;
         float dz = targetZ - z;
@@ -886,5 +1109,46 @@ public class UfoScout implements SceneObject, CameraAware {
                 laser.draw();
             }
         }
+    }
+
+    // =========================================================================
+    // LIMPIEZA DE RECURSOS OPENGL
+    // =========================================================================
+
+    /**
+     * Libera todos los recursos OpenGL asociados a esta nave.
+     * DEBE llamarse cuando la escena se destruye.
+     */
+    public void cleanup() {
+        Log.d(TAG, "=== CLEANUP UfoScout ===");
+
+        // Eliminar shader program
+        if (shaderProgram != 0) {
+            GLES20.glDeleteProgram(shaderProgram);
+            Log.d(TAG, "  Shader program eliminado: " + shaderProgram);
+            shaderProgram = 0;
+        }
+
+        // Eliminar textura
+        if (textureId != 0) {
+            GLES20.glDeleteTextures(1, new int[]{textureId}, 0);
+            Log.d(TAG, "  Textura eliminada: " + textureId);
+            textureId = 0;
+        }
+
+        // Limpiar buffers
+        vertexBuffer = null;
+        uvBuffer = null;
+        indexBuffer = null;
+
+        // Limpiar laseres
+        if (lasers != null) {
+            for (Laser laser : lasers) {
+                laser.cleanup();
+            }
+            lasers.clear();
+        }
+
+        Log.d(TAG, "=== CLEANUP COMPLETADO ===");
     }
 }

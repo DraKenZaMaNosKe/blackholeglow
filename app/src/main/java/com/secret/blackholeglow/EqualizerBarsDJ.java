@@ -183,6 +183,38 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     private float aspectRatio = 0.5f;
     private boolean initialized = false;
 
+    // ⚡ OPTIMIZACIÓN: Arrays reutilizables para evitar allocations en métodos de dibujo
+    // Geometry caches (tamaño: NUM_BARS * 4 * 3 para vértices, NUM_BARS * 4 * 4 para colores)
+    private final float[] barVerticesCache = new float[NUM_BARS * 4 * 3];
+    private final float[] barColorsCache = new float[NUM_BARS * 4 * 4];
+    private final float[] glowVerticesCache = new float[NUM_BARS * 4 * 3];
+    private final float[] glowColorsCache = new float[NUM_BARS * 4 * 4];
+    private final float[] peakVerticesCache = new float[NUM_BARS * 4 * 3];
+    private final float[] peakColorsCache = new float[NUM_BARS * 4 * 4];
+
+    // Cache para getBarColor (evitar crear float[3] cada llamada)
+    private final float[] colorResultCache = new float[3];
+    private final float[] baseColorCache = new float[3];
+    private final float[] topColorCache = new float[3];
+    private final float[] glowColorCache = new float[3];
+    private final float[] lightning1ColorCache = new float[3];
+    private final float[] lightning2ColorCache = new float[3];
+
+    // Caches para rayos eléctricos (LIGHTNING_SEGMENTS * 4 * 3/4)
+    private final float[] lightningVerticesCache = new float[LIGHTNING_SEGMENTS * 4 * 3];
+    private final float[] lightningColorsCache = new float[LIGHTNING_SEGMENTS * 4 * 4];
+
+    // Caches para ondas de energía (24 segmentos * 4 * 3/4)
+    private static final int WAVE_SEGMENTS_DRAW = 24;
+    private final float[] waveVerticesCache = new float[WAVE_SEGMENTS_DRAW * 4 * 3];
+    private final float[] waveColorsCache = new float[WAVE_SEGMENTS_DRAW * 4 * 4];
+
+    // Caches para chispas (3 segmentos * 4 * 3/4)
+    private final float[] sparkPointsXCache = new float[4];
+    private final float[] sparkPointsYCache = new float[4];
+    private final float[] sparkVerticesCache = new float[3 * 4 * 3];
+    private final float[] sparkColorsCache = new float[3 * 4 * 4];
+
     // ════════════════════════════════════════════════════════════════════════
     // CONSTRUCTOR
     // ════════════════════════════════════════════════════════════════════════
@@ -593,11 +625,12 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
                 sparkLife[idx] = 0.06f + random.nextFloat() * 0.08f;  // 60-140ms
 
                 // Color: mezcla de los colores de ambas barras
-                float[] color1 = getBarColor(i, 1.0f);
-                float[] color2 = getBarColor(j, 1.0f);
-                sparkR[idx] = (color1[0] + color2[0]) / 2f;
-                sparkG[idx] = (color1[1] + color2[1]) / 2f;
-                sparkB[idx] = (color1[2] + color2[2]) / 2f;
+                // ⚡ OPTIMIZADO: Usar caches en lugar de crear arrays
+                getBarColor(i, 1.0f, lightning1ColorCache);
+                getBarColor(j, 1.0f, lightning2ColorCache);
+                sparkR[idx] = (lightning1ColorCache[0] + lightning2ColorCache[0]) / 2f;
+                sparkG[idx] = (lightning1ColorCache[1] + lightning2ColorCache[1]) / 2f;
+                sparkB[idx] = (lightning1ColorCache[2] + lightning2ColorCache[2]) / 2f;
 
                 // Hacer más brillante
                 sparkR[idx] = Math.min(1.0f, sparkR[idx] * 1.5f);
@@ -822,8 +855,12 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
 
     /**
      * Calcula el color de una barra basado en su posición (gradiente rosa→cyan)
+     * ⚡ OPTIMIZADO: Escribe resultado en array de salida para evitar allocations
+     * @param barIndex Índice de la barra (0 a NUM_BARS-1)
+     * @param intensity Intensidad del color (0 a 1)
+     * @param outColor Array de salida de tamaño 3 donde se escriben los valores RGB
      */
-    private float[] getBarColor(int barIndex, float intensity) {
+    private void getBarColor(int barIndex, float intensity, float[] outColor) {
         float t = (float) barIndex / (NUM_BARS - 1);  // 0 a 1 (izquierda a derecha)
 
         // Distancia del centro (0 = centro, 1 = extremos)
@@ -842,15 +879,19 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
             b = b + (COLOR_PEAK[2] - b) * whiteMix;
         }
 
-        return new float[]{r * intensity, g * intensity, b * intensity};
+        outColor[0] = r * intensity;
+        outColor[1] = g * intensity;
+        outColor[2] = b * intensity;
     }
 
     /**
      * Actualiza la geometría de las barras principales
+     * ⚡ OPTIMIZADO: Usa arrays cacheados en lugar de crear nuevos
      */
     private void updateBarGeometry() {
-        float[] vertices = new float[NUM_BARS * 4 * 3];
-        float[] colors = new float[NUM_BARS * 4 * 4];
+        // ⚡ OPTIMIZADO: Usar caches en lugar de new float[]
+        float[] vertices = barVerticesCache;
+        float[] colors = barColorsCache;
 
         float totalWidth = aspectRatio * 2f * 0.92f;
         float barWidth = (totalWidth - (NUM_BARS - 1) * BAR_SPACING) / NUM_BARS;
@@ -882,29 +923,30 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
             vertices[vi + 11] = 0f;
 
             // Colores con gradiente vertical
-            float[] baseColor = getBarColor(i, 0.5f + level * 0.3f);
-            float[] topColor = getBarColor(i, 0.8f + level * 0.2f);
+            // ⚡ OPTIMIZADO: Usar caches en lugar de crear arrays
+            getBarColor(i, 0.5f + level * 0.3f, baseColorCache);
+            getBarColor(i, 0.8f + level * 0.2f, topColorCache);
 
             // Bottom colors (más oscuros)
-            colors[ci + 0] = baseColor[0] * 0.6f;
-            colors[ci + 1] = baseColor[1] * 0.6f;
-            colors[ci + 2] = baseColor[2] * 0.6f;
+            colors[ci + 0] = baseColorCache[0] * 0.6f;
+            colors[ci + 1] = baseColorCache[1] * 0.6f;
+            colors[ci + 2] = baseColorCache[2] * 0.6f;
             colors[ci + 3] = 1.0f;
 
-            colors[ci + 4] = baseColor[0] * 0.6f;
-            colors[ci + 5] = baseColor[1] * 0.6f;
-            colors[ci + 6] = baseColor[2] * 0.6f;
+            colors[ci + 4] = baseColorCache[0] * 0.6f;
+            colors[ci + 5] = baseColorCache[1] * 0.6f;
+            colors[ci + 6] = baseColorCache[2] * 0.6f;
             colors[ci + 7] = 1.0f;
 
             // Top colors (más brillantes)
-            colors[ci + 8] = topColor[0];
-            colors[ci + 9] = topColor[1];
-            colors[ci + 10] = topColor[2];
+            colors[ci + 8] = topColorCache[0];
+            colors[ci + 9] = topColorCache[1];
+            colors[ci + 10] = topColorCache[2];
             colors[ci + 11] = 1.0f;
 
-            colors[ci + 12] = topColor[0];
-            colors[ci + 13] = topColor[1];
-            colors[ci + 14] = topColor[2];
+            colors[ci + 12] = topColorCache[0];
+            colors[ci + 13] = topColorCache[1];
+            colors[ci + 14] = topColorCache[2];
             colors[ci + 15] = 1.0f;
         }
 
@@ -919,10 +961,12 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
 
     /**
      * Actualiza la geometría del glow (resplandor detrás de las barras)
+     * ⚡ OPTIMIZADO: Usa arrays cacheados en lugar de crear nuevos
      */
     private void updateGlowGeometry() {
-        float[] vertices = new float[NUM_BARS * 4 * 3];
-        float[] colors = new float[NUM_BARS * 4 * 4];
+        // ⚡ OPTIMIZADO: Usar caches en lugar de new float[]
+        float[] vertices = glowVerticesCache;
+        float[] colors = glowColorsCache;
 
         float totalWidth = aspectRatio * 2f * 0.92f;
         float barWidth = (totalWidth - (NUM_BARS - 1) * BAR_SPACING) / NUM_BARS;
@@ -956,28 +1000,29 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
             vertices[vi + 11] = 0f;
 
             // Colores del glow (semi-transparentes)
-            float[] glowColor = getBarColor(i, 0.6f + level * 0.4f);
+            // ⚡ OPTIMIZADO: Usar cache en lugar de crear array
+            getBarColor(i, 0.6f + level * 0.4f, glowColorCache);
             float alpha = GLOW_INTENSITY * level;
 
             // Glow con transparencia en los bordes
-            colors[ci + 0] = glowColor[0];
-            colors[ci + 1] = glowColor[1];
-            colors[ci + 2] = glowColor[2];
+            colors[ci + 0] = glowColorCache[0];
+            colors[ci + 1] = glowColorCache[1];
+            colors[ci + 2] = glowColorCache[2];
             colors[ci + 3] = alpha * 0.3f;  // Muy transparente abajo
 
-            colors[ci + 4] = glowColor[0];
-            colors[ci + 5] = glowColor[1];
-            colors[ci + 6] = glowColor[2];
+            colors[ci + 4] = glowColorCache[0];
+            colors[ci + 5] = glowColorCache[1];
+            colors[ci + 6] = glowColorCache[2];
             colors[ci + 7] = alpha * 0.3f;
 
-            colors[ci + 8] = glowColor[0];
-            colors[ci + 9] = glowColor[1];
-            colors[ci + 10] = glowColor[2];
+            colors[ci + 8] = glowColorCache[0];
+            colors[ci + 9] = glowColorCache[1];
+            colors[ci + 10] = glowColorCache[2];
             colors[ci + 11] = alpha * 0.6f;  // Más opaco arriba
 
-            colors[ci + 12] = glowColor[0];
-            colors[ci + 13] = glowColor[1];
-            colors[ci + 14] = glowColor[2];
+            colors[ci + 12] = glowColorCache[0];
+            colors[ci + 13] = glowColorCache[1];
+            colors[ci + 14] = glowColorCache[2];
             colors[ci + 15] = alpha * 0.6f;
         }
 
@@ -993,10 +1038,12 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     /**
      * Actualiza la geometría de los peak markers con colores heredados de la barra
      * Rosa en el centro, Cyan en los lados - NO BLANCOS
+     * ⚡ OPTIMIZADO: Usa arrays cacheados en lugar de crear nuevos
      */
     private void updatePeakGeometry() {
-        float[] vertices = new float[NUM_BARS * 4 * 3];
-        float[] colors = new float[NUM_BARS * 4 * 4];
+        // ⚡ OPTIMIZADO: Usar caches en lugar de new float[]
+        float[] vertices = peakVerticesCache;
+        float[] colors = peakColorsCache;
 
         float totalWidth = aspectRatio * 2f * 0.92f;
         float barWidth = (totalWidth - (NUM_BARS - 1) * BAR_SPACING) / NUM_BARS;
@@ -1120,9 +1167,9 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
             float b = lightningB[l];
 
             // Cada segmento del rayo es un quad
-            int numQuads = LIGHTNING_SEGMENTS;
-            float[] vertices = new float[numQuads * 4 * 3];
-            float[] colors = new float[numQuads * 4 * 4];
+            // ⚡ OPTIMIZADO: Usar caches en lugar de new float[]
+            float[] vertices = lightningVerticesCache;
+            float[] colors = lightningColorsCache;
 
             int vi = 0;
             int ci = 0;
@@ -1290,9 +1337,10 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
             float outerRadius = radius + WAVE_THICKNESS;
 
             // Crear arco semicircular (solo parte superior)
-            int numSegments = 24;
-            float[] vertices = new float[numSegments * 4 * 3];  // 4 vértices por segmento (quad)
-            float[] colors = new float[numSegments * 4 * 4];
+            // ⚡ OPTIMIZADO: Usar caches en lugar de new float[]
+            int numSegments = WAVE_SEGMENTS_DRAW;  // 24 segmentos (constante)
+            float[] vertices = waveVerticesCache;
+            float[] colors = waveColorsCache;
 
             int vi = 0;
             int ci = 0;
@@ -1401,8 +1449,9 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
             float y2 = sparkEndY[sp];
 
             // Generar zigzag de 3 segmentos (4 puntos)
-            float[] pointsX = new float[4];
-            float[] pointsY = new float[4];
+            // ⚡ OPTIMIZADO: Usar caches en lugar de new float[]
+            float[] pointsX = sparkPointsXCache;
+            float[] pointsY = sparkPointsYCache;
 
             pointsX[0] = x1;
             pointsY[0] = y1;
@@ -1431,9 +1480,10 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
             pointsY[2] = y1 + dy * 0.66f + perpY * offset2;
 
             // Crear quads para los 3 segmentos
+            // ⚡ OPTIMIZADO: Usar caches en lugar de new float[]
             int numSegments = 3;
-            float[] vertices = new float[numSegments * 4 * 3];
-            float[] colors = new float[numSegments * 4 * 4];
+            float[] vertices = sparkVerticesCache;
+            float[] colors = sparkColorsCache;
 
             int vi = 0;
             int ci = 0;

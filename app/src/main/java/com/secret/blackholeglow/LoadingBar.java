@@ -55,6 +55,8 @@ public class LoadingBar implements SceneObject {
     private static final float[] COLOR_CYAN = {0.0f, 0.9f, 1.0f};
     private static final float[] COLOR_MAGENTA = {1.0f, 0.2f, 0.8f};
     private static final float[] COLOR_BG = {0.1f, 0.1f, 0.15f};
+    // ⚡ OPTIMIZACIÓN: Color blanco cacheado para evitar allocation en draw
+    private static final float[] COLOR_WHITE = {1f, 1f, 1f};
 
     // Vertex shader
     private static final String VERTEX_SHADER =
@@ -247,12 +249,13 @@ public class LoadingBar implements SceneObject {
             // ═══════════════════════════════════════════════════════════
             float edgeX = -adjustedWidth/2 + progressWidth;
             float edgeWidth = 0.02f;
+            // ⚡ OPTIMIZADO: Usar COLOR_WHITE cacheado
             drawQuad(
                 edgeX - edgeWidth/2,
                 barY - adjustedHeight,
                 edgeWidth,
                 adjustedHeight*2,
-                new float[]{1f, 1f, 1f},
+                COLOR_WHITE,
                 alpha * 0.6f * (0.7f + 0.3f * (float)Math.sin(time * 5f)),
                 false
             );

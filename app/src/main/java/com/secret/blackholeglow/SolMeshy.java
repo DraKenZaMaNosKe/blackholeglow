@@ -140,6 +140,8 @@ public class SolMeshy extends BaseShaderProgram implements SceneObject, CameraAw
         this.camera = camera;
     }
 
+    private static final float TIME_WRAP = 1000f;
+
     @Override
     public void update(float dt) {
         // Rotación lenta del sol
@@ -148,6 +150,7 @@ public class SolMeshy extends BaseShaderProgram implements SceneObject, CameraAw
 
         // Acumular tiempo para efectos de plasma
         time += dt;
+        if (time > TIME_WRAP) time -= TIME_WRAP;
     }
 
     @Override

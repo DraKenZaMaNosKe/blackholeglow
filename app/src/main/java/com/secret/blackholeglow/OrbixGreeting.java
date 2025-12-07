@@ -126,7 +126,23 @@ public class OrbixGreeting implements SceneObject {
 
     // ⚡ OPTIMIZACIÓN: Reducir updates de texturas
     private long lastClockUpdate = 0;
-    private static final long CLOCK_UPDATE_INTERVAL = 16; // ~60fps para reloj
+    private static final long CLOCK_UPDATE_INTERVAL = 100; // ⚡ OPTIMIZADO: 10fps para reloj (no necesita ms precision)
+
+    // ⚡ OPTIMIZACIÓN CRÍTICA: Cache de objetos para evitar allocations en update()
+    // Estos objetos se crean UNA vez y se reutilizan
+    private final Calendar calendarCache = Calendar.getInstance();
+    private final Calendar birthdayCalendarCache = Calendar.getInstance();  // Para cálculo de cumpleaños
+    private final StringBuilder clockStringBuilder = new StringBuilder(20);
+    private final StringBuilder lifeStringBuilder = new StringBuilder(30);
+    private final StringBuilder birthdayStringBuilder = new StringBuilder(30);
+
+    // ⚡ OPTIMIZACIÓN: Paint objects cacheados (NO crear en cada update)
+    private Paint clockPaintCache;
+    private Paint clockGlowPaintCache;
+    private Paint lifePaintCache;
+    private Paint lifeGlowPaintCache;
+    private Paint bdPaintCache;
+    private Paint bdGlowPaintCache;
 
     // Posiciones Y (coordenadas normalizadas -1 a 1)
     // AJUSTADO: Subir todos los elementos para no tapar controles del launcher
@@ -248,6 +264,50 @@ public class OrbixGreeting implements SceneObject {
 
         heartBitmap = Bitmap.createBitmap(HEART_TEX_SIZE, HEART_TEX_SIZE, Bitmap.Config.ARGB_8888);
         heartCanvas = new Canvas(heartBitmap);
+
+        // ⚡ OPTIMIZACIÓN: Inicializar Paint caches UNA sola vez
+        initPaintCaches();
+    }
+
+    /**
+     * ⚡ OPTIMIZACIÓN CRÍTICA: Inicializa los Paint objects una sola vez
+     * Estos se reutilizan en cada update en lugar de crear nuevos
+     */
+    private void initPaintCaches() {
+        // Clock paint
+        clockPaintCache = new Paint(Paint.ANTI_ALIAS_FLAG);
+        clockPaintCache.setColor(0xFFFFFFFF);
+        clockPaintCache.setTextSize(28);
+        clockPaintCache.setTextAlign(Paint.Align.CENTER);
+        clockPaintCache.setTypeface(Typeface.MONOSPACE);
+
+        clockGlowPaintCache = new Paint(clockPaintCache);
+        clockGlowPaintCache.setColor(0xFF00FF88);
+        clockGlowPaintCache.setMaskFilter(new android.graphics.BlurMaskFilter(4, android.graphics.BlurMaskFilter.Blur.NORMAL));
+
+        // Life clock paint
+        lifePaintCache = new Paint(Paint.ANTI_ALIAS_FLAG);
+        lifePaintCache.setColor(0xFFFFFFFF);
+        lifePaintCache.setTextSize(22);
+        lifePaintCache.setTextAlign(Paint.Align.CENTER);
+        lifePaintCache.setTypeface(Typeface.MONOSPACE);
+
+        lifeGlowPaintCache = new Paint(lifePaintCache);
+        lifeGlowPaintCache.setColor(0xFFFF6688);
+        lifeGlowPaintCache.setMaskFilter(new android.graphics.BlurMaskFilter(4, android.graphics.BlurMaskFilter.Blur.NORMAL));
+
+        // Birthday paint
+        bdPaintCache = new Paint(Paint.ANTI_ALIAS_FLAG);
+        bdPaintCache.setColor(0xFFFFFFFF);
+        bdPaintCache.setTextSize(20);
+        bdPaintCache.setTextAlign(Paint.Align.CENTER);
+        bdPaintCache.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+
+        bdGlowPaintCache = new Paint(bdPaintCache);
+        bdGlowPaintCache.setColor(0xFF00FFAA);
+        bdGlowPaintCache.setMaskFilter(new android.graphics.BlurMaskFilter(4, android.graphics.BlurMaskFilter.Blur.NORMAL));
+
+        Log.d(TAG, "⚡ Paint caches inicializados");
     }
 
     private void initOpenGL() {
@@ -528,54 +588,54 @@ public class OrbixGreeting implements SceneObject {
     }
 
     private void updateClockTexture() {
-        if (clockBitmap == null) return;
+        if (clockBitmap == null || clockPaintCache == null) return;
 
-        // ⚡ OPTIMIZACIÓN: Limitar updates a ~60fps
+        // ⚡ OPTIMIZACIÓN: Limitar updates a 10fps (100ms) - no necesita precisión de ms
         long now = System.currentTimeMillis();
         if (now - lastClockUpdate < CLOCK_UPDATE_INTERVAL) return;
         lastClockUpdate = now;
 
-        Calendar cal = Calendar.getInstance();
-        String clockText = String.format("%02d:%02d:%02d:%03d",
-            cal.get(Calendar.HOUR_OF_DAY),
-            cal.get(Calendar.MINUTE),
-            cal.get(Calendar.SECOND),
-            cal.get(Calendar.MILLISECOND));
+        // ⚡ OPTIMIZACIÓN: Reutilizar Calendar en lugar de crear uno nuevo
+        calendarCache.setTimeInMillis(now);
 
+        // ⚡ OPTIMIZACIÓN: Usar StringBuilder en lugar de String.format
+        clockStringBuilder.setLength(0);
+        int hour = calendarCache.get(Calendar.HOUR_OF_DAY);
+        int minute = calendarCache.get(Calendar.MINUTE);
+        int second = calendarCache.get(Calendar.SECOND);
+
+        if (hour < 10) clockStringBuilder.append('0');
+        clockStringBuilder.append(hour).append(':');
+        if (minute < 10) clockStringBuilder.append('0');
+        clockStringBuilder.append(minute).append(':');
+        if (second < 10) clockStringBuilder.append('0');
+        clockStringBuilder.append(second);
+
+        String clockText = clockStringBuilder.toString();
         if (clockText.equals(lastClockText)) return;
         lastClockText = clockText;
 
         clockBitmap.eraseColor(0x00000000);
 
-        Paint clockPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        clockPaint.setColor(0xFFFFFFFF);
-        clockPaint.setTextSize(28);
-        clockPaint.setTextAlign(Paint.Align.CENTER);
-        clockPaint.setTypeface(Typeface.MONOSPACE);
-
-        Paint glowPaint = new Paint(clockPaint);
-        glowPaint.setColor(0xFF00FF88);
-        glowPaint.setMaskFilter(new android.graphics.BlurMaskFilter(4, android.graphics.BlurMaskFilter.Blur.NORMAL));
-
+        // ⚡ OPTIMIZACIÓN: Usar Paint cacheados
         float centerX = CLOCK_TEX_WIDTH / 2f;
         float centerY = CLOCK_TEX_HEIGHT / 2f + 10;
 
-        clockCanvas.drawText(clockText, centerX, centerY, glowPaint);
-        clockCanvas.drawText(clockText, centerX, centerY, clockPaint);
+        clockCanvas.drawText(clockText, centerX, centerY, clockGlowPaintCache);
+        clockCanvas.drawText(clockText, centerX, centerY, clockPaintCache);
 
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, clockTextureId);
         GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, clockBitmap, 0);
     }
 
     private void updateLifeClockTexture() {
-        if (!hasBirthDate || lifeClockBitmap == null) return;
+        if (!hasBirthDate || lifeClockBitmap == null || lifePaintCache == null) return;
 
         long now = System.currentTimeMillis();
         long lived = now - birthDateMillis;
 
         // Calcular tiempo vivido
         long seconds = lived / 1000;
-        long millis = lived % 1000;
         long minutes = seconds / 60;
         seconds = seconds % 60;
         long hours = minutes / 60;
@@ -585,81 +645,74 @@ public class OrbixGreeting implements SceneObject {
         long years = days / 365;
         days = days % 365;
 
-        String lifeText = String.format("%dy %dd %02d:%02d:%02d:%03d",
-            years, days, hours, minutes, seconds, millis);
+        // ⚡ OPTIMIZACIÓN: Usar StringBuilder en lugar de String.format
+        lifeStringBuilder.setLength(0);
+        lifeStringBuilder.append(years).append("y ").append(days).append("d ");
+        if (hours < 10) lifeStringBuilder.append('0');
+        lifeStringBuilder.append(hours).append(':');
+        if (minutes < 10) lifeStringBuilder.append('0');
+        lifeStringBuilder.append(minutes).append(':');
+        if (seconds < 10) lifeStringBuilder.append('0');
+        lifeStringBuilder.append(seconds);
 
+        String lifeText = lifeStringBuilder.toString();
         if (lifeText.equals(lastLifeClockText)) return;
         lastLifeClockText = lifeText;
 
         lifeClockBitmap.eraseColor(0x00000000);
 
-        Paint lifePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        lifePaint.setColor(0xFFFFFFFF);
-        lifePaint.setTextSize(22);
-        lifePaint.setTextAlign(Paint.Align.CENTER);
-        lifePaint.setTypeface(Typeface.MONOSPACE);
-
-        Paint glowPaint = new Paint(lifePaint);
-        glowPaint.setColor(0xFFFF6688);
-        glowPaint.setMaskFilter(new android.graphics.BlurMaskFilter(4, android.graphics.BlurMaskFilter.Blur.NORMAL));
-
+        // ⚡ OPTIMIZACIÓN: Usar Paint cacheados
         float centerX = LIFE_CLOCK_TEX_WIDTH / 2f;
         float centerY = LIFE_CLOCK_TEX_HEIGHT / 2f + 8;
 
-        lifeClockCanvas.drawText(lifeText, centerX, centerY, glowPaint);
-        lifeClockCanvas.drawText(lifeText, centerX, centerY, lifePaint);
+        lifeClockCanvas.drawText(lifeText, centerX, centerY, lifeGlowPaintCache);
+        lifeClockCanvas.drawText(lifeText, centerX, centerY, lifePaintCache);
 
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, lifeClockTextureId);
         GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, lifeClockBitmap, 0);
     }
 
     private void updateBirthdayTexture() {
-        if (!hasBirthDate || birthdayBitmap == null) return;
+        if (!hasBirthDate || birthdayBitmap == null || bdPaintCache == null) return;
 
-        Calendar now = Calendar.getInstance();
-        Calendar nextBirthday = Calendar.getInstance();
-        nextBirthday.setTimeInMillis(birthDateMillis);
-        nextBirthday.set(Calendar.YEAR, now.get(Calendar.YEAR));
+        // ⚡ OPTIMIZACIÓN: Reutilizar Calendar caches
+        long nowMillis = System.currentTimeMillis();
+        calendarCache.setTimeInMillis(nowMillis);
+        birthdayCalendarCache.setTimeInMillis(birthDateMillis);
+        birthdayCalendarCache.set(Calendar.YEAR, calendarCache.get(Calendar.YEAR));
 
         // Si ya pasó este año, siguiente año
-        if (nextBirthday.before(now)) {
-            nextBirthday.add(Calendar.YEAR, 1);
+        if (birthdayCalendarCache.before(calendarCache)) {
+            birthdayCalendarCache.add(Calendar.YEAR, 1);
         }
 
-        long diff = nextBirthday.getTimeInMillis() - now.getTimeInMillis();
+        long diff = birthdayCalendarCache.getTimeInMillis() - nowMillis;
         long days = diff / (24 * 60 * 60 * 1000);
         long hours = (diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000);
         long minutes = (diff % (60 * 60 * 1000)) / (60 * 1000);
 
-        String birthdayText;
+        // ⚡ OPTIMIZACIÓN: Usar StringBuilder en lugar de String.format
+        birthdayStringBuilder.setLength(0);
         if (days == 0 && hours == 0 && minutes == 0) {
-            birthdayText = "🎂 ¡FELIZ CUMPLEAÑOS! 🎂";
+            birthdayStringBuilder.append("🎂 ¡FELIZ CUMPLEAÑOS! 🎂");
         } else if (days == 0) {
-            birthdayText = String.format("🎂 %dh %dm", hours, minutes);
+            birthdayStringBuilder.append("🎂 ").append(hours).append("h ").append(minutes).append("m");
         } else {
-            birthdayText = String.format("🎂 %dd %dh %dm", days, hours, minutes);
+            birthdayStringBuilder.append("🎂 ").append(days).append("d ").append(hours).append("h ").append(minutes).append("m");
         }
 
+        String birthdayText = birthdayStringBuilder.toString();
         if (birthdayText.equals(lastBirthdayText)) return;
         lastBirthdayText = birthdayText;
 
         birthdayBitmap.eraseColor(0x00000000);
 
-        Paint bdPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        bdPaint.setColor(0xFFFFFFFF);
-        bdPaint.setTextSize(20);
-        bdPaint.setTextAlign(Paint.Align.CENTER);
-        bdPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-
-        Paint glowPaint = new Paint(bdPaint);
-        glowPaint.setColor(0xFF00FFAA);
-        glowPaint.setMaskFilter(new android.graphics.BlurMaskFilter(4, android.graphics.BlurMaskFilter.Blur.NORMAL));
-
+        // ⚡ OPTIMIZACIÓN: Usar Paint cacheados
         float centerX = BIRTHDAY_TEX_WIDTH / 2f;
         float centerY = BIRTHDAY_TEX_HEIGHT / 2f + 7;
 
-        birthdayCanvas.drawText(birthdayText, centerX, centerY, glowPaint);
-        birthdayCanvas.drawText(birthdayText, centerX, centerY, bdPaint);
+        birthdayCanvas.drawText(birthdayText, centerX, centerY, bdGlowPaintCache);
+        birthdayCanvas.drawText(birthdayText, centerX, centerY, bdPaintCache);
 
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, birthdayTextureId);
         GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, birthdayBitmap, 0);

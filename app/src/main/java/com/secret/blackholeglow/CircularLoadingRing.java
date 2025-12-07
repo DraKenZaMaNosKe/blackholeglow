@@ -53,6 +53,14 @@ public class CircularLoadingRing implements SceneObject {
     private int uTimeLoc = -1;
     private FloatBuffer vertexBuffer;
 
+    // ⚡ OPTIMIZACIÓN: Colores cacheados para evitar allocations en draw()
+    private final float[] glowCyanCache = {0.0f, 0.8f, 1.0f};
+    private final float[] bgGrayCache = {0.15f, 0.15f, 0.2f};
+    private final float[] progressColorCache = new float[3];
+    private final float[] cyanColorCache = {0.0f, 0.9f, 1.0f};
+    private final float[] magentaColorCache = {1.0f, 0.2f, 0.8f};
+    private final float[] whiteColorCache = {1f, 1f, 1f};
+
     // Vertex shader
     private static final String VERTEX_SHADER =
         "attribute vec2 aPosition;\n" +
@@ -181,6 +189,7 @@ public class CircularLoadingRing implements SceneObject {
 
         // ═══════════════════════════════════════════════════════════
         // 1. GLOW EXTERIOR (más grande, transparente)
+        // ⚡ OPTIMIZADO: Usar colores cacheados
         // ═══════════════════════════════════════════════════════════
         float glowPulse = 0.3f + 0.2f * (float)Math.sin(time * 3.0);
         drawArc(
@@ -188,31 +197,29 @@ public class CircularLoadingRing implements SceneObject {
             radiusX + 0.03f, radiusY + 0.03f,
             innerRadiusX - 0.01f, innerRadiusY - 0.01f,
             0f, displayProgress,
-            new float[]{0.0f, 0.8f, 1.0f},  // Cyan
+            glowCyanCache,  // ⚡ Cyan cacheado
             alpha * glowPulse
         );
 
         // ═══════════════════════════════════════════════════════════
         // 2. FONDO DEL ANILLO (gris oscuro semi-transparente)
+        // ⚡ OPTIMIZADO: Usar color cacheado
         // ═══════════════════════════════════════════════════════════
         drawArc(
             centerX, centerY,
             radiusX, radiusY,
             innerRadiusX, innerRadiusY,
             0f, 1f,  // Círculo completo
-            new float[]{0.15f, 0.15f, 0.2f},
+            bgGrayCache,  // ⚡ Gris cacheado
             alpha * 0.5f
         );
 
         // ═══════════════════════════════════════════════════════════
         // 3. ARCO DE PROGRESO (gradiente cyan → magenta)
+        // ⚡ OPTIMIZADO: Usar arrays cacheados para interpolación
         // ═══════════════════════════════════════════════════════════
-        // Interpolar color según progreso
-        float[] progressColor = new float[3];
-        float[] cyan = {0.0f, 0.9f, 1.0f};
-        float[] magenta = {1.0f, 0.2f, 0.8f};
         for (int i = 0; i < 3; i++) {
-            progressColor[i] = cyan[i] + (magenta[i] - cyan[i]) * displayProgress;
+            progressColorCache[i] = cyanColorCache[i] + (magentaColorCache[i] - cyanColorCache[i]) * displayProgress;
         }
 
         drawArc(
@@ -220,12 +227,13 @@ public class CircularLoadingRing implements SceneObject {
             radiusX, radiusY,
             innerRadiusX, innerRadiusY,
             0f, displayProgress,
-            progressColor,
+            progressColorCache,  // ⚡ Usar cache
             alpha
         );
 
         // ═══════════════════════════════════════════════════════════
         // 4. PUNTO BRILLANTE EN EL FRENTE DEL PROGRESO
+        // ⚡ OPTIMIZADO: Usar color blanco cacheado
         // ═══════════════════════════════════════════════════════════
         if (displayProgress > 0.01f && displayProgress < 0.99f) {
             float angle = (float)(displayProgress * 2.0 * Math.PI) - (float)(Math.PI / 2.0);  // Empezar desde arriba
@@ -239,7 +247,7 @@ public class CircularLoadingRing implements SceneObject {
             // Punto brillante pulsante
             float dotPulse = 0.8f + 0.2f * (float)Math.sin(time * 8.0);
             drawCircle(dotX, dotY, dotRadius, dotRadius * aspectRatio,
-                      new float[]{1f, 1f, 1f}, alpha * dotPulse);
+                      whiteColorCache, alpha * dotPulse);  // ⚡ Blanco cacheado
         }
     }
 

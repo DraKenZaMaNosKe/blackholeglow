@@ -55,6 +55,15 @@ public class LikeButton {
     private float[] glowCyan = {0.0f, 0.85f, 1.0f};    // #00D9FF
     private float[] glowPink = {1.0f, 0.0f, 0.5f};     // #FF0080
 
+    // ⚡ OPTIMIZACIÓN: Matrices y arrays reutilizables (evitar allocations en draw)
+    private final float[] modelMatrixCache = new float[16];
+    private final float[] finalMatrixCache = new float[16];
+    private final float[] currentColorCache = new float[4];
+    private final float[] glowColorCache = new float[4];
+    private final float[] highlightColorCache = new float[4];
+    private final float[] borderColorCache = new float[4];
+    private final float[] heartColorCache = new float[4];
+
     // Shaders
     private static final String VERTEX_SHADER =
             "attribute vec4 a_Position;\n" +
@@ -169,30 +178,29 @@ public class LikeButton {
         }
 
         // ═══════════════════════════════════════════════════════════
-        // CAPA 2: CORAZÓN PRINCIPAL
+        // CAPA 2: CORAZÓN PRINCIPAL (⚡ OPTIMIZADO: usar matrices cacheadas)
         // ═══════════════════════════════════════════════════════════
-        float[] modelMatrix = new float[16];
-        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
-        android.opengl.Matrix.translateM(modelMatrix, 0, x, y, 0);
-        android.opengl.Matrix.scaleM(modelMatrix, 0, size * pulse, size * pulse, 1);
+        android.opengl.Matrix.setIdentityM(modelMatrixCache, 0);
+        android.opengl.Matrix.translateM(modelMatrixCache, 0, x, y, 0);
+        android.opengl.Matrix.scaleM(modelMatrixCache, 0, size * pulse, size * pulse, 1);
 
-        float[] finalMatrix = new float[16];
-        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        android.opengl.Matrix.multiplyMM(finalMatrixCache, 0, mvpMatrix, 0, modelMatrixCache, 0);
 
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrix, 0);
+        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrixCache, 0);
 
-        // Determinar color base
-        float[] currentColor;
+        // Determinar color base (⚡ OPTIMIZADO: copiar en lugar de clone)
+        float[] sourceColor;
         if (isOnCooldown) {
-            currentColor = colorCooldown.clone();
+            sourceColor = colorCooldown;
         } else if (isPressed) {
-            currentColor = colorPressed.clone();
+            sourceColor = colorPressed;
         } else {
-            currentColor = colorNormal.clone();
+            sourceColor = colorNormal;
         }
+        System.arraycopy(sourceColor, 0, currentColorCache, 0, 4);
 
         // Pasar color
-        GLES20.glUniform4fv(colorHandle, 1, currentColor, 0);
+        GLES20.glUniform4fv(colorHandle, 1, currentColorCache, 0);
 
         // Dibujar corazón principal
         GLES20.glEnableVertexAttribArray(positionHandle);
@@ -209,34 +217,31 @@ public class LikeButton {
         // ═══════════════════════════════════════════════════════════
         // CAPA 4: BORDE BRILLANTE
         // ═══════════════════════════════════════════════════════════
-        drawBorder(finalMatrix);
+        drawBorder(finalMatrixCache);
 
         GLES20.glDisableVertexAttribArray(positionHandle);
     }
 
     /**
      * ✨ Dibuja una capa de glow NEÓN con gradiente cyan/rosa
+     * ⚡ OPTIMIZADO: Usa matrices y arrays cacheados
      */
     private void drawGlowLayer(float[] mvpMatrix, float glowSize, float alpha) {
-        float[] modelMatrix = new float[16];
-        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
-        android.opengl.Matrix.translateM(modelMatrix, 0, x, y, 0);
-        android.opengl.Matrix.scaleM(modelMatrix, 0, glowSize, glowSize, 1);
+        android.opengl.Matrix.setIdentityM(modelMatrixCache, 0);
+        android.opengl.Matrix.translateM(modelMatrixCache, 0, x, y, 0);
+        android.opengl.Matrix.scaleM(modelMatrixCache, 0, glowSize, glowSize, 1);
 
-        float[] finalMatrix = new float[16];
-        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        android.opengl.Matrix.multiplyMM(finalMatrixCache, 0, mvpMatrix, 0, modelMatrixCache, 0);
 
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrix, 0);
+        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrixCache, 0);
 
         // Interpolar entre cyan y rosa según el tiempo para efecto neón pulsante
         float colorMix = (float) (Math.sin(pulsePhase * 2.5) * 0.5 + 0.5);
-        float[] glowColor = {
-            glowCyan[0] * (1 - colorMix) + glowPink[0] * colorMix,
-            glowCyan[1] * (1 - colorMix) + glowPink[1] * colorMix,
-            glowCyan[2] * (1 - colorMix) + glowPink[2] * colorMix,
-            alpha * 0.8f  // Más transparente para efecto neón suave
-        };
-        GLES20.glUniform4fv(colorHandle, 1, glowColor, 0);
+        glowColorCache[0] = glowCyan[0] * (1 - colorMix) + glowPink[0] * colorMix;
+        glowColorCache[1] = glowCyan[1] * (1 - colorMix) + glowPink[1] * colorMix;
+        glowColorCache[2] = glowCyan[2] * (1 - colorMix) + glowPink[2] * colorMix;
+        glowColorCache[3] = alpha * 0.8f;
+        GLES20.glUniform4fv(colorHandle, 1, glowColorCache, 0);
 
         GLES20.glEnableVertexAttribArray(positionHandle);
         GLES20.glVertexAttribPointer(positionHandle, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
@@ -245,27 +250,24 @@ public class LikeButton {
 
     /**
      * 💫 Dibuja el highlight interior con brillo neón
+     * ⚡ OPTIMIZADO: Usa matrices y arrays cacheados
      */
     private void drawHighlight(float[] mvpMatrix, float highlightSize) {
-        float[] modelMatrix = new float[16];
-        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
-        android.opengl.Matrix.translateM(modelMatrix, 0, x, y + size * 0.2f, 0);  // Centro-arriba
-        android.opengl.Matrix.scaleM(modelMatrix, 0, highlightSize * 0.5f, highlightSize * 0.4f, 1);
+        android.opengl.Matrix.setIdentityM(modelMatrixCache, 0);
+        android.opengl.Matrix.translateM(modelMatrixCache, 0, x, y + size * 0.2f, 0);  // Centro-arriba
+        android.opengl.Matrix.scaleM(modelMatrixCache, 0, highlightSize * 0.5f, highlightSize * 0.4f, 1);
 
-        float[] finalMatrix = new float[16];
-        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        android.opengl.Matrix.multiplyMM(finalMatrixCache, 0, mvpMatrix, 0, modelMatrixCache, 0);
 
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrix, 0);
+        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrixCache, 0);
 
         // Highlight cyan brillante para efecto neón interior
         float highlightPulse = (float) (Math.sin(pulsePhase * 3.0) * 0.2 + 0.5);
-        float[] highlightColor = {
-            0.5f + glowCyan[0] * 0.5f,
-            0.5f + glowCyan[1] * 0.5f,
-            0.5f + glowCyan[2] * 0.5f,
-            highlightPulse
-        };
-        GLES20.glUniform4fv(colorHandle, 1, highlightColor, 0);
+        highlightColorCache[0] = 0.5f + glowCyan[0] * 0.5f;
+        highlightColorCache[1] = 0.5f + glowCyan[1] * 0.5f;
+        highlightColorCache[2] = 0.5f + glowCyan[2] * 0.5f;
+        highlightColorCache[3] = highlightPulse;
+        GLES20.glUniform4fv(colorHandle, 1, highlightColorCache, 0);
 
         GLES20.glEnableVertexAttribArray(positionHandle);
         GLES20.glVertexAttribPointer(positionHandle, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
@@ -274,38 +276,39 @@ public class LikeButton {
 
     /**
      * 🔲 Dibuja el borde del corazón con efecto NEÓN brillante
+     * ⚡ OPTIMIZADO: Usa array cacheado
      */
     private void drawBorder(float[] matrix) {
         // Borde cyan neón brillante que pulsa
         float borderPulse = (float) (Math.sin(pulsePhase * 4.0) * 0.3 + 0.7);
-        float[] borderColor = {
-            glowCyan[0] * borderPulse + 0.3f,
-            glowCyan[1] * borderPulse + 0.1f,
-            glowCyan[2] * borderPulse,
-            1.0f
-        };
-        GLES20.glUniform4fv(colorHandle, 1, borderColor, 0);
+        borderColorCache[0] = glowCyan[0] * borderPulse + 0.3f;
+        borderColorCache[1] = glowCyan[1] * borderPulse + 0.1f;
+        borderColorCache[2] = glowCyan[2] * borderPulse;
+        borderColorCache[3] = 1.0f;
+        GLES20.glUniform4fv(colorHandle, 1, borderColorCache, 0);
         GLES20.glLineWidth(3.0f);  // Borde más grueso para efecto neón
         GLES20.glDrawArrays(GLES20.GL_LINE_LOOP, 1, 65);
     }
 
     /**
      * ♥ Dibuja el símbolo del corazón en el centro
+     * ⚡ OPTIMIZADO: Usa matrices y arrays cacheados
      */
     private void drawHeartSymbol(float[] mvpMatrix, float pulse) {
         // Dibujar un corazón más pequeño en el centro con color más claro
-        float[] modelMatrix = new float[16];
-        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
-        android.opengl.Matrix.translateM(modelMatrix, 0, x, y, 0);
-        android.opengl.Matrix.scaleM(modelMatrix, 0, size * pulse * 0.6f, size * pulse * 0.6f, 1);
+        android.opengl.Matrix.setIdentityM(modelMatrixCache, 0);
+        android.opengl.Matrix.translateM(modelMatrixCache, 0, x, y, 0);
+        android.opengl.Matrix.scaleM(modelMatrixCache, 0, size * pulse * 0.6f, size * pulse * 0.6f, 1);
 
-        float[] finalMatrix = new float[16];
-        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        android.opengl.Matrix.multiplyMM(finalMatrixCache, 0, mvpMatrix, 0, modelMatrixCache, 0);
 
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrix, 0);
+        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrixCache, 0);
 
-        float[] heartColor = {1.0f, 0.8f, 0.85f, 1.0f};  // Rosa muy claro
-        GLES20.glUniform4fv(colorHandle, 1, heartColor, 0);
+        heartColorCache[0] = 1.0f;
+        heartColorCache[1] = 0.8f;
+        heartColorCache[2] = 0.85f;
+        heartColorCache[3] = 1.0f;
+        GLES20.glUniform4fv(colorHandle, 1, heartColorCache, 0);
 
         GLES20.glEnableVertexAttribArray(positionHandle);
         GLES20.glVertexAttribPointer(positionHandle, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);

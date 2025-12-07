@@ -241,11 +241,15 @@ public abstract class WallpaperScene implements Disposable {
     public void draw() {
         if (!isLoaded || isDisposed) return;
 
-        for (SceneObject obj : sceneObjects) {
+        // Usar copia para evitar ConcurrentModificationException
+        final int size = sceneObjects.size();
+        for (int i = 0; i < size; i++) {
             try {
-                obj.draw();
+                if (i < sceneObjects.size()) {
+                    sceneObjects.get(i).draw();
+                }
             } catch (Exception e) {
-                Log.e(TAG, "Error drawing " + obj.getClass().getSimpleName(), e);
+                Log.e(TAG, "Error drawing object at " + i, e);
             }
         }
     }

@@ -2,21 +2,23 @@ package com.secret.blackholeglow.scenes;
 
 import android.content.Context;
 import android.util.Log;
+import android.view.MotionEvent;
 
 import com.secret.blackholeglow.AvatarLoader;
 import com.secret.blackholeglow.AvatarSphere;
 import com.secret.blackholeglow.BackgroundStars;
 import com.secret.blackholeglow.BatteryPowerBar;
-import com.secret.blackholeglow.BirthdayMarquee;
 import com.secret.blackholeglow.CameraAware;
 import com.secret.blackholeglow.CameraController;
 // EarthShield REMOVIDO
-import com.secret.blackholeglow.EstrellaBailarina;
+// EstrellaBailarina REMOVIDO
 // ForceField REMOVIDO
 import com.secret.blackholeglow.GreetingText;
+import com.secret.blackholeglow.HolographicTitle;
 import com.secret.blackholeglow.HPBar;
-import com.secret.blackholeglow.LeaderboardManager;
-import com.secret.blackholeglow.MagicLeaderboard;
+import com.secret.blackholeglow.Laser;
+// LeaderboardManager REMOVIDO
+// MagicLeaderboard REMOVIDO
 import com.secret.blackholeglow.MeteorShower;
 import com.secret.blackholeglow.MusicStars;
 import com.secret.blackholeglow.EqualizerBarsDJ;
@@ -27,13 +29,19 @@ import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.SceneObject;
 import com.secret.blackholeglow.SimpleTextRenderer;
 import com.secret.blackholeglow.SolMeshy;
-import com.secret.blackholeglow.SolProcedural;
+// SolProcedural REMOVIDO
 import com.secret.blackholeglow.SpaceDust;
 import com.secret.blackholeglow.SpaceStation;
 import com.secret.blackholeglow.TierraMeshy;
 import com.secret.blackholeglow.DefenderShip;
 import com.secret.blackholeglow.UfoScout;
+import com.secret.blackholeglow.UfoAttacker;
+import com.secret.blackholeglow.HumanInterceptor;
 import com.secret.blackholeglow.StarryBackground;
+import com.secret.blackholeglow.TargetingSystem;
+import com.secret.blackholeglow.TargetReticle;
+import com.secret.blackholeglow.PlasmaExplosion;
+import com.secret.blackholeglow.PlasmaBeamWeapon;
 // SunHeatEffect REMOVIDO
 import com.secret.blackholeglow.TextureManager;
 
@@ -74,9 +82,11 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
     private TierraMeshy tierraMeshy;
     private SolMeshy solMeshy;
 
-    private DefenderShip defenderShip;  // 🚀 Nave defensora
-    private SpaceStation spaceStation;  // 🛰️ Estación espacial
-    private UfoScout ufoScout;          // 🛸 UFO Scout (Meshy model)
+    private DefenderShip defenderShip;      // 🚀 Nave defensora (Team Human)
+    private HumanInterceptor humanInterceptor;  // ✈️ Interceptor humano (Team Human)
+    private SpaceStation spaceStation;      // 🛰️ Estación espacial
+    private UfoScout ufoScout;              // 🛸 UFO Scout (Team Alien)
+    private UfoAttacker ufoAttacker;        // 👾 UFO Attacker (Team Alien)
     private MeteorShower meteorShower;
     private PlayerWeapon playerWeapon;
     private BatteryPowerBar powerBar;
@@ -88,26 +98,31 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
     // hpBarForceField REMOVIDO
     private EqualizerBarsDJ equalizerDJ;             // 🎵 Ecualizador estilo DJ
     private SimpleTextRenderer planetsDestroyedCounter;
-    private MagicLeaderboard magicLeaderboard;  // ✨ Leaderboard mágico con partículas
-    private BirthdayMarquee birthdayMarquee;    // 🎂 Marquesina de cumpleaños
+    // MagicLeaderboard REMOVIDO
+    // BirthdayMarquee REMOVIDO
+    private HolographicTitle holographicTitle;  // 🔮 Título holográfico "HUMANS vs ALIENS"
 
     // ═══════════════════════════════════════════════════════════════
     // ✨ EFECTOS VISUALES
     // ═══════════════════════════════════════════════════════════════
-    private List<EstrellaBailarina> estrellasBailarinas = new ArrayList<>();
+    // EstrellaBailarinas REMOVIDO
     private BackgroundStars backgroundStars;  // ✨ Estrellas parpadeantes de fondo (con parallax)
     private SpaceDust spaceDust;              // 🚀 Polvo espacial (ilusión de viaje)
     private MusicStars musicStars;  // 🌀 Estrellas espirales musicales
-
-    // ═══════════════════════════════════════════════════════════════
-    // 🏆 LEADERBOARD
-    // ═══════════════════════════════════════════════════════════════
-    private LeaderboardManager leaderboardManager;
+    // LeaderboardManager REMOVIDO
 
     // ═══════════════════════════════════════════════════════════════
     // 📊 ESTADÍSTICAS DEL JUGADOR
     // ═══════════════════════════════════════════════════════════════
     private PlayerStats playerStats;
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🎯 SISTEMA DE TARGETING Y DISPARO ESPECIAL
+    // ═══════════════════════════════════════════════════════════════
+    private TargetingSystem targetingSystem;      // Sistema de lock-on
+    private TargetReticle targetReticle;          // Mira visual
+    private PlasmaExplosion plasmaExplosion;      // Efecto de explosión (legacy)
+    private PlasmaBeamWeapon plasmaBeamWeapon;    // ⚡ Arma de plasma con carga + viaje + impacto
 
     @Override
     public String getName() {
@@ -173,9 +188,24 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         setupUfoScout();
 
         // ═══════════════════════════════════════════════════════════
-        // 6️⃣ ESTRELLAS BAILARINAS
+        // 5.8️⃣ 👾 UFO ATTACKER (NAVE DE ATAQUE PRINCIPAL)
         // ═══════════════════════════════════════════════════════════
-        setupDancingStars();
+        setupUfoAttacker();
+
+        // ═══════════════════════════════════════════════════════════
+        // 5.9️⃣ ✈️ HUMAN INTERCEPTOR (CAZA INTERCEPTOR)
+        // ═══════════════════════════════════════════════════════════
+        setupHumanInterceptor();
+
+        // ═══════════════════════════════════════════════════════════
+        // 5.10️⃣ 🎯 CONECTAR OBJETIVOS 2v2
+        // ═══════════════════════════════════════════════════════════
+        connectBattleTargets();
+
+        // ═══════════════════════════════════════════════════════════
+        // 6️⃣ ESTRELLAS MUSICALES (MusicStars)
+        // ═══════════════════════════════════════════════════════════
+        setupMusicStars();
 
         // ═══════════════════════════════════════════════════════════
         // 7️⃣ UI ELEMENTS
@@ -196,6 +226,16 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         // 🔟 AVATAR DEL USUARIO
         // ═══════════════════════════════════════════════════════════
         setupUserAvatar();
+
+        // ═══════════════════════════════════════════════════════════
+        // 1️⃣1️⃣ TÍTULO HOLOGRÁFICO "HUMANS vs ALIENS"
+        // ═══════════════════════════════════════════════════════════
+        setupHolographicTitle();
+
+        // ═══════════════════════════════════════════════════════════
+        // 1️⃣2️⃣ 🎯 SISTEMA DE TARGETING ASISTIDO
+        // ═══════════════════════════════════════════════════════════
+        setupTargetingSystem();
 
         Log.d(TAG, "✓ Batalla Cósmica scene setup complete con " + sceneObjects.size() + " objetos");
     }
@@ -420,15 +460,7 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
                 );
             }
 
-            // Configurar DefenderShip como objetivo
-            if (defenderShip != null) {
-                ufoScout.setTarget(defenderShip);
-                Log.d(TAG, "    → OVNI1 tiene a NAVE1 como objetivo");
-
-                // 🔗 Conectar NAVE1 para que dispare a OVNI1
-                defenderShip.setTargetUfoScout(ufoScout);
-                Log.d(TAG, "    → NAVE1 tiene a OVNI1 como objetivo adicional");
-            }
+            // NOTA: Los objetivos se conectan en connectBattleTargets()
 
             addSceneObject(ufoScout);
 
@@ -438,27 +470,171 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         }
     }
 
-    private void setupDancingStars() {
+    private void setupUfoAttacker() {
         try {
-            estrellasBailarinas.clear();
+            // ═══════════════════════════════════════════════════════════
+            // 👾 OVNI2 - NAVE DE ATAQUE ALIENÍGENA PRINCIPAL
+            // ═══════════════════════════════════════════════════════════
+            // POSICIÓN INICIAL: (opuesto al Scout)
+            float attackerX = -2.0f;   // Lado izquierdo
+            float attackerY = 2.5f;    // Más arriba
+            float attackerZ = -1.5f;   // Más atrás
 
-            for (float[] pos : SceneConstants.DancingStars.POSITIONS) {
-                EstrellaBailarina estrella = new EstrellaBailarina(
-                        context, textureManager,
-                        pos[0], pos[1], pos[2],
-                        SceneConstants.DancingStars.SCALE,
-                        pos[3]
-                );
-                estrella.setCameraController(camera);
-                addSceneObject(estrella);
-                estrellasBailarinas.add(estrella);
-            }
+            // TAMAÑO: Más grande que el Scout
+            float attackerScale = 0.25f;
 
-            Log.d(TAG, "  ✓ ✨ " + estrellasBailarinas.size() + " estrellas bailarinas agregadas");
+            // ═══════════════════════════════════════════════════════════
+
+            ufoAttacker = new UfoAttacker(
+                    context,
+                    textureManager,
+                    attackerX,
+                    attackerY,
+                    attackerZ,
+                    attackerScale
+            );
+            ufoAttacker.setCameraController(camera);
+
+            // NOTA: Los objetivos se conectan en connectBattleTargets()
+
+            addSceneObject(ufoAttacker);
+
+            Log.d(TAG, "  ✓ 👾 OVNI2 (Attacker) agregado: pos(" + attackerX + "," + attackerY + "," + attackerZ + ") scale=" + attackerScale);
         } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creando estrellas: " + e.getMessage());
+            Log.e(TAG, "  ✗ Error creando UfoAttacker: " + e.getMessage(), e);
+        }
+    }
+
+    private void setupHumanInterceptor() {
+        try {
+            // ═══════════════════════════════════════════════════════════
+            // ✈️ INTERCEPTOR HUMANO - Caza rápido y ágil
+            // ═══════════════════════════════════════════════════════════
+            // POSICIÓN INICIAL: Lado opuesto a donde aparecen los aliens
+            float interceptorX = 1.5f;    // Lado derecho
+            float interceptorY = 1.0f;    // Bajo
+            float interceptorZ = 1.5f;    // Cerca de la cámara
+
+            // TAMAÑO: Similar al DefenderShip
+            float interceptorScale = 0.22f;
+
+            // ═══════════════════════════════════════════════════════════
+
+            humanInterceptor = new HumanInterceptor(
+                    context,
+                    textureManager,
+                    interceptorX,
+                    interceptorY,
+                    interceptorZ,
+                    interceptorScale
+            );
+            humanInterceptor.setCameraController(camera);
+
+            addSceneObject(humanInterceptor);
+
+            Log.d(TAG, "  ✓ ✈️ Human Interceptor agregado: pos(" + interceptorX + "," + interceptorY + "," + interceptorZ + ") scale=" + interceptorScale);
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creando HumanInterceptor: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 🎯 CONECTAR OBJETIVOS PARA BATALLA 2v2
+     *
+     * Team Human: DefenderShip + HumanInterceptor
+     * Team Alien: UfoScout + UfoAttacker
+     *
+     * Cada nave tiene un objetivo primario y uno secundario.
+     * Cuando el primario es destruido, ataca al secundario.
+     */
+    private void connectBattleTargets() {
+        Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Log.d(TAG, "🎯 CONECTANDO OBJETIVOS 2v2");
+        Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+        // ═══════════════════════════════════════════════════════════
+        // 👾 TEAM ALIEN → Ataca a Team Human
+        // ═══════════════════════════════════════════════════════════
+
+        // UfoScout: Primario = DefenderShip, Secundario = HumanInterceptor
+        if (ufoScout != null) {
+            if (defenderShip != null) {
+                ufoScout.setPrimaryTarget(defenderShip);
+                Log.d(TAG, "  🛸 UfoScout → primario: DefenderShip");
+            }
+            if (humanInterceptor != null) {
+                ufoScout.setSecondaryTarget(humanInterceptor);
+                Log.d(TAG, "  🛸 UfoScout → secundario: HumanInterceptor");
+            }
         }
 
+        // UfoAttacker: Primario = DefenderShip, Secundario = HumanInterceptor
+        if (ufoAttacker != null) {
+            if (defenderShip != null) {
+                ufoAttacker.setPrimaryTarget(defenderShip);
+                Log.d(TAG, "  👾 UfoAttacker → primario: DefenderShip");
+            }
+            if (humanInterceptor != null) {
+                ufoAttacker.setSecondaryTarget(humanInterceptor);
+                Log.d(TAG, "  👾 UfoAttacker → secundario: HumanInterceptor");
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // 🚀 TEAM HUMAN → Ataca a Team Alien
+        // ═══════════════════════════════════════════════════════════
+
+        // DefenderShip: Primario = UfoScout, Secundario = UfoAttacker
+        if (defenderShip != null) {
+            if (ufoScout != null) {
+                defenderShip.setTargetUfoScout(ufoScout);
+                Log.d(TAG, "  🚀 DefenderShip → primario: UfoScout");
+            }
+            if (ufoAttacker != null) {
+                defenderShip.setTargetUfoAttacker(ufoAttacker);
+                Log.d(TAG, "  🚀 DefenderShip → secundario: UfoAttacker");
+            }
+        }
+
+        // HumanInterceptor: Primario = UfoAttacker, Secundario = UfoScout
+        if (humanInterceptor != null) {
+            if (ufoAttacker != null) {
+                humanInterceptor.setPrimaryTarget(ufoAttacker);
+                Log.d(TAG, "  ✈️ HumanInterceptor → primario: UfoAttacker");
+            }
+            if (ufoScout != null) {
+                humanInterceptor.setSecondaryTarget(ufoScout);
+                Log.d(TAG, "  ✈️ HumanInterceptor → secundario: UfoScout");
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // 🚧 REFERENCIAS DE ALIADOS (para anti-colisión)
+        // ═══════════════════════════════════════════════════════════
+
+        // Team Human
+        if (defenderShip != null && humanInterceptor != null) {
+            defenderShip.setAllyInterceptor(humanInterceptor);
+            humanInterceptor.setAllyDefender(defenderShip);
+            Log.d(TAG, "  🤝 Team Human conectados para anti-colisión");
+        }
+
+        // Team Alien
+        if (ufoScout != null && ufoAttacker != null) {
+            ufoScout.setAllyAttacker(ufoAttacker);
+            ufoAttacker.setAllyScout(ufoScout);
+            Log.d(TAG, "  🤝 Team Alien conectados para anti-colisión");
+        }
+
+        Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Log.d(TAG, "✅ BATALLA 2v2 CONFIGURADA");
+        Log.d(TAG, "   Team Human: DefenderShip + Interceptor");
+        Log.d(TAG, "   Team Alien: UfoScout + UfoAttacker");
+        Log.d(TAG, "   Anti-colisión: ACTIVO");
+        Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    }
+
+    private void setupMusicStars() {
         // 🌀 MusicStars - Estrellas con efecto espiral galáctico
         try {
             musicStars = new MusicStars(context);
@@ -549,25 +725,77 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         // NOTA: FireButton y LikeButton son manejados por WallpaperDirector/SongSharingController
     }
 
-    private void setupLeaderboard() {
+    // setupLeaderboard() - REMOVIDO (código muerto)
+
+    /**
+     * 🔮 Configura el título holográfico "HUMANS vs ALIENS"
+     * Con efectos de glitch, aberración cromática y scan lines
+     */
+    private void setupHolographicTitle() {
         try {
-            leaderboardManager = LeaderboardManager.getInstance(context);
-
-            // ✨ Crear MagicLeaderboard con efectos de polvo estelar
-            magicLeaderboard = new MagicLeaderboard(context);
-            addSceneObject(magicLeaderboard);
-
-            Log.d(TAG, "  ✓ ✨ MagicLeaderboard creado con efectos de polvo estelar");
-
-            // 🎂 Crear BirthdayMarquee para celebrar cumpleaños (DESHABILITADO temporalmente)
-            // birthdayMarquee = new BirthdayMarquee(context);
-            // addSceneObject(birthdayMarquee);
-            // Log.d(TAG, "  ✓ 🎂 BirthdayMarquee creado");
-
-            // Actualizar inmediatamente
-            updateLeaderboardUI();
+            holographicTitle = new HolographicTitle(context);
+            addSceneObject(holographicTitle);
+            Log.d(TAG, "  ✓ 🔮 HolographicTitle 'HUMANS vs ALIENS' creado");
         } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creando leaderboard: " + e.getMessage());
+            Log.e(TAG, "  ✗ Error creando HolographicTitle: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 🎯 Configura el sistema de targeting asistido
+     * Permite al usuario disparar arma especial tocando enemigos con lock-on
+     * También permite tocar directamente sobre una nave enemiga para atacarla
+     */
+    private void setupTargetingSystem() {
+        try {
+            // 1. Sistema de targeting (lógica de lock-on)
+            targetingSystem = new TargetingSystem();
+            targetingSystem.setInterceptor(humanInterceptor);
+            targetingSystem.setTargets(ufoAttacker, ufoScout);
+            targetingSystem.setCamera(camera);
+
+            // Callback cuando se dispara el arma especial
+            targetingSystem.setOnSpecialFireListener((targetX, targetY, targetZ, target) -> {
+                Log.d(TAG, "⚡ ¡PLASMA BEAM disparado hacia (" + targetX + ", " + targetY + ", " + targetZ + ")!");
+
+                // Usar PlasmaBeamWeapon con las 3 fases épicas
+                if (plasmaBeamWeapon != null && humanInterceptor != null) {
+                    // Obtener posición del interceptor como origen del rayo
+                    float srcX = humanInterceptor.getX();
+                    float srcY = humanInterceptor.getY();
+                    float srcZ = humanInterceptor.getZ();
+
+                    plasmaBeamWeapon.fire(srcX, srcY, srcZ, targetX, targetY, targetZ);
+                }
+            });
+
+            Log.d(TAG, "  ✓ 🎯 TargetingSystem configurado");
+
+            // 2. Mira visual (UI del targeting)
+            targetReticle = new TargetReticle();
+            targetReticle.setTargetingSystem(targetingSystem);
+            targetReticle.setCameraController(camera);
+            addSceneObject(targetReticle);
+            Log.d(TAG, "  ✓ 🎯 TargetReticle agregado");
+
+            // 3. ⚡ PLASMA BEAM WEAPON - Arma con 3 fases (carga, viaje, impacto)
+            plasmaBeamWeapon = new PlasmaBeamWeapon();
+            plasmaBeamWeapon.setCameraController(camera);
+            addSceneObject(plasmaBeamWeapon);
+            Log.d(TAG, "  ✓ ⚡ PlasmaBeamWeapon agregado (carga + viaje + impacto)");
+
+            // 4. Efecto de explosión plasma (legacy, por si se necesita)
+            plasmaExplosion = new PlasmaExplosion();
+            plasmaExplosion.setCameraController(camera);
+            addSceneObject(plasmaExplosion);
+            Log.d(TAG, "  ✓ 💥 PlasmaExplosion agregado (legacy)");
+
+            Log.d(TAG, "  ✓ 🎯 Sistema de targeting completo!");
+
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creando sistema de targeting: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -660,13 +888,38 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
     protected void releaseSceneResources() {
         Log.d(TAG, "🧹 Liberando recursos de Batalla Cósmica...");
 
-        // Limpiar referencias
+        // ═══════════════════════════════════════════════════════════════
+        // CLEANUP de naves de batalla (liberar recursos OpenGL)
+        // ═══════════════════════════════════════════════════════════════
+        if (defenderShip != null) {
+            defenderShip.cleanup();
+            defenderShip = null;
+        }
+
+        if (humanInterceptor != null) {
+            humanInterceptor.cleanup();
+            humanInterceptor = null;
+        }
+
+        if (ufoScout != null) {
+            ufoScout.cleanup();
+            ufoScout = null;
+        }
+
+        if (ufoAttacker != null) {
+            ufoAttacker.cleanup();
+            ufoAttacker = null;
+        }
+
+        // Limpiar recursos estaticos de Laser (shaders compartidos)
+        Laser.cleanupStatic();
+
+        // ═══════════════════════════════════════════════════════════════
+        // Limpiar otras referencias
+        // ═══════════════════════════════════════════════════════════════
         tierra = null;
         planetaTierra = null;
-        // forceField y earthShield REMOVIDOS
-        defenderShip = null;
         spaceStation = null;
-        ufoScout = null;
         meteorShower = null;
         playerWeapon = null;
         powerBar = null;
@@ -674,21 +927,22 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         backgroundStars = null;
         musicStars = null;
 
-        // Liberar MagicLeaderboard
-        if (magicLeaderboard != null) {
-            magicLeaderboard.release();
-            magicLeaderboard = null;
+        // Liberar HolographicTitle
+        if (holographicTitle != null) {
+            holographicTitle.cleanup();
+            holographicTitle = null;
         }
 
-        // Liberar BirthdayMarquee
-        if (birthdayMarquee != null) {
-            birthdayMarquee.release();
-            birthdayMarquee = null;
+        // 🎯 Liberar sistema de targeting
+        if (targetReticle != null) {
+            targetReticle.release();
+            targetReticle = null;
         }
+        targetingSystem = null;
+        plasmaExplosion = null;
+        plasmaBeamWeapon = null;
 
-        estrellasBailarinas.clear();
-
-        Log.d(TAG, "✓ Recursos liberados");
+        Log.d(TAG, "✓ Recursos OpenGL liberados correctamente");
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -761,33 +1015,11 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         return equalizerDJ;
     }
 
-    /**
-     * ✨ Actualiza el MagicLeaderboard con datos de Firebase
-     */
-    public void updateLeaderboardUI() {
-        if (leaderboardManager == null || magicLeaderboard == null) return;
-
-        leaderboardManager.getTop3(new LeaderboardManager.Top3Callback() {
-            @Override
-            public void onSuccess(List<LeaderboardManager.LeaderboardEntry> top3) {
-                if (top3 == null || top3.isEmpty()) return;
-
-                // Actualizar el MagicLeaderboard con los datos
-                magicLeaderboard.updateEntries(top3);
-            }
-
-            @Override
-            public void onError(String error) {
-                Log.e(TAG, "Error actualizando leaderboard: " + error);
-            }
-        });
-    }
+    // updateLeaderboardUI() - REMOVIDO (código muerto)
 
     // ═══════════════════════════════════════════════════════════════════════
-    // 🔄 UPDATE - Sobrescribe para actualizar leaderboard
+    // 🔄 UPDATE
     // ═══════════════════════════════════════════════════════════════════════
-
-    private long lastLeaderboardUpdate = 0;
 
     @Override
     public void update(float deltaTime) {
@@ -799,11 +1031,162 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
             equalizerDJ.update(deltaTime);
         }
 
-        // Actualizar leaderboard periódicamente
-        long now = System.currentTimeMillis();
-        if (now - lastLeaderboardUpdate > SceneConstants.Timing.LEADERBOARD_UPDATE_INTERVAL) {
-            lastLeaderboardUpdate = now;
-            updateLeaderboardUI();
+        // 🎯 Actualizar sistema de targeting (no está en sceneObjects)
+        if (targetingSystem != null) {
+            targetingSystem.update(deltaTime);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 👆 TOUCH HANDLING - Sistema de disparo especial + selección directa
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // Radio de tolerancia para detectar toque sobre nave (en coordenadas normalizadas)
+    private static final float TOUCH_HIT_RADIUS = 0.15f;
+
+    /**
+     * Maneja eventos de toque para el sistema de targeting
+     * 1. Si el usuario toca SOBRE una nave enemiga → lock + disparo inmediato
+     * 2. Si ya hay lock → dispara al objetivo lockeado
+     */
+    @Override
+    public boolean onTouchEvent(float normalizedX, float normalizedY, int action) {
+        // Solo procesar ACTION_DOWN para disparar
+        if (action != MotionEvent.ACTION_DOWN) {
+            return false;
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // 🎯 PRIMERO: Verificar si tocó directamente sobre una nave enemiga
+        // ═══════════════════════════════════════════════════════════════
+        Object touchedEnemy = checkTouchOnEnemy(normalizedX, normalizedY);
+
+        if (touchedEnemy != null) {
+            // ¡Tocó una nave enemiga! Disparar directamente a ella
+            Log.d(TAG, "👆🎯 ¡Nave enemiga tocada directamente! → " + touchedEnemy.getClass().getSimpleName());
+
+            float targetX, targetY, targetZ;
+            if (touchedEnemy instanceof UfoAttacker) {
+                UfoAttacker ufo = (UfoAttacker) touchedEnemy;
+                targetX = ufo.x;
+                targetY = ufo.y;
+                targetZ = ufo.z;
+            } else if (touchedEnemy instanceof UfoScout) {
+                UfoScout ufo = (UfoScout) touchedEnemy;
+                targetX = ufo.getX();
+                targetY = ufo.getY();
+                targetZ = ufo.getZ();
+            } else {
+                return false;
+            }
+
+            // Disparar PlasmaBeamWeapon directamente
+            if (plasmaBeamWeapon != null && humanInterceptor != null && !plasmaBeamWeapon.isActive()) {
+                float srcX = humanInterceptor.getX();
+                float srcY = humanInterceptor.getY();
+                float srcZ = humanInterceptor.getZ();
+
+                plasmaBeamWeapon.fire(srcX, srcY, srcZ, targetX, targetY, targetZ);
+                Log.d(TAG, "⚡👆 ¡DISPARO LIBRE activado hacia " + touchedEnemy.getClass().getSimpleName() + "!");
+
+                // Aplicar daño al enemigo tocado
+                applyDamageToEnemy(touchedEnemy);
+
+                return true;
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // 🎯 SEGUNDO: Si hay lock-on activo, disparar al objetivo lockeado
+        // ═══════════════════════════════════════════════════════════════
+        if (targetingSystem != null && targetingSystem.isLocked()) {
+            // El usuario tocó mientras hay un objetivo lockeado
+            if (targetingSystem.fireFromTouch()) {
+                Log.d(TAG, "🎯👆 ¡Disparo especial activado por toque (lock-on)!");
+                return true;
+            }
+        }
+
+        return false;  // No consumido
+    }
+
+    /**
+     * Verifica si el toque está cerca de alguna nave enemiga
+     * @param normalizedX coordenada X normalizada (-1 a 1)
+     * @param normalizedY coordenada Y normalizada (-1 a 1)
+     * @return El enemigo tocado, o null si no tocó ninguno
+     */
+    private Object checkTouchOnEnemy(float normalizedX, float normalizedY) {
+        // Convertir coordenadas de nave a coordenadas de pantalla aproximadas
+        // y verificar si el toque está dentro del radio de tolerancia
+
+        // Verificar UfoAttacker
+        if (ufoAttacker != null && !ufoAttacker.isDestroyed()) {
+            float[] screenPos = worldToScreenApprox(ufoAttacker.x, ufoAttacker.y, ufoAttacker.z);
+            float dx = normalizedX - screenPos[0];
+            float dy = normalizedY - screenPos[1];
+            float distance = (float) Math.sqrt(dx*dx + dy*dy);
+
+            if (distance <= TOUCH_HIT_RADIUS) {
+                return ufoAttacker;
+            }
+        }
+
+        // Verificar UfoScout
+        if (ufoScout != null && !ufoScout.isDestroyed()) {
+            float[] screenPos = worldToScreenApprox(ufoScout.getX(), ufoScout.getY(), ufoScout.getZ());
+            float dx = normalizedX - screenPos[0];
+            float dy = normalizedY - screenPos[1];
+            float distance = (float) Math.sqrt(dx*dx + dy*dy);
+
+            if (distance <= TOUCH_HIT_RADIUS) {
+                return ufoScout;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Convierte coordenadas del mundo a coordenadas de pantalla aproximadas
+     * Versión simplificada para detección de touch
+     */
+    private float[] worldToScreenApprox(float worldX, float worldY, float worldZ) {
+        // Aproximación simple: escalar posición del mundo a pantalla
+        // La cámara está en una posición fija mirando hacia el origen
+        float screenX = worldX * 0.25f;
+        float screenY = worldY * 0.25f;
+
+        // Ajustar por profundidad (objetos más lejos aparecen más centrados)
+        float depthFactor = 1.0f / (1.0f + Math.abs(worldZ) * 0.1f);
+        screenX *= depthFactor;
+        screenY *= depthFactor;
+
+        // Clamp a rango válido
+        screenX = Math.max(-1f, Math.min(1f, screenX));
+        screenY = Math.max(-1f, Math.min(1f, screenY));
+
+        return new float[]{screenX, screenY};
+    }
+
+    /**
+     * Aplica daño al enemigo tocado (3x daño como el plasma normal)
+     */
+    private void applyDamageToEnemy(Object enemy) {
+        int damageMultiplier = 3;
+
+        if (enemy instanceof UfoAttacker) {
+            UfoAttacker ufo = (UfoAttacker) enemy;
+            for (int i = 0; i < damageMultiplier; i++) {
+                ufo.takeDamage();
+            }
+            Log.d(TAG, "💥 UfoAttacker recibió " + damageMultiplier + "x daño por disparo libre!");
+        } else if (enemy instanceof UfoScout) {
+            UfoScout ufo = (UfoScout) enemy;
+            for (int i = 0; i < damageMultiplier; i++) {
+                ufo.takeDamage();
+            }
+            Log.d(TAG, "💥 UfoScout recibió " + damageMultiplier + "x daño por disparo libre!");
         }
     }
 

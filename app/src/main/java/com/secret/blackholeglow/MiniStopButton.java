@@ -57,6 +57,14 @@ public class MiniStopButton implements SceneObject {
     private int uTimeLoc = -1;
     private FloatBuffer vertexBuffer;
 
+    // ⚡ OPTIMIZACIÓN: Colores cacheados para evitar allocations en draw()
+    private final float[] bgColorCache = {0.15f, 0.15f, 0.2f};
+    private final float[] attentionColorCache = {1.0f, 0.9f, 0.2f};
+    private final float[] cyanColorCache = {0.0f, 0.7f, 0.9f};
+    private final float[] redColorCache = {0.9f, 0.3f, 0.3f};
+    private final float[] glowColorCache = {1.0f, 0.8f, 0.1f};
+    private final float[] quadVerticesCache = new float[8];
+
     // Vertex shader simple
     private static final String VERTEX_SHADER =
         "attribute vec2 aPosition;\n" +
@@ -197,39 +205,36 @@ public class MiniStopButton implements SceneObject {
 
         // ═══════════════════════════════════════════════════════════
         // 1. FONDO CIRCULAR (gris oscuro semi-transparente)
+        // ⚡ OPTIMIZADO: Usar color cacheado
         // ═══════════════════════════════════════════════════════════
-        drawCircle(posX, posY, sizeX, sizeY, new float[]{0.15f, 0.15f, 0.2f}, alpha * 0.7f);
+        drawCircle(posX, posY, sizeX, sizeY, bgColorCache, alpha * 0.7f);
 
         // ═══════════════════════════════════════════════════════════
         // 2. BORDE CIRCULAR - Color especial durante atención (cyan → amarillo)
+        // ⚡ OPTIMIZADO: Usar colores cacheados
         // ═══════════════════════════════════════════════════════════
-        float[] borderColor;
-        if (isAttentionActive) {
-            // Amarillo brillante durante la animación de atención
-            borderColor = new float[]{1.0f, 0.9f, 0.2f};
-        } else {
-            // Cyan sutil normalmente
-            borderColor = new float[]{0.0f, 0.7f, 0.9f};
-        }
+        float[] borderColor = isAttentionActive ? attentionColorCache : cyanColorCache;
         drawRing(posX, posY, sizeX, sizeY, sizeX * 0.85f, sizeY * 0.85f,
                  borderColor, alpha * (isAttentionActive ? 0.9f : 0.5f));
 
         // ═══════════════════════════════════════════════════════════
         // 3. ICONO STOP (cuadrado pequeño)
+        // ⚡ OPTIMIZADO: Usar color cacheado
         // ═══════════════════════════════════════════════════════════
         float iconSize = size * 0.4f * attentionScale;
         drawQuad(posX - iconSize/2, posY - iconSize * aspectRatio/2,
                  iconSize, iconSize * aspectRatio,
-                 new float[]{0.9f, 0.3f, 0.3f}, alpha);  // Rojo suave
+                 redColorCache, alpha);  // Rojo suave
 
         // ═══════════════════════════════════════════════════════════
         // 4. GLOW EXTRA durante atención (anillo exterior difuso)
+        // ⚡ OPTIMIZADO: Usar color cacheado
         // ═══════════════════════════════════════════════════════════
         if (isAttentionActive) {
             float glowSize = sizeX * 1.3f;
             float glowSizeY = sizeY * 1.3f;
             drawRing(posX, posY, glowSize, glowSizeY, sizeX, sizeY,
-                     new float[]{1.0f, 0.8f, 0.1f}, alpha * 0.4f);
+                     glowColorCache, alpha * 0.4f);
         }
     }
 
@@ -303,15 +308,18 @@ public class MiniStopButton implements SceneObject {
     }
 
     private void drawQuad(float x, float y, float w, float h, float[] color, float quadAlpha) {
-        float[] vertices = {
-            x, y,
-            x + w, y,
-            x, y + h,
-            x + w, y + h
-        };
+        // ⚡ OPTIMIZADO: Usar array cacheado en lugar de new float[]
+        quadVerticesCache[0] = x;
+        quadVerticesCache[1] = y;
+        quadVerticesCache[2] = x + w;
+        quadVerticesCache[3] = y;
+        quadVerticesCache[4] = x;
+        quadVerticesCache[5] = y + h;
+        quadVerticesCache[6] = x + w;
+        quadVerticesCache[7] = y + h;
 
         vertexBuffer.clear();
-        vertexBuffer.put(vertices);
+        vertexBuffer.put(quadVerticesCache);
         vertexBuffer.position(0);
 
         GLES20.glUniform3fv(uColorLoc, 1, color, 0);

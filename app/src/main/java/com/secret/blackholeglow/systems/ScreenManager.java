@@ -40,6 +40,10 @@ public class ScreenManager {
     private static float density = 1.0f;
     private static int densityDpi = 160;
 
+    // ⚡ OPTIMIZACIÓN: Arrays cacheados para evitar allocations en getResolutionArray()
+    private static final float[] resolutionCache = new float[2];
+    private static final float[] resolutionFloatCache = new float[2];
+
     // Singleton instance para metodos de instancia
     private static ScreenManager instance;
     private Context context;
@@ -278,18 +282,24 @@ public class ScreenManager {
 
     /**
      * Obtiene las dimensiones como array para uniform vec2
+     * ⚡ OPTIMIZADO: Retorna array cacheado (NO crear nuevos objetos)
      * @return float[] {width, height}
      */
     public static float[] getResolutionArray() {
-        return new float[] { width, height };
+        resolutionCache[0] = width;
+        resolutionCache[1] = height;
+        return resolutionCache;
     }
 
     /**
      * Obtiene las dimensiones como array float para uniform
+     * ⚡ OPTIMIZADO: Retorna array cacheado (NO crear nuevos objetos)
      * @return float[] {width, height} como floats
      */
     public static float[] getResolutionAsFloats() {
-        return new float[] { (float) width, (float) height };
+        resolutionFloatCache[0] = (float) width;
+        resolutionFloatCache[1] = (float) height;
+        return resolutionFloatCache;
     }
 
     // ═══════════════════════════════════════════════════════════════

@@ -52,6 +52,10 @@ public class UniverseBackground
     private long frameCount = 0;
     private long lastLogTime = System.currentTimeMillis();
 
+    // ⚡ OPTIMIZACIÓN: Matrices reutilizables (evitar allocations en draw)
+    private final float[] modelCache = new float[16];
+    private final float[] mvpCache = new float[16];
+
     /**
      * Inyecta el CameraController para usar perspectiva y vista.
      */
@@ -198,8 +202,8 @@ public class UniverseBackground
             lastLogTime = currentTime;
         }
 
-        float[] model = new float[16];
-        Matrix.setIdentityM(model, 0);
+        // ⚡ OPTIMIZADO: Usar matriz cacheada
+        Matrix.setIdentityM(modelCache, 0);
 
         // NUEVA LÓGICA DE POSICIONAMIENTO ADAPTATIVO
         float distancia = -30f;  // Más cerca para mejor control
@@ -214,7 +218,7 @@ public class UniverseBackground
             offsetY = 0f;        // Centrado
         }
 
-        Matrix.translateM(model, 0, 0f, offsetY, distancia);
+        Matrix.translateM(modelCache, 0, 0f, offsetY, distancia);
 
         // Calcula escala adaptativa MEJORADA
         float fovDegrees = camera.getFOV();
@@ -238,13 +242,12 @@ public class UniverseBackground
             escalaY *= 1.2f;  // Expandir más en Y para landscape
         }
 
-        Matrix.scaleM(model, 0, escalaX, escalaY, 1f);
-        Matrix.rotateM(model, 0, 90f, 1f, 0f, 0f);
+        Matrix.scaleM(modelCache, 0, escalaX, escalaY, 1f);
+        Matrix.rotateM(modelCache, 0, 90f, 1f, 0f, 0f);
 
-        // Calcula MVP
-        float[] mvp = new float[16];
-        camera.computeMvp(model, mvp);
-        GLES20.glUniformMatrix4fv(uMvpLoc, 1, false, mvp, 0);
+        // Calcula MVP (⚡ OPTIMIZADO: usar mvpCache)
+        camera.computeMvp(modelCache, mvpCache);
+        GLES20.glUniformMatrix4fv(uMvpLoc, 1, false, mvpCache, 0);
 
         // Envía uniforms
         GLES20.glUniform1f(uAlphaLoc, alpha);

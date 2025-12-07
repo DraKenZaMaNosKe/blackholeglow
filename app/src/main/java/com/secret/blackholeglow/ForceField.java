@@ -62,6 +62,10 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
     private final float[] impactIntensities = new float[MAX_IMPACTS];
     private int currentImpactIndex = 0;
 
+    // ⚡ OPTIMIZACIÓN: Matrices reutilizables (evitar allocations en draw)
+    private final float[] modelMatrixCache = new float[16];
+    private final float[] mvpMatrixCache = new float[16];
+
     // Sistema de vida
     private static final int MAX_HEALTH = 100;  // 🛡️ Más resistente - dura el doble
     private int currentHealth = MAX_HEALTH;
@@ -333,22 +337,20 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
         //     currentScale *= (1.0f + destructionAnimation * 0.5f);  // ELIMINADO
         // }
 
-        // Matriz de modelo
-        float[] modelMatrix = new float[16];
-        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
-        android.opengl.Matrix.translateM(modelMatrix, 0, position[0], position[1], position[2]);
-        android.opengl.Matrix.rotateM(modelMatrix, 0, rotationAngle, 0, 1, 0);
-        android.opengl.Matrix.scaleM(modelMatrix, 0, currentScale, currentScale, currentScale);
+        // Matriz de modelo (⚡ OPTIMIZADO: usar caches)
+        android.opengl.Matrix.setIdentityM(modelMatrixCache, 0);
+        android.opengl.Matrix.translateM(modelMatrixCache, 0, position[0], position[1], position[2]);
+        android.opengl.Matrix.rotateM(modelMatrixCache, 0, rotationAngle, 0, 1, 0);
+        android.opengl.Matrix.scaleM(modelMatrixCache, 0, currentScale, currentScale, currentScale);
 
         // MVP
-        float[] mvpMatrix = new float[16];
         if (camera != null) {
-            camera.computeMvp(modelMatrix, mvpMatrix);
+            camera.computeMvp(modelMatrixCache, mvpMatrixCache);
         } else {
-            System.arraycopy(modelMatrix, 0, mvpMatrix, 0, 16);
+            System.arraycopy(modelMatrixCache, 0, mvpMatrixCache, 0, 16);
         }
 
-        GLES20.glUniformMatrix4fv(uMvpLoc, 1, false, mvpMatrix, 0);
+        GLES20.glUniformMatrix4fv(uMvpLoc, 1, false, mvpMatrixCache, 0);
         GLES20.glUniform1f(uTimeLoc, rotationAngle);
 
         // Color y alpha con reactividad musical

@@ -29,7 +29,7 @@ public class BackgroundStars implements SceneObject {
     // ════════════════════════════════════════════════════════════════════════
     // CONFIGURACIÓN - Optimizado para bajo consumo de GPU
     // ════════════════════════════════════════════════════════════════════════
-    private static final int NUM_STARS = 80;           // Más estrellas para efecto parallax
+    private static final int NUM_STARS = 40;           // Reducido para mejor rendimiento
     private static final float MIN_SIZE = 1.5f;        // Tamaño mínimo (muy pequeñas)
     private static final float MAX_SIZE = 3.5f;        // Tamaño máximo
     private static final float TWINKLE_SPEED = 1.5f;   // Velocidad de parpadeo
@@ -213,10 +213,13 @@ public class BackgroundStars implements SceneObject {
         colorBuffer.position(0);
     }
 
+    private static final float TIME_WRAP = 1000f;
+
     @Override
     public void update(float deltaTime) {
         frameCount++;
         time += deltaTime;
+        if (time > TIME_WRAP) time -= TIME_WRAP;
 
         // ════════════════════════════════════════════════════════════════════════
         // 🚀 PARALLAX - Mover estrellas creando ilusión de viaje espacial

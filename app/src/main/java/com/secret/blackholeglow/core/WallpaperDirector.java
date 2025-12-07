@@ -21,6 +21,7 @@ import com.secret.blackholeglow.systems.ResourceManager;
 import com.secret.blackholeglow.systems.ScreenEffectsManager;
 import com.secret.blackholeglow.systems.ScreenManager;
 import com.secret.blackholeglow.systems.UIController;
+import com.secret.blackholeglow.gl3.MatrixPool;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -65,6 +66,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     private boolean pendingPreviewMode = false; // Para guardar preview mode antes de inicializar
 
     // TIMING (deltaTime y FPS manejados por GLStateManager)
+    private static final float TIME_WRAP = 3600f;  // Reset cada hora para evitar overflow
     private float totalTime = 0f;
     private final float[] identityMatrix = new float[16];
 
@@ -121,6 +123,9 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
     @Override
     public void onDrawFrame(GL10 gl) {
+        // Reset pools de matrices para evitar allocations en draw
+        MatrixPool.reset();
+
         // 🎮 GLStateManager: Inicio de frame (calcula deltaTime y limpia buffers)
         float deltaTime = GLStateManager.get().beginFrame();
 
@@ -289,6 +294,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     // Solo mantenemos totalTime para animaciones que lo necesiten
     private void updateTotalTime(float deltaTime) {
         totalTime += deltaTime;
+        if (totalTime > TIME_WRAP) totalTime -= TIME_WRAP;  // Evitar overflow
     }
 
     public void pause() {

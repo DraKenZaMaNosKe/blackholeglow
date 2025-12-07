@@ -49,6 +49,10 @@ public class SongNotification {
     // Cola de notificaciones pendientes
     private Queue<SharedSong> notificationQueue = new LinkedList<>();
 
+    // ⚡ OPTIMIZACIÓN: Matrices reutilizables (evitar allocations en draw)
+    private final float[] modelMatrixCache = new float[16];
+    private final float[] finalMatrixCache = new float[16];
+
     // OpenGL
     private int programId;
     private FloatBuffer vertexBuffer;
@@ -211,17 +215,15 @@ public class SongNotification {
         GLES20.glEnable(GLES20.GL_BLEND);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
 
-        // Calcular matriz de transformación
-        float[] modelMatrix = new float[16];
-        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
-        android.opengl.Matrix.translateM(modelMatrix, 0, x, y, 0);
-        android.opengl.Matrix.scaleM(modelMatrix, 0, width, height, 1);
+        // Calcular matriz de transformación (⚡ OPTIMIZADO: usar caches)
+        android.opengl.Matrix.setIdentityM(modelMatrixCache, 0);
+        android.opengl.Matrix.translateM(modelMatrixCache, 0, x, y, 0);
+        android.opengl.Matrix.scaleM(modelMatrixCache, 0, width, height, 1);
 
-        float[] finalMatrix = new float[16];
-        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        android.opengl.Matrix.multiplyMM(finalMatrixCache, 0, mvpMatrix, 0, modelMatrixCache, 0);
 
         // Pasar matriz
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrix, 0);
+        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrixCache, 0);
 
         // NO dibujar nada - solo el texto (se dibuja desde SceneRenderer)
         // El fondo y borde están ocultos para un look más limpio
@@ -240,15 +242,14 @@ public class SongNotification {
         float pulse = 1.0f + 0.2f * (float)Math.sin(pulseTime * Math.PI * 2);
         float indicatorSize = 0.045f * pulse;
 
-        float[] modelMatrix = new float[16];
-        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
-        android.opengl.Matrix.translateM(modelMatrix, 0, indicatorX, indicatorY, 0);
-        android.opengl.Matrix.scaleM(modelMatrix, 0, indicatorSize, indicatorSize, 1);
+        // ⚡ OPTIMIZADO: usar matrices cacheadas
+        android.opengl.Matrix.setIdentityM(modelMatrixCache, 0);
+        android.opengl.Matrix.translateM(modelMatrixCache, 0, indicatorX, indicatorY, 0);
+        android.opengl.Matrix.scaleM(modelMatrixCache, 0, indicatorSize, indicatorSize, 1);
 
-        float[] finalMatrix = new float[16];
-        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        android.opengl.Matrix.multiplyMM(finalMatrixCache, 0, mvpMatrix, 0, modelMatrixCache, 0);
 
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrix, 0);
+        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrixCache, 0);
 
         // Color rojo vibrante que pulsa
         float colorPulse = 0.8f + 0.2f * (float)Math.sin(pulseTime * Math.PI * 4);

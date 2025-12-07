@@ -39,6 +39,13 @@ public class MeteorTrail {
     private FloatBuffer colorBuffer;
     private boolean needsUpdate = true;
 
+    // ⚡ OPTIMIZACIÓN: Reutilizar lista para evitar allocations en update()
+    private final List<TrailPoint> toRemoveCache = new ArrayList<>();
+
+    // ⚡ OPTIMIZACIÓN: Matrices reutilizables para draw()
+    private final float[] modelMatrixCache = new float[16];
+    private final float[] mvpMatrixCache = new float[16];
+
     // Shader program (NO estático para evitar problemas de contexto GL)
     private int programId = -1;
     private int aPositionLoc;
@@ -191,17 +198,17 @@ public class MeteorTrail {
             timeSinceLastPoint = 0;
         }
 
-        // Actualizar todos los puntos
-        List<TrailPoint> toRemove = new ArrayList<>();
+        // Actualizar todos los puntos (⚡ OPTIMIZADO: reutilizar lista)
+        toRemoveCache.clear();
         for (TrailPoint point : trailPoints) {
             point.update(deltaTime);
             if (!point.isAlive()) {
-                toRemove.add(point);
+                toRemoveCache.add(point);
             }
         }
-        trailPoints.removeAll(toRemove);
+        trailPoints.removeAll(toRemoveCache);
 
-        if (!toRemove.isEmpty()) {
+        if (!toRemoveCache.isEmpty()) {
             needsUpdate = true;
         }
     }
@@ -371,12 +378,10 @@ public class MeteorTrail {
         // Desactivar depth write para transparencia
         GLES20.glDepthMask(false);
 
-        // Calcular MVP
-        float[] modelMatrix = new float[16];
-        float[] mvpMatrix = new float[16];
-        Matrix.setIdentityM(modelMatrix, 0);
-        camera.computeMvp(modelMatrix, mvpMatrix);
-        GLES20.glUniformMatrix4fv(uMvpLoc, 1, false, mvpMatrix, 0);
+        // Calcular MVP (⚡ OPTIMIZADO: usar matrices cacheadas)
+        Matrix.setIdentityM(modelMatrixCache, 0);
+        camera.computeMvp(modelMatrixCache, mvpMatrixCache);
+        GLES20.glUniformMatrix4fv(uMvpLoc, 1, false, mvpMatrixCache, 0);
 
         // Configurar uniforms para efectos animados
         // ⚡ OPTIMIZACIÓN: Usar TimeManager

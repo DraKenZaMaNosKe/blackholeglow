@@ -27,7 +27,7 @@ public class SpaceDust implements SceneObject {
     // ════════════════════════════════════════════════════════════════════════
     // CONFIGURACIÓN - 🚀 AUMENTADA para efecto VISIBLE
     // ════════════════════════════════════════════════════════════════════════
-    private static final int MAX_PARTICLES = 40;          // Más partículas
+    private static final int MAX_PARTICLES = 20;          // Reducido para mejor rendimiento
     private static final float SPAWN_RATE = 3.0f;         // Partículas por segundo (más frecuente)
     private static final float MIN_SPEED = 0.025f;        // Velocidad mínima (más rápido)
     private static final float MAX_SPEED = 0.08f;         // Velocidad máxima (más rápido)
@@ -183,9 +183,12 @@ public class SpaceDust implements SceneObject {
         }
     }
 
+    private static final float TIME_WRAP = 1000f;
+
     @Override
     public void update(float deltaTime) {
         time += deltaTime;
+        if (time > TIME_WRAP) time -= TIME_WRAP;
         spawnTimer += deltaTime;
 
         // ═══════════════════════════════════════════════════════════════════

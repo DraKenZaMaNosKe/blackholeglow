@@ -4,159 +4,279 @@ import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.util.Log;
 
+import com.secret.blackholeglow.gl3.MatrixPool;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
 /**
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║   🔫 Laser - Proyectil de energía para batalla espacial                  ║
+ * ║   🔫 LASER ÉPICO - Proyectil de energía con efectos avanzados            ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
  * ║  CARACTERÍSTICAS:                                                         ║
- * ║  • Renderizado con efecto glow brillante                                 ║
- * ║  • Dos equipos: HUMAN (azul) y ALIEN (verde)                             ║
- * ║  • Viaja en línea recta hacia el objetivo                                ║
- * ║  • Se desactiva al impactar o salir de la escena                         ║
+ * ║  • Núcleo brillante con gradiente de intensidad                          ║
+ * ║  • Halo exterior con glow suave                                          ║
+ * ║  • Trail/estela que sigue al láser                                       ║
+ * ║  • Partículas de energía volando alrededor                               ║
+ * ║  • Impacto explosivo con ondas de choque                                 ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 public class Laser {
     private static final String TAG = "Laser";
 
     // Equipos
-    public static final int TEAM_HUMAN = 0;  // Azul
-    public static final int TEAM_ALIEN = 1;  // Verde
+    public static final int TEAM_HUMAN = 0;  // Azul/Cyan
+    public static final int TEAM_ALIEN = 1;  // Verde/Lima
 
     // Posición y movimiento
     public float x, y, z;
-    public float vx, vy, vz;  // Velocidad
-    private float speed = 8.0f;  // Unidades por segundo
+    public float vx, vy, vz;
+    private float speed = 6.0f;
 
     // Propiedades
     private int team;
     private boolean active = false;
     private float lifetime = 0f;
-    private static final float MAX_LIFETIME = 3.0f;  // 3 segundos máximo
-
-    // Dimensiones del láser
-    private static final float LENGTH = 0.5f;   // Largo del rayo
-    private static final float WIDTH = 0.08f;   // Ancho del rayo
+    private static final float MAX_LIFETIME = 3.0f;
 
     // ═══════════════════════════════════════════════════════════════════════
-    // 💥 SISTEMA DE EFECTOS DE IMPACTO
+    // 🎨 DIMENSIONES Y VISUAL (proporcionales a las naves)
+    // ═══════════════════════════════════════════════════════════════════════
+    private static final float CORE_LENGTH = 0.12f;    // Núcleo central (pequeño)
+    private static final float CORE_WIDTH = 0.006f;    // Muy delgado
+    private static final float GLOW_LENGTH = 0.15f;    // Halo exterior
+    private static final float GLOW_WIDTH = 0.02f;     // Glow sutil
+
+    // Trail (estela)
+    private static final int TRAIL_SEGMENTS = 8;
+    private float[] trailX = new float[TRAIL_SEGMENTS];
+    private float[] trailY = new float[TRAIL_SEGMENTS];
+    private float[] trailZ = new float[TRAIL_SEGMENTS];
+    private int trailIndex = 0;
+    private float trailTimer = 0f;
+    private static final float TRAIL_UPDATE_RATE = 0.02f;
+
+    // Partículas de energía (más pequeñas)
+    private static final int ENERGY_PARTICLES = 4;
+    private float[] particleAngle = new float[ENERGY_PARTICLES];
+    private float[] particleRadius = new float[ENERGY_PARTICLES];
+    private float[] particleSpeed = new float[ENERGY_PARTICLES];
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 💥 SISTEMA DE IMPACTO ÉPICO
     // ═══════════════════════════════════════════════════════════════════════
     private boolean impactActive = false;
     private float impactX, impactY, impactZ;
     private float impactTimer = 0f;
-    private static final float IMPACT_DURATION = 0.4f;
-    private static final int IMPACT_PARTICLES = 12;
-    private float[] impactParticleX = new float[IMPACT_PARTICLES];
-    private float[] impactParticleY = new float[IMPACT_PARTICLES];
-    private float[] impactParticleZ = new float[IMPACT_PARTICLES];
-    private float[] impactParticleVX = new float[IMPACT_PARTICLES];
-    private float[] impactParticleVY = new float[IMPACT_PARTICLES];
-    private float[] impactParticleVZ = new float[IMPACT_PARTICLES];
-    private float[] impactParticleLife = new float[IMPACT_PARTICLES];
+    private static final float IMPACT_DURATION = 0.6f;
 
-    // Shader compartido (estático para eficiencia)
-    private static int shaderProgram = 0;
-    private static int aPositionLoc;
-    private static int uMVPLoc;
-    private static int uColorLoc;
-    private static int uTimeLoc;
-    private static FloatBuffer vertexBuffer;
+    // Partículas de impacto (menos y más pequeñas)
+    private static final int IMPACT_PARTICLES = 10;
+    private float[] impactPX = new float[IMPACT_PARTICLES];
+    private float[] impactPY = new float[IMPACT_PARTICLES];
+    private float[] impactPZ = new float[IMPACT_PARTICLES];
+    private float[] impactVX = new float[IMPACT_PARTICLES];
+    private float[] impactVY = new float[IMPACT_PARTICLES];
+    private float[] impactVZ = new float[IMPACT_PARTICLES];
+    private float[] impactLife = new float[IMPACT_PARTICLES];
+    private float[] impactSize = new float[IMPACT_PARTICLES];
 
-    // Colores por equipo
-    private static final float[] COLOR_HUMAN = {0.3f, 0.6f, 1.0f, 1.0f};  // Azul brillante
-    private static final float[] COLOR_ALIEN = {0.2f, 1.0f, 0.4f, 1.0f};  // Verde brillante
+    // Onda de choque
+    private float shockwaveRadius = 0f;
+    private float shockwaveAlpha = 1f;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎮 SHADERS Y BUFFERS
+    // ═══════════════════════════════════════════════════════════════════════
+    private static int coreProgram = 0;
+    private static int glowProgram = 0;
+    private static int particleProgram = 0;
+
+    // Core shader locations
+    private static int corePositionLoc, coreUVLoc;
+    private static int coreMVPLoc, coreColorLoc, coreTimeLoc, coreIntensityLoc;
+
+    // Glow shader locations
+    private static int glowPositionLoc;
+    private static int glowMVPLoc, glowColorLoc, glowAlphaLoc;
+
+    // Particle shader locations
+    private static int particlePositionLoc;
+    private static int particleMVPLoc, particleColorLoc, particleSizeLoc;
+
+    // Buffers
+    private static FloatBuffer coreVertexBuffer;
+    private static FloatBuffer coreUVBuffer;
+    private static FloatBuffer glowVertexBuffer;
+    private static FloatBuffer particleVertexBuffer;
+
+    // Colores por equipo (más vibrantes)
+    private static final float[] COLOR_HUMAN_CORE = {0.4f, 0.8f, 1.0f, 1.0f};   // Cyan brillante
+    private static final float[] COLOR_HUMAN_GLOW = {0.2f, 0.5f, 1.0f, 0.6f};   // Azul suave
+    private static final float[] COLOR_ALIEN_CORE = {0.4f, 1.0f, 0.3f, 1.0f};   // Verde lima
+    private static final float[] COLOR_ALIEN_GLOW = {0.2f, 0.8f, 0.2f, 0.6f};   // Verde suave
 
     // Matrices
     private final float[] modelMatrix = new float[16];
     private final float[] mvpMatrix = new float[16];
 
-    // Referencia a cámara
     private CameraController camera;
-
-    // Tiempo para animación
     private static long startTime = System.currentTimeMillis();
 
     public Laser(int team) {
         this.team = team;
 
-        // Inicializar shader si no existe
-        if (shaderProgram == 0) {
-            initShader();
+        if (coreProgram == 0) {
+            initShaders();
+        }
+
+        initParticles();
+    }
+
+    /**
+     * Inicializa las partículas de energía
+     */
+    private void initParticles() {
+        for (int i = 0; i < ENERGY_PARTICLES; i++) {
+            particleAngle[i] = (float)(Math.random() * Math.PI * 2);
+            particleRadius[i] = 0.01f + (float)(Math.random() * 0.015f);  // Radio pequeño
+            particleSpeed[i] = 4f + (float)(Math.random() * 3f);
         }
     }
 
     /**
-     * Inicializa el shader compartido para todos los láseres
+     * Inicializa todos los shaders
      */
-    private static void initShader() {
-        Log.d(TAG, "🔫 Inicializando shader de láser...");
+    private static void initShaders() {
+        Log.d(TAG, "🔫 Inicializando shaders de láser épico...");
 
-        // Vertex shader simple
-        String vertexShaderCode =
+        // ═══════════════════════════════════════════════════════════════
+        // SHADER DEL NÚCLEO (con gradiente de intensidad)
+        // ═══════════════════════════════════════════════════════════════
+        String coreVertexCode =
+            "attribute vec4 a_Position;\n" +
+            "attribute vec2 a_UV;\n" +
+            "uniform mat4 u_MVP;\n" +
+            "varying vec2 v_UV;\n" +
+            "void main() {\n" +
+            "    gl_Position = u_MVP * a_Position;\n" +
+            "    v_UV = a_UV;\n" +
+            "}\n";
+
+        String coreFragmentCode =
+            "precision mediump float;\n" +
+            "uniform vec4 u_Color;\n" +
+            "uniform float u_Time;\n" +
+            "uniform float u_Intensity;\n" +
+            "varying vec2 v_UV;\n" +
+            "void main() {\n" +
+            "    // Gradiente radial desde el centro\n" +
+            "    float distFromCenter = abs(v_UV.y - 0.5) * 2.0;\n" +
+            "    float coreGlow = 1.0 - distFromCenter;\n" +
+            "    coreGlow = pow(coreGlow, 0.5);\n" +
+            "    \n" +
+            "    // Pulso de energía\n" +
+            "    float pulse = 0.85 + sin(u_Time * 25.0 + v_UV.x * 10.0) * 0.15;\n" +
+            "    \n" +
+            "    // Efecto de flujo de energía\n" +
+            "    float flow = sin(v_UV.x * 20.0 - u_Time * 15.0) * 0.1 + 0.9;\n" +
+            "    \n" +
+            "    // Color final con brillo intenso en el centro\n" +
+            "    vec3 finalColor = u_Color.rgb * coreGlow * pulse * flow * u_Intensity * 2.0;\n" +
+            "    \n" +
+            "    // Agregar blanco al centro para más brillo\n" +
+            "    float whiteness = pow(coreGlow, 3.0) * 0.5;\n" +
+            "    finalColor += vec3(whiteness);\n" +
+            "    \n" +
+            "    gl_FragColor = vec4(finalColor, coreGlow * u_Color.a);\n" +
+            "}\n";
+
+        coreProgram = createProgram(coreVertexCode, coreFragmentCode);
+        if (coreProgram != 0) {
+            corePositionLoc = GLES20.glGetAttribLocation(coreProgram, "a_Position");
+            coreUVLoc = GLES20.glGetAttribLocation(coreProgram, "a_UV");
+            coreMVPLoc = GLES20.glGetUniformLocation(coreProgram, "u_MVP");
+            coreColorLoc = GLES20.glGetUniformLocation(coreProgram, "u_Color");
+            coreTimeLoc = GLES20.glGetUniformLocation(coreProgram, "u_Time");
+            coreIntensityLoc = GLES20.glGetUniformLocation(coreProgram, "u_Intensity");
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // SHADER DEL GLOW (halo exterior suave)
+        // ═══════════════════════════════════════════════════════════════
+        String glowVertexCode =
             "attribute vec4 a_Position;\n" +
             "uniform mat4 u_MVP;\n" +
             "void main() {\n" +
             "    gl_Position = u_MVP * a_Position;\n" +
             "}\n";
 
-        // Fragment shader con efecto glow
-        String fragmentShaderCode =
+        String glowFragmentCode =
             "precision mediump float;\n" +
             "uniform vec4 u_Color;\n" +
-            "uniform float u_Time;\n" +
+            "uniform float u_Alpha;\n" +
             "void main() {\n" +
-            "    // Pulso de brillo\n" +
-            "    float pulse = 0.8 + sin(u_Time * 20.0) * 0.2;\n" +
-            "    vec3 glowColor = u_Color.rgb * pulse * 1.5;\n" +
-            "    gl_FragColor = vec4(glowColor, u_Color.a);\n" +
+            "    gl_FragColor = vec4(u_Color.rgb, u_Color.a * u_Alpha);\n" +
             "}\n";
 
-        // Compilar shaders
-        int vertexShader = compileShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode);
-        int fragmentShader = compileShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode);
-
-        if (vertexShader == 0 || fragmentShader == 0) {
-            Log.e(TAG, "❌ Error compilando shaders de láser");
-            return;
+        glowProgram = createProgram(glowVertexCode, glowFragmentCode);
+        if (glowProgram != 0) {
+            glowPositionLoc = GLES20.glGetAttribLocation(glowProgram, "a_Position");
+            glowMVPLoc = GLES20.glGetUniformLocation(glowProgram, "u_MVP");
+            glowColorLoc = GLES20.glGetUniformLocation(glowProgram, "u_Color");
+            glowAlphaLoc = GLES20.glGetUniformLocation(glowProgram, "u_Alpha");
         }
 
-        // Crear programa
-        shaderProgram = GLES20.glCreateProgram();
-        GLES20.glAttachShader(shaderProgram, vertexShader);
-        GLES20.glAttachShader(shaderProgram, fragmentShader);
-        GLES20.glLinkProgram(shaderProgram);
+        // ═══════════════════════════════════════════════════════════════
+        // SHADER DE PARTÍCULAS (puntos brillantes)
+        // ═══════════════════════════════════════════════════════════════
+        String particleVertexCode =
+            "attribute vec4 a_Position;\n" +
+            "uniform mat4 u_MVP;\n" +
+            "uniform float u_PointSize;\n" +
+            "void main() {\n" +
+            "    gl_Position = u_MVP * a_Position;\n" +
+            "    gl_PointSize = u_PointSize;\n" +
+            "}\n";
 
-        // Obtener ubicaciones
-        aPositionLoc = GLES20.glGetAttribLocation(shaderProgram, "a_Position");
-        uMVPLoc = GLES20.glGetUniformLocation(shaderProgram, "u_MVP");
-        uColorLoc = GLES20.glGetUniformLocation(shaderProgram, "u_Color");
-        uTimeLoc = GLES20.glGetUniformLocation(shaderProgram, "u_Time");
+        String particleFragmentCode =
+            "precision mediump float;\n" +
+            "uniform vec4 u_Color;\n" +
+            "void main() {\n" +
+            "    // Círculo suave\n" +
+            "    vec2 coord = gl_PointCoord - vec2(0.5);\n" +
+            "    float dist = length(coord);\n" +
+            "    float alpha = 1.0 - smoothstep(0.3, 0.5, dist);\n" +
+            "    gl_FragColor = vec4(u_Color.rgb * 1.5, u_Color.a * alpha);\n" +
+            "}\n";
 
-        // Crear buffer de vértices (rectángulo para el láser)
-        // El láser apunta en dirección Z positiva por defecto
-        float[] vertices = {
-            // Cara frontal (rectángulo alargado)
-            -WIDTH/2, -WIDTH/2, 0,
-             WIDTH/2, -WIDTH/2, 0,
-             WIDTH/2,  WIDTH/2, 0,
-            -WIDTH/2,  WIDTH/2, 0,
-            // Cara trasera
-            -WIDTH/2, -WIDTH/2, LENGTH,
-             WIDTH/2, -WIDTH/2, LENGTH,
-             WIDTH/2,  WIDTH/2, LENGTH,
-            -WIDTH/2,  WIDTH/2, LENGTH,
-        };
+        particleProgram = createProgram(particleVertexCode, particleFragmentCode);
+        if (particleProgram != 0) {
+            particlePositionLoc = GLES20.glGetAttribLocation(particleProgram, "a_Position");
+            particleMVPLoc = GLES20.glGetUniformLocation(particleProgram, "u_MVP");
+            particleColorLoc = GLES20.glGetUniformLocation(particleProgram, "u_Color");
+            particleSizeLoc = GLES20.glGetUniformLocation(particleProgram, "u_PointSize");
+        }
 
-        ByteBuffer bb = ByteBuffer.allocateDirect(vertices.length * 4);
-        bb.order(ByteOrder.nativeOrder());
-        vertexBuffer = bb.asFloatBuffer();
-        vertexBuffer.put(vertices);
-        vertexBuffer.position(0);
+        // Crear buffers de geometría
+        createBuffers();
 
-        Log.d(TAG, "✅ Shader de láser inicializado (program=" + shaderProgram + ")");
+        Log.d(TAG, "✅ Shaders de láser épico inicializados");
+    }
+
+    private static int createProgram(String vertexCode, String fragmentCode) {
+        int vertexShader = compileShader(GLES20.GL_VERTEX_SHADER, vertexCode);
+        int fragmentShader = compileShader(GLES20.GL_FRAGMENT_SHADER, fragmentCode);
+
+        if (vertexShader == 0 || fragmentShader == 0) return 0;
+
+        int program = GLES20.glCreateProgram();
+        GLES20.glAttachShader(program, vertexShader);
+        GLES20.glAttachShader(program, fragmentShader);
+        GLES20.glLinkProgram(program);
+
+        return program;
     }
 
     private static int compileShader(int type, String code) {
@@ -167,15 +287,65 @@ public class Laser {
         int[] compiled = new int[1];
         GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0);
         if (compiled[0] == 0) {
-            Log.e(TAG, "Error compilando shader: " + GLES20.glGetShaderInfoLog(shader));
+            Log.e(TAG, "Error: " + GLES20.glGetShaderInfoLog(shader));
             GLES20.glDeleteShader(shader);
             return 0;
         }
         return shader;
     }
 
+    private static void createBuffers() {
+        // Buffer del núcleo (quad con UVs)
+        float[] coreVerts = {
+            -CORE_WIDTH, 0, 0,
+             CORE_WIDTH, 0, 0,
+             CORE_WIDTH, 0, CORE_LENGTH,
+            -CORE_WIDTH, 0, CORE_LENGTH,
+            // Cara vertical
+            0, -CORE_WIDTH, 0,
+            0,  CORE_WIDTH, 0,
+            0,  CORE_WIDTH, CORE_LENGTH,
+            0, -CORE_WIDTH, CORE_LENGTH,
+        };
+
+        float[] coreUVs = {
+            0, 0,  1, 0,  1, 1,  0, 1,
+            0, 0,  1, 0,  1, 1,  0, 1,
+        };
+
+        coreVertexBuffer = createFloatBuffer(coreVerts);
+        coreUVBuffer = createFloatBuffer(coreUVs);
+
+        // Buffer del glow (quad más grande)
+        float[] glowVerts = {
+            -GLOW_WIDTH, 0, -0.05f,
+             GLOW_WIDTH, 0, -0.05f,
+             GLOW_WIDTH, 0, GLOW_LENGTH,
+            -GLOW_WIDTH, 0, GLOW_LENGTH,
+            0, -GLOW_WIDTH, -0.05f,
+            0,  GLOW_WIDTH, -0.05f,
+            0,  GLOW_WIDTH, GLOW_LENGTH,
+            0, -GLOW_WIDTH, GLOW_LENGTH,
+        };
+
+        glowVertexBuffer = createFloatBuffer(glowVerts);
+
+        // Buffer de partículas (un punto)
+        float[] particleVerts = { 0, 0, 0 };
+        particleVertexBuffer = createFloatBuffer(particleVerts);
+    }
+
+    private static FloatBuffer createFloatBuffer(float[] data) {
+        ByteBuffer bb = ByteBuffer.allocateDirect(data.length * 4);
+        bb.order(ByteOrder.nativeOrder());
+        FloatBuffer fb = bb.asFloatBuffer();
+        fb.put(data);
+        fb.position(0);
+        return fb;
+    }
+
     /**
-     * Dispara el láser desde una posición hacia un objetivo
+     * Dispara el láser
      */
     public void fire(float startX, float startY, float startZ,
                      float targetX, float targetY, float targetZ) {
@@ -183,7 +353,6 @@ public class Laser {
         this.y = startY;
         this.z = startZ;
 
-        // Calcular dirección normalizada
         float dx = targetX - startX;
         float dy = targetY - startY;
         float dz = targetZ - startZ;
@@ -194,7 +363,6 @@ public class Laser {
             this.vy = (dy / dist) * speed;
             this.vz = (dz / dist) * speed;
         } else {
-            // Dirección por defecto si están muy cerca
             this.vx = 0;
             this.vy = 0;
             this.vz = speed;
@@ -203,15 +371,21 @@ public class Laser {
         this.active = true;
         this.lifetime = 0f;
 
-        Log.d(TAG, "🔫 Láser " + (team == TEAM_HUMAN ? "AZUL" : "VERDE") +
-                   " disparado desde (" + String.format("%.1f,%.1f,%.1f", x, y, z) + ")");
+        // Inicializar trail
+        for (int i = 0; i < TRAIL_SEGMENTS; i++) {
+            trailX[i] = x;
+            trailY[i] = y;
+            trailZ[i] = z;
+        }
+        trailIndex = 0;
+
+        Log.d(TAG, "🔫 Láser " + (team == TEAM_HUMAN ? "CYAN" : "VERDE") + " disparado!");
     }
 
     /**
-     * Actualiza la posición del láser
+     * Actualiza el láser
      */
     public void update(float deltaTime) {
-        // Siempre actualizar efecto de impacto
         if (impactActive) {
             updateImpact(deltaTime);
         }
@@ -223,201 +397,351 @@ public class Laser {
         y += vy * deltaTime;
         z += vz * deltaTime;
 
-        // Incrementar tiempo de vida
+        // Actualizar trail
+        trailTimer += deltaTime;
+        if (trailTimer >= TRAIL_UPDATE_RATE) {
+            trailTimer = 0;
+            trailIndex = (trailIndex + 1) % TRAIL_SEGMENTS;
+            trailX[trailIndex] = x;
+            trailY[trailIndex] = y;
+            trailZ[trailIndex] = z;
+        }
+
+        // Actualizar partículas de energía
+        float time = lifetime * 10f;
+        for (int i = 0; i < ENERGY_PARTICLES; i++) {
+            particleAngle[i] += particleSpeed[i] * deltaTime;
+        }
+
         lifetime += deltaTime;
 
-        // Desactivar si excede tiempo de vida
         if (lifetime > MAX_LIFETIME) {
             active = false;
             return;
         }
 
-        // Desactivar si sale de la escena
         if (Math.abs(x) > 10 || Math.abs(y) > 10 || Math.abs(z) > 10) {
             active = false;
         }
     }
 
-    /**
-     * 💥 Actualiza el efecto de impacto
-     */
     private void updateImpact(float deltaTime) {
         impactTimer += deltaTime;
 
+        // Actualizar partículas
         for (int i = 0; i < IMPACT_PARTICLES; i++) {
-            // Mover partículas
-            impactParticleX[i] += impactParticleVX[i] * deltaTime;
-            impactParticleY[i] += impactParticleVY[i] * deltaTime;
-            impactParticleZ[i] += impactParticleVZ[i] * deltaTime;
+            impactPX[i] += impactVX[i] * deltaTime;
+            impactPY[i] += impactVY[i] * deltaTime;
+            impactPZ[i] += impactVZ[i] * deltaTime;
 
-            // Desacelerar
-            impactParticleVX[i] *= 0.92f;
-            impactParticleVY[i] *= 0.92f;
-            impactParticleVZ[i] *= 0.92f;
+            impactVX[i] *= 0.94f;
+            impactVY[i] *= 0.94f;
+            impactVZ[i] *= 0.94f;
 
-            // Reducir vida
-            impactParticleLife[i] -= deltaTime / IMPACT_DURATION;
-            if (impactParticleLife[i] < 0) impactParticleLife[i] = 0;
+            impactLife[i] -= deltaTime / IMPACT_DURATION;
+            if (impactLife[i] < 0) impactLife[i] = 0;
         }
+
+        // Actualizar onda de choque
+        shockwaveRadius += deltaTime * 1.5f;
+        shockwaveAlpha = 1f - (impactTimer / IMPACT_DURATION);
 
         if (impactTimer >= IMPACT_DURATION) {
             impactActive = false;
         }
     }
 
-    /**
-     * 💥 Inicia el efecto de impacto
-     */
     private void startImpact() {
         impactActive = true;
         impactTimer = 0f;
         impactX = x;
         impactY = y;
         impactZ = z;
+        shockwaveRadius = 0.02f;
+        shockwaveAlpha = 1f;
 
-        // Crear partículas de explosión
         for (int i = 0; i < IMPACT_PARTICLES; i++) {
-            impactParticleX[i] = impactX;
-            impactParticleY[i] = impactY;
-            impactParticleZ[i] = impactZ;
+            impactPX[i] = impactX;
+            impactPY[i] = impactY;
+            impactPZ[i] = impactZ;
 
-            // Velocidad aleatoria esférica
             float theta = (float)(Math.random() * Math.PI * 2);
             float phi = (float)(Math.random() * Math.PI);
-            float speed = 2.0f + (float)(Math.random() * 3.0f);
+            float spd = 0.8f + (float)(Math.random() * 1.5f);
 
-            impactParticleVX[i] = speed * (float)(Math.sin(phi) * Math.cos(theta));
-            impactParticleVY[i] = speed * (float)(Math.sin(phi) * Math.sin(theta));
-            impactParticleVZ[i] = speed * (float)(Math.cos(phi));
+            impactVX[i] = spd * (float)(Math.sin(phi) * Math.cos(theta));
+            impactVY[i] = spd * (float)(Math.sin(phi) * Math.sin(theta));
+            impactVZ[i] = spd * (float)(Math.cos(phi));
 
-            impactParticleLife[i] = 1.0f;
+            impactLife[i] = 0.7f + (float)(Math.random() * 0.3f);
+            impactSize[i] = 5f + (float)(Math.random() * 6f);
         }
 
-        Log.d(TAG, "💥 Efecto de impacto iniciado!");
+        Log.d(TAG, "💥 IMPACTO!");
     }
 
     /**
-     * Dibuja el láser y sus efectos
+     * Dibuja el láser
      */
     public void draw() {
-        // Siempre dibujar impacto aunque el láser esté inactivo
         if (impactActive && camera != null) {
             drawImpact();
         }
 
-        if (!active || shaderProgram == 0 || camera == null) return;
+        if (!active || camera == null) return;
 
-        GLES20.glUseProgram(shaderProgram);
+        float time = ((System.currentTimeMillis() - startTime) / 1000.0f) % 100.0f;
 
-        // Configurar blending aditivo para efecto glow
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);  // Siempre visible
-
-        // Calcular rotación para que apunte en dirección de movimiento
-        float[] modelMatrix = new float[16];
-        Matrix.setIdentityM(modelMatrix, 0);
-        Matrix.translateM(modelMatrix, 0, x, y, z);
-
-        // Rotar para apuntar en dirección de velocidad
-        float speed = (float) Math.sqrt(vx*vx + vy*vy + vz*vz);
-        if (speed > 0.01f) {
-            // Calcular ángulos de rotación
-            float yaw = (float) Math.toDegrees(Math.atan2(vx, vz));
-            float pitch = (float) Math.toDegrees(Math.asin(-vy / speed));
-
-            Matrix.rotateM(modelMatrix, 0, yaw, 0, 1, 0);
-            Matrix.rotateM(modelMatrix, 0, pitch, 1, 0, 0);
+        // Calcular rotación
+        float spd = (float) Math.sqrt(vx*vx + vy*vy + vz*vz);
+        float yaw = 0, pitch = 0;
+        if (spd > 0.01f) {
+            yaw = (float) Math.toDegrees(Math.atan2(vx, vz));
+            pitch = (float) Math.toDegrees(Math.asin(-vy / spd));
         }
 
-        // Escalar el láser (más largo en Z)
-        Matrix.scaleM(modelMatrix, 0, 1.0f, 1.0f, 1.0f);
+        // ═══════════════════════════════════════════════════════════════
+        // 1. DIBUJAR TRAIL (estela)
+        // ═══════════════════════════════════════════════════════════════
+        drawTrail(time, yaw, pitch);
 
-        // Calcular MVP
-        camera.computeMvp(modelMatrix, mvpMatrix);
+        // ═══════════════════════════════════════════════════════════════
+        // 2. DIBUJAR GLOW (halo exterior)
+        // ═══════════════════════════════════════════════════════════════
+        drawGlow(yaw, pitch);
 
-        // Uniforms
-        GLES20.glUniformMatrix4fv(uMVPLoc, 1, false, mvpMatrix, 0);
+        // ═══════════════════════════════════════════════════════════════
+        // 3. DIBUJAR NÚCLEO (centro brillante)
+        // ═══════════════════════════════════════════════════════════════
+        drawCore(time, yaw, pitch);
 
-        float[] color = (team == TEAM_HUMAN) ? COLOR_HUMAN : COLOR_ALIEN;
-        GLES20.glUniform4fv(uColorLoc, 1, color, 0);
-
-        float time = ((System.currentTimeMillis() - startTime) / 1000.0f) % 60.0f;
-        GLES20.glUniform1f(uTimeLoc, time);
-
-        // Dibujar como línea gruesa (GL_LINES con múltiples pasadas para grosor)
-        vertexBuffer.position(0);
-        GLES20.glEnableVertexAttribArray(aPositionLoc);
-        GLES20.glVertexAttribPointer(aPositionLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
-
-        // Dibujar las caras del "tubo" de láser
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 4);  // Frente
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 4, 4);  // Atrás
-
-        GLES20.glDisableVertexAttribArray(aPositionLoc);
-
-        // 💥 DIBUJAR EFECTO DE IMPACTO
-        drawImpact();
-
-        // Restaurar estado
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        // ═══════════════════════════════════════════════════════════════
+        // 4. DIBUJAR PARTÍCULAS DE ENERGÍA
+        // ═══════════════════════════════════════════════════════════════
+        drawEnergyParticles(time, yaw, pitch);
     }
 
-    /**
-     * 💥 Dibuja las partículas del impacto
-     */
-    private void drawImpact() {
-        if (!impactActive || camera == null) return;
+    private void drawTrail(float time, float yaw, float pitch) {
+        if (glowProgram == 0) return;
 
-        GLES20.glUseProgram(shaderProgram);
+        GLES20.glUseProgram(glowProgram);
         GLES20.glEnable(GLES20.GL_BLEND);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
         GLES20.glDisable(GLES20.GL_DEPTH_TEST);
 
-        float[] color = (team == TEAM_HUMAN) ? COLOR_HUMAN : COLOR_ALIEN;
+        float[] color = (team == TEAM_HUMAN) ? COLOR_HUMAN_GLOW : COLOR_ALIEN_GLOW;
 
-        // Dibujar cada partícula como un pequeño quad
-        for (int i = 0; i < IMPACT_PARTICLES; i++) {
-            if (impactParticleLife[i] <= 0) continue;
+        for (int i = 0; i < TRAIL_SEGMENTS; i++) {
+            int idx = (trailIndex - i + TRAIL_SEGMENTS) % TRAIL_SEGMENTS;
+            float alpha = (1f - (float)i / TRAIL_SEGMENTS) * 0.4f;
+            float scale = 1f - (float)i / TRAIL_SEGMENTS * 0.7f;
 
-            float[] particleModel = new float[16];
-            Matrix.setIdentityM(particleModel, 0);
-            Matrix.translateM(particleModel, 0, impactParticleX[i], impactParticleY[i], impactParticleZ[i]);
+            // OPTIMIZADO: Usar MatrixPool en lugar de new float[16]
+            float[] model = MatrixPool.obtain();
+            Matrix.setIdentityM(model, 0);
+            Matrix.translateM(model, 0, trailX[idx], trailY[idx], trailZ[idx]);
+            Matrix.rotateM(model, 0, yaw, 0, 1, 0);
+            Matrix.rotateM(model, 0, pitch, 1, 0, 0);
+            Matrix.scaleM(model, 0, scale, scale, scale * 0.5f);
 
-            // Escala basada en vida (se hace más pequeño)
-            float particleScale = impactParticleLife[i] * 0.08f;
-            Matrix.scaleM(particleModel, 0, particleScale, particleScale, particleScale);
+            float[] mvp = MatrixPool.obtain();
+            camera.computeMvp(model, mvp);
 
-            float[] particleMvp = new float[16];
-            camera.computeMvp(particleModel, particleMvp);
+            GLES20.glUniformMatrix4fv(glowMVPLoc, 1, false, mvp, 0);
+            GLES20.glUniform4fv(glowColorLoc, 1, color, 0);
+            GLES20.glUniform1f(glowAlphaLoc, alpha);
 
-            GLES20.glUniformMatrix4fv(uMVPLoc, 1, false, particleMvp, 0);
-
-            // Color con alpha basado en vida
-            float[] particleColor = {
-                color[0] * 1.5f,
-                color[1] * 1.5f,
-                color[2] * 1.5f,
-                impactParticleLife[i]
-            };
-            GLES20.glUniform4fv(uColorLoc, 1, particleColor, 0);
-
-            float time = ((System.currentTimeMillis() - startTime) / 1000.0f) % 60.0f;
-            GLES20.glUniform1f(uTimeLoc, time);
-
-            // Dibujar partícula
-            vertexBuffer.position(0);
-            GLES20.glEnableVertexAttribArray(aPositionLoc);
-            GLES20.glVertexAttribPointer(aPositionLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+            glowVertexBuffer.position(0);
+            GLES20.glEnableVertexAttribArray(glowPositionLoc);
+            GLES20.glVertexAttribPointer(glowPositionLoc, 3, GLES20.GL_FLOAT, false, 0, glowVertexBuffer);
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 4);
-            GLES20.glDisableVertexAttribArray(aPositionLoc);
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 4, 4);
+            GLES20.glDisableVertexAttribArray(glowPositionLoc);
         }
     }
 
-    /**
-     * Verifica colisión con un punto (esfera)
-     */
+    private void drawGlow(float yaw, float pitch) {
+        if (glowProgram == 0) return;
+
+        GLES20.glUseProgram(glowProgram);
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+
+        float[] color = (team == TEAM_HUMAN) ? COLOR_HUMAN_GLOW : COLOR_ALIEN_GLOW;
+
+        // OPTIMIZADO: Usar matrices pre-asignadas
+        Matrix.setIdentityM(modelMatrix, 0);
+        Matrix.translateM(modelMatrix, 0, x, y, z);
+        Matrix.rotateM(modelMatrix, 0, yaw, 0, 1, 0);
+        Matrix.rotateM(modelMatrix, 0, pitch, 1, 0, 0);
+
+        camera.computeMvp(modelMatrix, mvpMatrix);
+
+        GLES20.glUniformMatrix4fv(glowMVPLoc, 1, false, mvpMatrix, 0);
+        GLES20.glUniform4fv(glowColorLoc, 1, color, 0);
+        GLES20.glUniform1f(glowAlphaLoc, 0.7f);
+
+        glowVertexBuffer.position(0);
+        GLES20.glEnableVertexAttribArray(glowPositionLoc);
+        GLES20.glVertexAttribPointer(glowPositionLoc, 3, GLES20.GL_FLOAT, false, 0, glowVertexBuffer);
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 4);
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 4, 4);
+        GLES20.glDisableVertexAttribArray(glowPositionLoc);
+    }
+
+    private void drawCore(float time, float yaw, float pitch) {
+        if (coreProgram == 0) return;
+
+        GLES20.glUseProgram(coreProgram);
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+
+        float[] color = (team == TEAM_HUMAN) ? COLOR_HUMAN_CORE : COLOR_ALIEN_CORE;
+
+        // OPTIMIZADO: Usar MatrixPool
+        float[] model = MatrixPool.obtain();
+        Matrix.setIdentityM(model, 0);
+        Matrix.translateM(model, 0, x, y, z);
+        Matrix.rotateM(model, 0, yaw, 0, 1, 0);
+        Matrix.rotateM(model, 0, pitch, 1, 0, 0);
+
+        float[] mvp = MatrixPool.obtain();
+        camera.computeMvp(model, mvp);
+
+        GLES20.glUniformMatrix4fv(coreMVPLoc, 1, false, mvp, 0);
+        GLES20.glUniform4fv(coreColorLoc, 1, color, 0);
+        GLES20.glUniform1f(coreTimeLoc, time);
+        GLES20.glUniform1f(coreIntensityLoc, 1.0f);
+
+        coreVertexBuffer.position(0);
+        coreUVBuffer.position(0);
+        GLES20.glEnableVertexAttribArray(corePositionLoc);
+        GLES20.glEnableVertexAttribArray(coreUVLoc);
+        GLES20.glVertexAttribPointer(corePositionLoc, 3, GLES20.GL_FLOAT, false, 0, coreVertexBuffer);
+        GLES20.glVertexAttribPointer(coreUVLoc, 2, GLES20.GL_FLOAT, false, 0, coreUVBuffer);
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 4);
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 4, 4);
+        GLES20.glDisableVertexAttribArray(corePositionLoc);
+        GLES20.glDisableVertexAttribArray(coreUVLoc);
+    }
+
+    private void drawEnergyParticles(float time, float yaw, float pitch) {
+        if (particleProgram == 0) return;
+
+        GLES20.glUseProgram(particleProgram);
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+
+        float[] color = (team == TEAM_HUMAN) ? COLOR_HUMAN_CORE : COLOR_ALIEN_CORE;
+
+        for (int i = 0; i < ENERGY_PARTICLES; i++) {
+            float angle = particleAngle[i];
+            float radius = particleRadius[i];
+
+            // Posición en espiral alrededor del láser
+            float px = x + (float)(Math.cos(angle) * radius);
+            float py = y + (float)(Math.sin(angle) * radius);
+            float pz = z + (i * 0.05f);
+
+            // OPTIMIZADO: Usar MatrixPool
+            float[] model = MatrixPool.obtain();
+            Matrix.setIdentityM(model, 0);
+            Matrix.translateM(model, 0, px, py, pz);
+
+            float[] mvp = MatrixPool.obtain();
+            camera.computeMvp(model, mvp);
+
+            GLES20.glUniformMatrix4fv(particleMVPLoc, 1, false, mvp, 0);
+            GLES20.glUniform4fv(particleColorLoc, 1, color, 0);
+            GLES20.glUniform1f(particleSizeLoc, 3f + (float)Math.sin(time * 5f + i) * 1.5f);
+
+            particleVertexBuffer.position(0);
+            GLES20.glEnableVertexAttribArray(particlePositionLoc);
+            GLES20.glVertexAttribPointer(particlePositionLoc, 3, GLES20.GL_FLOAT, false, 0, particleVertexBuffer);
+            GLES20.glDrawArrays(GLES20.GL_POINTS, 0, 1);
+            GLES20.glDisableVertexAttribArray(particlePositionLoc);
+        }
+    }
+
+    private void drawImpact() {
+        if (particleProgram == 0 || camera == null) return;
+
+        GLES20.glUseProgram(particleProgram);
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+
+        float[] color = (team == TEAM_HUMAN) ? COLOR_HUMAN_CORE : COLOR_ALIEN_CORE;
+
+        // Dibujar partículas de impacto
+        for (int i = 0; i < IMPACT_PARTICLES; i++) {
+            if (impactLife[i] <= 0) continue;
+
+            // OPTIMIZADO: Usar MatrixPool
+            float[] model = MatrixPool.obtain();
+            Matrix.setIdentityM(model, 0);
+            Matrix.translateM(model, 0, impactPX[i], impactPY[i], impactPZ[i]);
+
+            float[] mvp = MatrixPool.obtain();
+            camera.computeMvp(model, mvp);
+
+            // Color que se desvanece con chispas más brillantes
+            float[] particleColor = {
+                color[0] * (1f + impactLife[i]),
+                color[1] * (1f + impactLife[i]),
+                color[2] * (1f + impactLife[i]),
+                impactLife[i]
+            };
+
+            GLES20.glUniformMatrix4fv(particleMVPLoc, 1, false, mvp, 0);
+            GLES20.glUniform4fv(particleColorLoc, 1, particleColor, 0);
+            GLES20.glUniform1f(particleSizeLoc, impactSize[i] * impactLife[i]);
+
+            particleVertexBuffer.position(0);
+            GLES20.glEnableVertexAttribArray(particlePositionLoc);
+            GLES20.glVertexAttribPointer(particlePositionLoc, 3, GLES20.GL_FLOAT, false, 0, particleVertexBuffer);
+            GLES20.glDrawArrays(GLES20.GL_POINTS, 0, 1);
+            GLES20.glDisableVertexAttribArray(particlePositionLoc);
+        }
+
+        // Dibujar onda de choque (anillo expandiéndose)
+        if (shockwaveAlpha > 0.1f && glowProgram != 0) {
+            GLES20.glUseProgram(glowProgram);
+
+            // Dibujar múltiples puntos en círculo para simular el anillo
+            int ringPoints = 16;
+            for (int i = 0; i < ringPoints; i++) {
+                float angle = (float)(i * Math.PI * 2 / ringPoints);
+                float rx = impactX + (float)(Math.cos(angle) * shockwaveRadius);
+                float ry = impactY + (float)(Math.sin(angle) * shockwaveRadius);
+
+                // OPTIMIZADO: Usar MatrixPool
+                float[] model = MatrixPool.obtain();
+                Matrix.setIdentityM(model, 0);
+                Matrix.translateM(model, 0, rx, ry, impactZ);
+                Matrix.scaleM(model, 0, 0.008f, 0.008f, 0.008f);
+
+                float[] mvp = MatrixPool.obtain();
+                camera.computeMvp(model, mvp);
+
+                GLES20.glUniformMatrix4fv(glowMVPLoc, 1, false, mvp, 0);
+                GLES20.glUniform4fv(glowColorLoc, 1, color, 0);
+                GLES20.glUniform1f(glowAlphaLoc, shockwaveAlpha * 0.5f);
+
+                glowVertexBuffer.position(0);
+                GLES20.glEnableVertexAttribArray(glowPositionLoc);
+                GLES20.glVertexAttribPointer(glowPositionLoc, 3, GLES20.GL_FLOAT, false, 0, glowVertexBuffer);
+                GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 4);
+                GLES20.glDisableVertexAttribArray(glowPositionLoc);
+            }
+        }
+
+        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+    }
+
     public boolean checkCollision(float targetX, float targetY, float targetZ, float radius) {
         if (!active) return false;
 
@@ -426,25 +750,19 @@ public class Laser {
         float dz = z - targetZ;
         float dist = (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
 
-        // Radio de colisión del láser + radio del objetivo
-        float collisionRadius = 0.15f + radius;
-
-        return dist < collisionRadius;
+        return dist < (0.15f + radius);
     }
 
-    /**
-     * Desactiva el láser (al impactar) y activa efecto de impacto
-     */
     public void deactivate() {
         if (active) {
-            startImpact();  // Crear efecto visual antes de desactivar
+            startImpact();
         }
         active = false;
     }
 
     // Getters
     public boolean isActive() { return active; }
-    public boolean hasActiveEffect() { return active || impactActive; }  // Para saber si tiene efecto visual
+    public boolean hasActiveEffect() { return active || impactActive; }
     public int getTeam() { return team; }
     public float getX() { return x; }
     public float getY() { return y; }
@@ -452,5 +770,52 @@ public class Laser {
 
     public void setCameraController(CameraController camera) {
         this.camera = camera;
+    }
+
+    // =========================================================================
+    // LIMPIEZA DE RECURSOS OPENGL
+    // =========================================================================
+
+    /**
+     * Limpieza por instancia (no hace nada porque los shaders son estaticos)
+     */
+    public void cleanup() {
+        // Los shaders son estaticos, se limpian con cleanupStatic()
+        active = false;
+        impactActive = false;
+    }
+
+    /**
+     * Limpieza de recursos estaticos compartidos.
+     * DEBE llamarse UNA VEZ cuando la escena se destruye completamente.
+     */
+    public static void cleanupStatic() {
+        Log.d(TAG, "=== CLEANUP STATIC Laser ===");
+
+        if (coreProgram != 0) {
+            GLES20.glDeleteProgram(coreProgram);
+            Log.d(TAG, "  Core program eliminado: " + coreProgram);
+            coreProgram = 0;
+        }
+
+        if (glowProgram != 0) {
+            GLES20.glDeleteProgram(glowProgram);
+            Log.d(TAG, "  Glow program eliminado: " + glowProgram);
+            glowProgram = 0;
+        }
+
+        if (particleProgram != 0) {
+            GLES20.glDeleteProgram(particleProgram);
+            Log.d(TAG, "  Particle program eliminado: " + particleProgram);
+            particleProgram = 0;
+        }
+
+        // Limpiar buffers estaticos
+        coreVertexBuffer = null;
+        coreUVBuffer = null;
+        glowVertexBuffer = null;
+        particleVertexBuffer = null;
+
+        Log.d(TAG, "=== CLEANUP STATIC COMPLETADO ===");
     }
 }

@@ -33,7 +33,12 @@
       "Bash(find:*)",
       "Bash(powershell -Command:*)",
       "Bash(timeout 6 D:/adb/platform-tools/adb.exe logcat:*)",
-      "Bash(timeout 8 D:/adb/platform-tools/adb.exe shell am broadcast:*)"
+      "Bash(timeout 8 D:/adb/platform-tools/adb.exe shell am broadcast:*)",
+      "Bash(timeout 8 D:/adb/platform-tools/adb.exe shell am start:*)",
+      "Bash(timeout 8 D:/adb/platform-tools/adb.exe shell pm dump:*)",
+      "Bash(dir:*)",
+      "Bash(timeout 8 D:/adb/platform-tools/adb.exe:*)",
+      "Bash(timeout 45 D:/adb/platform-tools/adb.exe install:*)"
     ],
     "deny": [],
     "ask": []

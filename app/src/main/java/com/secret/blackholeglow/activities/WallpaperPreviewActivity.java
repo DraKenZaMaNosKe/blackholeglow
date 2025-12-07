@@ -116,7 +116,7 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         wallpaperDirector.setPreviewMode(true);
 
         glSurfaceView = new GLSurfaceView(this);
-        glSurfaceView.setEGLContextClientVersion(2);
+        glSurfaceView.setEGLContextClientVersion(3); // OpenGL ES 3.0
         glSurfaceView.setPreserveEGLContextOnPause(true);
         glSurfaceView.setEGLConfigChooser(8, 8, 8, 8, 24, 0);
         glSurfaceView.setRenderer(wallpaperDirector);
