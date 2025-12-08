@@ -3,7 +3,7 @@ package com.secret.blackholeglow;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.GLUtils;
 import android.util.Log;
 
@@ -35,16 +35,16 @@ public class ShaderUtils {
 
     /** Compila un shader de tipo dado (VERTEX o FRAGMENT). */
     public static int loadShader(int type, String source) {
-        int shader = GLES20.glCreateShader(type);
-        GLES20.glShaderSource(shader, source);
-        GLES20.glCompileShader(shader);
+        int shader = GLES30.glCreateShader(type);
+        GLES30.glShaderSource(shader, source);
+        GLES30.glCompileShader(shader);
 
         // Verificar compilación
         final int[] compileStatus = new int[1];
-        GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compileStatus, 0);
+        GLES30.glGetShaderiv(shader, GLES30.GL_COMPILE_STATUS, compileStatus, 0);
         if (compileStatus[0] == 0) {
-            Log.e(TAG, "Error compiling shader: " + GLES20.glGetShaderInfoLog(shader));
-            GLES20.glDeleteShader(shader);
+            Log.e(TAG, "Error compiling shader: " + GLES30.glGetShaderInfoLog(shader));
+            GLES30.glDeleteShader(shader);
             return 0;
         }
 
@@ -64,25 +64,25 @@ public class ShaderUtils {
      * Necesario para clases que usan shaders inline.
      */
     public static int createProgram(String vertexSource, String fragmentSource) {
-        int vs = loadShader(GLES20.GL_VERTEX_SHADER, vertexSource);
-        int fs = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentSource);
+        int vs = loadShader(GLES30.GL_VERTEX_SHADER, vertexSource);
+        int fs = loadShader(GLES30.GL_FRAGMENT_SHADER, fragmentSource);
 
         if (vs == 0 || fs == 0) {
             Log.e(TAG, "Failed to compile shaders");
             return 0;
         }
 
-        int prog = GLES20.glCreateProgram();
-        GLES20.glAttachShader(prog, vs);
-        GLES20.glAttachShader(prog, fs);
-        GLES20.glLinkProgram(prog);
+        int prog = GLES30.glCreateProgram();
+        GLES30.glAttachShader(prog, vs);
+        GLES30.glAttachShader(prog, fs);
+        GLES30.glLinkProgram(prog);
 
         // Verificar enlace
         final int[] linkStatus = new int[1];
-        GLES20.glGetProgramiv(prog, GLES20.GL_LINK_STATUS, linkStatus, 0);
+        GLES30.glGetProgramiv(prog, GLES30.GL_LINK_STATUS, linkStatus, 0);
         if (linkStatus[0] == 0) {
-            Log.e(TAG, "Error linking program: " + GLES20.glGetProgramInfoLog(prog));
-            GLES20.glDeleteProgram(prog);
+            Log.e(TAG, "Error linking program: " + GLES30.glGetProgramInfoLog(prog));
+            GLES30.glDeleteProgram(prog);
             return 0;
         }
 
@@ -124,7 +124,7 @@ public class ShaderUtils {
     public static int loadTexture(Context context, int resourceId) {
         // Generar handle
         final int[] handle = new int[1];
-        GLES20.glGenTextures(1, handle, 0);
+        GLES30.glGenTextures(1, handle, 0);
         if (handle[0] == 0) {
             Log.e(TAG, "Error al generar ID de textura");
             throw new RuntimeException("Error al generar ID de textura");
@@ -138,6 +138,8 @@ public class ShaderUtils {
                 context.getResources(), resourceId, opts
         );
         if (bmp == null) {
+            // 🔧 FIX: Limpiar texture ID antes de lanzar excepción
+            GLES30.glDeleteTextures(1, handle, 0);
             Log.e(TAG, "No se pudo decodificar recurso: " + resourceId);
             throw new RuntimeException(
                     "No se pudo decodificar recurso: " + resourceId);
@@ -151,40 +153,40 @@ public class ShaderUtils {
         }
 
         // Bind y subir a GPU
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, handle[0]);
-        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bmp, 0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, handle[0]);
+        GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bmp, 0);
         bmp.recycle();
 
         // Generar mipmaps
-        GLES20.glGenerateMipmap(GLES20.GL_TEXTURE_2D);
+        GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D);
 
         // Filtros: LINEAR con mipmaps
-        GLES20.glTexParameteri(
-                GLES20.GL_TEXTURE_2D,
-                GLES20.GL_TEXTURE_MIN_FILTER,
-                GLES20.GL_LINEAR_MIPMAP_LINEAR
+        GLES30.glTexParameteri(
+                GLES30.GL_TEXTURE_2D,
+                GLES30.GL_TEXTURE_MIN_FILTER,
+                GLES30.GL_LINEAR_MIPMAP_LINEAR
         );
-        GLES20.glTexParameteri(
-                GLES20.GL_TEXTURE_2D,
-                GLES20.GL_TEXTURE_MAG_FILTER,
-                GLES20.GL_LINEAR
+        GLES30.glTexParameteri(
+                GLES30.GL_TEXTURE_2D,
+                GLES30.GL_TEXTURE_MAG_FILTER,
+                GLES30.GL_LINEAR
         );
 
         // Wrap en modo REPEAT
-        GLES20.glTexParameteri(
-                GLES20.GL_TEXTURE_2D,
-                GLES20.GL_TEXTURE_WRAP_S,
-                GLES20.GL_REPEAT
+        GLES30.glTexParameteri(
+                GLES30.GL_TEXTURE_2D,
+                GLES30.GL_TEXTURE_WRAP_S,
+                GLES30.GL_REPEAT
         );
-        GLES20.glTexParameteri(
-                GLES20.GL_TEXTURE_2D,
-                GLES20.GL_TEXTURE_WRAP_T,
-                GLES20.GL_REPEAT
+        GLES30.glTexParameteri(
+                GLES30.GL_TEXTURE_2D,
+                GLES30.GL_TEXTURE_WRAP_T,
+                GLES30.GL_REPEAT
         );
 
         // Verificar errores
-        int err = GLES20.glGetError();
-        if (err != GLES20.GL_NO_ERROR) {
+        int err = GLES30.glGetError();
+        if (err != GLES30.GL_NO_ERROR) {
             Log.e(TAG, "Error configurando textura. GL error: " + err);
             throw new RuntimeException(
                     "Error configurando textura. GL error: " + err);

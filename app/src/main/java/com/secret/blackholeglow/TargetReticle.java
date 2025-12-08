@@ -1,6 +1,6 @@
 package com.secret.blackholeglow;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.util.Log;
 
 import java.nio.ByteBuffer;
@@ -115,25 +115,25 @@ public class TargetReticle implements SceneObject, CameraAware {
             "    gl_FragColor = vec4(u_Color * glow, u_Alpha);\n" +
             "}";
 
-        int vertexShader = compileShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode);
-        int fragmentShader = compileShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode);
+        int vertexShader = compileShader(GLES30.GL_VERTEX_SHADER, vertexShaderCode);
+        int fragmentShader = compileShader(GLES30.GL_FRAGMENT_SHADER, fragmentShaderCode);
 
-        shaderProgram = GLES20.glCreateProgram();
-        GLES20.glAttachShader(shaderProgram, vertexShader);
-        GLES20.glAttachShader(shaderProgram, fragmentShader);
-        GLES20.glLinkProgram(shaderProgram);
+        shaderProgram = GLES30.glCreateProgram();
+        GLES30.glAttachShader(shaderProgram, vertexShader);
+        GLES30.glAttachShader(shaderProgram, fragmentShader);
+        GLES30.glLinkProgram(shaderProgram);
 
-        aPositionHandle = GLES20.glGetAttribLocation(shaderProgram, "a_Position");
-        uMVPMatrixHandle = GLES20.glGetUniformLocation(shaderProgram, "u_MVPMatrix");
-        uColorHandle = GLES20.glGetUniformLocation(shaderProgram, "u_Color");
-        uAlphaHandle = GLES20.glGetUniformLocation(shaderProgram, "u_Alpha");
-        uTimeHandle = GLES20.glGetUniformLocation(shaderProgram, "u_Time");
+        aPositionHandle = GLES30.glGetAttribLocation(shaderProgram, "a_Position");
+        uMVPMatrixHandle = GLES30.glGetUniformLocation(shaderProgram, "u_MVPMatrix");
+        uColorHandle = GLES30.glGetUniformLocation(shaderProgram, "u_Color");
+        uAlphaHandle = GLES30.glGetUniformLocation(shaderProgram, "u_Alpha");
+        uTimeHandle = GLES30.glGetUniformLocation(shaderProgram, "u_Time");
     }
 
     private int compileShader(int type, String shaderCode) {
-        int shader = GLES20.glCreateShader(type);
-        GLES20.glShaderSource(shader, shaderCode);
-        GLES20.glCompileShader(shader);
+        int shader = GLES30.glCreateShader(type);
+        GLES30.glShaderSource(shader, shaderCode);
+        GLES30.glCompileShader(shader);
         return shader;
     }
 
@@ -251,12 +251,12 @@ public class TargetReticle implements SceneObject, CameraAware {
         if (!visible || shaderProgram == 0 || camera == null) return;
         if (targetingSystem == null) return;
 
-        GLES20.glUseProgram(shaderProgram);
+        GLES30.glUseProgram(shaderProgram);
 
         // Habilitar blending
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
 
         // Configurar color según estado
         TargetingSystem.TargetState state = targetingSystem.getState();
@@ -286,9 +286,9 @@ public class TargetReticle implements SceneObject, CameraAware {
             currentColor[2] = COLOR_SEARCHING[2];
         }
 
-        GLES20.glUniform3fv(uColorHandle, 1, currentColor, 0);
-        GLES20.glUniform1f(uAlphaHandle, alpha);
-        GLES20.glUniform1f(uTimeHandle, time);
+        GLES30.glUniform3fv(uColorHandle, 1, currentColor, 0);
+        GLES30.glUniform1f(uAlphaHandle, alpha);
+        GLES30.glUniform1f(uTimeHandle, time);
 
         // Construir matriz de modelo
         android.opengl.Matrix.setIdentityM(modelMatrix, 0);
@@ -310,38 +310,38 @@ public class TargetReticle implements SceneObject, CameraAware {
 
         // Calcular MVP
         camera.computeMvp(modelMatrix, mvpMatrix);
-        GLES20.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, mvpMatrix, 0);
+        GLES30.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, mvpMatrix, 0);
 
         // Dibujar elementos
-        GLES20.glLineWidth(3.0f);
+        GLES30.glLineWidth(3.0f);
 
         // Anillo exterior
-        GLES20.glEnableVertexAttribArray(aPositionHandle);
-        GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, ringBuffer);
-        GLES20.glDrawArrays(GLES20.GL_LINE_LOOP, 0, RING_SEGMENTS);
+        GLES30.glEnableVertexAttribArray(aPositionHandle);
+        GLES30.glVertexAttribPointer(aPositionHandle, 3, GLES30.GL_FLOAT, false, 0, ringBuffer);
+        GLES30.glDrawArrays(GLES30.GL_LINE_LOOP, 0, RING_SEGMENTS);
 
         // Cruz central
-        GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, crossBuffer);
-        GLES20.glDrawArrays(GLES20.GL_LINES, 0, 4);
+        GLES30.glVertexAttribPointer(aPositionHandle, 3, GLES30.GL_FLOAT, false, 0, crossBuffer);
+        GLES30.glDrawArrays(GLES30.GL_LINES, 0, 4);
 
         // Esquinas
-        GLES20.glLineWidth(4.0f);
-        GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, cornerBuffer);
-        GLES20.glDrawArrays(GLES20.GL_LINES, 0, 16);
+        GLES30.glLineWidth(4.0f);
+        GLES30.glVertexAttribPointer(aPositionHandle, 3, GLES30.GL_FLOAT, false, 0, cornerBuffer);
+        GLES30.glDrawArrays(GLES30.GL_LINES, 0, 16);
 
         // Punto central (más brillante cuando está lockeado)
         if (state == TargetingSystem.TargetState.LOCKED || state == TargetingSystem.TargetState.FIRING) {
-            GLES20.glUniform1f(uAlphaHandle, 1.0f);
-            GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, centerBuffer);
-            GLES20.glDrawArrays(GLES20.GL_POINTS, 0, 1);
+            GLES30.glUniform1f(uAlphaHandle, 1.0f);
+            GLES30.glVertexAttribPointer(aPositionHandle, 3, GLES30.GL_FLOAT, false, 0, centerBuffer);
+            GLES30.glDrawArrays(GLES30.GL_POINTS, 0, 1);
         }
 
-        GLES20.glDisableVertexAttribArray(aPositionHandle);
+        GLES30.glDisableVertexAttribArray(aPositionHandle);
 
         // Restaurar estados
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-        GLES20.glDisable(GLES20.GL_BLEND);
-        GLES20.glLineWidth(1.0f);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+        GLES30.glDisable(GLES30.GL_BLEND);
+        GLES30.glLineWidth(1.0f);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -350,7 +350,7 @@ public class TargetReticle implements SceneObject, CameraAware {
 
     public void release() {
         if (shaderProgram != 0) {
-            GLES20.glDeleteProgram(shaderProgram);
+            GLES30.glDeleteProgram(shaderProgram);
             shaderProgram = 0;
         }
     }

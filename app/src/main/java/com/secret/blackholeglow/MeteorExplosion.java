@@ -1,6 +1,6 @@
 package com.secret.blackholeglow;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.Matrix;
 
 import java.nio.ByteBuffer;
@@ -110,11 +110,11 @@ public class MeteorExplosion {
     public void draw(CameraController camera) {
         if (!activo || camera == null) return;
 
-        GLES20.glUseProgram(shaderProgram);
+        GLES30.glUseProgram(shaderProgram);
 
         // Habilitar blending normal (sin efectos de brillo)
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         // Dibujar cada fragmento
         for (Fragmento f : fragmentos) {
@@ -154,10 +154,10 @@ public class MeteorExplosion {
         shaderProgram = ShaderUtils.createProgram(vertexShaderCode, fragmentShaderCode);
 
         // Obtener locations
-        aPositionLoc = GLES20.glGetAttribLocation(shaderProgram, "a_Position");
-        uMvpLoc = GLES20.glGetUniformLocation(shaderProgram, "u_MVP");
-        uColorLoc = GLES20.glGetUniformLocation(shaderProgram, "u_Color");
-        uAlphaLoc = GLES20.glGetUniformLocation(shaderProgram, "u_Alpha");
+        aPositionLoc = GLES30.glGetAttribLocation(shaderProgram, "a_Position");
+        uMvpLoc = GLES30.glGetUniformLocation(shaderProgram, "u_MVP");
+        uColorLoc = GLES30.glGetUniformLocation(shaderProgram, "u_Color");
+        uAlphaLoc = GLES30.glGetUniformLocation(shaderProgram, "u_Alpha");
 
         // Crear buffer para un cuadrado simple
         float[] vertices = {
@@ -254,15 +254,15 @@ public class MeteorExplosion {
             camera.computeMvp(modelMatrix, mvpMatrix);
 
             // Enviar uniforms
-            GLES20.glUniformMatrix4fv(mvpLoc, 1, false, mvpMatrix, 0);
-            GLES20.glUniform4fv(colorLoc, 1, color, 0);
-            GLES20.glUniform1f(alphaLoc, alpha);
+            GLES30.glUniformMatrix4fv(mvpLoc, 1, false, mvpMatrix, 0);
+            GLES30.glUniform4fv(colorLoc, 1, color, 0);
+            GLES30.glUniform1f(alphaLoc, alpha);
 
             // Dibujar
-            GLES20.glEnableVertexAttribArray(posLoc);
-            GLES20.glVertexAttribPointer(posLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
-            GLES20.glDisableVertexAttribArray(posLoc);
+            GLES30.glEnableVertexAttribArray(posLoc);
+            GLES30.glVertexAttribPointer(posLoc, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
+            GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
+            GLES30.glDisableVertexAttribArray(posLoc);
         }
     }
 }

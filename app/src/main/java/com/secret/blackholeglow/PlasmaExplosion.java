@@ -1,6 +1,6 @@
 package com.secret.blackholeglow;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.Matrix;
 import android.util.Log;
 
@@ -91,22 +91,22 @@ public class PlasmaExplosion implements SceneObject, CameraAware {
     }
 
     private void initShaders() {
-        int vs = GLES20.glCreateShader(GLES20.GL_VERTEX_SHADER);
-        GLES20.glShaderSource(vs, VERTEX_SHADER);
-        GLES20.glCompileShader(vs);
+        int vs = GLES30.glCreateShader(GLES30.GL_VERTEX_SHADER);
+        GLES30.glShaderSource(vs, VERTEX_SHADER);
+        GLES30.glCompileShader(vs);
 
-        int fs = GLES20.glCreateShader(GLES20.GL_FRAGMENT_SHADER);
-        GLES20.glShaderSource(fs, FRAGMENT_SHADER);
-        GLES20.glCompileShader(fs);
+        int fs = GLES30.glCreateShader(GLES30.GL_FRAGMENT_SHADER);
+        GLES30.glShaderSource(fs, FRAGMENT_SHADER);
+        GLES30.glCompileShader(fs);
 
-        shaderProgram = GLES20.glCreateProgram();
-        GLES20.glAttachShader(shaderProgram, vs);
-        GLES20.glAttachShader(shaderProgram, fs);
-        GLES20.glLinkProgram(shaderProgram);
+        shaderProgram = GLES30.glCreateProgram();
+        GLES30.glAttachShader(shaderProgram, vs);
+        GLES30.glAttachShader(shaderProgram, fs);
+        GLES30.glLinkProgram(shaderProgram);
 
-        positionHandle = GLES20.glGetAttribLocation(shaderProgram, "vPosition");
-        colorHandle = GLES20.glGetUniformLocation(shaderProgram, "vColor");
-        mvpMatrixHandle = GLES20.glGetUniformLocation(shaderProgram, "uMVPMatrix");
+        positionHandle = GLES30.glGetAttribLocation(shaderProgram, "vPosition");
+        colorHandle = GLES30.glGetUniformLocation(shaderProgram, "vColor");
+        mvpMatrixHandle = GLES30.glGetUniformLocation(shaderProgram, "uMVPMatrix");
     }
 
     public void explode(float targetX, float targetY, float targetZ) {
@@ -146,10 +146,10 @@ public class PlasmaExplosion implements SceneObject, CameraAware {
     public void draw() {
         if (!active || camera == null) return;
 
-        GLES20.glUseProgram(shaderProgram);
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES30.glUseProgram(shaderProgram);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
 
         float progress = time / EXPLOSION_DURATION;
         float alpha = 1f - progress;
@@ -173,8 +173,8 @@ public class PlasmaExplosion implements SceneObject, CameraAware {
         // 4. PARTÍCULAS / CHISPAS
         drawParticles(progress, alpha);
 
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
     }
 
     private void drawCircle(float radius, float r, float g, float b, float a, boolean filled) {
@@ -185,27 +185,27 @@ public class PlasmaExplosion implements SceneObject, CameraAware {
         float[] vpMatrix = camera.getViewProjectionMatrix();
         Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0);
 
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0);
 
         colorCache[0] = r;
         colorCache[1] = g;
         colorCache[2] = b;
         colorCache[3] = a;
-        GLES20.glUniform4fv(colorHandle, 1, colorCache, 0);
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
 
         circleBuffer.position(0);
-        GLES20.glEnableVertexAttribArray(positionHandle);
-        GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 0, circleBuffer);
+        GLES30.glEnableVertexAttribArray(positionHandle);
+        GLES30.glVertexAttribPointer(positionHandle, 3, GLES30.GL_FLOAT, false, 0, circleBuffer);
 
         if (filled) {
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, CIRCLE_SEGMENTS + 1);
+            GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, CIRCLE_SEGMENTS + 1);
         } else {
-            GLES20.glLineWidth(3f);
-            GLES20.glDrawArrays(GLES20.GL_LINE_LOOP, 0, CIRCLE_SEGMENTS + 1);
-            GLES20.glLineWidth(1f);
+            GLES30.glLineWidth(3f);
+            GLES30.glDrawArrays(GLES30.GL_LINE_LOOP, 0, CIRCLE_SEGMENTS + 1);
+            GLES30.glLineWidth(1f);
         }
 
-        GLES20.glDisableVertexAttribArray(positionHandle);
+        GLES30.glDisableVertexAttribArray(positionHandle);
     }
 
     private void drawParticles(float progress, float alpha) {
@@ -228,18 +228,18 @@ public class PlasmaExplosion implements SceneObject, CameraAware {
         float[] vpMatrix = camera.getViewProjectionMatrix();
         Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0);
 
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0);
 
         // Color amarillo-blanco
         colorCache[0] = 1f;
         colorCache[1] = 0.9f;
         colorCache[2] = 0.4f;
         colorCache[3] = alpha * 0.9f;
-        GLES20.glUniform4fv(colorHandle, 1, colorCache, 0);
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
 
-        GLES20.glEnableVertexAttribArray(positionHandle);
-        GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 0, particleBuffer);
-        GLES20.glDrawArrays(GLES20.GL_POINTS, 0, NUM_PARTICLES);
-        GLES20.glDisableVertexAttribArray(positionHandle);
+        GLES30.glEnableVertexAttribArray(positionHandle);
+        GLES30.glVertexAttribPointer(positionHandle, 3, GLES30.GL_FLOAT, false, 0, particleBuffer);
+        GLES30.glDrawArrays(GLES30.GL_POINTS, 0, NUM_PARTICLES);
+        GLES30.glDisableVertexAttribArray(positionHandle);
     }
 }

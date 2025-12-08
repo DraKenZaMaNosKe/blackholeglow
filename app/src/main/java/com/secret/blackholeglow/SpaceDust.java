@@ -1,7 +1,7 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.util.Log;
 
 import java.nio.ByteBuffer;
@@ -94,32 +94,33 @@ public class SpaceDust implements SceneObject {
     }
 
     private void initShader() {
-        // Vertex shader para líneas (estelas)
+        // Vertex shader GLSL ES 3.0
         String vertexShader =
-            "attribute vec2 a_Position;\n" +
-            "attribute vec4 a_Color;\n" +
-            "varying vec4 v_Color;\n" +
+            "#version 300 es\n" +
+            "precision highp float;\n" +
+            "in vec2 a_Position;\n" +
+            "in vec4 a_Color;\n" +
+            "out vec4 v_Color;\n" +
             "void main() {\n" +
             "    v_Color = a_Color;\n" +
             "    gl_Position = vec4(a_Position, 0.0, 1.0);\n" +
-            "    gl_PointSize = 4.0;\n" +
             "}\n";
 
-        // Fragment shader con gradiente suave
+        // Fragment shader GLSL ES 3.0
         String fragmentShader =
-            "#ifdef GL_ES\n" +
+            "#version 300 es\n" +
             "precision mediump float;\n" +
-            "#endif\n" +
-            "varying vec4 v_Color;\n" +
+            "in vec4 v_Color;\n" +
+            "out vec4 fragColor;\n" +
             "void main() {\n" +
-            "    gl_FragColor = v_Color;\n" +
+            "    fragColor = v_Color;\n" +
             "}\n";
 
         programId = ShaderUtils.createProgram(vertexShader, fragmentShader);
 
         if (programId != 0) {
-            aPositionLoc = GLES20.glGetAttribLocation(programId, "a_Position");
-            aColorLoc = GLES20.glGetAttribLocation(programId, "a_Color");
+            aPositionLoc = GLES30.glGetAttribLocation(programId, "a_Position");
+            aColorLoc = GLES30.glGetAttribLocation(programId, "a_Color");
             Log.d(TAG, "✓ Shader compilado");
         } else {
             Log.e(TAG, "✗ Error compilando shader");
@@ -229,12 +230,12 @@ public class SpaceDust implements SceneObject {
         }
         if (activeCount == 0) return;
 
-        GLES20.glUseProgram(programId);
+        GLES30.glUseProgram(programId);
 
         // Configurar blending aditivo para brillo
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE);
 
         // Llenar buffers con datos de partículas activas
         vertexBuffer.position(0);
@@ -272,22 +273,22 @@ public class SpaceDust implements SceneObject {
         colorBuffer.position(0);
 
         // Configurar atributos
-        GLES20.glEnableVertexAttribArray(aPositionLoc);
-        GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glEnableVertexAttribArray(aPositionLoc);
+        GLES30.glVertexAttribPointer(aPositionLoc, 2, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
-        GLES20.glEnableVertexAttribArray(aColorLoc);
-        GLES20.glVertexAttribPointer(aColorLoc, 4, GLES20.GL_FLOAT, false, 0, colorBuffer);
+        GLES30.glEnableVertexAttribArray(aColorLoc);
+        GLES30.glVertexAttribPointer(aColorLoc, 4, GLES30.GL_FLOAT, false, 0, colorBuffer);
 
         // Dibujar líneas
-        GLES20.glLineWidth(2.0f);
-        GLES20.glDrawArrays(GLES20.GL_LINES, 0, drawCount * 2);
+        GLES30.glLineWidth(2.0f);
+        GLES30.glDrawArrays(GLES30.GL_LINES, 0, drawCount * 2);
 
         // Limpiar
-        GLES20.glDisableVertexAttribArray(aPositionLoc);
-        GLES20.glDisableVertexAttribArray(aColorLoc);
+        GLES30.glDisableVertexAttribArray(aPositionLoc);
+        GLES30.glDisableVertexAttribArray(aColorLoc);
 
         // Restaurar estados
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
     }
 }

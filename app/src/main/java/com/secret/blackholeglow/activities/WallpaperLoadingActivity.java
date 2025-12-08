@@ -21,6 +21,7 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowCompat;
 
@@ -65,10 +66,9 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // 🔧 FIX Android 15: Habilitar Edge-to-Edge ANTES de super.onCreate()
+        EdgeToEdge.enable(this);
         super.onCreate(savedInstanceState);
-
-        // Edge-to-edge
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 
         // Obtener datos del intent
         wallpaperName = getIntent().getStringExtra("WALLPAPER_ID");

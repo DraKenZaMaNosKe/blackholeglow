@@ -13,6 +13,7 @@ import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowCompat;
 
@@ -40,6 +41,8 @@ public class GeminiChatActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // 🔧 FIX Android 15: Habilitar Edge-to-Edge ANTES de super.onCreate()
+        EdgeToEdge.enable(this);
         super.onCreate(savedInstanceState);
 
         // Hacer la Activity flotante y transparente
@@ -47,9 +50,6 @@ public class GeminiChatActivity extends AppCompatActivity {
         getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
         getWindow().setDimAmount(0.7f);
-
-        // Edge-to-edge
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 
         setContentView(R.layout.activity_gemini_chat);
 

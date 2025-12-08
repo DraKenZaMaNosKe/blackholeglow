@@ -100,6 +100,58 @@ public class TargetingSystem {
         this.fireListener = listener;
     }
 
+    /**
+     * 👆 Forzar lock-on manual cuando el usuario toca una nave enemiga
+     * La mira se coloca inmediatamente sobre el objetivo seleccionado
+     * @param enemy El enemigo tocado (UfoAttacker o UfoScout)
+     */
+    public void setManualTarget(Object enemy) {
+        if (enemy == null) {
+            Log.d(TAG, "❌ setManualTarget: enemigo null");
+            return;
+        }
+
+        // Obtener posición del enemigo
+        if (enemy instanceof UfoAttacker) {
+            UfoAttacker ufo = (UfoAttacker) enemy;
+            if (ufo.isDestroyed()) {
+                Log.d(TAG, "❌ UfoAttacker ya destruido");
+                return;
+            }
+            targetWorldX = ufo.x;
+            targetWorldY = ufo.y;
+            targetWorldZ = ufo.z;
+            lockedTarget = ufo;
+        } else if (enemy instanceof UfoScout) {
+            UfoScout ufo = (UfoScout) enemy;
+            if (ufo.isDestroyed()) {
+                Log.d(TAG, "❌ UfoScout ya destruido");
+                return;
+            }
+            targetWorldX = ufo.getX();
+            targetWorldY = ufo.getY();
+            targetWorldZ = ufo.getZ();
+            lockedTarget = ufo;
+        } else {
+            Log.d(TAG, "❌ Tipo de enemigo desconocido: " + enemy.getClass().getSimpleName());
+            return;
+        }
+
+        // LOCK INMEDIATO - la mira aparece directamente sobre el objetivo
+        currentState = TargetState.LOCKED;
+        lockProgress = 1.0f;
+        lockLostTimer = 0f;
+
+        // Calcular posición en pantalla usando proyección real
+        float[] screenCoords = worldToScreen(targetWorldX, targetWorldY, targetWorldZ);
+        targetScreenX = screenCoords[0];
+        targetScreenY = screenCoords[1];
+
+        Log.d(TAG, "👆🎯 LOCK MANUAL: " + enemy.getClass().getSimpleName() +
+              " en pantalla (" + String.format("%.2f", targetScreenX) + ", " +
+              String.format("%.2f", targetScreenY) + ")");
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // 🔄 UPDATE
     // ═══════════════════════════════════════════════════════════════════════
@@ -280,20 +332,31 @@ public class TargetingSystem {
 
     /**
      * Convierte coordenadas del mundo a pantalla normalizada (-1 a 1)
+     * Usa la matriz VP de la cámara para proyección correcta
      */
     private float[] worldToScreen(float worldX, float worldY, float worldZ) {
-        // Simplificación: proyectar basándonos en la posición relativa
-        // En una implementación completa usaríamos las matrices MVP
+        if (camera == null) {
+            // Fallback a aproximación si no hay cámara
+            return new float[]{worldX * 0.3f, worldY * 0.3f};
+        }
 
-        // Aproximación simple para coordenadas 2D
-        float screenX = worldX * 0.3f;  // Escalar a rango de pantalla
-        float screenY = worldY * 0.3f - 0.1f;  // Ajustar Y
+        // Obtener matriz View-Projection
+        float[] vpMatrix = camera.getViewProjectionMatrix();
+
+        // Proyectar punto 3D: [x, y, z, 1] * VP = [clipX, clipY, clipZ, clipW]
+        float clipX = vpMatrix[0] * worldX + vpMatrix[4] * worldY + vpMatrix[8] * worldZ + vpMatrix[12];
+        float clipY = vpMatrix[1] * worldX + vpMatrix[5] * worldY + vpMatrix[9] * worldZ + vpMatrix[13];
+        float clipW = vpMatrix[3] * worldX + vpMatrix[7] * worldY + vpMatrix[11] * worldZ + vpMatrix[15];
+
+        // Dividir por W para obtener coordenadas normalizadas (NDC)
+        float ndcX = clipX / clipW;
+        float ndcY = clipY / clipW;
 
         // Clamp a rango válido
-        screenX = Math.max(-0.9f, Math.min(0.9f, screenX));
-        screenY = Math.max(-0.9f, Math.min(0.9f, screenY));
+        ndcX = Math.max(-0.95f, Math.min(0.95f, ndcX));
+        ndcY = Math.max(-0.95f, Math.min(0.95f, ndcY));
 
-        return new float[]{screenX, screenY};
+        return new float[]{ndcX, ndcY};
     }
 
     /**

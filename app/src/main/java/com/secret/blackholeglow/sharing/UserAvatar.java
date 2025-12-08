@@ -10,7 +10,7 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.RectF;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.GLUtils;
 import android.os.Handler;
 import android.os.Looper;
@@ -118,19 +118,19 @@ public class UserAvatar {
         if (isInitialized) return;
 
         // Crear programa
-        int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, VERTEX_SHADER);
-        int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
+        int vertexShader = loadShader(GLES30.GL_VERTEX_SHADER, VERTEX_SHADER);
+        int fragmentShader = loadShader(GLES30.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
 
-        programId = GLES20.glCreateProgram();
-        GLES20.glAttachShader(programId, vertexShader);
-        GLES20.glAttachShader(programId, fragmentShader);
-        GLES20.glLinkProgram(programId);
+        programId = GLES30.glCreateProgram();
+        GLES30.glAttachShader(programId, vertexShader);
+        GLES30.glAttachShader(programId, fragmentShader);
+        GLES30.glLinkProgram(programId);
 
         // Obtener handles
-        positionHandle = GLES20.glGetAttribLocation(programId, "a_Position");
-        texCoordHandle = GLES20.glGetAttribLocation(programId, "a_TexCoord");
-        mvpMatrixHandle = GLES20.glGetUniformLocation(programId, "u_MVPMatrix");
-        textureHandle = GLES20.glGetUniformLocation(programId, "u_Texture");
+        positionHandle = GLES30.glGetAttribLocation(programId, "a_Position");
+        texCoordHandle = GLES30.glGetAttribLocation(programId, "a_TexCoord");
+        mvpMatrixHandle = GLES30.glGetUniformLocation(programId, "u_MVPMatrix");
+        textureHandle = GLES30.glGetUniformLocation(programId, "u_Texture");
 
         // Crear geometría (cuadrado)
         createGeometry();
@@ -300,21 +300,21 @@ public class UserAvatar {
         // Eliminar textura anterior
         if (textureId != -1) {
             int[] textures = {textureId};
-            GLES20.glDeleteTextures(1, textures, 0);
+            GLES30.glDeleteTextures(1, textures, 0);
         }
 
         // Crear nueva textura
         int[] textureIds = new int[1];
-        GLES20.glGenTextures(1, textureIds, 0);
+        GLES30.glGenTextures(1, textureIds, 0);
         textureId = textureIds[0];
 
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
 
-        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, pendingBitmap, 0);
+        GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, pendingBitmap, 0);
 
         pendingBitmap.recycle();
         pendingBitmap = null;
@@ -331,11 +331,11 @@ public class UserAvatar {
 
         if (textureId == -1) return;
 
-        GLES20.glUseProgram(programId);
+        GLES30.glUseProgram(programId);
 
         // Habilitar blending
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         // Matriz de transformación
         float[] modelMatrix = new float[16];
@@ -346,25 +346,25 @@ public class UserAvatar {
         float[] finalMatrix = new float[16];
         android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
 
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrix, 0);
 
         // Textura
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-        GLES20.glUniform1i(textureHandle, 0);
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
+        GLES30.glUniform1i(textureHandle, 0);
 
         // Vértices
-        GLES20.glEnableVertexAttribArray(positionHandle);
-        GLES20.glVertexAttribPointer(positionHandle, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glEnableVertexAttribArray(positionHandle);
+        GLES30.glVertexAttribPointer(positionHandle, 2, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
-        GLES20.glEnableVertexAttribArray(texCoordHandle);
-        GLES20.glVertexAttribPointer(texCoordHandle, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
+        GLES30.glEnableVertexAttribArray(texCoordHandle);
+        GLES30.glVertexAttribPointer(texCoordHandle, 2, GLES30.GL_FLOAT, false, 0, texCoordBuffer);
 
         // Dibujar
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 4);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 4);
 
-        GLES20.glDisableVertexAttribArray(positionHandle);
-        GLES20.glDisableVertexAttribArray(texCoordHandle);
+        GLES30.glDisableVertexAttribArray(positionHandle);
+        GLES30.glDisableVertexAttribArray(texCoordHandle);
     }
 
     /**
@@ -386,9 +386,9 @@ public class UserAvatar {
      * 🎨 Carga un shader
      */
     private int loadShader(int type, String shaderCode) {
-        int shader = GLES20.glCreateShader(type);
-        GLES20.glShaderSource(shader, shaderCode);
-        GLES20.glCompileShader(shader);
+        int shader = GLES30.glCreateShader(type);
+        GLES30.glShaderSource(shader, shaderCode);
+        GLES30.glCompileShader(shader);
         return shader;
     }
 
@@ -398,11 +398,11 @@ public class UserAvatar {
     public void cleanup() {
         if (textureId != -1) {
             int[] textures = {textureId};
-            GLES20.glDeleteTextures(1, textures, 0);
+            GLES30.glDeleteTextures(1, textures, 0);
             textureId = -1;
         }
         if (programId != 0) {
-            GLES20.glDeleteProgram(programId);
+            GLES30.glDeleteProgram(programId);
             programId = 0;
         }
         executor.shutdown();

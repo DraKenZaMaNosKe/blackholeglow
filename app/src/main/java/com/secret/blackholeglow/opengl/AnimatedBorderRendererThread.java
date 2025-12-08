@@ -2,7 +2,7 @@ package com.secret.blackholeglow.opengl;
 
 import android.content.Context;
 import android.graphics.PixelFormat;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.util.Log;
 import android.view.Surface;
 
@@ -87,16 +87,16 @@ public class AnimatedBorderRendererThread extends Thread {
         egl.eglMakeCurrent(display, eglSurface, eglSurface, eglContext);
 
         // 🔥 ACTIVAMOS BLENDING para usar el canal alpha del fragment shader
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         // Compilación de shaders
         int program = ShaderUtils.createProgram(context, vertexAsset, fragmentAsset);
-        GLES20.glUseProgram(program);
+        GLES30.glUseProgram(program);
 
-        int aPosition = GLES20.glGetAttribLocation(program, "a_Position");
-        int uTime     = GLES20.glGetUniformLocation(program, "u_Time");
-        int uRes      = GLES20.glGetUniformLocation(program, "u_Resolution");
+        int aPosition = GLES30.glGetAttribLocation(program, "a_Position");
+        int uTime     = GLES30.glGetUniformLocation(program, "u_Time");
+        int uRes      = GLES30.glGetUniformLocation(program, "u_Resolution");
 
         float[] quad = {-1f, -1f, 1f, -1f, -1f, 1f, 1f, 1f};
         FloatBuffer vb = ByteBuffer.allocateDirect(quad.length * 4)
@@ -113,22 +113,25 @@ public class AnimatedBorderRendererThread extends Thread {
             float phase = (float)((elapsed % LOOP_DURATION) / LOOP_DURATION);
 
             // Limpieza: usamos clear con alpha=0 para que el fondo quede TRANSPARENTE
-            GLES20.glClearColor(0f, 0f, 0f, 0f);
-            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
+            GLES30.glClearColor(0f, 0f, 0f, 0f);
+            GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
 
-            GLES20.glUseProgram(program);
-            GLES20.glEnableVertexAttribArray(aPosition);
-            GLES20.glVertexAttribPointer(aPosition, 2, GLES20.GL_FLOAT, false, 0, vb);
+            GLES30.glUseProgram(program);
+            GLES30.glEnableVertexAttribArray(aPosition);
+            GLES30.glVertexAttribPointer(aPosition, 2, GLES30.GL_FLOAT, false, 0, vb);
 
-            GLES20.glUniform1f(uTime, phase);
-            GLES20.glUniform2f(uRes, width, height);
+            GLES30.glUniform1f(uTime, phase);
+            GLES30.glUniform2f(uRes, width, height);
 
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
-            GLES20.glDisableVertexAttribArray(aPosition);
+            GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
+            GLES30.glDisableVertexAttribArray(aPosition);
 
             egl.eglSwapBuffers(display, eglSurface);
             try { Thread.sleep(16); } catch (InterruptedException ignored) {}
         }
+
+        // 🔧 FIX: Limpiar shader program antes de destruir contexto
+        GLES30.glDeleteProgram(program);
 
         egl.eglMakeCurrent(display, EGL10.EGL_NO_SURFACE,
                 EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_CONTEXT);

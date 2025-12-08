@@ -1,7 +1,7 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.Matrix;
 import android.util.Log;
 
@@ -69,12 +69,12 @@ public class CloudLayer extends BaseShaderProgram implements SceneObject, Camera
         this.indexCount = mesh.indexCount;
 
         // Obtener locations
-        GLES20.glUseProgram(programId);
-        aPosLoc = GLES20.glGetAttribLocation(programId, "a_Position");
-        aTexLoc = GLES20.glGetAttribLocation(programId, "a_TexCoord");
-        uMVPLoc = GLES20.glGetUniformLocation(programId, "u_MVP");
-        uTimeLoc = GLES20.glGetUniformLocation(programId, "u_Time");
-        uAlphaLoc = GLES20.glGetUniformLocation(programId, "u_Alpha");
+        GLES30.glUseProgram(programId);
+        aPosLoc = GLES30.glGetAttribLocation(programId, "a_Position");
+        aTexLoc = GLES30.glGetAttribLocation(programId, "a_TexCoord");
+        uMVPLoc = GLES30.glGetUniformLocation(programId, "u_MVP");
+        uTimeLoc = GLES30.glGetUniformLocation(programId, "u_Time");
+        uAlphaLoc = GLES30.glGetUniformLocation(programId, "u_Alpha");
 
         Log.d(TAG, "✅ CloudLayer inicializado");
         Log.d(TAG, "   Índices: " + indexCount);
@@ -120,17 +120,17 @@ public class CloudLayer extends BaseShaderProgram implements SceneObject, Camera
     public void draw() {
         if (camera == null) return;
 
-        GLES20.glUseProgram(programId);
+        GLES30.glUseProgram(programId);
 
         // Habilitar blending para transparencia
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         // Desactivar depth write (pero mantener depth test)
-        GLES20.glDepthMask(false);
+        GLES30.glDepthMask(false);
 
         // Desactivar culling para ver ambos lados
-        GLES20.glDisable(GLES20.GL_CULL_FACE);
+        GLES30.glDisable(GLES30.GL_CULL_FACE);
 
         // Construir matriz de modelo
         float finalScale = baseScale * cloudLayerScale;
@@ -142,29 +142,29 @@ public class CloudLayer extends BaseShaderProgram implements SceneObject, Camera
         camera.computeMvp(modelMatrix, mvpMatrix);
 
         // Pasar uniforms
-        GLES20.glUniformMatrix4fv(uMVPLoc, 1, false, mvpMatrix, 0);
-        GLES20.glUniform1f(uTimeLoc, cloudTime);
-        GLES20.glUniform1f(uAlphaLoc, 1.0f);
+        GLES30.glUniformMatrix4fv(uMVPLoc, 1, false, mvpMatrix, 0);
+        GLES30.glUniform1f(uTimeLoc, cloudTime);
+        GLES30.glUniform1f(uAlphaLoc, 1.0f);
 
         // Configurar atributos
         vertexBuffer.position(0);
-        GLES20.glEnableVertexAttribArray(aPosLoc);
-        GLES20.glVertexAttribPointer(aPosLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glEnableVertexAttribArray(aPosLoc);
+        GLES30.glVertexAttribPointer(aPosLoc, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
         uvBuffer.position(0);
-        GLES20.glEnableVertexAttribArray(aTexLoc);
-        GLES20.glVertexAttribPointer(aTexLoc, 2, GLES20.GL_FLOAT, false, 0, uvBuffer);
+        GLES30.glEnableVertexAttribArray(aTexLoc);
+        GLES30.glVertexAttribPointer(aTexLoc, 2, GLES30.GL_FLOAT, false, 0, uvBuffer);
 
         // Dibujar
         indexBuffer.position(0);
-        GLES20.glDrawElements(GLES20.GL_TRIANGLES, indexCount, GLES20.GL_UNSIGNED_SHORT, indexBuffer);
+        GLES30.glDrawElements(GLES30.GL_TRIANGLES, indexCount, GLES30.GL_UNSIGNED_SHORT, indexBuffer);
 
         // Limpiar
-        GLES20.glDisableVertexAttribArray(aPosLoc);
-        GLES20.glDisableVertexAttribArray(aTexLoc);
+        GLES30.glDisableVertexAttribArray(aPosLoc);
+        GLES30.glDisableVertexAttribArray(aTexLoc);
 
         // Restaurar estado
-        GLES20.glDepthMask(true);
-        GLES20.glEnable(GLES20.GL_CULL_FACE);
+        GLES30.glDepthMask(true);
+        GLES30.glEnable(GLES30.GL_CULL_FACE);
     }
 }

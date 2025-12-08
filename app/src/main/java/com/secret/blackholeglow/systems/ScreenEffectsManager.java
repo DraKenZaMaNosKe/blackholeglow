@@ -2,7 +2,7 @@ package com.secret.blackholeglow.systems;
 
 import com.secret.blackholeglow.ShaderUtils;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.util.Log;
 
 import java.nio.ByteBuffer;
@@ -155,21 +155,21 @@ public class ScreenEffectsManager {
      * Dibuja un flash blanco semi-transparente en toda la pantalla
      */
     private void drawImpactFlash() {
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         // Inicialización lazy del shader
         if (flashShaderProgramId == 0) {
             initFlashShader();
             if (flashShaderProgramId == 0) {
-                GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+                GLES30.glEnable(GLES30.GL_DEPTH_TEST);
                 return;
             }
         }
 
-        if (flashShaderProgramId > 0 && GLES20.glIsProgram(flashShaderProgramId)) {
-            GLES20.glUseProgram(flashShaderProgramId);
+        if (flashShaderProgramId > 0 && GLES30.glIsProgram(flashShaderProgramId)) {
+            GLES30.glUseProgram(flashShaderProgramId);
 
             // Actualizar buffer de colores con alpha actual
             float[] colors = new float[16];
@@ -184,19 +184,19 @@ public class ScreenEffectsManager {
             colorBuffer.position(0);
 
             // Configurar atributos
-            GLES20.glEnableVertexAttribArray(flashAPositionLoc);
-            GLES20.glVertexAttribPointer(flashAPositionLoc, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+            GLES30.glEnableVertexAttribArray(flashAPositionLoc);
+            GLES30.glVertexAttribPointer(flashAPositionLoc, 2, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
-            GLES20.glEnableVertexAttribArray(flashAColorLoc);
-            GLES20.glVertexAttribPointer(flashAColorLoc, 4, GLES20.GL_FLOAT, false, 0, colorBuffer);
+            GLES30.glEnableVertexAttribArray(flashAColorLoc);
+            GLES30.glVertexAttribPointer(flashAColorLoc, 4, GLES30.GL_FLOAT, false, 0, colorBuffer);
 
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+            GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
 
-            GLES20.glDisableVertexAttribArray(flashAPositionLoc);
-            GLES20.glDisableVertexAttribArray(flashAColorLoc);
+            GLES30.glDisableVertexAttribArray(flashAPositionLoc);
+            GLES30.glDisableVertexAttribArray(flashAColorLoc);
         }
 
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
     }
 
     private void initFlashShader() {
@@ -218,27 +218,27 @@ public class ScreenEffectsManager {
             "    gl_FragColor = v_Color;\n" +
             "}\n";
 
-        int vShader = ShaderUtils.compileShader(GLES20.GL_VERTEX_SHADER, vertexShader);
-        int fShader = ShaderUtils.compileShader(GLES20.GL_FRAGMENT_SHADER, fragmentShader);
+        int vShader = ShaderUtils.compileShader(GLES30.GL_VERTEX_SHADER, vertexShader);
+        int fShader = ShaderUtils.compileShader(GLES30.GL_FRAGMENT_SHADER, fragmentShader);
 
-        flashShaderProgramId = GLES20.glCreateProgram();
-        GLES20.glAttachShader(flashShaderProgramId, vShader);
-        GLES20.glAttachShader(flashShaderProgramId, fShader);
-        GLES20.glLinkProgram(flashShaderProgramId);
+        flashShaderProgramId = GLES30.glCreateProgram();
+        GLES30.glAttachShader(flashShaderProgramId, vShader);
+        GLES30.glAttachShader(flashShaderProgramId, fShader);
+        GLES30.glLinkProgram(flashShaderProgramId);
 
         int[] linkStatus = new int[1];
-        GLES20.glGetProgramiv(flashShaderProgramId, GLES20.GL_LINK_STATUS, linkStatus, 0);
+        GLES30.glGetProgramiv(flashShaderProgramId, GLES30.GL_LINK_STATUS, linkStatus, 0);
         if (linkStatus[0] == 0) {
-            Log.e(TAG, "💥 Flash shader link failed: " + GLES20.glGetProgramInfoLog(flashShaderProgramId));
+            Log.e(TAG, "💥 Flash shader link failed: " + GLES30.glGetProgramInfoLog(flashShaderProgramId));
             flashShaderProgramId = 0;
             return;
         }
 
-        GLES20.glDeleteShader(vShader);
-        GLES20.glDeleteShader(fShader);
+        GLES30.glDeleteShader(vShader);
+        GLES30.glDeleteShader(fShader);
 
-        flashAPositionLoc = GLES20.glGetAttribLocation(flashShaderProgramId, "a_Position");
-        flashAColorLoc = GLES20.glGetAttribLocation(flashShaderProgramId, "a_Color");
+        flashAPositionLoc = GLES30.glGetAttribLocation(flashShaderProgramId, "a_Position");
+        flashAColorLoc = GLES30.glGetAttribLocation(flashShaderProgramId, "a_Color");
 
         Log.d(TAG, "💥 Flash shader creado - ID: " + flashShaderProgramId);
     }
@@ -247,41 +247,41 @@ public class ScreenEffectsManager {
      * 💥💥 Dibuja grietas procedurales en la pantalla
      */
     private void drawScreenCracks() {
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         // Inicialización lazy del shader
         if (crackShaderProgramId == 0) {
             initCrackShader();
             if (crackShaderProgramId == 0) {
-                GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+                GLES30.glEnable(GLES30.GL_DEPTH_TEST);
                 return;
             }
         }
 
-        if (crackShaderProgramId > 0 && GLES20.glIsProgram(crackShaderProgramId)) {
-            GLES20.glUseProgram(crackShaderProgramId);
+        if (crackShaderProgramId > 0 && GLES30.glIsProgram(crackShaderProgramId)) {
+            GLES30.glUseProgram(crackShaderProgramId);
 
             // Configurar uniforms
-            GLES20.glUniform1f(crackUTimeLoc, crackTimer);
-            GLES20.glUniform2f(crackUImpactPosLoc, crackX, crackY);
-            GLES20.glUniform1f(crackUAlphaLoc, crackAlpha);
+            GLES30.glUniform1f(crackUTimeLoc, crackTimer);
+            GLES30.glUniform2f(crackUImpactPosLoc, crackX, crackY);
+            GLES30.glUniform1f(crackUAlphaLoc, crackAlpha);
 
             // Configurar atributos
-            GLES20.glEnableVertexAttribArray(crackAPositionLoc);
-            GLES20.glVertexAttribPointer(crackAPositionLoc, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+            GLES30.glEnableVertexAttribArray(crackAPositionLoc);
+            GLES30.glVertexAttribPointer(crackAPositionLoc, 2, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
-            GLES20.glEnableVertexAttribArray(crackATexCoordLoc);
-            GLES20.glVertexAttribPointer(crackATexCoordLoc, 2, GLES20.GL_FLOAT, false, 0, uvBuffer);
+            GLES30.glEnableVertexAttribArray(crackATexCoordLoc);
+            GLES30.glVertexAttribPointer(crackATexCoordLoc, 2, GLES30.GL_FLOAT, false, 0, uvBuffer);
 
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+            GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
 
-            GLES20.glDisableVertexAttribArray(crackAPositionLoc);
-            GLES20.glDisableVertexAttribArray(crackATexCoordLoc);
+            GLES30.glDisableVertexAttribArray(crackAPositionLoc);
+            GLES30.glDisableVertexAttribArray(crackATexCoordLoc);
         }
 
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
     }
 
     private void initCrackShader() {
@@ -385,30 +385,30 @@ public class ScreenEffectsManager {
             "    gl_FragColor = vec4(crackColor, finalAlpha);\n" +
             "}\n";
 
-        int vShader = ShaderUtils.compileShader(GLES20.GL_VERTEX_SHADER, vertexShader);
-        int fShader = ShaderUtils.compileShader(GLES20.GL_FRAGMENT_SHADER, fragmentShader);
+        int vShader = ShaderUtils.compileShader(GLES30.GL_VERTEX_SHADER, vertexShader);
+        int fShader = ShaderUtils.compileShader(GLES30.GL_FRAGMENT_SHADER, fragmentShader);
 
-        crackShaderProgramId = GLES20.glCreateProgram();
-        GLES20.glAttachShader(crackShaderProgramId, vShader);
-        GLES20.glAttachShader(crackShaderProgramId, fShader);
-        GLES20.glLinkProgram(crackShaderProgramId);
+        crackShaderProgramId = GLES30.glCreateProgram();
+        GLES30.glAttachShader(crackShaderProgramId, vShader);
+        GLES30.glAttachShader(crackShaderProgramId, fShader);
+        GLES30.glLinkProgram(crackShaderProgramId);
 
         int[] linkStatus = new int[1];
-        GLES20.glGetProgramiv(crackShaderProgramId, GLES20.GL_LINK_STATUS, linkStatus, 0);
+        GLES30.glGetProgramiv(crackShaderProgramId, GLES30.GL_LINK_STATUS, linkStatus, 0);
         if (linkStatus[0] == 0) {
-            Log.e(TAG, "💥 Crack shader link failed: " + GLES20.glGetProgramInfoLog(crackShaderProgramId));
+            Log.e(TAG, "💥 Crack shader link failed: " + GLES30.glGetProgramInfoLog(crackShaderProgramId));
             crackShaderProgramId = 0;
             return;
         }
 
-        GLES20.glDeleteShader(vShader);
-        GLES20.glDeleteShader(fShader);
+        GLES30.glDeleteShader(vShader);
+        GLES30.glDeleteShader(fShader);
 
-        crackAPositionLoc = GLES20.glGetAttribLocation(crackShaderProgramId, "a_Position");
-        crackATexCoordLoc = GLES20.glGetAttribLocation(crackShaderProgramId, "a_TexCoord");
-        crackUTimeLoc = GLES20.glGetUniformLocation(crackShaderProgramId, "u_Time");
-        crackUImpactPosLoc = GLES20.glGetUniformLocation(crackShaderProgramId, "u_ImpactPos");
-        crackUAlphaLoc = GLES20.glGetUniformLocation(crackShaderProgramId, "u_Alpha");
+        crackAPositionLoc = GLES30.glGetAttribLocation(crackShaderProgramId, "a_Position");
+        crackATexCoordLoc = GLES30.glGetAttribLocation(crackShaderProgramId, "a_TexCoord");
+        crackUTimeLoc = GLES30.glGetUniformLocation(crackShaderProgramId, "u_Time");
+        crackUImpactPosLoc = GLES30.glGetUniformLocation(crackShaderProgramId, "u_ImpactPos");
+        crackUAlphaLoc = GLES30.glGetUniformLocation(crackShaderProgramId, "u_Alpha");
 
         Log.d(TAG, "💥 Crack shader creado - ID: " + crackShaderProgramId);
     }
@@ -418,11 +418,11 @@ public class ScreenEffectsManager {
      */
     public void release() {
         if (flashShaderProgramId != 0) {
-            GLES20.glDeleteProgram(flashShaderProgramId);
+            GLES30.glDeleteProgram(flashShaderProgramId);
             flashShaderProgramId = 0;
         }
         if (crackShaderProgramId != 0) {
-            GLES20.glDeleteProgram(crackShaderProgramId);
+            GLES30.glDeleteProgram(crackShaderProgramId);
             crackShaderProgramId = 0;
         }
         Log.d(TAG, "💥 ScreenEffectsManager liberado");

@@ -1,7 +1,7 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.util.Log;
 
 import java.nio.ByteBuffer;
@@ -103,41 +103,41 @@ public class HPBar implements SceneObject {
             "}\n";
 
         Log.d(TAG, "[HPBar] Compilando vertex shader...");
-        int vShader = ShaderUtils.compileShader(GLES20.GL_VERTEX_SHADER, vertexShader);
+        int vShader = ShaderUtils.compileShader(GLES30.GL_VERTEX_SHADER, vertexShader);
         if (vShader == 0) {
             Log.e(TAG, "[HPBar] ✗ Vertex shader falló al compilar");
             return;
         }
 
         Log.d(TAG, "[HPBar] Compilando fragment shader...");
-        int fShader = ShaderUtils.compileShader(GLES20.GL_FRAGMENT_SHADER, fragmentShader);
+        int fShader = ShaderUtils.compileShader(GLES30.GL_FRAGMENT_SHADER, fragmentShader);
         if (fShader == 0) {
             Log.e(TAG, "[HPBar] ✗ Fragment shader falló al compilar");
-            GLES20.glDeleteShader(vShader);
+            GLES30.glDeleteShader(vShader);
             return;
         }
 
         Log.d(TAG, "[HPBar] Enlazando programa shader...");
-        programId = GLES20.glCreateProgram();
-        GLES20.glAttachShader(programId, vShader);
-        GLES20.glAttachShader(programId, fShader);
-        GLES20.glLinkProgram(programId);
+        programId = GLES30.glCreateProgram();
+        GLES30.glAttachShader(programId, vShader);
+        GLES30.glAttachShader(programId, fShader);
+        GLES30.glLinkProgram(programId);
 
         // Verificar link
         int[] linkStatus = new int[1];
-        GLES20.glGetProgramiv(programId, GLES20.GL_LINK_STATUS, linkStatus, 0);
+        GLES30.glGetProgramiv(programId, GLES30.GL_LINK_STATUS, linkStatus, 0);
         if (linkStatus[0] == 0) {
-            String errorLog = GLES20.glGetProgramInfoLog(programId);
+            String errorLog = GLES30.glGetProgramInfoLog(programId);
             Log.e(TAG, "[HPBar] ✗✗✗ Shader link failed!");
             Log.e(TAG, "[HPBar] Error details: " + errorLog);
-            GLES20.glDeleteProgram(programId);
+            GLES30.glDeleteProgram(programId);
             programId = 0;
         } else {
             Log.d(TAG, "[HPBar] ✓ Shader enlazado exitosamente - programId: " + programId);
         }
 
-        GLES20.glDeleteShader(vShader);
-        GLES20.glDeleteShader(fShader);
+        GLES30.glDeleteShader(vShader);
+        GLES30.glDeleteShader(fShader);
     }
 
     private void setupGeometry() {
@@ -226,17 +226,17 @@ public class HPBar implements SceneObject {
 
     @Override
     public void draw() {
-        if (!GLES20.glIsProgram(programId)) return;
+        if (!GLES30.glIsProgram(programId)) return;
 
         // ⚠️ Si está parpadeando y no es visible, no dibujar
         if (!blinkVisible) return;
 
-        GLES20.glUseProgram(programId);
+        GLES30.glUseProgram(programId);
 
         // Desactivar depth test (UI en 2D)
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         // Convertir de coordenadas 0-1 a NDC (-1 a 1)
         float ndcX = x * 2.0f - 1.0f;
@@ -317,32 +317,32 @@ public class HPBar implements SceneObject {
         drawQuad();
 
         // Restaurar estado
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
     }
 
     private void drawQuad() {
-        int aPosLoc = GLES20.glGetAttribLocation(programId, "a_Position");
-        int aColorLoc = GLES20.glGetAttribLocation(programId, "a_Color");
-        int aTexCoordLoc = GLES20.glGetAttribLocation(programId, "a_TexCoord");
-        int uCornerRadiusLoc = GLES20.glGetUniformLocation(programId, "u_CornerRadius");
+        int aPosLoc = GLES30.glGetAttribLocation(programId, "a_Position");
+        int aColorLoc = GLES30.glGetAttribLocation(programId, "a_Color");
+        int aTexCoordLoc = GLES30.glGetAttribLocation(programId, "a_TexCoord");
+        int uCornerRadiusLoc = GLES30.glGetUniformLocation(programId, "u_CornerRadius");
 
         // Radio de las esquinas (0.15 = esquinas suavemente redondeadas)
-        GLES20.glUniform1f(uCornerRadiusLoc, 0.15f);
+        GLES30.glUniform1f(uCornerRadiusLoc, 0.15f);
 
-        GLES20.glEnableVertexAttribArray(aPosLoc);
-        GLES20.glVertexAttribPointer(aPosLoc, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glEnableVertexAttribArray(aPosLoc);
+        GLES30.glVertexAttribPointer(aPosLoc, 2, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
-        GLES20.glEnableVertexAttribArray(aColorLoc);
-        GLES20.glVertexAttribPointer(aColorLoc, 4, GLES20.GL_FLOAT, false, 0, colorBuffer);
+        GLES30.glEnableVertexAttribArray(aColorLoc);
+        GLES30.glVertexAttribPointer(aColorLoc, 4, GLES30.GL_FLOAT, false, 0, colorBuffer);
 
-        GLES20.glEnableVertexAttribArray(aTexCoordLoc);
+        GLES30.glEnableVertexAttribArray(aTexCoordLoc);
         uvBuffer.position(0);
-        GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 0, uvBuffer);
+        GLES30.glVertexAttribPointer(aTexCoordLoc, 2, GLES30.GL_FLOAT, false, 0, uvBuffer);
 
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, 6);
 
-        GLES20.glDisableVertexAttribArray(aPosLoc);
-        GLES20.glDisableVertexAttribArray(aColorLoc);
-        GLES20.glDisableVertexAttribArray(aTexCoordLoc);
+        GLES30.glDisableVertexAttribArray(aPosLoc);
+        GLES30.glDisableVertexAttribArray(aColorLoc);
+        GLES30.glDisableVertexAttribArray(aTexCoordLoc);
     }
 }

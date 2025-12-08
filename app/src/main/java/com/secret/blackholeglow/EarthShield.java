@@ -1,7 +1,7 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.util.Log;
 
 import com.secret.blackholeglow.util.ProceduralSphere;
@@ -96,14 +96,14 @@ public class EarthShield implements SceneObject, CameraAware {
         }
 
         // Obtener locations
-        uMvpLoc = GLES20.glGetUniformLocation(programId, "u_MVP");
-        uTimeLoc = GLES20.glGetUniformLocation(programId, "u_Time");
-        uTextureLoc = GLES20.glGetUniformLocation(programId, "u_Texture");
-        uColorLoc = GLES20.glGetUniformLocation(programId, "u_Color");
-        uAlphaLoc = GLES20.glGetUniformLocation(programId, "u_Alpha");
-        uImpactPosLoc = GLES20.glGetUniformLocation(programId, "u_ImpactPos");
-        uImpactIntensityLoc = GLES20.glGetUniformLocation(programId, "u_ImpactIntensity");
-        uHealthLoc = GLES20.glGetUniformLocation(programId, "u_Health");
+        uMvpLoc = GLES30.glGetUniformLocation(programId, "u_MVP");
+        uTimeLoc = GLES30.glGetUniformLocation(programId, "u_Time");
+        uTextureLoc = GLES30.glGetUniformLocation(programId, "u_Texture");
+        uColorLoc = GLES30.glGetUniformLocation(programId, "u_Color");
+        uAlphaLoc = GLES30.glGetUniformLocation(programId, "u_Alpha");
+        uImpactPosLoc = GLES30.glGetUniformLocation(programId, "u_ImpactPos");
+        uImpactIntensityLoc = GLES30.glGetUniformLocation(programId, "u_ImpactIntensity");
+        uHealthLoc = GLES30.glGetUniformLocation(programId, "u_Health");
 
         Log.d(TAG, "[EarthShield] ✓ Shader PROPIO inicializado - programId=" + programId);
         Log.d(TAG, "[EarthShield]   Efectos: Grietas + Ondas + Calor");
@@ -185,13 +185,13 @@ public class EarthShield implements SceneObject, CameraAware {
 
     @Override
     public void draw() {
-        if (!GLES20.glIsProgram(programId) || camera == null) return;
+        if (!GLES30.glIsProgram(programId) || camera == null) return;
 
-        GLES20.glUseProgram(programId);
+        GLES30.glUseProgram(programId);
 
         // Configurar blending para transparencia
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         // Construir matriz de modelo (⚡ OPTIMIZADO: usar caches)
         android.opengl.Matrix.setIdentityM(modelMatrixCache, 0);
@@ -203,46 +203,46 @@ public class EarthShield implements SceneObject, CameraAware {
         camera.computeMvp(modelMatrixCache, mvpMatrixCache);
 
         // Enviar uniforms
-        GLES20.glUniformMatrix4fv(uMvpLoc, 1, false, mvpMatrixCache, 0);
-        GLES20.glUniform1f(uTimeLoc, rotationAngle);
+        GLES30.glUniformMatrix4fv(uMvpLoc, 1, false, mvpMatrixCache, 0);
+        GLES30.glUniform1f(uTimeLoc, rotationAngle);
 
         // Textura
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-        GLES20.glUniform1i(uTextureLoc, 0);
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
+        GLES30.glUniform1i(uTextureLoc, 0);
 
         // Color base ROJO VOLCÁNICO (⚡ OPTIMIZADO: usar cache)
         impactColorCache[0] = 0.8f;
         impactColorCache[1] = 0.2f;
         impactColorCache[2] = 0.0f;
-        GLES20.glUniform3fv(uColorLoc, 1, impactColorCache, 0);
+        GLES30.glUniform3fv(uColorLoc, 1, impactColorCache, 0);
 
         // Alpha = 0.0 (COMPLETAMENTE INVISIBLE - solo se ven grietas/ondas/calor)
-        GLES20.glUniform1f(uAlphaLoc, 0.0f);
+        GLES30.glUniform1f(uAlphaLoc, 0.0f);
 
         // Health = 100 (siempre activo, sin destrucción)
-        GLES20.glUniform1f(uHealthLoc, 1.0f);
+        GLES30.glUniform1f(uHealthLoc, 1.0f);
 
         // Enviar posiciones e intensidades de impactos
-        GLES20.glUniform3fv(uImpactPosLoc, MAX_IMPACTS, impactPositions, 0);
-        GLES20.glUniform1fv(uImpactIntensityLoc, MAX_IMPACTS, impactIntensities, 0);
+        GLES30.glUniform3fv(uImpactPosLoc, MAX_IMPACTS, impactPositions, 0);
+        GLES30.glUniform1fv(uImpactIntensityLoc, MAX_IMPACTS, impactIntensities, 0);
 
         // Dibujar la esfera
-        int aPositionLoc = GLES20.glGetAttribLocation(programId, "a_Position");
-        int aTexCoordLoc = GLES20.glGetAttribLocation(programId, "a_TexCoord");
+        int aPositionLoc = GLES30.glGetAttribLocation(programId, "a_Position");
+        int aTexCoordLoc = GLES30.glGetAttribLocation(programId, "a_TexCoord");
 
-        GLES20.glEnableVertexAttribArray(aPositionLoc);
-        GLES20.glVertexAttribPointer(aPositionLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glEnableVertexAttribArray(aPositionLoc);
+        GLES30.glVertexAttribPointer(aPositionLoc, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
-        GLES20.glEnableVertexAttribArray(aTexCoordLoc);
-        GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
+        GLES30.glEnableVertexAttribArray(aTexCoordLoc);
+        GLES30.glVertexAttribPointer(aTexCoordLoc, 2, GLES30.GL_FLOAT, false, 0, texCoordBuffer);
 
-        GLES20.glDrawElements(GLES20.GL_TRIANGLES, indexBuffer.capacity(),
-                GLES20.GL_UNSIGNED_SHORT, indexBuffer);
+        GLES30.glDrawElements(GLES30.GL_TRIANGLES, indexBuffer.capacity(),
+                GLES30.GL_UNSIGNED_SHORT, indexBuffer);
 
-        GLES20.glDisableVertexAttribArray(aPositionLoc);
-        GLES20.glDisableVertexAttribArray(aTexCoordLoc);
+        GLES30.glDisableVertexAttribArray(aPositionLoc);
+        GLES30.glDisableVertexAttribArray(aTexCoordLoc);
 
-        GLES20.glDisable(GLES20.GL_BLEND);
+        GLES30.glDisable(GLES30.GL_BLEND);
     }
 }

@@ -2,7 +2,7 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.Matrix;
 import android.util.Log;
 
@@ -157,7 +157,7 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
                 orbitRadiusX, orbitRadiusZ, instanceScale, spinSpeed));
 
         // Habilitar depth test pero NO culling para evitar agujeros
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
         // NO habilitar GL_CULL_FACE para ver todas las caras de la esfera
 
         // ════════════════════════════════════════════════════════════
@@ -196,13 +196,13 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
         indexCount = mesh.indexCount;
 
         // Obtener uniform locations
-        aPosLoc = GLES20.glGetAttribLocation(programId, "a_Position");
-        aTexLoc = GLES20.glGetAttribLocation(programId, "a_TexCoord");
-        uTexLoc = GLES20.glGetUniformLocation(programId, "u_Texture");
-        uUseSolidColorLoc = GLES20.glGetUniformLocation(programId, "u_UseSolidColor");
-        uSolidColorLoc = GLES20.glGetUniformLocation(programId, "u_SolidColor");
-        uAlphaLoc = GLES20.glGetUniformLocation(programId, "u_Alpha");
-        uUvScaleLoc = GLES20.glGetUniformLocation(programId, "u_UvScale");
+        aPosLoc = GLES30.glGetAttribLocation(programId, "a_Position");
+        aTexLoc = GLES30.glGetAttribLocation(programId, "a_TexCoord");
+        uTexLoc = GLES30.glGetUniformLocation(programId, "u_Texture");
+        uUseSolidColorLoc = GLES30.glGetUniformLocation(programId, "u_UseSolidColor");
+        uSolidColorLoc = GLES30.glGetUniformLocation(programId, "u_SolidColor");
+        uAlphaLoc = GLES30.glGetUniformLocation(programId, "u_Alpha");
+        uUvScaleLoc = GLES30.glGetUniformLocation(programId, "u_UvScale");
 
         Log.d(TAG, "Planeta inicializado correctamente");
     }
@@ -295,15 +295,15 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
         useProgram();
 
         // IMPORTANTE: Desactivar culling para evitar agujeros en la esfera
-        GLES20.glDisable(GLES20.GL_CULL_FACE);
+        GLES30.glDisable(GLES30.GL_CULL_FACE);
 
         // Asegurar que depth test esté activo
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-        GLES20.glDepthFunc(GLES20.GL_LEQUAL);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+        GLES30.glDepthFunc(GLES30.GL_LEQUAL);
 
         // Habilitar blending para transparencia
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         // Fase de animación
         float phase = (accumulatedTime % 0.5f) * 2f * (float)Math.PI / 0.5f;
@@ -311,7 +311,7 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
 
         // Enviar factor de tiling
         if (uUvScaleLoc >= 0) {
-            GLES20.glUniform1f(uUvScaleLoc, uvScale);
+            GLES30.glUniform1f(uUvScaleLoc, uvScale);
         }
 
         // ===== CONSTRUIR MATRIZ MODELO =====
@@ -379,9 +379,9 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
         setMvpAndResolution(mvp, ScreenManager.getWidth(), ScreenManager.getHeight());
 
         // Configurar textura
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-        GLES20.glUniform1i(uTexLoc, 0);
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
+        GLES30.glUniform1i(uTexLoc, 0);
 
         // 🔥 CONFIGURAR COLOR CON EFECTOS CRÍTICOS
         // ⚡ OPTIMIZACIÓN: Usar array reutilizable en lugar de .clone()
@@ -404,29 +404,29 @@ public class Planeta extends BaseShaderProgram implements SceneObject, CameraAwa
             finalAlpha = 1.0f;  // El sol NO se hace transparente
         }
 
-        GLES20.glUniform1i(uUseSolidColorLoc, useSolidColor ? 1 : 0);
-        GLES20.glUniform4fv(uSolidColorLoc, 1, reusableFinalColor, 0);
-        GLES20.glUniform1f(uAlphaLoc, finalAlpha);
+        GLES30.glUniform1i(uUseSolidColorLoc, useSolidColor ? 1 : 0);
+        GLES30.glUniform4fv(uSolidColorLoc, 1, reusableFinalColor, 0);
+        GLES30.glUniform1f(uAlphaLoc, finalAlpha);
 
         // Configurar atributos de vértices
         vertexBuffer.position(0);
-        GLES20.glEnableVertexAttribArray(aPosLoc);
-        GLES20.glVertexAttribPointer(aPosLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glEnableVertexAttribArray(aPosLoc);
+        GLES30.glVertexAttribPointer(aPosLoc, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
         if (aTexLoc >= 0) {
             texCoordBuffer.position(0);
-            GLES20.glEnableVertexAttribArray(aTexLoc);
-            GLES20.glVertexAttribPointer(aTexLoc, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
+            GLES30.glEnableVertexAttribArray(aTexLoc);
+            GLES30.glVertexAttribPointer(aTexLoc, 2, GLES30.GL_FLOAT, false, 0, texCoordBuffer);
         }
 
         // Dibujar
         indexBuffer.position(0);
-        GLES20.glDrawElements(GLES20.GL_TRIANGLES, indexCount, GLES20.GL_UNSIGNED_SHORT, indexBuffer);
+        GLES30.glDrawElements(GLES30.GL_TRIANGLES, indexCount, GLES30.GL_UNSIGNED_SHORT, indexBuffer);
 
         // Limpiar
-        GLES20.glDisableVertexAttribArray(aPosLoc);
+        GLES30.glDisableVertexAttribArray(aPosLoc);
         if (aTexLoc >= 0) {
-            GLES20.glDisableVertexAttribArray(aTexLoc);
+            GLES30.glDisableVertexAttribArray(aTexLoc);
         }
     }
 

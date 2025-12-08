@@ -1,6 +1,6 @@
 package com.secret.blackholeglow;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.Matrix;
 import android.util.Log;
 
@@ -139,22 +139,22 @@ public class PlasmaBeamWeapon implements SceneObject, CameraAware {
     }
 
     private void initShaders() {
-        int vs = GLES20.glCreateShader(GLES20.GL_VERTEX_SHADER);
-        GLES20.glShaderSource(vs, VERTEX_SHADER);
-        GLES20.glCompileShader(vs);
+        int vs = GLES30.glCreateShader(GLES30.GL_VERTEX_SHADER);
+        GLES30.glShaderSource(vs, VERTEX_SHADER);
+        GLES30.glCompileShader(vs);
 
-        int fs = GLES20.glCreateShader(GLES20.GL_FRAGMENT_SHADER);
-        GLES20.glShaderSource(fs, FRAGMENT_SHADER);
-        GLES20.glCompileShader(fs);
+        int fs = GLES30.glCreateShader(GLES30.GL_FRAGMENT_SHADER);
+        GLES30.glShaderSource(fs, FRAGMENT_SHADER);
+        GLES30.glCompileShader(fs);
 
-        shaderProgram = GLES20.glCreateProgram();
-        GLES20.glAttachShader(shaderProgram, vs);
-        GLES20.glAttachShader(shaderProgram, fs);
-        GLES20.glLinkProgram(shaderProgram);
+        shaderProgram = GLES30.glCreateProgram();
+        GLES30.glAttachShader(shaderProgram, vs);
+        GLES30.glAttachShader(shaderProgram, fs);
+        GLES30.glLinkProgram(shaderProgram);
 
-        positionHandle = GLES20.glGetAttribLocation(shaderProgram, "vPosition");
-        colorHandle = GLES20.glGetUniformLocation(shaderProgram, "vColor");
-        mvpMatrixHandle = GLES20.glGetUniformLocation(shaderProgram, "uMVPMatrix");
+        positionHandle = GLES30.glGetAttribLocation(shaderProgram, "vPosition");
+        colorHandle = GLES30.glGetUniformLocation(shaderProgram, "vColor");
+        mvpMatrixHandle = GLES30.glGetUniformLocation(shaderProgram, "uMVPMatrix");
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -252,10 +252,10 @@ public class PlasmaBeamWeapon implements SceneObject, CameraAware {
     public void draw() {
         if (currentPhase == Phase.INACTIVE || camera == null) return;
 
-        GLES20.glUseProgram(shaderProgram);
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE); // Additive blending
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES30.glUseProgram(shaderProgram);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE); // Additive blending
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
 
         switch (currentPhase) {
             case CHARGING:
@@ -269,8 +269,8 @@ public class PlasmaBeamWeapon implements SceneObject, CameraAware {
                 break;
         }
 
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -330,15 +330,15 @@ public class PlasmaBeamWeapon implements SceneObject, CameraAware {
         float[] vpMatrix = camera.getViewProjectionMatrix();
         Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0);
 
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0);
 
         // Partículas cyan brillantes
         setColor(0.4f, 0.9f, 1f, 0.8f);
 
-        GLES20.glEnableVertexAttribArray(positionHandle);
-        GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 0, particleBuffer);
-        GLES20.glDrawArrays(GLES20.GL_POINTS, 0, CHARGE_PARTICLES);
-        GLES20.glDisableVertexAttribArray(positionHandle);
+        GLES30.glEnableVertexAttribArray(positionHandle);
+        GLES30.glVertexAttribPointer(positionHandle, 3, GLES30.GL_FLOAT, false, 0, particleBuffer);
+        GLES30.glDrawArrays(GLES30.GL_POINTS, 0, CHARGE_PARTICLES);
+        GLES30.glDisableVertexAttribArray(positionHandle);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -423,13 +423,13 @@ public class PlasmaBeamWeapon implements SceneObject, CameraAware {
         float[] vpMatrix = camera.getViewProjectionMatrix();
         Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0);
 
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0);
         setColor(r, g, b, a);
 
-        GLES20.glEnableVertexAttribArray(positionHandle);
-        GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 0, beamBuffer);
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 4);
-        GLES20.glDisableVertexAttribArray(positionHandle);
+        GLES30.glEnableVertexAttribArray(positionHandle);
+        GLES30.glVertexAttribPointer(positionHandle, 3, GLES30.GL_FLOAT, false, 0, beamBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 4);
+        GLES30.glDisableVertexAttribArray(positionHandle);
     }
 
     private void drawTrailParticles(float x1, float y1, float z1,
@@ -456,13 +456,13 @@ public class PlasmaBeamWeapon implements SceneObject, CameraAware {
         float[] vpMatrix = camera.getViewProjectionMatrix();
         Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0);
 
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0);
         setColor(0.5f, 0.9f, 1f, 0.7f);
 
-        GLES20.glEnableVertexAttribArray(positionHandle);
-        GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 0, particleBuffer);
-        GLES20.glDrawArrays(GLES20.GL_POINTS, 0, TRAIL_PARTICLES);
-        GLES20.glDisableVertexAttribArray(positionHandle);
+        GLES30.glEnableVertexAttribArray(positionHandle);
+        GLES30.glVertexAttribPointer(positionHandle, 3, GLES30.GL_FLOAT, false, 0, particleBuffer);
+        GLES30.glDrawArrays(GLES30.GL_POINTS, 0, TRAIL_PARTICLES);
+        GLES30.glDisableVertexAttribArray(positionHandle);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -527,13 +527,13 @@ public class PlasmaBeamWeapon implements SceneObject, CameraAware {
         float[] vpMatrix = camera.getViewProjectionMatrix();
         Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0);
 
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0);
         setColor(1f, 0.9f, 0.4f, alpha * 0.9f);
 
-        GLES20.glEnableVertexAttribArray(positionHandle);
-        GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 0, particleBuffer);
-        GLES20.glDrawArrays(GLES20.GL_POINTS, 0, numParticles);
-        GLES20.glDisableVertexAttribArray(positionHandle);
+        GLES30.glEnableVertexAttribArray(positionHandle);
+        GLES30.glVertexAttribPointer(positionHandle, 3, GLES30.GL_FLOAT, false, 0, particleBuffer);
+        GLES30.glDrawArrays(GLES30.GL_POINTS, 0, numParticles);
+        GLES30.glDisableVertexAttribArray(positionHandle);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -548,22 +548,22 @@ public class PlasmaBeamWeapon implements SceneObject, CameraAware {
         float[] vpMatrix = camera.getViewProjectionMatrix();
         Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0);
 
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0);
         setColor(r, g, b, a);
 
         circleBuffer.position(0);
-        GLES20.glEnableVertexAttribArray(positionHandle);
-        GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 0, circleBuffer);
+        GLES30.glEnableVertexAttribArray(positionHandle);
+        GLES30.glVertexAttribPointer(positionHandle, 3, GLES30.GL_FLOAT, false, 0, circleBuffer);
 
         if (filled) {
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, CIRCLE_SEGMENTS + 1);
+            GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, CIRCLE_SEGMENTS + 1);
         } else {
-            GLES20.glLineWidth(2.5f);
-            GLES20.glDrawArrays(GLES20.GL_LINE_LOOP, 0, CIRCLE_SEGMENTS + 1);
-            GLES20.glLineWidth(1f);
+            GLES30.glLineWidth(2.5f);
+            GLES30.glDrawArrays(GLES30.GL_LINE_LOOP, 0, CIRCLE_SEGMENTS + 1);
+            GLES30.glLineWidth(1f);
         }
 
-        GLES20.glDisableVertexAttribArray(positionHandle);
+        GLES30.glDisableVertexAttribArray(positionHandle);
     }
 
     private void setColor(float r, float g, float b, float a) {
@@ -571,7 +571,7 @@ public class PlasmaBeamWeapon implements SceneObject, CameraAware {
         colorCache[1] = g;
         colorCache[2] = b;
         colorCache[3] = a;
-        GLES20.glUniform4fv(colorHandle, 1, colorCache, 0);
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
     }
 
     /**

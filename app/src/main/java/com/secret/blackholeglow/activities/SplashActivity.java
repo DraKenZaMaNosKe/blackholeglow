@@ -12,6 +12,7 @@ import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
@@ -60,6 +61,8 @@ public class SplashActivity extends AppCompatActivity {
     // ╚════════════════════════════════════════════════════════════════════╝
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // 🔧 FIX Android 15: Habilitar Edge-to-Edge
+        EdgeToEdge.enable(this);
         super.onCreate(savedInstanceState);
 
         // 🎨 Inflar layout con el diseño hermoso

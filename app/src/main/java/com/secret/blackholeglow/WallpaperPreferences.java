@@ -47,7 +47,7 @@ public class WallpaperPreferences {
     // ============================================
     private static final String PREFS_NAME = "blackholeglow_prefs";
     private static final String KEY_SELECTED_WALLPAPER = "selected_wallpaper";
-    private static final String DEFAULT_WALLPAPER = "Universo";
+    private static final String DEFAULT_WALLPAPER = "Batalla Cósmica";
 
     // Colección de Firebase Firestore
     private static final String FIREBASE_COLLECTION = "user_preferences";
@@ -61,9 +61,8 @@ public class WallpaperPreferences {
         // ═══════════════════════════════════════════
         // 🎨 WALLPAPERS PRINCIPALES (v4.0)
         // ═══════════════════════════════════════════
-        "Universo",           // Sistema solar con planetas y OVNI (legacy)
+        "Batalla Cósmica",    // Batalla espacial (modular)
         "Ocean Pearl",        // Fondo del mar con ostra y perla (modular)
-        "Batalla Cósmica",    // Batalla espacial (modular - igual que Universo)
 
         // ═══════════════════════════════════════════
         // 📦 WALLPAPERS LEGADOS (compatibilidad)

@@ -1,6 +1,6 @@
 package com.secret.blackholeglow;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.Matrix;
 import android.util.Log;
 
@@ -119,6 +119,8 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
 
     private int lightningCount = 0;
     private java.util.Random random = new java.util.Random();
+    // 🔧 FIX: Cache pre-allocado para evitar crear array en cada beat
+    private final int[] highBarsCache = new int[NUM_BARS];
 
     // ════════════════════════════════════════════════════════════════════════
     // ✨ CHISPAS ENTRE PEAKS - Mini rayos que saltan entre peaks cercanos
@@ -278,25 +280,31 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
             "    gl_FragColor = v_Color;" +
             "}";
 
-        int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode);
-        int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode);
+        int vertexShader = loadShader(GLES30.GL_VERTEX_SHADER, vertexShaderCode);
+        int fragmentShader = loadShader(GLES30.GL_FRAGMENT_SHADER, fragmentShaderCode);
 
-        shaderProgram = GLES20.glCreateProgram();
-        GLES20.glAttachShader(shaderProgram, vertexShader);
-        GLES20.glAttachShader(shaderProgram, fragmentShader);
-        GLES20.glLinkProgram(shaderProgram);
+        shaderProgram = GLES30.glCreateProgram();
+        GLES30.glAttachShader(shaderProgram, vertexShader);
+        GLES30.glAttachShader(shaderProgram, fragmentShader);
+        GLES30.glLinkProgram(shaderProgram);
 
         int[] linked = new int[1];
-        GLES20.glGetProgramiv(shaderProgram, GLES20.GL_LINK_STATUS, linked, 0);
+        GLES30.glGetProgramiv(shaderProgram, GLES30.GL_LINK_STATUS, linked, 0);
         if (linked[0] == 0) {
-            Log.e(TAG, "❌ Error linkeando programa: " + GLES20.glGetProgramInfoLog(shaderProgram));
-            GLES20.glDeleteProgram(shaderProgram);
+            Log.e(TAG, "❌ Error linkeando programa: " + GLES30.glGetProgramInfoLog(shaderProgram));
+            GLES30.glDeleteProgram(shaderProgram);
+            GLES30.glDeleteShader(vertexShader);
+            GLES30.glDeleteShader(fragmentShader);
             return;
         }
 
-        aPositionHandle = GLES20.glGetAttribLocation(shaderProgram, "a_Position");
-        aColorHandle = GLES20.glGetAttribLocation(shaderProgram, "a_Color");
-        uMVPMatrixHandle = GLES20.glGetUniformLocation(shaderProgram, "u_MVPMatrix");
+        // 🔧 FIX: Eliminar shaders después de linkear (ya no se necesitan)
+        GLES30.glDeleteShader(vertexShader);
+        GLES30.glDeleteShader(fragmentShader);
+
+        aPositionHandle = GLES30.glGetAttribLocation(shaderProgram, "a_Position");
+        aColorHandle = GLES30.glGetAttribLocation(shaderProgram, "a_Color");
+        uMVPMatrixHandle = GLES30.glGetUniformLocation(shaderProgram, "u_MVPMatrix");
 
         // Buffers para barras principales
         int vertexCount = NUM_BARS * 4 * 3;
@@ -337,15 +345,15 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     }
 
     private int loadShader(int type, String shaderCode) {
-        int shader = GLES20.glCreateShader(type);
-        GLES20.glShaderSource(shader, shaderCode);
-        GLES20.glCompileShader(shader);
+        int shader = GLES30.glCreateShader(type);
+        GLES30.glShaderSource(shader, shaderCode);
+        GLES30.glCompileShader(shader);
 
         int[] compiled = new int[1];
-        GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0);
+        GLES30.glGetShaderiv(shader, GLES30.GL_COMPILE_STATUS, compiled, 0);
         if (compiled[0] == 0) {
-            Log.e(TAG, "❌ Error compilando shader: " + GLES20.glGetShaderInfoLog(shader));
-            GLES20.glDeleteShader(shader);
+            Log.e(TAG, "❌ Error compilando shader: " + GLES30.glGetShaderInfoLog(shader));
+            GLES30.glDeleteShader(shader);
             return 0;
         }
         return shader;
@@ -367,6 +375,9 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
      */
     public void updateFromBands(float[] bands) {
         if (bands == null || bands.length < NUM_BARS) return;
+
+        // 🔧 FIX: Cache de tiempo al inicio (evita llamar 32x por frame)
+        final long cachedTime = System.currentTimeMillis() % 10000;
 
         // ════════════════════════════════════════════════════════════════════════
         // 💥 BEAT DETECTION - Algoritmo con historial de energía
@@ -447,10 +458,9 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
             }
 
             // Micro variación solo cuando hay nivel real
-            // Usar módulo para evitar overflow de time (ciclo cada ~10 segundos)
+            // 🔧 FIX: Usar tiempo cacheado en lugar de llamar System.currentTimeMillis() 32x
             if (level > 0.05f) {
-                long safeTime = System.currentTimeMillis() % 10000;  // Ciclo cada 10 segundos
-                float microVariation = (float) Math.sin(i * 1.2f + safeTime * 0.006f) * 0.015f;
+                float microVariation = (float) Math.sin(i * 1.2f + cachedTime * 0.006f) * 0.015f;
                 level += microVariation * level;
             }
 
@@ -466,14 +476,13 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         // Encontrar las barras más altas para conectar con rayos
         int numLightnings = 2 + (int)(intensity * 4);  // 2-6 rayos por beat
 
-        // Buscar índices de barras con nivel alto
-        int[] highBars = new int[NUM_BARS];
+        // 🔧 FIX: Usar array pre-allocado en lugar de crear uno nuevo cada beat
         int highBarCount = 0;
         float threshold = 0.4f;  // Umbral para considerar una barra "alta"
 
         for (int i = 0; i < NUM_BARS; i++) {
             if (barLevels[i] > threshold) {
-                highBars[highBarCount++] = i;
+                highBarsCache[highBarCount++] = i;
             }
         }
 
@@ -481,7 +490,7 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         if (highBarCount < 2) {
             highBarCount = NUM_BARS;
             for (int i = 0; i < NUM_BARS; i++) {
-                highBars[i] = i;
+                highBarsCache[i] = i;
             }
         }
 
@@ -494,13 +503,13 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
             int idx = lightningCount;
 
             // Seleccionar dos barras aleatorias para conectar
-            int bar1Idx = highBars[random.nextInt(highBarCount)];
-            int bar2Idx = highBars[random.nextInt(highBarCount)];
+            int bar1Idx = highBarsCache[random.nextInt(highBarCount)];
+            int bar2Idx = highBarsCache[random.nextInt(highBarCount)];
 
             // Asegurar que sean diferentes y no muy cercanas
             int attempts = 0;
             while (Math.abs(bar1Idx - bar2Idx) < 3 && attempts < 10) {
-                bar2Idx = highBars[random.nextInt(highBarCount)];
+                bar2Idx = highBarsCache[random.nextInt(highBarCount)];
                 attempts++;
             }
 
@@ -798,11 +807,11 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     public void draw() {
         if (!initialized) return;
 
-        GLES20.glUseProgram(shaderProgram);
+        GLES30.glUseProgram(shaderProgram);
 
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         // Matriz ortográfica
         Matrix.orthoM(projectionMatrix, 0,
@@ -810,7 +819,7 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
                      -1f, 1f,
                      -1f, 1f);
 
-        GLES20.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, projectionMatrix, 0);
+        GLES30.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, projectionMatrix, 0);
 
         // 1. Dibujar GLOW (detrás, más grande, semi-transparente)
         updateGlowGeometry();
@@ -833,24 +842,24 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         // 6. ✨ Dibujar chispas entre peaks
         drawPeakSparks();
 
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
     }
 
     private void drawBuffers(FloatBuffer vBuffer, FloatBuffer cBuffer) {
         vBuffer.position(0);
-        GLES20.glEnableVertexAttribArray(aPositionHandle);
-        GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, vBuffer);
+        GLES30.glEnableVertexAttribArray(aPositionHandle);
+        GLES30.glVertexAttribPointer(aPositionHandle, 3, GLES30.GL_FLOAT, false, 0, vBuffer);
 
         cBuffer.position(0);
-        GLES20.glEnableVertexAttribArray(aColorHandle);
-        GLES20.glVertexAttribPointer(aColorHandle, 4, GLES20.GL_FLOAT, false, 0, cBuffer);
+        GLES30.glEnableVertexAttribArray(aColorHandle);
+        GLES30.glVertexAttribPointer(aColorHandle, 4, GLES30.GL_FLOAT, false, 0, cBuffer);
 
         for (int i = 0; i < NUM_BARS; i++) {
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, i * 4, 4);
+            GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, i * 4, 4);
         }
 
-        GLES20.glDisableVertexAttribArray(aPositionHandle);
-        GLES20.glDisableVertexAttribArray(aColorHandle);
+        GLES30.glDisableVertexAttribArray(aPositionHandle);
+        GLES30.glDisableVertexAttribArray(aColorHandle);
     }
 
     /**
@@ -1144,11 +1153,11 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         if (lightningCount == 0) return;
 
         // Asegurar que el shader y matriz estén activos
-        GLES20.glUseProgram(shaderProgram);
-        GLES20.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, projectionMatrix, 0);
+        GLES30.glUseProgram(shaderProgram);
+        GLES30.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, projectionMatrix, 0);
 
         // Usar blending aditivo para que los rayos brillen intensamente
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE);
 
         // Dibujar cada rayo como una serie de quads conectados (línea delgada)
         float lineThickness = 0.003f;  // Grosor del rayo (más fino)
@@ -1221,18 +1230,18 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
             lightningColorBuffer.position(0);
 
             // Dibujar
-            GLES20.glEnableVertexAttribArray(aPositionHandle);
-            GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, lightningVertexBuffer);
+            GLES30.glEnableVertexAttribArray(aPositionHandle);
+            GLES30.glVertexAttribPointer(aPositionHandle, 3, GLES30.GL_FLOAT, false, 0, lightningVertexBuffer);
 
-            GLES20.glEnableVertexAttribArray(aColorHandle);
-            GLES20.glVertexAttribPointer(aColorHandle, 4, GLES20.GL_FLOAT, false, 0, lightningColorBuffer);
+            GLES30.glEnableVertexAttribArray(aColorHandle);
+            GLES30.glVertexAttribPointer(aColorHandle, 4, GLES30.GL_FLOAT, false, 0, lightningColorBuffer);
 
             for (int s = 0; s < LIGHTNING_SEGMENTS; s++) {
-                GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, s * 4, 4);
+                GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, s * 4, 4);
             }
 
-            GLES20.glDisableVertexAttribArray(aPositionHandle);
-            GLES20.glDisableVertexAttribArray(aColorHandle);
+            GLES30.glDisableVertexAttribArray(aPositionHandle);
+            GLES30.glDisableVertexAttribArray(aColorHandle);
 
             // === DIBUJAR GLOW (versión más grande y transparente) ===
             float glowThickness = lineThickness * 2.5f;
@@ -1277,22 +1286,22 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
             lightningColorBuffer.put(colors);
             lightningColorBuffer.position(0);
 
-            GLES20.glEnableVertexAttribArray(aPositionHandle);
-            GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, lightningVertexBuffer);
+            GLES30.glEnableVertexAttribArray(aPositionHandle);
+            GLES30.glVertexAttribPointer(aPositionHandle, 3, GLES30.GL_FLOAT, false, 0, lightningVertexBuffer);
 
-            GLES20.glEnableVertexAttribArray(aColorHandle);
-            GLES20.glVertexAttribPointer(aColorHandle, 4, GLES20.GL_FLOAT, false, 0, lightningColorBuffer);
+            GLES30.glEnableVertexAttribArray(aColorHandle);
+            GLES30.glVertexAttribPointer(aColorHandle, 4, GLES30.GL_FLOAT, false, 0, lightningColorBuffer);
 
             for (int s = 0; s < LIGHTNING_SEGMENTS; s++) {
-                GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, s * 4, 4);
+                GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, s * 4, 4);
             }
 
-            GLES20.glDisableVertexAttribArray(aPositionHandle);
-            GLES20.glDisableVertexAttribArray(aColorHandle);
+            GLES30.glDisableVertexAttribArray(aPositionHandle);
+            GLES30.glDisableVertexAttribArray(aColorHandle);
         }
 
         // Restaurar blending normal
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -1311,11 +1320,11 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         if (activeWaves == 0) return;
 
         // Asegurar shader y matriz activos
-        GLES20.glUseProgram(shaderProgram);
-        GLES20.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, projectionMatrix, 0);
+        GLES30.glUseProgram(shaderProgram);
+        GLES30.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, projectionMatrix, 0);
 
         // Usar blending aditivo para ondas brillantes
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE);
 
         // Centro de las ondas (base de las barras)
         float centerX = 0f;
@@ -1390,23 +1399,23 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
             waveColorBuffer.position(0);
 
             // Dibujar quads
-            GLES20.glEnableVertexAttribArray(aPositionHandle);
-            GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, waveVertexBuffer);
+            GLES30.glEnableVertexAttribArray(aPositionHandle);
+            GLES30.glVertexAttribPointer(aPositionHandle, 3, GLES30.GL_FLOAT, false, 0, waveVertexBuffer);
 
-            GLES20.glEnableVertexAttribArray(aColorHandle);
-            GLES20.glVertexAttribPointer(aColorHandle, 4, GLES20.GL_FLOAT, false, 0, waveColorBuffer);
+            GLES30.glEnableVertexAttribArray(aColorHandle);
+            GLES30.glVertexAttribPointer(aColorHandle, 4, GLES30.GL_FLOAT, false, 0, waveColorBuffer);
 
             // Dibujar cada segmento como triangle strip
             for (int s = 0; s < numSegments; s++) {
-                GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, s * 4, 4);
+                GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, s * 4, 4);
             }
 
-            GLES20.glDisableVertexAttribArray(aPositionHandle);
-            GLES20.glDisableVertexAttribArray(aColorHandle);
+            GLES30.glDisableVertexAttribArray(aPositionHandle);
+            GLES30.glDisableVertexAttribArray(aColorHandle);
         }
 
         // Restaurar blending normal
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -1421,11 +1430,11 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         if (sparkCount == 0) return;
 
         // Asegurar shader y matriz activos
-        GLES20.glUseProgram(shaderProgram);
-        GLES20.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, projectionMatrix, 0);
+        GLES30.glUseProgram(shaderProgram);
+        GLES30.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, projectionMatrix, 0);
 
         // Usar blending aditivo para chispas brillantes
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE);
 
         float sparkThickness = 0.002f;  // Grosor de la chispa (muy fina)
 
@@ -1528,22 +1537,22 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
             sparkColorBuffer.position(0);
 
             // Dibujar
-            GLES20.glEnableVertexAttribArray(aPositionHandle);
-            GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, sparkVertexBuffer);
+            GLES30.glEnableVertexAttribArray(aPositionHandle);
+            GLES30.glVertexAttribPointer(aPositionHandle, 3, GLES30.GL_FLOAT, false, 0, sparkVertexBuffer);
 
-            GLES20.glEnableVertexAttribArray(aColorHandle);
-            GLES20.glVertexAttribPointer(aColorHandle, 4, GLES20.GL_FLOAT, false, 0, sparkColorBuffer);
+            GLES30.glEnableVertexAttribArray(aColorHandle);
+            GLES30.glVertexAttribPointer(aColorHandle, 4, GLES30.GL_FLOAT, false, 0, sparkColorBuffer);
 
             for (int s = 0; s < numSegments; s++) {
-                GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, s * 4, 4);
+                GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, s * 4, 4);
             }
 
-            GLES20.glDisableVertexAttribArray(aPositionHandle);
-            GLES20.glDisableVertexAttribArray(aColorHandle);
+            GLES30.glDisableVertexAttribArray(aPositionHandle);
+            GLES30.glDisableVertexAttribArray(aColorHandle);
         }
 
         // Restaurar blending normal
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
     }
 
     /**

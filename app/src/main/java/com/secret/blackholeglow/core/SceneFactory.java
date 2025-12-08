@@ -100,7 +100,8 @@ public class SceneFactory {
     public void registerDefaultScenes() {
         registerScene("Ocean Pearl", OceanPearlScene.class);
         registerScene("Batalla Cósmica", BatallaCosmicaScene.class);
-        registerScene("Universo", BatallaCosmicaScene.class); // Alias
+        // Alias para compatibilidad con usuarios que tenían "Universo" guardado
+        registerScene("Universo", BatallaCosmicaScene.class);
         Log.d(TAG, "🎭 " + registeredScenes.size() + " escenas registradas");
     }
 

@@ -6,7 +6,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.GLUtils;
 import android.util.Log;
 
@@ -95,10 +95,10 @@ public class SimpleTextRenderer implements SceneObject {
             return;
         }
 
-        aPositionLoc = GLES20.glGetAttribLocation(programId, "a_Position");
-        aTexCoordLoc = GLES20.glGetAttribLocation(programId, "a_TexCoord");
-        uTextureLoc = GLES20.glGetUniformLocation(programId, "u_Texture");
-        uAlphaLoc = GLES20.glGetUniformLocation(programId, "u_Alpha");
+        aPositionLoc = GLES30.glGetAttribLocation(programId, "a_Position");
+        aTexCoordLoc = GLES30.glGetAttribLocation(programId, "a_TexCoord");
+        uTextureLoc = GLES30.glGetUniformLocation(programId, "u_Texture");
+        uAlphaLoc = GLES30.glGetUniformLocation(programId, "u_Alpha");
 
         Log.d(TAG, "✓ Shader de texto inicializado - programId: " + programId);
     }
@@ -190,20 +190,20 @@ public class SimpleTextRenderer implements SceneObject {
         // Crear/actualizar textura OpenGL
         if (textureId == -1) {
             int[] textures = new int[1];
-            GLES20.glGenTextures(1, textures, 0);
+            GLES30.glGenTextures(1, textures, 0);
             textureId = textures[0];
         }
 
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
 
-        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
+        GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0);
 
         bitmap.recycle();
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, 0);
 
         needsUpdate = false;
         Log.d(TAG, "✓ Textura de texto actualizada: \"" + currentText + "\"");
@@ -229,34 +229,34 @@ public class SimpleTextRenderer implements SceneObject {
             return;
         }
 
-        GLES20.glUseProgram(programId);
+        GLES30.glUseProgram(programId);
 
         // Desactivar depth test para UI 2D
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         // Bind textura
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-        GLES20.glUniform1i(uTextureLoc, 0);
-        GLES20.glUniform1f(uAlphaLoc, 1.0f);
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
+        GLES30.glUniform1i(uTextureLoc, 0);
+        GLES30.glUniform1f(uAlphaLoc, 1.0f);
 
         // Configurar atributos
-        GLES20.glEnableVertexAttribArray(aPositionLoc);
-        GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glEnableVertexAttribArray(aPositionLoc);
+        GLES30.glVertexAttribPointer(aPositionLoc, 2, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
-        GLES20.glEnableVertexAttribArray(aTexCoordLoc);
-        GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
+        GLES30.glEnableVertexAttribArray(aTexCoordLoc);
+        GLES30.glVertexAttribPointer(aTexCoordLoc, 2, GLES30.GL_FLOAT, false, 0, texCoordBuffer);
 
         // Dibujar
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
 
         // Limpiar
-        GLES20.glDisableVertexAttribArray(aPositionLoc);
-        GLES20.glDisableVertexAttribArray(aTexCoordLoc);
+        GLES30.glDisableVertexAttribArray(aPositionLoc);
+        GLES30.glDisableVertexAttribArray(aTexCoordLoc);
 
         // Restaurar estados
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
     }
 }

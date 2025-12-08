@@ -1,7 +1,7 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.util.Log;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -86,16 +86,16 @@ public class ComboBar {
     }
 
     private void setupShaders() {
-        int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode);
-        int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode);
+        int vertexShader = loadShader(GLES30.GL_VERTEX_SHADER, vertexShaderCode);
+        int fragmentShader = loadShader(GLES30.GL_FRAGMENT_SHADER, fragmentShaderCode);
 
-        shaderProgram = GLES20.glCreateProgram();
-        GLES20.glAttachShader(shaderProgram, vertexShader);
-        GLES20.glAttachShader(shaderProgram, fragmentShader);
-        GLES20.glLinkProgram(shaderProgram);
+        shaderProgram = GLES30.glCreateProgram();
+        GLES30.glAttachShader(shaderProgram, vertexShader);
+        GLES30.glAttachShader(shaderProgram, fragmentShader);
+        GLES30.glLinkProgram(shaderProgram);
 
-        positionHandle = GLES20.glGetAttribLocation(shaderProgram, "vPosition");
-        colorHandle = GLES20.glGetUniformLocation(shaderProgram, "vColor");
+        positionHandle = GLES30.glGetAttribLocation(shaderProgram, "vPosition");
+        colorHandle = GLES30.glGetUniformLocation(shaderProgram, "vColor");
     }
 
     private void setupBuffers() {
@@ -229,7 +229,7 @@ public class ComboBar {
      * Dibuja la barra de combo
      */
     public void draw() {
-        GLES20.glUseProgram(shaderProgram);
+        GLES30.glUseProgram(shaderProgram);
 
         // Aplicar shake si hay
         float shakeX = 0;
@@ -238,13 +238,13 @@ public class ComboBar {
         }
 
         // 1. Dibujar el marco de la barra (contorno)
-        GLES20.glEnableVertexAttribArray(positionHandle);
-        GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 12, vertexBuffer);
+        GLES30.glEnableVertexAttribArray(positionHandle);
+        GLES30.glVertexAttribPointer(positionHandle, 3, GLES30.GL_FLOAT, false, 12, vertexBuffer);
 
         // Color del marco
-        GLES20.glUniform4f(colorHandle, 0.3f, 0.3f, 0.3f, 0.8f);
-        GLES20.glLineWidth(3.0f);
-        GLES20.glDrawArrays(GLES20.GL_LINE_LOOP, 0, 4);
+        GLES30.glUniform4f(colorHandle, 0.3f, 0.3f, 0.3f, 0.8f);
+        GLES30.glLineWidth(3.0f);
+        GLES30.glDrawArrays(GLES30.GL_LINE_LOOP, 0, 4);
 
         // 2. Dibujar el relleno de la barra
         if (currentFill > 0) {
@@ -267,7 +267,7 @@ public class ComboBar {
             fillVertexBuffer.put(fillCoordsCache);
             fillVertexBuffer.position(0);
 
-            GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 12, fillVertexBuffer);
+            GLES30.glVertexAttribPointer(positionHandle, 3, GLES30.GL_FLOAT, false, 12, fillVertexBuffer);
 
             // Color según nivel de combo (adaptado para x5)
             // ⚡ OPTIMIZADO: Usar arrays cacheados
@@ -288,8 +288,8 @@ public class ComboBar {
                 color = COLOR_LOW;  // Verde para x1-2
             }
 
-            GLES20.glUniform4fv(colorHandle, 1, color, 0);
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 4);
+            GLES30.glUniform4fv(colorHandle, 1, color, 0);
+            GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 4);
 
             // Efecto de brillo adicional si está casi llena
             // ⚡ OPTIMIZADO: Usar array cacheado para glow
@@ -298,12 +298,12 @@ public class ComboBar {
                 glowColorCache[1] = color[1];
                 glowColorCache[2] = color[2];
                 glowColorCache[3] = color[3] * 0.3f * glowIntensity;
-                GLES20.glUniform4fv(colorHandle, 1, glowColorCache, 0);
-                GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 4);
+                GLES30.glUniform4fv(colorHandle, 1, glowColorCache, 0);
+                GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 4);
             }
         }
 
-        GLES20.glDisableVertexAttribArray(positionHandle);
+        GLES30.glDisableVertexAttribArray(positionHandle);
     }
 
     /**
@@ -336,9 +336,9 @@ public class ComboBar {
     }
 
     private int loadShader(int type, String shaderCode) {
-        int shader = GLES20.glCreateShader(type);
-        GLES20.glShaderSource(shader, shaderCode);
-        GLES20.glCompileShader(shader);
+        int shader = GLES30.glCreateShader(type);
+        GLES30.glShaderSource(shader, shaderCode);
+        GLES30.glCompileShader(shader);
         return shader;
     }
 }

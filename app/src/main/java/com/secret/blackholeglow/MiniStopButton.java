@@ -1,6 +1,6 @@
 package com.secret.blackholeglow;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.util.Log;
 
 import java.nio.ByteBuffer;
@@ -90,32 +90,32 @@ public class MiniStopButton implements SceneObject {
 
     private void initOpenGL() {
         // Compilar shaders
-        int vertexShader = compileShader(GLES20.GL_VERTEX_SHADER, VERTEX_SHADER);
-        int fragmentShader = compileShader(GLES20.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
+        int vertexShader = compileShader(GLES30.GL_VERTEX_SHADER, VERTEX_SHADER);
+        int fragmentShader = compileShader(GLES30.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
 
         if (vertexShader == 0 || fragmentShader == 0) {
             Log.e(TAG, "Error compilando shaders");
             return;
         }
 
-        shaderProgram = GLES20.glCreateProgram();
-        GLES20.glAttachShader(shaderProgram, vertexShader);
-        GLES20.glAttachShader(shaderProgram, fragmentShader);
-        GLES20.glLinkProgram(shaderProgram);
+        shaderProgram = GLES30.glCreateProgram();
+        GLES30.glAttachShader(shaderProgram, vertexShader);
+        GLES30.glAttachShader(shaderProgram, fragmentShader);
+        GLES30.glLinkProgram(shaderProgram);
 
         int[] linkStatus = new int[1];
-        GLES20.glGetProgramiv(shaderProgram, GLES20.GL_LINK_STATUS, linkStatus, 0);
+        GLES30.glGetProgramiv(shaderProgram, GLES30.GL_LINK_STATUS, linkStatus, 0);
         if (linkStatus[0] == 0) {
             Log.e(TAG, "Error linkeando programa");
-            GLES20.glDeleteProgram(shaderProgram);
+            GLES30.glDeleteProgram(shaderProgram);
             shaderProgram = 0;
             return;
         }
 
-        aPositionLoc = GLES20.glGetAttribLocation(shaderProgram, "aPosition");
-        uColorLoc = GLES20.glGetUniformLocation(shaderProgram, "uColor");
-        uAlphaLoc = GLES20.glGetUniformLocation(shaderProgram, "uAlpha");
-        uTimeLoc = GLES20.glGetUniformLocation(shaderProgram, "uTime");
+        aPositionLoc = GLES30.glGetAttribLocation(shaderProgram, "aPosition");
+        uColorLoc = GLES30.glGetUniformLocation(shaderProgram, "uColor");
+        uAlphaLoc = GLES30.glGetUniformLocation(shaderProgram, "uAlpha");
+        uTimeLoc = GLES30.glGetUniformLocation(shaderProgram, "uTime");
 
         // Buffer para vertices
         // drawCircle: 24 segments * 3 vertices * 2 floats = 144 floats
@@ -125,22 +125,22 @@ public class MiniStopButton implements SceneObject {
         bb.order(ByteOrder.nativeOrder());
         vertexBuffer = bb.asFloatBuffer();
 
-        GLES20.glDeleteShader(vertexShader);
-        GLES20.glDeleteShader(fragmentShader);
+        GLES30.glDeleteShader(vertexShader);
+        GLES30.glDeleteShader(fragmentShader);
 
         Log.d(TAG, "✓ MiniStopButton inicializado");
     }
 
     private int compileShader(int type, String source) {
-        int shader = GLES20.glCreateShader(type);
-        GLES20.glShaderSource(shader, source);
-        GLES20.glCompileShader(shader);
+        int shader = GLES30.glCreateShader(type);
+        GLES30.glShaderSource(shader, source);
+        GLES30.glCompileShader(shader);
 
         int[] compiled = new int[1];
-        GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0);
+        GLES30.glGetShaderiv(shader, GLES30.GL_COMPILE_STATUS, compiled, 0);
         if (compiled[0] == 0) {
-            Log.e(TAG, "Error: " + GLES20.glGetShaderInfoLog(shader));
-            GLES20.glDeleteShader(shader);
+            Log.e(TAG, "Error: " + GLES30.glGetShaderInfoLog(shader));
+            GLES30.glDeleteShader(shader);
             return 0;
         }
         return shader;
@@ -196,8 +196,8 @@ public class MiniStopButton implements SceneObject {
     public void draw() {
         if (!isVisible || shaderProgram == 0 || alpha < 0.01f) return;
 
-        GLES20.glUseProgram(shaderProgram);
-        GLES20.glUniform1f(uTimeLoc, time);
+        GLES30.glUseProgram(shaderProgram);
+        GLES30.glUniform1f(uTimeLoc, time);
 
         // Ajustar tamaño por aspect ratio Y por escala de atención
         float sizeX = size * attentionScale;
@@ -256,13 +256,13 @@ public class MiniStopButton implements SceneObject {
 
         vertexBuffer.position(0);
 
-        GLES20.glUniform3fv(uColorLoc, 1, color, 0);
-        GLES20.glUniform1f(uAlphaLoc, circleAlpha);
+        GLES30.glUniform3fv(uColorLoc, 1, color, 0);
+        GLES30.glUniform1f(uAlphaLoc, circleAlpha);
 
-        GLES20.glEnableVertexAttribArray(aPositionLoc);
-        GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, segments * 3);
-        GLES20.glDisableVertexAttribArray(aPositionLoc);
+        GLES30.glEnableVertexAttribArray(aPositionLoc);
+        GLES30.glVertexAttribPointer(aPositionLoc, 2, GLES30.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, segments * 3);
+        GLES30.glDisableVertexAttribArray(aPositionLoc);
     }
 
     private void drawRing(float cx, float cy, float outerRx, float outerRy,
@@ -298,13 +298,13 @@ public class MiniStopButton implements SceneObject {
 
         vertexBuffer.position(0);
 
-        GLES20.glUniform3fv(uColorLoc, 1, color, 0);
-        GLES20.glUniform1f(uAlphaLoc, ringAlpha);
+        GLES30.glUniform3fv(uColorLoc, 1, color, 0);
+        GLES30.glUniform1f(uAlphaLoc, ringAlpha);
 
-        GLES20.glEnableVertexAttribArray(aPositionLoc);
-        GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, segments * 6);
-        GLES20.glDisableVertexAttribArray(aPositionLoc);
+        GLES30.glEnableVertexAttribArray(aPositionLoc);
+        GLES30.glVertexAttribPointer(aPositionLoc, 2, GLES30.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, segments * 6);
+        GLES30.glDisableVertexAttribArray(aPositionLoc);
     }
 
     private void drawQuad(float x, float y, float w, float h, float[] color, float quadAlpha) {
@@ -322,13 +322,13 @@ public class MiniStopButton implements SceneObject {
         vertexBuffer.put(quadVerticesCache);
         vertexBuffer.position(0);
 
-        GLES20.glUniform3fv(uColorLoc, 1, color, 0);
-        GLES20.glUniform1f(uAlphaLoc, quadAlpha);
+        GLES30.glUniform3fv(uColorLoc, 1, color, 0);
+        GLES30.glUniform1f(uAlphaLoc, quadAlpha);
 
-        GLES20.glEnableVertexAttribArray(aPositionLoc);
-        GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
-        GLES20.glDisableVertexAttribArray(aPositionLoc);
+        GLES30.glEnableVertexAttribArray(aPositionLoc);
+        GLES30.glVertexAttribPointer(aPositionLoc, 2, GLES30.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
+        GLES30.glDisableVertexAttribArray(aPositionLoc);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -377,7 +377,7 @@ public class MiniStopButton implements SceneObject {
 
     public void release() {
         if (shaderProgram != 0) {
-            GLES20.glDeleteProgram(shaderProgram);
+            GLES30.glDeleteProgram(shaderProgram);
             shaderProgram = 0;
         }
     }

@@ -1,7 +1,7 @@
 package com.secret.blackholeglow.core;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
 import android.util.Log;
@@ -22,6 +22,7 @@ import com.secret.blackholeglow.systems.ScreenEffectsManager;
 import com.secret.blackholeglow.systems.ScreenManager;
 import com.secret.blackholeglow.systems.UIController;
 import com.secret.blackholeglow.gl3.MatrixPool;
+import com.secret.blackholeglow.effects.BloomEffect;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -55,6 +56,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     private ResourceLoader resourceLoader;
     private EventBus eventBus;
     private FirebaseQueueManager firebaseQueue;
+    private BloomEffect bloomEffect;
 
     // ESTADO
     private final Context context;
@@ -64,6 +66,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     private int screenHeight = 1;
     private String pendingSceneName = "";
     private boolean pendingPreviewMode = false; // Para guardar preview mode antes de inicializar
+    private boolean pendingArcadeMode = false;  // 🎮 Para guardar arcade mode antes de inicializar
 
     // TIMING (deltaTime y FPS manejados por GLStateManager)
     private static final float TIME_WRAP = 3600f;  // Reset cada hora para evitar overflow
@@ -118,6 +121,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         if (panelRenderer != null) panelRenderer.setScreenSize(width, height);
         if (sceneFactory != null) sceneFactory.setScreenSize(width, height);
         if (touchRouter != null) touchRouter.setScreenSize(width, height);
+        if (bloomEffect != null) bloomEffect.resize(width, height);
         UIController.get().setScreenSize(width, height);
     }
 
@@ -177,12 +181,25 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     }
 
     private void drawWallpaperMode() {
+        // ✨ Bloom: Capturar escena 3D a FBO
+        if (bloomEffect != null && bloomEffect.isEnabled()) {
+            bloomEffect.beginCapture();
+        }
+
+        // Dibujar escena 3D (con bloom aplicado)
         sceneFactory.drawCurrentScene();
         if (screenEffects != null) screenEffects.draw();
+
+        // ✨ Bloom: Aplicar efecto post-procesado
+        if (bloomEffect != null && bloomEffect.isEnabled()) {
+            bloomEffect.endCaptureAndApply();
+        }
+
+        // UI overlay (sin bloom para mantener nitidez)
         panelRenderer.drawWallpaperOverlay();
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
         songSharing.draw(identityMatrix, totalTime);
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
     }
 
     private void checkLoadingComplete() {
@@ -195,6 +212,13 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         sceneFactory.createScene(pendingSceneName);
         modeController.activateWallpaper();
         panelRenderer.onWallpaperActivated();
+
+        // Deshabilitar saludos Gemini para Batalla Cósmica (se usará en otros wallpapers)
+        if (pendingSceneName.contains("Batalla") || pendingSceneName.contains("Universo")) {
+            panelRenderer.setGreetingEnabled(false);
+        } else {
+            panelRenderer.setGreetingEnabled(true);
+        }
 
         // 🎵 CRÍTICO: Forzar reconexión del MusicVisualizer al entrar en WALLPAPER_MODE
         // Esto es necesario porque el visualizador puede haber perdido la conexión
@@ -229,6 +253,8 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         musicVisualizer.initialize();
         screenEffects = new ScreenEffectsManager();
         resourceLoader = new ResourceLoader(context, textureManager);
+        // TODO: BloomEffect deshabilitado temporalmente para debugging
+        // bloomEffect = new BloomEffect();
 
         // 💥 Suscribir a eventos de efectos de pantalla via EventBus
         subscribeToScreenEffectEvents();
@@ -253,6 +279,13 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         }
         panelRenderer = new PanelModeRenderer(context);
         panelRenderer.initialize();
+
+        // 🎮 Aplicar modo arcade pendiente
+        if (pendingArcadeMode) {
+            panelRenderer.setArcadeModeEnabled(true);
+            Log.d(TAG, "🎮 Modo ARCADE aplicado (estaba pendiente)");
+        }
+
         sceneFactory = new SceneFactory();
         sceneFactory.setContext(context);
         sceneFactory.setTextureManager(textureManager);
@@ -355,6 +388,18 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     public void changeScene(String sceneName) {
         Log.d(TAG, "Escena pendiente: " + sceneName);
         pendingSceneName = sceneName;
+
+        // 🎮 Determinar si debe usar modo ARCADE (para Batalla Cósmica)
+        boolean shouldUseArcade = sceneName.contains("Batalla") || sceneName.contains("Universo");
+        pendingArcadeMode = shouldUseArcade;
+
+        // Activar modo ARCADE para Batalla Cósmica
+        if (panelRenderer != null) {
+            panelRenderer.setArcadeModeEnabled(shouldUseArcade);
+            Log.d(TAG, "🎮 Modo ARCADE " + (shouldUseArcade ? "ACTIVADO" : "desactivado") + " para: " + sceneName);
+        } else {
+            Log.d(TAG, "🎮 Modo ARCADE pendiente (" + shouldUseArcade + ") - panelRenderer aún no inicializado");
+        }
     }
 
     public void release() {
@@ -364,6 +409,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         if (musicVisualizer != null) musicVisualizer.release();
         if (resources != null) resources.release();
         if (screenEffects != null) screenEffects.release();
+        if (bloomEffect != null) bloomEffect.release();
 
         // Flush final y liberar FirebaseQueueManager
         if (firebaseQueue != null) {

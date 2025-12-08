@@ -1,7 +1,7 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.Matrix;
 import android.util.Log;
 
@@ -134,11 +134,11 @@ public class SolarWinds extends BaseShaderProgram implements SceneObject, Camera
         // 3️⃣ OBTENER LOCACIONES DE ATRIBUTOS Y UNIFORMS
         // ═════════════════════════════════════════════════════════════════════
 
-        aPositionLoc = GLES20.glGetAttribLocation(programId, "a_Position");
-        aTexCoordLoc = GLES20.glGetAttribLocation(programId, "a_TexCoord");
-        uMVPLoc = GLES20.glGetUniformLocation(programId, "u_MVP");
-        uTimeLoc = GLES20.glGetUniformLocation(programId, "u_Time");
-        uResolutionLoc = GLES20.glGetUniformLocation(programId, "u_Resolution");
+        aPositionLoc = GLES30.glGetAttribLocation(programId, "a_Position");
+        aTexCoordLoc = GLES30.glGetAttribLocation(programId, "a_TexCoord");
+        uMVPLoc = GLES30.glGetUniformLocation(programId, "u_MVP");
+        uTimeLoc = GLES30.glGetUniformLocation(programId, "u_Time");
+        uResolutionLoc = GLES30.glGetUniformLocation(programId, "u_Resolution");
 
         Log.d(TAG, "✅ Locaciones obtenidas:");
         Log.d(TAG, "   a_Position: " + aPositionLoc);
@@ -210,21 +210,21 @@ public class SolarWinds extends BaseShaderProgram implements SceneObject, Camera
         // 1️⃣ ACTIVAR SHADER PROGRAM
         // ═════════════════════════════════════════════════════════════════════
 
-        GLES20.glUseProgram(programId);
+        GLES30.glUseProgram(programId);
 
         // ═════════════════════════════════════════════════════════════════════
         // 2️⃣ CONFIGURAR BLENDING (DEBUG: NORMAL, no aditivo)
         // ═════════════════════════════════════════════════════════════════════
 
-        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES30.glEnable(GLES30.GL_BLEND);
         // ✅ DEBUG: Blending NORMAL para máxima visibilidad
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         // Desactivar depth write (para no bloquear objetos detrás)
-        GLES20.glDepthMask(false);
+        GLES30.glDepthMask(false);
 
         // ✅ DEBUG: Desactivar completamente depth test
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
 
         // ═════════════════════════════════════════════════════════════════════
         // 3️⃣ CALCULAR MATRIZ DE MODELO (transformaciones del plano)
@@ -260,47 +260,47 @@ public class SolarWinds extends BaseShaderProgram implements SceneObject, Camera
         // ═════════════════════════════════════════════════════════════════════
 
         // u_MVP
-        GLES20.glUniformMatrix4fv(uMVPLoc, 1, false, mvpMatrix, 0);
+        GLES30.glUniformMatrix4fv(uMVPLoc, 1, false, mvpMatrix, 0);
 
         // u_Time (tiempo cíclico para evitar pérdida de precisión)
         float currentTime = ((System.currentTimeMillis() - startTime) / 1000.0f) % 60.0f;
-        GLES20.glUniform1f(uTimeLoc, currentTime);
+        GLES30.glUniform1f(uTimeLoc, currentTime);
 
         // u_Resolution (ancho y alto del viewport)
         int[] viewport = new int[4];
-        GLES20.glGetIntegerv(GLES20.GL_VIEWPORT, viewport, 0);
-        GLES20.glUniform2f(uResolutionLoc, viewport[2], viewport[3]);
+        GLES30.glGetIntegerv(GLES30.GL_VIEWPORT, viewport, 0);
+        GLES30.glUniform2f(uResolutionLoc, viewport[2], viewport[3]);
 
         // ═════════════════════════════════════════════════════════════════════
         // 6️⃣ CONFIGURAR ATRIBUTOS DE VÉRTICES
         // ═════════════════════════════════════════════════════════════════════
 
         // a_Position
-        GLES20.glEnableVertexAttribArray(aPositionLoc);
-        GLES20.glVertexAttribPointer(aPositionLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glEnableVertexAttribArray(aPositionLoc);
+        GLES30.glVertexAttribPointer(aPositionLoc, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
         // a_TexCoord
-        GLES20.glEnableVertexAttribArray(aTexCoordLoc);
-        GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
+        GLES30.glEnableVertexAttribArray(aTexCoordLoc);
+        GLES30.glVertexAttribPointer(aTexCoordLoc, 2, GLES30.GL_FLOAT, false, 0, texCoordBuffer);
 
         // ═════════════════════════════════════════════════════════════════════
         // 7️⃣ DIBUJAR EL PLANO
         // ═════════════════════════════════════════════════════════════════════
 
-        GLES20.glDrawElements(GLES20.GL_TRIANGLES, indexCount, GLES20.GL_UNSIGNED_SHORT, indexBuffer);
+        GLES30.glDrawElements(GLES30.GL_TRIANGLES, indexCount, GLES30.GL_UNSIGNED_SHORT, indexBuffer);
 
         // ═════════════════════════════════════════════════════════════════════
         // 8️⃣ RESTAURAR ESTADO DE OPENGL
         // ═════════════════════════════════════════════════════════════════════
 
         // Reactivar depth test
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
 
         // Reactivar depth write
-        GLES20.glDepthMask(true);
+        GLES30.glDepthMask(true);
 
         // Desactivar atributos
-        GLES20.glDisableVertexAttribArray(aPositionLoc);
-        GLES20.glDisableVertexAttribArray(aTexCoordLoc);
+        GLES30.glDisableVertexAttribArray(aPositionLoc);
+        GLES30.glDisableVertexAttribArray(aTexCoordLoc);
     }
 }

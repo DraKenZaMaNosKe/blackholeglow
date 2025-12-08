@@ -29,6 +29,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import androidx.core.graphics.Insets;
@@ -78,10 +79,9 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // 🔧 FIX Android 15: Habilitar Edge-to-Edge ANTES de super.onCreate()
+        EdgeToEdge.enable(this);
         super.onCreate(savedInstanceState);
-
-        // 🎨 Edge-to-Edge
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 
         // 1️⃣ Recuperar parámetros
         nombre_wallpaper = getIntent().getStringExtra("WALLPAPER_ID");

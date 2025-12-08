@@ -362,4 +362,39 @@ public final class SceneConstants {
         /** Alto por defecto (se sobrescribe en runtime) */
         public static final int DEFAULT_HEIGHT = 1920;
     }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 🎮 PLAYER INDICATOR - Indicador del jugador (P1)
+    // ═══════════════════════════════════════════════════════════════════
+
+    public static final class PlayerIndicator {
+        /** Etiqueta del jugador */
+        public static final String LABEL = "P1";
+
+        /** Offset Y sobre la nave (unidades del mundo) */
+        public static final float OFFSET_Y = 0.35f;
+
+        /** Tamaño del texto (escala) */
+        public static final float TEXT_SCALE = 0.12f;
+
+        /** Color del indicador (Cyan brillante) - RGB */
+        public static final float COLOR_R = 0.0f;
+        public static final float COLOR_G = 1.0f;
+        public static final float COLOR_B = 1.0f;
+        public static final float COLOR_A = 1.0f;
+
+        /** Color de borde/glow (más oscuro) */
+        public static final float GLOW_R = 0.0f;
+        public static final float GLOW_G = 0.6f;
+        public static final float GLOW_B = 0.8f;
+
+        /** Parpadeo cuando HP bajo (umbral %) */
+        public static final float LOW_HP_THRESHOLD = 0.25f;
+
+        /** Velocidad de parpadeo (Hz) */
+        public static final float BLINK_SPEED = 4.0f;
+
+        /** Alpha cuando está en respawn (semi-transparente) */
+        public static final float RESPAWN_ALPHA = 0.3f;
+    }
 }

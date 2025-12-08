@@ -18,6 +18,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.ContextCompat;
+import androidx.activity.EdgeToEdge;
 import androidx.core.view.GravityCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.ViewCompat;
@@ -104,10 +105,9 @@ public class MainActivity extends AppCompatActivity
     // ╚════════════════════════════════════════════════════════╝
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // 🔧 FIX Android 15: Habilitar Edge-to-Edge ANTES de super.onCreate()
+        EdgeToEdge.enable(this);
         super.onCreate(savedInstanceState);
-
-        // 🎨 Habilitar Edge-to-Edge (borde a borde)
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 
         setContentView(R.layout.activity_main);
 

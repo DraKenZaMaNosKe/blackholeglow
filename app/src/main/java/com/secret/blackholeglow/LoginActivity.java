@@ -10,6 +10,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.ViewCompat;
@@ -72,10 +73,9 @@ public class LoginActivity extends AppCompatActivity {
         // Ahora cambiamos al tema normal para el contenido de la Activity
         setTheme(R.style.Theme_Blackholeglow);
 
+        // 🔧 FIX Android 15: Habilitar Edge-to-Edge ANTES de super.onCreate()
+        EdgeToEdge.enable(this);
         super.onCreate(savedInstanceState);
-
-        // 🎨 Habilitar Edge-to-Edge (borde a borde)
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 
         // Verificar si el usuario ya tiene sesión iniciada
         UserManager userManager = UserManager.getInstance(this);

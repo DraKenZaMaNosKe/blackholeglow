@@ -1,7 +1,7 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.util.Log;
 
 import com.secret.blackholeglow.util.MaterialGroup;
@@ -275,21 +275,21 @@ public class TierraLiveHD implements SceneObject, CameraAware {
                 "    gl_FragColor = vec4(litColor, 1.0);\n" +
                 "}";
 
-        int vShader = ShaderUtils.loadShader(GLES20.GL_VERTEX_SHADER, vertexShader);
-        int fShader = ShaderUtils.loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShader);
+        int vShader = ShaderUtils.loadShader(GLES30.GL_VERTEX_SHADER, vertexShader);
+        int fShader = ShaderUtils.loadShader(GLES30.GL_FRAGMENT_SHADER, fragmentShader);
 
-        shaderProgram = GLES20.glCreateProgram();
-        GLES20.glAttachShader(shaderProgram, vShader);
-        GLES20.glAttachShader(shaderProgram, fShader);
-        GLES20.glLinkProgram(shaderProgram);
+        shaderProgram = GLES30.glCreateProgram();
+        GLES30.glAttachShader(shaderProgram, vShader);
+        GLES30.glAttachShader(shaderProgram, fShader);
+        GLES30.glLinkProgram(shaderProgram);
 
         // Get handles
-        uMVPHandle = GLES20.glGetUniformLocation(shaderProgram, "u_MVP");
-        uColorHandle = GLES20.glGetUniformLocation(shaderProgram, "u_Color");
-        uTimeHandle = GLES20.glGetUniformLocation(shaderProgram, "u_Time");
-        uIsWaterHandle = GLES20.glGetUniformLocation(shaderProgram, "u_IsWater");
-        aPositionHandle = GLES20.glGetAttribLocation(shaderProgram, "a_Position");
-        aTexCoordHandle = GLES20.glGetAttribLocation(shaderProgram, "a_TexCoord");
+        uMVPHandle = GLES30.glGetUniformLocation(shaderProgram, "u_MVP");
+        uColorHandle = GLES30.glGetUniformLocation(shaderProgram, "u_Color");
+        uTimeHandle = GLES30.glGetUniformLocation(shaderProgram, "u_Time");
+        uIsWaterHandle = GLES30.glGetUniformLocation(shaderProgram, "u_IsWater");
+        aPositionHandle = GLES30.glGetAttribLocation(shaderProgram, "a_Position");
+        aTexCoordHandle = GLES30.glGetAttribLocation(shaderProgram, "a_TexCoord");
 
         Log.d(TAG, "✨ Shader épico creado con iluminación + atmósfera");
     }
@@ -314,7 +314,7 @@ public class TierraLiveHD implements SceneObject, CameraAware {
     public void draw() {
         if (mesh == null || camera == null) return;
 
-        GLES20.glUseProgram(shaderProgram);
+        GLES30.glUseProgram(shaderProgram);
 
         // Matriz de transformación
         float[] modelMatrix = new float[16];
@@ -328,12 +328,12 @@ public class TierraLiveHD implements SceneObject, CameraAware {
         camera.computeMvp(modelMatrix, mvpMatrix);
 
         // Set MVP uniform (compartido por todos los materiales)
-        GLES20.glUniformMatrix4fv(uMVPHandle, 1, false, mvpMatrix, 0);
+        GLES30.glUniformMatrix4fv(uMVPHandle, 1, false, mvpMatrix, 0);
 
         // ✨ Set tiempo para animaciones (TIEMPO RELATIVO CÍCLICO)
         // ✅ CRÍTICO: Módulo 60s para evitar pérdida de precisión en GLSL mediump float
         float currentTime = ((System.currentTimeMillis() - startTime) / 1000.0f) % 60.0f;
-        GLES20.glUniform1f(uTimeHandle, currentTime);
+        GLES30.glUniform1f(uTimeHandle, currentTime);
 
         // 🐛 LOG DE DEBUG CADA 60 FRAMES (1 segundo aprox)
         frameCounter++;
@@ -353,13 +353,13 @@ public class TierraLiveHD implements SceneObject, CameraAware {
 
         // Set vertex buffer (compartido)
         vertexBuffer.position(0);
-        GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
-        GLES20.glEnableVertexAttribArray(aPositionHandle);
+        GLES30.glVertexAttribPointer(aPositionHandle, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glEnableVertexAttribArray(aPositionHandle);
 
         if (aTexCoordHandle >= 0) {
             uvBuffer.position(0);
-            GLES20.glVertexAttribPointer(aTexCoordHandle, 2, GLES20.GL_FLOAT, false, 0, uvBuffer);
-            GLES20.glEnableVertexAttribArray(aTexCoordHandle);
+            GLES30.glVertexAttribPointer(aTexCoordHandle, 2, GLES30.GL_FLOAT, false, 0, uvBuffer);
+            GLES30.glEnableVertexAttribArray(aTexCoordHandle);
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -368,21 +368,21 @@ public class TierraLiveHD implements SceneObject, CameraAware {
         for (MaterialGroup group : materialGroups) {
             // ✨ Detectar si es agua para efectos especiales
             boolean isWater = group.materialName != null && group.materialName.equals("Water");
-            GLES20.glUniform1f(uIsWaterHandle, isWater ? 1.0f : 0.0f);
+            GLES30.glUniform1f(uIsWaterHandle, isWater ? 1.0f : 0.0f);
 
             if (group.material != null) {
                 // ✅ FIX: Cambiar "material" gris a marrón tierra
                 if (group.materialName != null && group.materialName.equals("material")) {
                     // Material genérico: usar marrón tierra/roca
-                    GLES20.glUniform3f(uColorHandle, 0.45f, 0.35f, 0.25f);  // Marrón tierra
+                    GLES30.glUniform3f(uColorHandle, 0.45f, 0.35f, 0.25f);  // Marrón tierra
                 } else {
                     // Usar color del archivo MTL
                     float[] diffuseColor = group.material.diffuseColor;
-                    GLES20.glUniform3f(uColorHandle, diffuseColor[0], diffuseColor[1], diffuseColor[2]);
+                    GLES30.glUniform3f(uColorHandle, diffuseColor[0], diffuseColor[1], diffuseColor[2]);
                 }
             } else {
                 // Fallback: marrón oscuro
-                GLES20.glUniform3f(uColorHandle, 0.3f, 0.25f, 0.2f);
+                GLES30.glUniform3f(uColorHandle, 0.3f, 0.25f, 0.2f);
             }
 
             // Draw este grupo con índices
@@ -390,19 +390,19 @@ public class TierraLiveHD implements SceneObject, CameraAware {
             if (indexBuffer != null) {
                 indexBuffer.position(0);
                 int indexCount = indexBuffer.capacity();
-                GLES20.glDrawElements(
-                        GLES20.GL_TRIANGLES,
+                GLES30.glDrawElements(
+                        GLES30.GL_TRIANGLES,
                         indexCount,
-                        GLES20.GL_UNSIGNED_SHORT,
+                        GLES30.GL_UNSIGNED_SHORT,
                         indexBuffer
                 );
             }
         }
 
         // Cleanup
-        GLES20.glDisableVertexAttribArray(aPositionHandle);
+        GLES30.glDisableVertexAttribArray(aPositionHandle);
         if (aTexCoordHandle >= 0) {
-            GLES20.glDisableVertexAttribArray(aTexCoordHandle);
+            GLES30.glDisableVertexAttribArray(aTexCoordHandle);
         }
     }
 }

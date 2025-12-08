@@ -7,7 +7,7 @@ import android.graphics.Color;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Typeface;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.GLUtils;
 import android.opengl.Matrix;
 import android.util.Log;
@@ -155,21 +155,21 @@ public class MagicLeaderboard implements SceneObject {
     }
 
     private int createProgram(String vertexSource, String fragmentSource) {
-        int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexSource);
-        int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentSource);
+        int vertexShader = loadShader(GLES30.GL_VERTEX_SHADER, vertexSource);
+        int fragmentShader = loadShader(GLES30.GL_FRAGMENT_SHADER, fragmentSource);
 
-        int program = GLES20.glCreateProgram();
-        GLES20.glAttachShader(program, vertexShader);
-        GLES20.glAttachShader(program, fragmentShader);
-        GLES20.glLinkProgram(program);
+        int program = GLES30.glCreateProgram();
+        GLES30.glAttachShader(program, vertexShader);
+        GLES30.glAttachShader(program, fragmentShader);
+        GLES30.glLinkProgram(program);
 
         return program;
     }
 
     private int loadShader(int type, String source) {
-        int shader = GLES20.glCreateShader(type);
-        GLES20.glShaderSource(shader, source);
-        GLES20.glCompileShader(shader);
+        int shader = GLES30.glCreateShader(type);
+        GLES30.glShaderSource(shader, source);
+        GLES30.glCompileShader(shader);
         return shader;
     }
 
@@ -388,7 +388,7 @@ public class MagicLeaderboard implements SceneObject {
 
         if (textureId == -1) return;
 
-        GLES20.glUseProgram(programId);
+        GLES30.glUseProgram(programId);
 
         // Matriz MVP
         float[] mvp = new float[16];
@@ -396,45 +396,45 @@ public class MagicLeaderboard implements SceneObject {
         Matrix.translateM(mvp, 0, posX + width/2, posY - height/2, 0);
         Matrix.scaleM(mvp, 0, width/2, height/2, 1);
 
-        int mvpLoc = GLES20.glGetUniformLocation(programId, "u_MVP");
-        GLES20.glUniformMatrix4fv(mvpLoc, 1, false, mvp, 0);
+        int mvpLoc = GLES30.glGetUniformLocation(programId, "u_MVP");
+        GLES30.glUniformMatrix4fv(mvpLoc, 1, false, mvp, 0);
 
-        int alphaLoc = GLES20.glGetUniformLocation(programId, "u_Alpha");
-        GLES20.glUniform1f(alphaLoc, alpha);
+        int alphaLoc = GLES30.glGetUniformLocation(programId, "u_Alpha");
+        GLES30.glUniform1f(alphaLoc, alpha);
 
         // Textura
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-        int texLoc = GLES20.glGetUniformLocation(programId, "u_Texture");
-        GLES20.glUniform1i(texLoc, 0);
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
+        int texLoc = GLES30.glGetUniformLocation(programId, "u_Texture");
+        GLES30.glUniform1i(texLoc, 0);
 
         // Atributos
-        int posLoc = GLES20.glGetAttribLocation(programId, "a_Position");
-        int texCoordLoc = GLES20.glGetAttribLocation(programId, "a_TexCoord");
+        int posLoc = GLES30.glGetAttribLocation(programId, "a_Position");
+        int texCoordLoc = GLES30.glGetAttribLocation(programId, "a_TexCoord");
 
-        GLES20.glEnableVertexAttribArray(posLoc);
-        GLES20.glEnableVertexAttribArray(texCoordLoc);
+        GLES30.glEnableVertexAttribArray(posLoc);
+        GLES30.glEnableVertexAttribArray(texCoordLoc);
 
         vertexBuffer.position(0);
-        GLES20.glVertexAttribPointer(posLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glVertexAttribPointer(posLoc, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
         texCoordBuffer.position(0);
-        GLES20.glVertexAttribPointer(texCoordLoc, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
+        GLES30.glVertexAttribPointer(texCoordLoc, 2, GLES30.GL_FLOAT, false, 0, texCoordBuffer);
 
         // Blending
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
 
-        GLES20.glDisableVertexAttribArray(posLoc);
-        GLES20.glDisableVertexAttribArray(texCoordLoc);
+        GLES30.glDisableVertexAttribArray(posLoc);
+        GLES30.glDisableVertexAttribArray(texCoordLoc);
     }
 
     private void drawParticles() {
         if (particles.isEmpty()) return;
 
-        GLES20.glUseProgram(particleProgramId);
+        GLES30.glUseProgram(particleProgramId);
 
         // Preparar datos de partículas
         particleVertexBuffer.clear();
@@ -453,38 +453,38 @@ public class MagicLeaderboard implements SceneObject {
         float[] mvp = new float[16];
         Matrix.setIdentityM(mvp, 0);
 
-        int mvpLoc = GLES20.glGetUniformLocation(particleProgramId, "u_MVP");
-        GLES20.glUniformMatrix4fv(mvpLoc, 1, false, mvp, 0);
+        int mvpLoc = GLES30.glGetUniformLocation(particleProgramId, "u_MVP");
+        GLES30.glUniformMatrix4fv(mvpLoc, 1, false, mvp, 0);
 
-        int sizeLoc = GLES20.glGetUniformLocation(particleProgramId, "u_PointSize");
-        GLES20.glUniform1f(sizeLoc, 20f);
+        int sizeLoc = GLES30.glGetUniformLocation(particleProgramId, "u_PointSize");
+        GLES30.glUniform1f(sizeLoc, 20f);
 
         // Atributos
-        int posLoc = GLES20.glGetAttribLocation(particleProgramId, "a_Position");
-        int colorLoc = GLES20.glGetAttribLocation(particleProgramId, "a_Color");
+        int posLoc = GLES30.glGetAttribLocation(particleProgramId, "a_Position");
+        int colorLoc = GLES30.glGetAttribLocation(particleProgramId, "a_Color");
 
-        GLES20.glEnableVertexAttribArray(posLoc);
-        GLES20.glEnableVertexAttribArray(colorLoc);
+        GLES30.glEnableVertexAttribArray(posLoc);
+        GLES30.glEnableVertexAttribArray(colorLoc);
 
         int stride = 7 * 4; // 7 floats * 4 bytes
 
         particleVertexBuffer.position(0);
-        GLES20.glVertexAttribPointer(posLoc, 3, GLES20.GL_FLOAT, false, stride, particleVertexBuffer);
+        GLES30.glVertexAttribPointer(posLoc, 3, GLES30.GL_FLOAT, false, stride, particleVertexBuffer);
 
         particleVertexBuffer.position(3);
-        GLES20.glVertexAttribPointer(colorLoc, 4, GLES20.GL_FLOAT, false, stride, particleVertexBuffer);
+        GLES30.glVertexAttribPointer(colorLoc, 4, GLES30.GL_FLOAT, false, stride, particleVertexBuffer);
 
         // Blending aditivo para brillo
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE);
 
-        GLES20.glDrawArrays(GLES20.GL_POINTS, 0, particles.size());
+        GLES30.glDrawArrays(GLES30.GL_POINTS, 0, particles.size());
 
-        GLES20.glDisableVertexAttribArray(posLoc);
-        GLES20.glDisableVertexAttribArray(colorLoc);
+        GLES30.glDisableVertexAttribArray(posLoc);
+        GLES30.glDisableVertexAttribArray(colorLoc);
 
         // Restaurar blending normal
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
     }
 
     private void updateTexture() {
@@ -625,22 +625,22 @@ public class MagicLeaderboard implements SceneObject {
         // Subir textura a OpenGL
         if (textureId == -1) {
             int[] texIds = new int[1];
-            GLES20.glGenTextures(1, texIds, 0);
+            GLES30.glGenTextures(1, texIds, 0);
             textureId = texIds[0];
         }
 
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
-        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, leaderboardBitmap, 0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
+        GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, leaderboardBitmap, 0);
     }
 
     public void release() {
         if (textureId != -1) {
             int[] texIds = {textureId};
-            GLES20.glDeleteTextures(1, texIds, 0);
+            GLES30.glDeleteTextures(1, texIds, 0);
             textureId = -1;
         }
         if (leaderboardBitmap != null) {

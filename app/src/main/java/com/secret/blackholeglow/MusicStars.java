@@ -1,7 +1,7 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.util.Log;
 
 import java.nio.ByteBuffer;
@@ -193,10 +193,10 @@ public class MusicStars implements SceneObject {
             return;
         }
 
-        uTimeLoc = GLES20.glGetUniformLocation(programId, "u_Time");
-        uPointSizeLoc = GLES20.glGetUniformLocation(programId, "u_PointSize");
-        uSpeedLoc = GLES20.glGetUniformLocation(programId, "u_Speed");
-        uDirectionLoc = GLES20.glGetUniformLocation(programId, "u_Direction");
+        uTimeLoc = GLES30.glGetUniformLocation(programId, "u_Time");
+        uPointSizeLoc = GLES30.glGetUniformLocation(programId, "u_PointSize");
+        uSpeedLoc = GLES30.glGetUniformLocation(programId, "u_Speed");
+        uDirectionLoc = GLES30.glGetUniformLocation(programId, "u_Direction");
 
         Log.d(TAG, "✓ Shader compilado");
     }
@@ -245,45 +245,45 @@ public class MusicStars implements SceneObject {
     public void draw() {
         if (programId == 0) return;
 
-        GLES20.glUseProgram(programId);
+        GLES30.glUseProgram(programId);
 
         // Estados OpenGL
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE);
 
         // Tiempo global
-        GLES20.glUniform1f(uTimeLoc, time);
+        GLES30.glUniform1f(uTimeLoc, time);
 
-        int aPositionLoc = GLES20.glGetAttribLocation(programId, "a_Position");
-        int aColorLoc = GLES20.glGetAttribLocation(programId, "a_Color");
+        int aPositionLoc = GLES30.glGetAttribLocation(programId, "a_Position");
+        int aColorLoc = GLES30.glGetAttribLocation(programId, "a_Color");
 
         // Dibujar cada galaxia (necesario por tamaños diferentes)
         for (int i = 0; i < TOTAL_GALAXIAS; i++) {
             // Uniforms específicos de esta galaxia
-            GLES20.glUniform1f(uPointSizeLoc, sizes[i]);
-            GLES20.glUniform1f(uSpeedLoc, speeds[i]);
-            GLES20.glUniform1f(uDirectionLoc, directions[i]);
+            GLES30.glUniform1f(uPointSizeLoc, sizes[i]);
+            GLES30.glUniform1f(uSpeedLoc, speeds[i]);
+            GLES30.glUniform1f(uDirectionLoc, directions[i]);
 
             // Posición de esta galaxia
             positionBuffer.position(i * 2);
-            GLES20.glEnableVertexAttribArray(aPositionLoc);
-            GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 0, positionBuffer);
+            GLES30.glEnableVertexAttribArray(aPositionLoc);
+            GLES30.glVertexAttribPointer(aPositionLoc, 2, GLES30.GL_FLOAT, false, 0, positionBuffer);
 
             // Color de esta galaxia
             colorBuffer.position(i * 4);
-            GLES20.glEnableVertexAttribArray(aColorLoc);
-            GLES20.glVertexAttribPointer(aColorLoc, 4, GLES20.GL_FLOAT, false, 0, colorBuffer);
+            GLES30.glEnableVertexAttribArray(aColorLoc);
+            GLES30.glVertexAttribPointer(aColorLoc, 4, GLES30.GL_FLOAT, false, 0, colorBuffer);
 
             // Dibujar
-            GLES20.glDrawArrays(GLES20.GL_POINTS, 0, 1);
+            GLES30.glDrawArrays(GLES30.GL_POINTS, 0, 1);
         }
 
-        GLES20.glDisableVertexAttribArray(aPositionLoc);
-        GLES20.glDisableVertexAttribArray(aColorLoc);
+        GLES30.glDisableVertexAttribArray(aPositionLoc);
+        GLES30.glDisableVertexAttribArray(aColorLoc);
 
         // Restaurar estados
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
     }
 }

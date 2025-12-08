@@ -1,7 +1,7 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.util.Log;
 
 import com.secret.blackholeglow.util.ObjLoader;
@@ -126,19 +126,19 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
         }
 
         // Obtener locations
-        uMvpLoc = GLES20.glGetUniformLocation(programId, "u_MVP");
-        uTimeLoc = GLES20.glGetUniformLocation(programId, "u_Time");
-        uTextureLoc = GLES20.glGetUniformLocation(programId, "u_Texture");
-        uColorLoc = GLES20.glGetUniformLocation(programId, "u_Color");
-        uAlphaLoc = GLES20.glGetUniformLocation(programId, "u_Alpha");
-        uImpactPosLoc = GLES20.glGetUniformLocation(programId, "u_ImpactPos");
-        uImpactIntensityLoc = GLES20.glGetUniformLocation(programId, "u_ImpactIntensity");
-        uHealthLoc = GLES20.glGetUniformLocation(programId, "u_Health");
+        uMvpLoc = GLES30.glGetUniformLocation(programId, "u_MVP");
+        uTimeLoc = GLES30.glGetUniformLocation(programId, "u_Time");
+        uTextureLoc = GLES30.glGetUniformLocation(programId, "u_Texture");
+        uColorLoc = GLES30.glGetUniformLocation(programId, "u_Color");
+        uAlphaLoc = GLES30.glGetUniformLocation(programId, "u_Alpha");
+        uImpactPosLoc = GLES30.glGetUniformLocation(programId, "u_ImpactPos");
+        uImpactIntensityLoc = GLES30.glGetUniformLocation(programId, "u_ImpactIntensity");
+        uHealthLoc = GLES30.glGetUniformLocation(programId, "u_Health");
 
         // 🎵 PLASMA: Locations de música
-        uMusicBassLoc = GLES20.glGetUniformLocation(programId, "u_MusicBass");
-        uMusicTrebleLoc = GLES20.glGetUniformLocation(programId, "u_MusicTreble");
-        uMusicBeatLoc = GLES20.glGetUniformLocation(programId, "u_MusicBeat");
+        uMusicBassLoc = GLES30.glGetUniformLocation(programId, "u_MusicBass");
+        uMusicTrebleLoc = GLES30.glGetUniformLocation(programId, "u_MusicTreble");
+        uMusicBeatLoc = GLES30.glGetUniformLocation(programId, "u_MusicBeat");
 
         Log.d(TAG, "[ForceField] ⚡ Shader de PLASMA inicializado - programId=" + programId);
     }
@@ -304,7 +304,7 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
 
     @Override
     public void draw() {
-        if (!GLES20.glIsProgram(programId)) return;
+        if (!GLES30.glIsProgram(programId)) return;
 
         // ✅ Si está destruido, NO dibujarlo (desaparece completamente)
         if (isDestroyed) {
@@ -314,14 +314,14 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
         // ═══════════════════════════════════════════════════════════════════
         // 🛡️ CONFIGURACIÓN DE TRANSPARENCIA - OVNI visible detrás del escudo
         // ═══════════════════════════════════════════════════════════════════
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         // ✨ IMPORTANTE: Desactivar escritura de profundidad
         // Esto permite que objetos detrás del escudo sigan siendo visibles
-        GLES20.glDepthMask(false);
+        GLES30.glDepthMask(false);
 
-        GLES20.glUseProgram(programId);
+        GLES30.glUseProgram(programId);
 
         // ════════════════════════════════════════════════════════════
         // ✗ ESCALA GRADUAL ELIMINADA (era solo para pruebas)
@@ -350,8 +350,8 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
             System.arraycopy(modelMatrixCache, 0, mvpMatrixCache, 0, 16);
         }
 
-        GLES20.glUniformMatrix4fv(uMvpLoc, 1, false, mvpMatrixCache, 0);
-        GLES20.glUniform1f(uTimeLoc, rotationAngle);
+        GLES30.glUniformMatrix4fv(uMvpLoc, 1, false, mvpMatrixCache, 0);
+        GLES30.glUniform1f(uTimeLoc, rotationAngle);
 
         // Color y alpha con reactividad musical
         float currentAlpha = baseAlpha;
@@ -376,40 +376,40 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
         float g = Math.min(1.0f, baseColor[1] * musicBrightness);
         float b = Math.min(1.0f, baseColor[2] * musicBrightness);
 
-        GLES20.glUniform4f(uColorLoc, r, g, b, currentAlpha);
-        GLES20.glUniform1f(uAlphaLoc, currentAlpha);
+        GLES30.glUniform4f(uColorLoc, r, g, b, currentAlpha);
+        GLES30.glUniform1f(uAlphaLoc, currentAlpha);
 
         // Impactos
-        GLES20.glUniform3fv(uImpactPosLoc, MAX_IMPACTS, impactPositions, 0);
-        GLES20.glUniform1fv(uImpactIntensityLoc, MAX_IMPACTS, impactIntensities, 0);
+        GLES30.glUniform3fv(uImpactPosLoc, MAX_IMPACTS, impactPositions, 0);
+        GLES30.glUniform1fv(uImpactIntensityLoc, MAX_IMPACTS, impactIntensities, 0);
 
         // Salud (0.0 a 1.0)
         float healthPercent = (float)currentHealth / MAX_HEALTH;
-        GLES20.glUniform1f(uHealthLoc, healthPercent);
+        GLES30.glUniform1f(uHealthLoc, healthPercent);
 
         // 🎵 PLASMA: Enviar datos de música al shader
         float bassValue = musicReactive ? musicEnergyBoost : 0f;  // Usar energía como graves
         float trebleValue = musicReactive ? musicTrebleIntensity : 0f;
         float beatValue = musicReactive ? musicBeatFlash : 0f;
 
-        GLES20.glUniform1f(uMusicBassLoc, bassValue);
-        GLES20.glUniform1f(uMusicTrebleLoc, trebleValue);
-        GLES20.glUniform1f(uMusicBeatLoc, beatValue);
+        GLES30.glUniform1f(uMusicBassLoc, bassValue);
+        GLES30.glUniform1f(uMusicTrebleLoc, trebleValue);
+        GLES30.glUniform1f(uMusicBeatLoc, beatValue);
 
         // Textura
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-        GLES20.glUniform1i(uTextureLoc, 0);
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
+        GLES30.glUniform1i(uTextureLoc, 0);
 
         // Atributos
-        int aPosLoc = GLES20.glGetAttribLocation(programId, "a_Position");
-        int aTexLoc = GLES20.glGetAttribLocation(programId, "a_TexCoord");
+        int aPosLoc = GLES30.glGetAttribLocation(programId, "a_Position");
+        int aTexLoc = GLES30.glGetAttribLocation(programId, "a_TexCoord");
 
-        GLES20.glEnableVertexAttribArray(aPosLoc);
-        GLES20.glVertexAttribPointer(aPosLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glEnableVertexAttribArray(aPosLoc);
+        GLES30.glVertexAttribPointer(aPosLoc, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
-        GLES20.glEnableVertexAttribArray(aTexLoc);
-        GLES20.glVertexAttribPointer(aTexLoc, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
+        GLES30.glEnableVertexAttribArray(aTexLoc);
+        GLES30.glVertexAttribPointer(aTexLoc, 2, GLES30.GL_FLOAT, false, 0, texCoordBuffer);
 
         // ════════════════════════════════════════════════════════════
         // ✅ USAR glDrawElements con indexBuffer de ProceduralSphere
@@ -417,13 +417,13 @@ public class ForceField implements SceneObject, CameraAware, MusicReactive {
         // Cambio de glDrawArrays a glDrawElements para usar índices
         // Esto es más eficiente y correcto con ProceduralSphere
         indexBuffer.position(0);
-        GLES20.glDrawElements(GLES20.GL_TRIANGLES, indexBuffer.capacity(), GLES20.GL_UNSIGNED_SHORT, indexBuffer);
+        GLES30.glDrawElements(GLES30.GL_TRIANGLES, indexBuffer.capacity(), GLES30.GL_UNSIGNED_SHORT, indexBuffer);
 
-        GLES20.glDisableVertexAttribArray(aPosLoc);
-        GLES20.glDisableVertexAttribArray(aTexLoc);
+        GLES30.glDisableVertexAttribArray(aPosLoc);
+        GLES30.glDisableVertexAttribArray(aTexLoc);
 
         // ✨ Restaurar escritura de profundidad para otros objetos
-        GLES20.glDepthMask(true);
+        GLES30.glDepthMask(true);
     }
 
     // ===== IMPLEMENTACIÓN DE MUSICREACTIVE =====

@@ -1,9 +1,13 @@
 package com.secret.blackholeglow.core;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.util.Log;
 
+import com.secret.blackholeglow.ArcadeFooter;
+// import com.secret.blackholeglow.ArcadePreview; // REMOVIDO
+import com.secret.blackholeglow.ArcadeStartText;
+import com.secret.blackholeglow.ArcadeTitle;
 import com.secret.blackholeglow.HoroscopeDisplay;
 import com.secret.blackholeglow.LoadingBar;
 import com.secret.blackholeglow.MiniStopButton;
@@ -30,16 +34,24 @@ import com.secret.blackholeglow.PlayPauseButton;
 public class PanelModeRenderer {
     private static final String TAG = "PanelModeRenderer";
 
-    // Componentes UI
+    // Componentes UI estándar
     private PlayPauseButton playPauseButton;
     private OrbixGreeting orbixGreeting;
     private LoadingBar loadingBar;
     private MiniStopButton miniStopButton;
     private HoroscopeDisplay horoscopeDisplay;  // ✨ Horóscopo semanal
 
+    // 🎮 Componentes ARCADE (para Batalla Cósmica)
+    private ArcadeTitle arcadeTitle;
+    private ArcadeStartText arcadeStartText;
+    private ArcadeFooter arcadeFooter;
+    // private ArcadePreview arcadePreview; // REMOVIDO
+    private boolean arcadeModeEnabled = false;  // Modo arcade para Batalla
+
     // Estado
     private boolean initialized = false;
     private final Context context;
+    private boolean greetingEnabled = true;  // Deshabilitado para algunos wallpapers
 
     // Listener para eventos de carga
     public interface LoadingCompleteListener {
@@ -87,8 +99,36 @@ public class PanelModeRenderer {
         // horoscopeDisplay = new HoroscopeDisplay(context);
         // Log.d(TAG, "✨ HoroscopeDisplay inicializado");
 
+        // 🎮 Inicializar componentes ARCADE
+        initArcadeComponents();
+
         initialized = true;
         Log.d(TAG, "✅ Panel de Control inicializado");
+    }
+
+    /**
+     * 🎮 Inicializa los componentes del panel arcade
+     */
+    private void initArcadeComponents() {
+        try {
+            arcadeTitle = new ArcadeTitle();
+            Log.d(TAG, "🎮 ArcadeTitle inicializado");
+
+            arcadeStartText = new ArcadeStartText();
+            Log.d(TAG, "🕹️ ArcadeStartText inicializado");
+
+            arcadeFooter = new ArcadeFooter();
+            Log.d(TAG, "© ArcadeFooter inicializado");
+
+            // arcadePreview = new ArcadePreview(context);
+            Log.d(TAG, "🖼️ ArcadePreview inicializado");
+
+            Log.d(TAG, "🎮 ═══════════════════════════════════════");
+            Log.d(TAG, "🎮 MODO ARCADE COMPONENTES LISTOS");
+            Log.d(TAG, "🎮 ═══════════════════════════════════════");
+        } catch (Exception e) {
+            Log.e(TAG, "Error inicializando componentes arcade: " + e.getMessage());
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -99,14 +139,24 @@ public class PanelModeRenderer {
      * Actualiza componentes para PANEL_MODE
      */
     public void updatePanelMode(float deltaTime) {
-        if (orbixGreeting != null) {
-            orbixGreeting.update(deltaTime);
-        }
-        if (playPauseButton != null) {
-            playPauseButton.update(deltaTime);
-        }
-        if (horoscopeDisplay != null) {
-            horoscopeDisplay.update(deltaTime);
+        if (arcadeModeEnabled) {
+            // 🎮 MODO ARCADE
+            if (arcadeTitle != null) arcadeTitle.update(deltaTime);
+            if (arcadeStartText != null) arcadeStartText.update(deltaTime);
+            if (arcadeFooter != null) arcadeFooter.update(deltaTime);
+            // if (arcadePreview \!= null) arcadePreview.update(deltaTime);
+            if (playPauseButton != null) playPauseButton.update(deltaTime);
+        } else {
+            // Modo estándar
+            if (orbixGreeting != null) {
+                orbixGreeting.update(deltaTime);
+            }
+            if (playPauseButton != null) {
+                playPauseButton.update(deltaTime);
+            }
+            if (horoscopeDisplay != null) {
+                horoscopeDisplay.update(deltaTime);
+            }
         }
     }
 
@@ -139,27 +189,60 @@ public class PanelModeRenderer {
      * Dibuja UI para PANEL_MODE
      */
     public void drawPanelMode() {
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
 
-        if (orbixGreeting != null) {
-            orbixGreeting.draw();
+        if (arcadeModeEnabled) {
+            // 🎮 MODO ARCADE - Panel estilo Street Fighter
+            drawArcadePanel();
+        } else {
+            // Modo estándar
+            if (orbixGreeting != null) {
+                orbixGreeting.draw();
+            }
+            if (playPauseButton != null) {
+                playPauseButton.draw();
+            }
+            // ✨ Horóscopo se dibuja encima de todo (cuando está visible)
+            if (horoscopeDisplay != null) {
+                horoscopeDisplay.draw();
+            }
         }
+
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+    }
+
+    /**
+     * 🎮 Dibuja el panel arcade estilo Street Fighter
+     */
+    private void drawArcadePanel() {
+        // Título "HUMANS vs ALIENS"
+        if (arcadeTitle != null) {
+            arcadeTitle.draw();
+        }
+
+        // Botón de play (más pequeño, centrado)
         if (playPauseButton != null) {
             playPauseButton.draw();
         }
-        // ✨ Horóscopo se dibuja encima de todo (cuando está visible)
-        if (horoscopeDisplay != null) {
-            horoscopeDisplay.draw();
+
+        // "PRESS START TO PLAY" parpadeante
+        if (arcadeStartText != null) {
+            arcadeStartText.draw();
         }
 
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        // Preview de la batalla - REMOVIDO
+
+        // Footer "© Orbix iA 2025"
+        if (arcadeFooter != null) {
+            arcadeFooter.draw();
+        }
     }
 
     /**
      * Dibuja UI para LOADING_MODE
      */
     public void drawLoadingMode() {
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
 
         if (orbixGreeting != null) {
             orbixGreeting.draw();
@@ -168,20 +251,20 @@ public class PanelModeRenderer {
             loadingBar.draw();
         }
 
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
     }
 
     /**
      * Dibuja MiniStopButton (overlay sobre wallpaper)
      */
     public void drawWallpaperOverlay() {
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
 
         if (miniStopButton != null && miniStopButton.isVisible()) {
             miniStopButton.draw();
         }
 
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -221,6 +304,9 @@ public class PanelModeRenderer {
         if (miniStopButton != null) {
             miniStopButton.hide();
         }
+        // SIEMPRE rehabilitar greeting al volver al panel
+        // (solo se deshabilita DURANTE ciertas escenas, no en el panel)
+        greetingEnabled = true;
         if (orbixGreeting != null) {
             orbixGreeting.show();
         }
@@ -256,6 +342,14 @@ public class PanelModeRenderer {
 
         if (playPauseButton != null) {
             playPauseButton.setAspectRatio(aspectRatio);
+            // En modo arcade, el botón es más pequeño
+            if (arcadeModeEnabled) {
+                playPauseButton.setSize(0.10f);  // 50% más pequeño
+                playPauseButton.setPosition(0.0f, 0.18f);  // Más arriba
+            } else {
+                playPauseButton.setSize(0.18f);  // Tamaño normal
+                playPauseButton.setPosition(0.0f, 0.0f);  // Centro
+            }
         }
         if (orbixGreeting != null) {
             orbixGreeting.setAspectRatio(aspectRatio);
@@ -266,6 +360,18 @@ public class PanelModeRenderer {
         if (horoscopeDisplay != null) {
             horoscopeDisplay.setAspectRatio(aspectRatio);
         }
+
+        // 🎮 Componentes arcade
+        if (arcadeTitle != null) {
+            arcadeTitle.setAspectRatio(aspectRatio);
+        }
+        if (arcadeStartText != null) {
+            arcadeStartText.setAspectRatio(aspectRatio);
+        }
+        if (arcadeFooter != null) {
+            arcadeFooter.setAspectRatio(aspectRatio);
+        }
+        // arcadePreview removido
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -292,6 +398,69 @@ public class PanelModeRenderer {
     public HoroscopeDisplay getHoroscopeDisplay() { return horoscopeDisplay; }
 
     /**
+     * Deshabilita el saludo de Gemini (para wallpapers que no lo usan)
+     */
+    public void setGreetingEnabled(boolean enabled) {
+        this.greetingEnabled = enabled;
+        if (orbixGreeting != null) {
+            if (enabled) {
+                orbixGreeting.show();
+            } else {
+                orbixGreeting.hide();
+            }
+        }
+        Log.d(TAG, "🤖 Greeting " + (enabled ? "habilitado" : "deshabilitado"));
+    }
+
+    /**
+     * 🎮 Activa/desactiva el modo ARCADE (para Batalla Cósmica)
+     */
+    public void setArcadeModeEnabled(boolean enabled) {
+        this.arcadeModeEnabled = enabled;
+
+        if (enabled) {
+            // Activar componentes arcade, ocultar estándar
+            if (orbixGreeting != null) orbixGreeting.hide();
+            if (arcadeTitle != null) arcadeTitle.show();
+            if (arcadeStartText != null) arcadeStartText.show();
+            if (arcadeFooter != null) arcadeFooter.show();
+            // if (arcadePreview \!= null) arcadePreview.show();
+
+            // Configurar botón para modo arcade (más pequeño)
+            if (playPauseButton != null) {
+                playPauseButton.setSize(0.10f);
+                playPauseButton.setPosition(0.0f, 0.18f);
+            }
+
+            Log.d(TAG, "🎮 ═══════════════════════════════════════");
+            Log.d(TAG, "🎮 MODO ARCADE ACTIVADO");
+            Log.d(TAG, "🎮 ═══════════════════════════════════════");
+        } else {
+            // Desactivar componentes arcade, mostrar estándar
+            if (arcadeTitle != null) arcadeTitle.hide();
+            if (arcadeStartText != null) arcadeStartText.hide();
+            if (arcadeFooter != null) arcadeFooter.hide();
+            // if (arcadePreview \!= null) arcadePreview.hide();
+            if (orbixGreeting != null && greetingEnabled) orbixGreeting.show();
+
+            // Restaurar botón a tamaño normal
+            if (playPauseButton != null) {
+                playPauseButton.setSize(0.18f);
+                playPauseButton.setPosition(0.0f, 0.0f);
+            }
+
+            Log.d(TAG, "🎮 Modo arcade desactivado");
+        }
+    }
+
+    /**
+     * @return true si el modo arcade está activo
+     */
+    public boolean isArcadeModeEnabled() {
+        return arcadeModeEnabled;
+    }
+
+    /**
      * Libera recursos
      */
     public void release() {
@@ -303,6 +472,22 @@ public class PanelModeRenderer {
             orbixGreeting.dispose();
             orbixGreeting = null;
         }
+
+        // 🎮 Liberar recursos arcade
+        if (arcadeTitle != null) {
+            arcadeTitle.dispose();
+            arcadeTitle = null;
+        }
+        if (arcadeStartText != null) {
+            arcadeStartText.dispose();
+            arcadeStartText = null;
+        }
+        if (arcadeFooter != null) {
+            arcadeFooter.dispose();
+            arcadeFooter = null;
+        }
+        // arcadePreview removido - ya no se usa
+
         Log.d(TAG, "🧹 PanelModeRenderer recursos liberados");
     }
 }

@@ -1,7 +1,7 @@
 // HealthBar.java - Barra de vida estilo videojuego
 package com.secret.blackholeglow;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -76,23 +76,23 @@ public class HealthBar {
             "  gl_FragColor = u_Color;\n" +
             "}";
 
-        int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode);
-        int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode);
+        int vertexShader = loadShader(GLES30.GL_VERTEX_SHADER, vertexShaderCode);
+        int fragmentShader = loadShader(GLES30.GL_FRAGMENT_SHADER, fragmentShaderCode);
 
-        shaderProgram = GLES20.glCreateProgram();
-        GLES20.glAttachShader(shaderProgram, vertexShader);
-        GLES20.glAttachShader(shaderProgram, fragmentShader);
-        GLES20.glLinkProgram(shaderProgram);
+        shaderProgram = GLES30.glCreateProgram();
+        GLES30.glAttachShader(shaderProgram, vertexShader);
+        GLES30.glAttachShader(shaderProgram, fragmentShader);
+        GLES30.glLinkProgram(shaderProgram);
 
-        aPositionHandle = GLES20.glGetAttribLocation(shaderProgram, "a_Position");
-        uMVPMatrixHandle = GLES20.glGetUniformLocation(shaderProgram, "u_MVPMatrix");
-        uColorHandle = GLES20.glGetUniformLocation(shaderProgram, "u_Color");
+        aPositionHandle = GLES30.glGetAttribLocation(shaderProgram, "a_Position");
+        uMVPMatrixHandle = GLES30.glGetUniformLocation(shaderProgram, "u_MVPMatrix");
+        uColorHandle = GLES30.glGetUniformLocation(shaderProgram, "u_Color");
     }
 
     private static int loadShader(int type, String shaderCode) {
-        int shader = GLES20.glCreateShader(type);
-        GLES20.glShaderSource(shader, shaderCode);
-        GLES20.glCompileShader(shader);
+        int shader = GLES30.glCreateShader(type);
+        GLES30.glShaderSource(shader, shaderCode);
+        GLES30.glCompileShader(shader);
         return shader;
     }
 
@@ -113,12 +113,12 @@ public class HealthBar {
     public void draw(float x, float y, float z, float[] mvpMatrix) {
         if (currentHP <= 0) return;  // No dibujar si está muerto
 
-        GLES20.glUseProgram(shaderProgram);
+        GLES30.glUseProgram(shaderProgram);
 
         // Deshabilitar depth test para que siempre se vea
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         // Posición de la barra (encima de la nave)
         float barY = y + OFFSET_Y;
@@ -143,12 +143,12 @@ public class HealthBar {
         vertexBuffer.put(bgVertices);
         vertexBuffer.position(0);
 
-        GLES20.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, mvpMatrix, 0);
-        GLES20.glUniform4f(uColorHandle, 0.0f, 0.0f, 0.0f, 0.7f);
+        GLES30.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, mvpMatrix, 0);
+        GLES30.glUniform4f(uColorHandle, 0.0f, 0.0f, 0.0f, 0.7f);
 
-        GLES20.glEnableVertexAttribArray(aPositionHandle);
-        GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+        GLES30.glEnableVertexAttribArray(aPositionHandle);
+        GLES30.glVertexAttribPointer(aPositionHandle, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
 
         // ════════════════════════════════════════════════════════════
         // 2️⃣ DIBUJAR FONDO VACÍO (gris oscuro)
@@ -167,9 +167,9 @@ public class HealthBar {
         vertexBuffer.put(emptyVertices);
         vertexBuffer.position(0);
 
-        GLES20.glUniform4f(uColorHandle, 0.2f, 0.2f, 0.2f, 0.8f);
-        GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+        GLES30.glUniform4f(uColorHandle, 0.2f, 0.2f, 0.2f, 0.8f);
+        GLES30.glVertexAttribPointer(aPositionHandle, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
 
         // ════════════════════════════════════════════════════════════
         // 3️⃣ DIBUJAR BARRA DE VIDA (color según HP)
@@ -229,9 +229,9 @@ public class HealthBar {
             }
         }
 
-        GLES20.glUniform4f(uColorHandle, r, g, b, 1.0f);
-        GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+        GLES30.glUniform4f(uColorHandle, r, g, b, 1.0f);
+        GLES30.glVertexAttribPointer(aPositionHandle, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
 
         // ════════════════════════════════════════════════════════════
         // 4️⃣ DIBUJAR BRILLO EN LA PARTE SUPERIOR
@@ -248,14 +248,14 @@ public class HealthBar {
         vertexBuffer.put(glowVertices);
         vertexBuffer.position(0);
 
-        GLES20.glUniform4f(uColorHandle, 1.0f, 1.0f, 1.0f, 0.3f);
-        GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+        GLES30.glUniform4f(uColorHandle, 1.0f, 1.0f, 1.0f, 0.3f);
+        GLES30.glVertexAttribPointer(aPositionHandle, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
 
-        GLES20.glDisableVertexAttribArray(aPositionHandle);
+        GLES30.glDisableVertexAttribArray(aPositionHandle);
 
         // Restaurar depth test
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
     }
 
     /**
@@ -265,10 +265,10 @@ public class HealthBar {
     public void drawSegmented(float x, float y, float z, float[] mvpMatrix) {
         if (currentHP <= 0) return;
 
-        GLES20.glUseProgram(shaderProgram);
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glUseProgram(shaderProgram);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         float barY = y + OFFSET_Y;
         float segmentWidth = BAR_WIDTH / maxHP;
@@ -289,12 +289,12 @@ public class HealthBar {
         vertexBuffer.put(bgVertices);
         vertexBuffer.position(0);
 
-        GLES20.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, mvpMatrix, 0);
-        GLES20.glUniform4f(uColorHandle, 0.0f, 0.0f, 0.0f, 0.8f);
+        GLES30.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, mvpMatrix, 0);
+        GLES30.glUniform4f(uColorHandle, 0.0f, 0.0f, 0.0f, 0.8f);
 
-        GLES20.glEnableVertexAttribArray(aPositionHandle);
-        GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+        GLES30.glEnableVertexAttribArray(aPositionHandle);
+        GLES30.glVertexAttribPointer(aPositionHandle, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
 
         // Dibujar cada segmento
         float halfH = BAR_HEIGHT / 2f;
@@ -322,21 +322,21 @@ public class HealthBar {
                     float hpRatio = (float)(i + 1) / maxHP;
                     float r = 1.0f - hpRatio;
                     float g = hpRatio;
-                    GLES20.glUniform4f(uColorHandle, r, g, 0.2f, 1.0f);
+                    GLES30.glUniform4f(uColorHandle, r, g, 0.2f, 1.0f);
                 } else {
                     // Defender: Cyan
-                    GLES20.glUniform4f(uColorHandle, 0.2f, 0.9f, 1.0f, 1.0f);
+                    GLES30.glUniform4f(uColorHandle, 0.2f, 0.9f, 1.0f, 1.0f);
                 }
             } else {
                 // Segmento vacío (gris oscuro)
-                GLES20.glUniform4f(uColorHandle, 0.15f, 0.15f, 0.15f, 0.9f);
+                GLES30.glUniform4f(uColorHandle, 0.15f, 0.15f, 0.15f, 0.9f);
             }
 
-            GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+            GLES30.glVertexAttribPointer(aPositionHandle, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
+            GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
         }
 
-        GLES20.glDisableVertexAttribArray(aPositionHandle);
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES30.glDisableVertexAttribArray(aPositionHandle);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
     }
 }

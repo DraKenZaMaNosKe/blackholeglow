@@ -73,6 +73,17 @@ public class ProceduralSphere {
      *  - Más polígonos = mejor calidad pero menor rendimiento
      */
     public static Mesh generate(float radius, int latitudes, int longitudes) {
+        // 🔧 FIX: Validación de parámetros para evitar división por cero
+        if (radius <= 0) {
+            throw new IllegalArgumentException("Radio debe ser mayor a 0, recibido: " + radius);
+        }
+        if (latitudes < 2) {
+            throw new IllegalArgumentException("Latitudes debe ser >= 2, recibido: " + latitudes);
+        }
+        if (longitudes < 3) {
+            throw new IllegalArgumentException("Longitudes debe ser >= 3, recibido: " + longitudes);
+        }
+
         Log.d(TAG, "════════════════════════════════════════════════");
         Log.d(TAG, "Generando esfera procedural:");
         Log.d(TAG, "  Radio: " + radius);

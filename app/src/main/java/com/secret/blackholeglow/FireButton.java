@@ -1,7 +1,7 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.util.Log;
 
 import com.secret.blackholeglow.systems.ScreenManager;
@@ -72,14 +72,14 @@ public class FireButton extends BaseShaderProgram implements SceneObject, Camera
 
     private void setupUniforms() {
         // Obtener locations de uniforms
-        uButtonPosLoc = GLES20.glGetUniformLocation(programId, "u_ButtonPos");
-        uRadiusLoc = GLES20.glGetUniformLocation(programId, "u_Radius");
-        uResolutionLoc = GLES20.glGetUniformLocation(programId, "u_Resolution");
-        uPressedLoc = GLES20.glGetUniformLocation(programId, "u_Pressed");
-        uCooldownProgressLoc = GLES20.glGetUniformLocation(programId, "u_CooldownProgress");
+        uButtonPosLoc = GLES30.glGetUniformLocation(programId, "u_ButtonPos");
+        uRadiusLoc = GLES30.glGetUniformLocation(programId, "u_Radius");
+        uResolutionLoc = GLES30.glGetUniformLocation(programId, "u_Resolution");
+        uPressedLoc = GLES30.glGetUniformLocation(programId, "u_Pressed");
+        uCooldownProgressLoc = GLES30.glGetUniformLocation(programId, "u_CooldownProgress");
 
         // Obtener location de atributo
-        aPositionLoc = GLES20.glGetAttribLocation(programId, "a_Position");
+        aPositionLoc = GLES30.glGetAttribLocation(programId, "a_Position");
 
         Log.d(TAG, "✓ Uniform locations: pos=" + uButtonPosLoc + " radius=" + uRadiusLoc +
                    " res=" + uResolutionLoc + " pressed=" + uPressedLoc +
@@ -112,37 +112,37 @@ public class FireButton extends BaseShaderProgram implements SceneObject, Camera
     @Override
     public void draw() {
         // Usar shader program
-        GLES20.glUseProgram(programId);
+        GLES30.glUseProgram(programId);
 
         // Deshabilitar depth test para UI
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
 
         // Habilitar blending
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         // Calcular progreso del cooldown (0.0 = inicio, 1.0 = listo)
         float cooldownProgress = isReady ? 1.0f : Math.min(cooldownTimer / COOLDOWN_TIME, 1.0f);
 
         // Pasar uniforms
-        GLES20.glUniform2f(uButtonPosLoc, BUTTON_X, BUTTON_Y);
-        GLES20.glUniform1f(uRadiusLoc, BUTTON_RADIUS);
-        GLES20.glUniform2f(uResolutionLoc, ScreenManager.getWidth(), ScreenManager.getHeight());
-        GLES20.glUniform1f(uPressedLoc, isPressed ? 1.0f : 0.0f);
-        GLES20.glUniform1f(uCooldownProgressLoc, cooldownProgress);
+        GLES30.glUniform2f(uButtonPosLoc, BUTTON_X, BUTTON_Y);
+        GLES30.glUniform1f(uRadiusLoc, BUTTON_RADIUS);
+        GLES30.glUniform2f(uResolutionLoc, ScreenManager.getWidth(), ScreenManager.getHeight());
+        GLES30.glUniform1f(uPressedLoc, isPressed ? 1.0f : 0.0f);
+        GLES30.glUniform1f(uCooldownProgressLoc, cooldownProgress);
 
         // Pasar vértices
-        GLES20.glEnableVertexAttribArray(aPositionLoc);
-        GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glEnableVertexAttribArray(aPositionLoc);
+        GLES30.glVertexAttribPointer(aPositionLoc, 2, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
         // Dibujar
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
 
         // Limpiar
-        GLES20.glDisableVertexAttribArray(aPositionLoc);
+        GLES30.glDisableVertexAttribArray(aPositionLoc);
 
         // Restaurar depth test
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
     }
 
     /**

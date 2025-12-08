@@ -6,7 +6,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.GLUtils;
 import android.util.Log;
 
@@ -91,22 +91,22 @@ public class GreetingText implements SceneObject {
             "    gl_FragColor = vec4(texColor.rgb, texColor.a * u_Alpha);\n" +
             "}\n";
 
-        int vShader = ShaderUtils.compileShader(GLES20.GL_VERTEX_SHADER, vertexShader);
-        int fShader = ShaderUtils.compileShader(GLES20.GL_FRAGMENT_SHADER, fragmentShader);
+        int vShader = ShaderUtils.compileShader(GLES30.GL_VERTEX_SHADER, vertexShader);
+        int fShader = ShaderUtils.compileShader(GLES30.GL_FRAGMENT_SHADER, fragmentShader);
 
-        programId = GLES20.glCreateProgram();
-        GLES20.glAttachShader(programId, vShader);
-        GLES20.glAttachShader(programId, fShader);
-        GLES20.glLinkProgram(programId);
+        programId = GLES30.glCreateProgram();
+        GLES30.glAttachShader(programId, vShader);
+        GLES30.glAttachShader(programId, fShader);
+        GLES30.glLinkProgram(programId);
 
         int[] linkStatus = new int[1];
-        GLES20.glGetProgramiv(programId, GLES20.GL_LINK_STATUS, linkStatus, 0);
+        GLES30.glGetProgramiv(programId, GLES30.GL_LINK_STATUS, linkStatus, 0);
         if (linkStatus[0] == 0) {
-            Log.e(TAG, "Shader link failed: " + GLES20.glGetProgramInfoLog(programId));
+            Log.e(TAG, "Shader link failed: " + GLES30.glGetProgramInfoLog(programId));
         }
 
-        GLES20.glDeleteShader(vShader);
-        GLES20.glDeleteShader(fShader);
+        GLES30.glDeleteShader(vShader);
+        GLES30.glDeleteShader(fShader);
     }
 
     private void setupGeometry() {
@@ -218,16 +218,16 @@ public class GreetingText implements SceneObject {
 
         // Crear textura OpenGL
         int[] textures = new int[1];
-        GLES20.glGenTextures(1, textures, 0);
+        GLES30.glGenTextures(1, textures, 0);
         textureId = textures[0];
 
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
 
-        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
+        GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0);
 
         bitmap.recycle();
 
@@ -283,40 +283,40 @@ public class GreetingText implements SceneObject {
     public void draw() {
         if (alpha <= 0.001f) return;  // No dibujar si invisible
 
-        GLES20.glUseProgram(programId);
+        GLES30.glUseProgram(programId);
 
         // Desactivar depth test para UI
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         // Bind texture
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
 
         // Set uniforms
-        int uTextureLoc = GLES20.glGetUniformLocation(programId, "u_Texture");
-        int uAlphaLoc = GLES20.glGetUniformLocation(programId, "u_Alpha");
-        GLES20.glUniform1i(uTextureLoc, 0);
-        GLES20.glUniform1f(uAlphaLoc, alpha);
+        int uTextureLoc = GLES30.glGetUniformLocation(programId, "u_Texture");
+        int uAlphaLoc = GLES30.glGetUniformLocation(programId, "u_Alpha");
+        GLES30.glUniform1i(uTextureLoc, 0);
+        GLES30.glUniform1f(uAlphaLoc, alpha);
 
         // Set attributes
-        int aPosLoc = GLES20.glGetAttribLocation(programId, "a_Position");
-        int aTexLoc = GLES20.glGetAttribLocation(programId, "a_TexCoord");
+        int aPosLoc = GLES30.glGetAttribLocation(programId, "a_Position");
+        int aTexLoc = GLES30.glGetAttribLocation(programId, "a_TexCoord");
 
-        GLES20.glEnableVertexAttribArray(aPosLoc);
-        GLES20.glVertexAttribPointer(aPosLoc, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glEnableVertexAttribArray(aPosLoc);
+        GLES30.glVertexAttribPointer(aPosLoc, 2, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
-        GLES20.glEnableVertexAttribArray(aTexLoc);
-        GLES20.glVertexAttribPointer(aTexLoc, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
+        GLES30.glEnableVertexAttribArray(aTexLoc);
+        GLES30.glVertexAttribPointer(aTexLoc, 2, GLES30.GL_FLOAT, false, 0, texCoordBuffer);
 
         // Draw
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
 
         // Cleanup
-        GLES20.glDisableVertexAttribArray(aPosLoc);
-        GLES20.glDisableVertexAttribArray(aTexLoc);
+        GLES30.glDisableVertexAttribArray(aPosLoc);
+        GLES30.glDisableVertexAttribArray(aTexLoc);
 
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
     }
 }

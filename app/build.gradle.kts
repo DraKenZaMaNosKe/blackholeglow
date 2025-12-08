@@ -20,8 +20,8 @@ android {
         applicationId = "com.secret.blackholeglow"
         minSdk = 24
         targetSdk = 35
-        versionCode = 8
-        versionName = "4.0.0"
+        versionCode = 9
+        versionName = "4.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -69,6 +69,7 @@ dependencies {
 
     implementation(libs.appcompat)
     implementation(libs.material)
+    implementation(libs.activity)  // Edge-to-Edge support para Android 15
 
     // Firebase BoM (Bill of Materials) - gestiona versiones automáticamente
     implementation(platform(libs.firebase.bom))

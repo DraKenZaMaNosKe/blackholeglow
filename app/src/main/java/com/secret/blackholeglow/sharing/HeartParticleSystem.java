@@ -1,6 +1,6 @@
 package com.secret.blackholeglow.sharing;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.util.Log;
 
 import java.nio.ByteBuffer;
@@ -79,18 +79,18 @@ public class HeartParticleSystem {
         if (isInitialized) return;
 
         // Crear programa
-        int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, VERTEX_SHADER);
-        int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
+        int vertexShader = loadShader(GLES30.GL_VERTEX_SHADER, VERTEX_SHADER);
+        int fragmentShader = loadShader(GLES30.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
 
-        programId = GLES20.glCreateProgram();
-        GLES20.glAttachShader(programId, vertexShader);
-        GLES20.glAttachShader(programId, fragmentShader);
-        GLES20.glLinkProgram(programId);
+        programId = GLES30.glCreateProgram();
+        GLES30.glAttachShader(programId, vertexShader);
+        GLES30.glAttachShader(programId, fragmentShader);
+        GLES30.glLinkProgram(programId);
 
         // Obtener handles
-        positionHandle = GLES20.glGetAttribLocation(programId, "a_Position");
-        mvpMatrixHandle = GLES20.glGetUniformLocation(programId, "u_MVPMatrix");
-        colorHandle = GLES20.glGetUniformLocation(programId, "u_Color");
+        positionHandle = GLES30.glGetAttribLocation(programId, "a_Position");
+        mvpMatrixHandle = GLES30.glGetUniformLocation(programId, "u_MVPMatrix");
+        colorHandle = GLES30.glGetUniformLocation(programId, "u_Color");
 
         // Crear geometría del corazón
         createHeartGeometry();
@@ -195,15 +195,15 @@ public class HeartParticleSystem {
     public void draw(float[] mvpMatrix) {
         if (!isInitialized || particles.isEmpty()) return;
 
-        GLES20.glUseProgram(programId);
+        GLES30.glUseProgram(programId);
 
         // Habilitar blending
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         // Habilitar atributos UNA VEZ para todas las partículas
-        GLES20.glEnableVertexAttribArray(positionHandle);
-        GLES20.glVertexAttribPointer(positionHandle, 2, GLES20.GL_FLOAT, false, 0, heartBuffer);
+        GLES30.glEnableVertexAttribArray(positionHandle);
+        GLES30.glVertexAttribPointer(positionHandle, 2, GLES30.GL_FLOAT, false, 0, heartBuffer);
 
         for (HeartParticle p : particles) {
             // ⚡ OPTIMIZADO: Usar matrices reutilizables
@@ -214,7 +214,7 @@ public class HeartParticleSystem {
 
             android.opengl.Matrix.multiplyMM(reusableFinalMatrix, 0, mvpMatrix, 0, reusableModelMatrix, 0);
 
-            GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, reusableFinalMatrix, 0);
+            GLES30.glUniformMatrix4fv(mvpMatrixHandle, 1, false, reusableFinalMatrix, 0);
 
             // ⚡ OPTIMIZADO: Usar color reutilizable (no clone())
             float[] baseColor = heartColors[p.colorIndex];
@@ -222,13 +222,13 @@ public class HeartParticleSystem {
             reusableColor[1] = baseColor[1];
             reusableColor[2] = baseColor[2];
             reusableColor[3] = p.life;  // Alpha = vida restante
-            GLES20.glUniform4fv(colorHandle, 1, reusableColor, 0);
+            GLES30.glUniform4fv(colorHandle, 1, reusableColor, 0);
 
             // Dibujar corazón
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 34);
+            GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 34);
         }
 
-        GLES20.glDisableVertexAttribArray(positionHandle);
+        GLES30.glDisableVertexAttribArray(positionHandle);
     }
 
     /**
@@ -242,9 +242,9 @@ public class HeartParticleSystem {
      * 🎨 Carga un shader
      */
     private int loadShader(int type, String shaderCode) {
-        int shader = GLES20.glCreateShader(type);
-        GLES20.glShaderSource(shader, shaderCode);
-        GLES20.glCompileShader(shader);
+        int shader = GLES30.glCreateShader(type);
+        GLES30.glShaderSource(shader, shaderCode);
+        GLES30.glCompileShader(shader);
         return shader;
     }
 
@@ -253,7 +253,7 @@ public class HeartParticleSystem {
      */
     public void cleanup() {
         if (programId != 0) {
-            GLES20.glDeleteProgram(programId);
+            GLES30.glDeleteProgram(programId);
             programId = 0;
         }
         particles.clear();

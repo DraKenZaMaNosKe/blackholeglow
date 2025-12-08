@@ -8,6 +8,7 @@ import com.secret.blackholeglow.AvatarLoader;
 import com.secret.blackholeglow.AvatarSphere;
 import com.secret.blackholeglow.BackgroundStars;
 import com.secret.blackholeglow.BatteryPowerBar;
+import com.secret.blackholeglow.BattleHUD;
 import com.secret.blackholeglow.CameraAware;
 import com.secret.blackholeglow.CameraController;
 // EarthShield REMOVIDO
@@ -29,9 +30,12 @@ import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.SceneObject;
 import com.secret.blackholeglow.SimpleTextRenderer;
 import com.secret.blackholeglow.SolMeshy;
+import com.secret.blackholeglow.SaturnoMeshy;
 // SolProcedural REMOVIDO
 import com.secret.blackholeglow.SpaceDust;
 import com.secret.blackholeglow.SpaceStation;
+import com.secret.blackholeglow.SpaceComets;
+import com.secret.blackholeglow.ParallaxStars;
 import com.secret.blackholeglow.TierraMeshy;
 import com.secret.blackholeglow.DefenderShip;
 import com.secret.blackholeglow.UfoScout;
@@ -42,6 +46,7 @@ import com.secret.blackholeglow.TargetingSystem;
 import com.secret.blackholeglow.TargetReticle;
 import com.secret.blackholeglow.PlasmaExplosion;
 import com.secret.blackholeglow.PlasmaBeamWeapon;
+import com.secret.blackholeglow.PlayerIndicator;
 // SunHeatEffect REMOVIDO
 import com.secret.blackholeglow.TextureManager;
 
@@ -78,12 +83,14 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
     private Planeta tierra;
     private Planeta planetaTierra;  // Referencia para colisiones (legacy)
 
-    // 🌍☀️ NUEVOS MODELOS DE MESHY AI
+    // 🌍☀️🪐 MODELOS DE MESHY AI
     private TierraMeshy tierraMeshy;
     private SolMeshy solMeshy;
+    private SaturnoMeshy saturnoMeshy;  // 🪐 Saturno con anillos
 
     private DefenderShip defenderShip;      // 🚀 Nave defensora (Team Human)
     private HumanInterceptor humanInterceptor;  // ✈️ Interceptor humano (Team Human)
+    private PlayerIndicator playerIndicator;    // 🎮 Indicador "P1" sobre el jugador
     private SpaceStation spaceStation;      // 🛰️ Estación espacial
     private UfoScout ufoScout;              // 🛸 UFO Scout (Team Alien)
     private UfoAttacker ufoAttacker;        // 👾 UFO Attacker (Team Alien)
@@ -97,6 +104,7 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
     private HPBar hpBarTierra;
     // hpBarForceField REMOVIDO
     private EqualizerBarsDJ equalizerDJ;             // 🎵 Ecualizador estilo DJ
+    private BattleHUD battleHUD;                     // 🎮 HUD estilo Street Fighter
     private SimpleTextRenderer planetsDestroyedCounter;
     // MagicLeaderboard REMOVIDO
     // BirthdayMarquee REMOVIDO
@@ -108,7 +116,9 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
     // EstrellaBailarinas REMOVIDO
     private BackgroundStars backgroundStars;  // ✨ Estrellas parpadeantes de fondo (con parallax)
     private SpaceDust spaceDust;              // 🚀 Polvo espacial (ilusión de viaje)
-    private MusicStars musicStars;  // 🌀 Estrellas espirales musicales
+    private MusicStars musicStars;            // 🌀 Estrellas espirales musicales
+    private SpaceComets spaceComets;          // ☄️ Cometas con estela brillante
+    private ParallaxStars parallaxStars;      // ✨ Estrellas multi-capa con parallax profundo
     // LeaderboardManager REMOVIDO
 
     // ═══════════════════════════════════════════════════════════════
@@ -164,6 +174,11 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         setupEarth();
 
         // ═══════════════════════════════════════════════════════════
+        // 3.5️⃣ 🪐 SATURNO - Órbita opuesta a la Tierra
+        // ═══════════════════════════════════════════════════════════
+        setupSaturn();
+
+        // ═══════════════════════════════════════════════════════════
         // 4️⃣ ESCUDO Y CAMPO DE FUERZA - REMOVIDOS
         // ═══════════════════════════════════════════════════════════
         // setupShields(); // DESHABILITADO - Tierra y Sol serán modelos de Meshy
@@ -198,6 +213,11 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         setupHumanInterceptor();
 
         // ═══════════════════════════════════════════════════════════
+        // 5.9.1️⃣ 🎮 PLAYER INDICATOR (P1 sobre el jugador)
+        // ═══════════════════════════════════════════════════════════
+        setupPlayerIndicator();
+
+        // ═══════════════════════════════════════════════════════════
         // 5.10️⃣ 🎯 CONECTAR OBJETIVOS 2v2
         // ═══════════════════════════════════════════════════════════
         connectBattleTargets();
@@ -228,9 +248,9 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         setupUserAvatar();
 
         // ═══════════════════════════════════════════════════════════
-        // 1️⃣1️⃣ TÍTULO HOLOGRÁFICO "HUMANS vs ALIENS"
+        // 1️⃣1️⃣ TÍTULO HOLOGRÁFICO "HUMANS vs ALIENS" - REMOVIDO (ya tenemos BattleHUD)
         // ═══════════════════════════════════════════════════════════
-        setupHolographicTitle();
+        // setupHolographicTitle();
 
         // ═══════════════════════════════════════════════════════════
         // 1️⃣2️⃣ 🎯 SISTEMA DE TARGETING ASISTIDO
@@ -263,6 +283,16 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
             spaceDust = new SpaceDust(context);
             addSceneObject(spaceDust);
             Log.d(TAG, "  ✓ 🚀 Polvo espacial agregado (ilusión de viaje)");
+
+            // ✨ PARALLAX STARS - Estrellas multi-capa con efecto de profundidad
+            parallaxStars = new ParallaxStars();
+            addSceneObject(parallaxStars);
+            Log.d(TAG, "  ✓ ✨ ParallaxStars agregadas (efecto profundidad 3 capas)");
+
+            // ☄️ COMETAS CON ESTELA - Efecto de viaje espacial
+            spaceComets = new SpaceComets();
+            addSceneObject(spaceComets);
+            Log.d(TAG, "  ✓ ☄️ Cometas con estela agregados (efecto viaje)");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creando fondo: " + e.getMessage());
         }
@@ -343,6 +373,42 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
             Log.d(TAG, "  ✓ 🌍 Tierra Meshy agregada (modelo 3D realista)");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creando Tierra Meshy: " + e.getMessage());
+        }
+    }
+
+    private void setupSaturn() {
+        try {
+            // 🪐 SATURNO MESHY - Planeta con anillos (órbita cinematográfica)
+            saturnoMeshy = new SaturnoMeshy(context, textureManager);
+            saturnoMeshy.setCameraController(camera);
+
+            // ═══════════════════════════════════════════════════════════════
+            // 🎬 CONFIGURACIÓN CINEMATOGRÁFICA DE SATURNO
+            // ═══════════════════════════════════════════════════════════════
+            // • Órbita en plano SUPERIOR a la Tierra (Y = 2.0)
+            // • Radio GRANDE para alejarlo del Sol (3.0, 2.2)
+            // • Escala PEQUEÑA para verse lejano y elegante
+            // • Velocidad LENTA para movimiento majestuoso
+            // • Nunca choca con la Tierra (diferentes planos orbitales)
+            // ═══════════════════════════════════════════════════════════════
+
+            saturnoMeshy.setOrbitCenter(
+                SceneConstants.Sun.POSITION_X,   // -0.9 (mismo X que el Sol)
+                2.0f,                            // ALTO - arriba de la Tierra
+                SceneConstants.Sun.POSITION_Z - 1.0f  // -6.0 (ligeramente atrás)
+            );
+
+            saturnoMeshy.setOrbitRadius(3.0f, 2.2f);  // Órbita GRANDE
+            saturnoMeshy.setOrbitSpeed(0.04f);        // Velocidad LENTA y majestuosa
+            saturnoMeshy.setScale(0.18f);             // Escala PEQUEÑA (se ve lejano)
+            saturnoMeshy.setSpinSpeed(5.0f);          // Rotación suave
+            saturnoMeshy.setTiltAngle(26.7f);         // Inclinación real de Saturno
+
+            addSceneObject(saturnoMeshy);
+
+            Log.d(TAG, "  ✓ 🪐 Saturno Meshy - Órbita cinematográfica (plano superior)");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creando Saturno Meshy: " + e.getMessage(), e);
         }
     }
 
@@ -539,6 +605,24 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
     }
 
     /**
+     * 🎮 PLAYER INDICATOR - Indicador "P1" sobre la nave del jugador
+     * Muestra al usuario cuál es su nave
+     */
+    private void setupPlayerIndicator() {
+        try {
+            playerIndicator = new PlayerIndicator();
+            playerIndicator.setCameraController(camera);
+            playerIndicator.setPlayer(humanInterceptor);
+
+            addSceneObject(playerIndicator);
+
+            Log.d(TAG, "  ✓ 🎮 Player Indicator (P1) agregado sobre HumanInterceptor");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creando PlayerIndicator: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * 🎯 CONECTAR OBJETIVOS PARA BATALLA 2v2
      *
      * Team Human: DefenderShip + HumanInterceptor
@@ -655,14 +739,14 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
             Log.e(TAG, "  ✗ Error creando PowerBar: " + e.getMessage());
         }
 
-        // Greeting Text
-        try {
-            GreetingText greetingText = new GreetingText(context);
-            addSceneObject(greetingText);
-            Log.d(TAG, "  ✓ 👋 Greeting agregado");
-        } catch (Exception e) {
-            Log.e(TAG, "  ✗ Error creando Greeting: " + e.getMessage());
-        }
+        // Greeting Text - DESHABILITADO (se usará en otros wallpapers)
+        // try {
+        //     GreetingText greetingText = new GreetingText(context);
+        //     addSceneObject(greetingText);
+        //     Log.d(TAG, "  ✓ 👋 Greeting agregado");
+        // } catch (Exception e) {
+        //     Log.e(TAG, "  ✗ Error creando Greeting: " + e.getMessage());
+        // }
 
         // HP Bar de Tierra (ForceField HP Bar REMOVIDA)
         try {
@@ -693,6 +777,15 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
             Log.d(TAG, "  ✓ 🎵 EqualizerBarsDJ agregado (estilo DJ en bottom)");
         } catch (Exception e) {
             Log.e(TAG, "  ✗ Error creando EqualizerBarsDJ: " + e.getMessage());
+        }
+
+        // 🎮 BattleHUD - Barras de vida estilo Street Fighter
+        try {
+            battleHUD = new BattleHUD();
+            // No agregar a sceneObjects - se dibuja manualmente después de todo
+            Log.d(TAG, "  ✓ 🎮 BattleHUD agregado (estilo Street Fighter)");
+        } catch (Exception e) {
+            Log.e(TAG, "  ✗ Error creando BattleHUD: " + e.getMessage());
         }
 
         // Planets Destroyed Counter
@@ -927,6 +1020,18 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         backgroundStars = null;
         musicStars = null;
 
+        // ☄️ Liberar SpaceComets
+        if (spaceComets != null) {
+            spaceComets.cleanup();
+            spaceComets = null;
+        }
+
+        // 🎮 Liberar BattleHUD
+        if (battleHUD != null) {
+            battleHUD.dispose();
+            battleHUD = null;
+        }
+
         // Liberar HolographicTitle
         if (holographicTitle != null) {
             holographicTitle.cleanup();
@@ -1035,6 +1140,31 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         if (targetingSystem != null) {
             targetingSystem.update(deltaTime);
         }
+
+        // 🎮 Actualizar BattleHUD con HP de las 4 naves
+        if (battleHUD != null) {
+            battleHUD.update(deltaTime);
+
+            // P1 = humanInterceptor (jugador)
+            if (humanInterceptor != null) {
+                battleHUD.setHumanP1_HP(humanInterceptor.getHealth(), humanInterceptor.getMaxHealth());
+            }
+
+            // dron = defenderShip (IA aliada)
+            if (defenderShip != null) {
+                battleHUD.setHumanDron_HP(defenderShip.getHealth(), defenderShip.getMaxHealth());
+            }
+
+            // P2 = ufoScout (alien 1)
+            if (ufoScout != null) {
+                battleHUD.setAlienP2_HP(ufoScout.getHealth(), ufoScout.getMaxHealth());
+            }
+
+            // IA = ufoAttacker (alien 2)
+            if (ufoAttacker != null) {
+                battleHUD.setAlienIA_HP(ufoAttacker.getHealth(), ufoAttacker.getMaxHealth());
+            }
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -1042,7 +1172,7 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
     // ═══════════════════════════════════════════════════════════════════════
 
     // Radio de tolerancia para detectar toque sobre nave (en coordenadas normalizadas)
-    private static final float TOUCH_HIT_RADIUS = 0.15f;
+    private static final float TOUCH_HIT_RADIUS = 0.25f;  // Radio generoso para facilitar selección
 
     /**
      * Maneja eventos de toque para el sistema de targeting
@@ -1057,14 +1187,29 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         }
 
         // ═══════════════════════════════════════════════════════════════
+        // 🎮 VALIDACIÓN: El jugador (P1) debe estar vivo para disparar
+        // ═══════════════════════════════════════════════════════════════
+        if (humanInterceptor == null || !humanInterceptor.canFireManually()) {
+            Log.d(TAG, "❌ No se puede disparar: nave P1 destruida o en respawn");
+            return false;
+        }
+
+        // ═══════════════════════════════════════════════════════════════
         // 🎯 PRIMERO: Verificar si tocó directamente sobre una nave enemiga
         // ═══════════════════════════════════════════════════════════════
         Object touchedEnemy = checkTouchOnEnemy(normalizedX, normalizedY);
 
         if (touchedEnemy != null) {
-            // ¡Tocó una nave enemiga! Disparar directamente a ella
-            Log.d(TAG, "👆🎯 ¡Nave enemiga tocada directamente! → " + touchedEnemy.getClass().getSimpleName());
+            // ¡Tocó una nave enemiga!
+            Log.d(TAG, "👆🎯 ¡Nave enemiga tocada! → " + touchedEnemy.getClass().getSimpleName());
 
+            // 1. COLOCAR LA MIRA sobre el enemigo tocado
+            if (targetingSystem != null) {
+                targetingSystem.setManualTarget(touchedEnemy);
+                Log.d(TAG, "🎯 Mira colocada sobre " + touchedEnemy.getClass().getSimpleName());
+            }
+
+            // 2. DISPARAR inmediatamente al enemigo tocado
             float targetX, targetY, targetZ;
             if (touchedEnemy instanceof UfoAttacker) {
                 UfoAttacker ufo = (UfoAttacker) touchedEnemy;
@@ -1080,20 +1225,21 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
                 return false;
             }
 
-            // Disparar PlasmaBeamWeapon directamente
+            // Disparar PlasmaBeamWeapon desde el interceptor
             if (plasmaBeamWeapon != null && humanInterceptor != null && !plasmaBeamWeapon.isActive()) {
                 float srcX = humanInterceptor.getX();
                 float srcY = humanInterceptor.getY();
                 float srcZ = humanInterceptor.getZ();
 
                 plasmaBeamWeapon.fire(srcX, srcY, srcZ, targetX, targetY, targetZ);
-                Log.d(TAG, "⚡👆 ¡DISPARO LIBRE activado hacia " + touchedEnemy.getClass().getSimpleName() + "!");
+                Log.d(TAG, "⚡👆 ¡DISPARO activado hacia " + touchedEnemy.getClass().getSimpleName() + "!");
 
                 // Aplicar daño al enemigo tocado
                 applyDamageToEnemy(touchedEnemy);
 
                 return true;
             }
+            return true;  // Mira colocada aunque no se pueda disparar aún
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -1148,25 +1294,37 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
     }
 
     /**
-     * Convierte coordenadas del mundo a coordenadas de pantalla aproximadas
-     * Versión simplificada para detección de touch
+     * Convierte coordenadas del mundo a coordenadas de pantalla normalizadas (-1 a 1)
+     * Usa la matriz VP de la cámara para proyección correcta
      */
     private float[] worldToScreenApprox(float worldX, float worldY, float worldZ) {
-        // Aproximación simple: escalar posición del mundo a pantalla
-        // La cámara está en una posición fija mirando hacia el origen
-        float screenX = worldX * 0.25f;
-        float screenY = worldY * 0.25f;
+        if (camera == null) {
+            // Fallback a aproximación si no hay cámara
+            return new float[]{worldX * 0.25f, worldY * 0.25f};
+        }
 
-        // Ajustar por profundidad (objetos más lejos aparecen más centrados)
-        float depthFactor = 1.0f / (1.0f + Math.abs(worldZ) * 0.1f);
-        screenX *= depthFactor;
-        screenY *= depthFactor;
+        // Obtener matriz View-Projection
+        float[] vpMatrix = camera.getViewProjectionMatrix();
+
+        // Proyectar punto 3D: [x, y, z, 1] * VP = [clipX, clipY, clipZ, clipW]
+        float clipX = vpMatrix[0] * worldX + vpMatrix[4] * worldY + vpMatrix[8] * worldZ + vpMatrix[12];
+        float clipY = vpMatrix[1] * worldX + vpMatrix[5] * worldY + vpMatrix[9] * worldZ + vpMatrix[13];
+        float clipW = vpMatrix[3] * worldX + vpMatrix[7] * worldY + vpMatrix[11] * worldZ + vpMatrix[15];
+
+        // Evitar división por cero
+        if (Math.abs(clipW) < 0.001f) {
+            return new float[]{0f, 0f};
+        }
+
+        // Dividir por W para obtener coordenadas normalizadas (NDC)
+        float ndcX = clipX / clipW;
+        float ndcY = clipY / clipW;
 
         // Clamp a rango válido
-        screenX = Math.max(-1f, Math.min(1f, screenX));
-        screenY = Math.max(-1f, Math.min(1f, screenY));
+        ndcX = Math.max(-1f, Math.min(1f, ndcX));
+        ndcY = Math.max(-1f, Math.min(1f, ndcY));
 
-        return new float[]{screenX, screenY};
+        return new float[]{ndcX, ndcY};
     }
 
     /**
@@ -1195,6 +1353,11 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         // Dibujar todos los objetos de la escena primero
         super.draw();
 
+        // 🎮 Dibujar BattleHUD (barras de vida estilo Street Fighter)
+        if (battleHUD != null) {
+            battleHUD.draw();
+        }
+
         // 🎵 Dibujar ecualizador DJ encima de todo (overlay 2D)
         if (equalizerDJ != null) {
             equalizerDJ.draw();
@@ -1211,6 +1374,12 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
         // 🎵 Pasar dimensiones al ecualizador DJ
         if (equalizerDJ != null) {
             equalizerDJ.setScreenSize(width, height);
+        }
+
+        // 🎮 Pasar aspect ratio al BattleHUD
+        if (battleHUD != null && height > 0) {
+            float aspectRatio = (float) width / height;
+            battleHUD.setAspectRatio(aspectRatio);
         }
     }
 }

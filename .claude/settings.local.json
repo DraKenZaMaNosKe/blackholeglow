@@ -38,7 +38,12 @@
       "Bash(timeout 8 D:/adb/platform-tools/adb.exe shell pm dump:*)",
       "Bash(dir:*)",
       "Bash(timeout 8 D:/adb/platform-tools/adb.exe:*)",
-      "Bash(timeout 45 D:/adb/platform-tools/adb.exe install:*)"
+      "Bash(timeout 45 D:/adb/platform-tools/adb.exe install:*)",
+      "Bash(python3:*)",
+      "Bash(printf:*)",
+      "Bash(timeout 60 D:/adb/platform-tools/adb.exe install:*)",
+      "Bash(grep:*)",
+      "Bash(./gradlew bundleRelease:*)"
     ],
     "deny": [],
     "ask": []

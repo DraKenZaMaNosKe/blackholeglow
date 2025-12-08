@@ -1,7 +1,7 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.Matrix;
 import android.util.Log;
 
@@ -215,34 +215,34 @@ public class SpaceStation implements SceneObject, CameraAware {
                 "    gl_FragColor = vec4(color, texColor.a);\n" +
                 "}";
 
-        int vertexShader = compileShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode);
-        int fragmentShader = compileShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode);
+        int vertexShader = compileShader(GLES30.GL_VERTEX_SHADER, vertexShaderCode);
+        int fragmentShader = compileShader(GLES30.GL_FRAGMENT_SHADER, fragmentShaderCode);
 
-        shaderProgram = GLES20.glCreateProgram();
-        GLES20.glAttachShader(shaderProgram, vertexShader);
-        GLES20.glAttachShader(shaderProgram, fragmentShader);
-        GLES20.glLinkProgram(shaderProgram);
+        shaderProgram = GLES30.glCreateProgram();
+        GLES30.glAttachShader(shaderProgram, vertexShader);
+        GLES30.glAttachShader(shaderProgram, fragmentShader);
+        GLES30.glLinkProgram(shaderProgram);
 
         // Obtener handles
-        aPositionHandle = GLES20.glGetAttribLocation(shaderProgram, "a_Position");
-        aTexCoordHandle = GLES20.glGetAttribLocation(shaderProgram, "a_TexCoord");
-        uMVPMatrixHandle = GLES20.glGetUniformLocation(shaderProgram, "u_MVPMatrix");
-        uTextureHandle = GLES20.glGetUniformLocation(shaderProgram, "u_Texture");
-        uTimeHandle = GLES20.glGetUniformLocation(shaderProgram, "u_Time");
+        aPositionHandle = GLES30.glGetAttribLocation(shaderProgram, "a_Position");
+        aTexCoordHandle = GLES30.glGetAttribLocation(shaderProgram, "a_TexCoord");
+        uMVPMatrixHandle = GLES30.glGetUniformLocation(shaderProgram, "u_MVPMatrix");
+        uTextureHandle = GLES30.glGetUniformLocation(shaderProgram, "u_Texture");
+        uTimeHandle = GLES30.glGetUniformLocation(shaderProgram, "u_Time");
 
         Log.d(TAG, "✓ Shaders creados");
     }
 
     private int compileShader(int type, String shaderCode) {
-        int shader = GLES20.glCreateShader(type);
-        GLES20.glShaderSource(shader, shaderCode);
-        GLES20.glCompileShader(shader);
+        int shader = GLES30.glCreateShader(type);
+        GLES30.glShaderSource(shader, shaderCode);
+        GLES30.glCompileShader(shader);
 
         int[] compiled = new int[1];
-        GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0);
+        GLES30.glGetShaderiv(shader, GLES30.GL_COMPILE_STATUS, compiled, 0);
         if (compiled[0] == 0) {
-            Log.e(TAG, "❌ Error compilando shader: " + GLES20.glGetShaderInfoLog(shader));
-            GLES20.glDeleteShader(shader);
+            Log.e(TAG, "❌ Error compilando shader: " + GLES30.glGetShaderInfoLog(shader));
+            GLES30.glDeleteShader(shader);
             return 0;
         }
         return shader;
@@ -317,15 +317,15 @@ public class SpaceStation implements SceneObject, CameraAware {
     public void draw() {
         if (camera == null || shaderProgram == 0) return;
 
-        GLES20.glUseProgram(shaderProgram);
+        GLES30.glUseProgram(shaderProgram);
 
         // ⚠️ CRÍTICO: Desactivar face culling (modelos Meshy pueden tener normales invertidas)
-        GLES20.glDisable(GLES20.GL_CULL_FACE);
+        GLES30.glDisable(GLES30.GL_CULL_FACE);
 
         // Habilitar blending y depth test
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
 
         // Construir matriz modelo
         Matrix.setIdentityM(modelMatrix, 0);
@@ -338,39 +338,39 @@ public class SpaceStation implements SceneObject, CameraAware {
         camera.computeMvp(modelMatrix, mvpMatrix);
 
         // Pasar uniforms
-        GLES20.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, mvpMatrix, 0);
-        GLES20.glUniform1f(uTimeHandle, timeAccumulator % 60.0f);
+        GLES30.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, mvpMatrix, 0);
+        GLES30.glUniform1f(uTimeHandle, timeAccumulator % 60.0f);
 
         // Configurar atributos de vértices
         vertexBuffer.position(0);
-        GLES20.glEnableVertexAttribArray(aPositionHandle);
-        GLES20.glVertexAttribPointer(aPositionHandle, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glEnableVertexAttribArray(aPositionHandle);
+        GLES30.glVertexAttribPointer(aPositionHandle, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
         // Configurar UVs
         if (uvBuffer != null && aTexCoordHandle >= 0) {
             uvBuffer.position(0);
-            GLES20.glEnableVertexAttribArray(aTexCoordHandle);
-            GLES20.glVertexAttribPointer(aTexCoordHandle, 2, GLES20.GL_FLOAT, false, 0, uvBuffer);
+            GLES30.glEnableVertexAttribArray(aTexCoordHandle);
+            GLES30.glVertexAttribPointer(aTexCoordHandle, 2, GLES30.GL_FLOAT, false, 0, uvBuffer);
         }
 
         // Bind textura
         if (textureId > 0 && uTextureHandle >= 0) {
-            GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-            GLES20.glUniform1i(uTextureHandle, 0);
+            GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
+            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
+            GLES30.glUniform1i(uTextureHandle, 0);
         }
 
         // ⚠️ CRÍTICO: Usar GL_UNSIGNED_INT (no GL_UNSIGNED_SHORT)
         indexBuffer.position(0);
-        GLES20.glDrawElements(GLES20.GL_TRIANGLES, indexCount, GLES20.GL_UNSIGNED_INT, indexBuffer);
+        GLES30.glDrawElements(GLES30.GL_TRIANGLES, indexCount, GLES30.GL_UNSIGNED_INT, indexBuffer);
 
         // Limpiar
-        GLES20.glDisableVertexAttribArray(aPositionHandle);
+        GLES30.glDisableVertexAttribArray(aPositionHandle);
         if (aTexCoordHandle >= 0) {
-            GLES20.glDisableVertexAttribArray(aTexCoordHandle);
+            GLES30.glDisableVertexAttribArray(aTexCoordHandle);
         }
 
         // Restaurar culling para otros objetos
-        GLES20.glEnable(GLES20.GL_CULL_FACE);
+        GLES30.glEnable(GLES30.GL_CULL_FACE);
     }
 }

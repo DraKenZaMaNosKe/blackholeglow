@@ -89,11 +89,11 @@ public class SpaceBattleScene implements SceneObject, CameraAware {
     @Override
     public void draw() {
         // Configurar estado de OpenGL
-        android.opengl.GLES20.glEnable(android.opengl.GLES20.GL_DEPTH_TEST);
-        android.opengl.GLES20.glEnable(android.opengl.GLES20.GL_BLEND);
-        android.opengl.GLES20.glBlendFunc(
-            android.opengl.GLES20.GL_SRC_ALPHA,
-            android.opengl.GLES20.GL_ONE_MINUS_SRC_ALPHA
+        android.opengl.GLES30.glEnable(android.opengl.GLES30.GL_DEPTH_TEST);
+        android.opengl.GLES30.glEnable(android.opengl.GLES30.GL_BLEND);
+        android.opengl.GLES30.glBlendFunc(
+            android.opengl.GLES30.GL_SRC_ALPHA,
+            android.opengl.GLES30.GL_ONE_MINUS_SRC_ALPHA
         );
 
         // ═══════════════════════════════════════════════════════════════

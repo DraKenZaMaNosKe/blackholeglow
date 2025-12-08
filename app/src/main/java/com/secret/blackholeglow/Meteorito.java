@@ -1,7 +1,7 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.Matrix;
 import android.util.Log;
 
@@ -107,16 +107,16 @@ public class Meteorito implements SceneObject, CameraAware {
         }
 
         // Obtener locations
-        aPositionLoc = GLES20.glGetAttribLocation(programId, "a_Position");
-        aTexCoordLoc = GLES20.glGetAttribLocation(programId, "a_TexCoord");
-        uMvpLoc = GLES20.glGetUniformLocation(programId, "u_MVP");
-        uTextureLoc = GLES20.glGetUniformLocation(programId, "u_Texture");  // ✅ NUEVO
-        uColorLoc = GLES20.glGetUniformLocation(programId, "u_Color");
-        uOpacityLoc = GLES20.glGetUniformLocation(programId, "u_Opacity");
-        uTimeLoc = GLES20.glGetUniformLocation(programId, "u_Time");
-        uSpeedLoc = GLES20.glGetUniformLocation(programId, "u_Speed");
-        uTemperatureLoc = GLES20.glGetUniformLocation(programId, "u_Temperature");
-        uImpactPowerLoc = GLES20.glGetUniformLocation(programId, "u_ImpactPower");
+        aPositionLoc = GLES30.glGetAttribLocation(programId, "a_Position");
+        aTexCoordLoc = GLES30.glGetAttribLocation(programId, "a_TexCoord");
+        uMvpLoc = GLES30.glGetUniformLocation(programId, "u_MVP");
+        uTextureLoc = GLES30.glGetUniformLocation(programId, "u_Texture");  // ✅ NUEVO
+        uColorLoc = GLES30.glGetUniformLocation(programId, "u_Color");
+        uOpacityLoc = GLES30.glGetUniformLocation(programId, "u_Opacity");
+        uTimeLoc = GLES30.glGetUniformLocation(programId, "u_Time");
+        uSpeedLoc = GLES30.glGetUniformLocation(programId, "u_Speed");
+        uTemperatureLoc = GLES30.glGetUniformLocation(programId, "u_Temperature");
+        uImpactPowerLoc = GLES30.glGetUniformLocation(programId, "u_ImpactPower");
 
         // Crear estela con tipo aleatorio
         MeteorTrail.TrailType trailType = Math.random() < 0.5 ?
@@ -279,14 +279,14 @@ public class Meteorito implements SceneObject, CameraAware {
         // Explosión desactivada - no se dibuja
         // explosion.draw(camera);
 
-        GLES20.glUseProgram(programId);
+        GLES30.glUseProgram(programId);
 
         // Desactivar culling para ver el meteorito desde todos los ángulos
-        GLES20.glDisable(GLES20.GL_CULL_FACE);
+        GLES30.glDisable(GLES30.GL_CULL_FACE);
 
         // Habilitar blending para transparencia
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);  // Blending normal
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);  // Blending normal
 
         // Construir matriz modelo
         Matrix.setIdentityM(modelMatrix, 0);
@@ -306,7 +306,7 @@ public class Meteorito implements SceneObject, CameraAware {
 
         // Calcular MVP
         camera.computeMvp(modelMatrix, mvpMatrix);
-        GLES20.glUniformMatrix4fv(uMvpLoc, 1, false, mvpMatrix, 0);
+        GLES30.glUniformMatrix4fv(uMvpLoc, 1, false, mvpMatrix, 0);
 
         // Configurar color y opacidad
         float[] colorFinal = color.clone();
@@ -316,41 +316,41 @@ public class Meteorito implements SceneObject, CameraAware {
             colorFinal[1] = Math.min(1.0f, color[1] * 2.0f);
             colorFinal[2] = Math.min(1.0f, color[2] * 1.5f);
         }
-        GLES20.glUniform4fv(uColorLoc, 1, colorFinal, 0);
-        GLES20.glUniform1f(uOpacityLoc, opacidad);
-        GLES20.glUniform1f(uTimeLoc, tiempoVida);
+        GLES30.glUniform4fv(uColorLoc, 1, colorFinal, 0);
+        GLES30.glUniform1f(uOpacityLoc, opacidad);
+        GLES30.glUniform1f(uTimeLoc, tiempoVida);
 
         // Nuevos uniforms para efectos mejorados (solo si existen en el shader)
         if (uSpeedLoc >= 0) {
-            GLES20.glUniform1f(uSpeedLoc, velocidadBase);
+            GLES30.glUniform1f(uSpeedLoc, velocidadBase);
         }
 
         // Temperatura basada en el tipo de estela
         if (uTemperatureLoc >= 0) {
             float temperature = (trail != null &&
                 trail.toString().contains("PLASMA")) ? 0.8f : 0.2f;
-            GLES20.glUniform1f(uTemperatureLoc, temperature);
+            GLES30.glUniform1f(uTemperatureLoc, temperature);
         }
 
         // Poder de impacto (más alto durante impacto)
         if (uImpactPowerLoc >= 0) {
             float impactPower = estado == Estado.IMPACTANDO ? 2.0f : 1.0f;
-            GLES20.glUniform1f(uImpactPowerLoc, impactPower);
+            GLES30.glUniform1f(uImpactPowerLoc, impactPower);
         }
 
         // ✅ BIND TEXTURA DEL ASTEROIDE
         if (uTextureLoc >= 0) {
-            GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,
+            GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
+            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D,
                 textureManager.getTexture(R.drawable.matasteroide));
-            GLES20.glUniform1i(uTextureLoc, 0);
+            GLES30.glUniform1i(uTextureLoc, 0);
         }
 
         // Dibujar el mesh
         sharedMesh.draw(aPositionLoc, aTexCoordLoc);
 
         // Restaurar blending normal
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
     }
 
     // Getters para el sistema de colisiones
@@ -448,21 +448,21 @@ public class Meteorito implements SceneObject, CameraAware {
         }
 
         public void draw(int positionLoc, int texCoordLoc) {
-            GLES20.glEnableVertexAttribArray(positionLoc);
-            GLES20.glVertexAttribPointer(positionLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+            GLES30.glEnableVertexAttribArray(positionLoc);
+            GLES30.glVertexAttribPointer(positionLoc, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
             if (texCoordLoc >= 0) {
-                GLES20.glEnableVertexAttribArray(texCoordLoc);
-                GLES20.glVertexAttribPointer(texCoordLoc, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
+                GLES30.glEnableVertexAttribArray(texCoordLoc);
+                GLES30.glVertexAttribPointer(texCoordLoc, 2, GLES30.GL_FLOAT, false, 0, texCoordBuffer);
             }
 
             // Dibujar con índices INT (glDrawElements usa GL_UNSIGNED_INT)
             indexBuffer.position(0);
-            GLES20.glDrawElements(GLES20.GL_TRIANGLES, indexCount, GLES20.GL_UNSIGNED_INT, indexBuffer);
+            GLES30.glDrawElements(GLES30.GL_TRIANGLES, indexCount, GLES30.GL_UNSIGNED_INT, indexBuffer);
 
-            GLES20.glDisableVertexAttribArray(positionLoc);
+            GLES30.glDisableVertexAttribArray(positionLoc);
             if (texCoordLoc >= 0) {
-                GLES20.glDisableVertexAttribArray(texCoordLoc);
+                GLES30.glDisableVertexAttribArray(texCoordLoc);
             }
         }
     }

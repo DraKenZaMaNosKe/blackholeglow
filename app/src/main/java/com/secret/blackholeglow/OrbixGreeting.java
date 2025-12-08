@@ -803,8 +803,8 @@ public class OrbixGreeting implements SceneObject {
         // Título "Orbix iA" arriba
         drawTextQuad(titleTextureId, titleY, 0.38f, 0.05f, 0.0f);
 
-        // Saludo debajo del botón
-        drawTextQuad(greetingTextureId, greetingY, 0.6f, 0.045f, 1.0f);
+        // Saludo de Gemini DESHABILITADO permanentemente (solo relojes)
+        // drawTextQuad(greetingTextureId, greetingY, 0.6f, 0.045f, 1.0f);
 
         // Reloj actual
         drawTextQuad(clockTextureId, clockY, 0.42f, 0.04f, 2.0f);

@@ -2,7 +2,7 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.Matrix;
 
 import java.nio.ByteBuffer;
@@ -69,10 +69,10 @@ public class SpaceBattleBackground extends BaseShaderProgram implements SceneObj
         this.textureResourceId = textureResourceId;
 
         // Obtener uniform locations
-        aPosLoc = GLES20.glGetAttribLocation(programId, "a_Position");
-        aTexLoc = GLES20.glGetAttribLocation(programId, "a_TexCoord");
-        uTexLoc = GLES20.glGetUniformLocation(programId, "u_Texture");
-        uAlphaLoc = GLES20.glGetUniformLocation(programId, "u_Alpha");
+        aPosLoc = GLES30.glGetAttribLocation(programId, "a_Position");
+        aTexLoc = GLES30.glGetAttribLocation(programId, "a_TexCoord");
+        uTexLoc = GLES30.glGetUniformLocation(programId, "u_Texture");
+        uAlphaLoc = GLES30.glGetUniformLocation(programId, "u_Alpha");
 
         // Inicializar buffers
         vertexBuffer = ByteBuffer.allocateDirect(VERTICES.length * 4)
@@ -107,7 +107,7 @@ public class SpaceBattleBackground extends BaseShaderProgram implements SceneObj
     @Override
     public void draw() {
         // Desactivar depth test para el fondo (siempre atrás)
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
 
         // Activar programa
         useProgram();
@@ -117,35 +117,35 @@ public class SpaceBattleBackground extends BaseShaderProgram implements SceneObj
         Matrix.setIdentityM(mvpMatrix, 0);
 
         // Enviar MVP al shader (matriz identidad = sin transformación)
-        int uMvpLoc = GLES20.glGetUniformLocation(programId, "u_MVP");
-        GLES20.glUniformMatrix4fv(uMvpLoc, 1, false, mvpMatrix, 0);
+        int uMvpLoc = GLES30.glGetUniformLocation(programId, "u_MVP");
+        GLES30.glUniformMatrix4fv(uMvpLoc, 1, false, mvpMatrix, 0);
 
         // Sin tinte, alpha completo
-        int uTintColorLoc = GLES20.glGetUniformLocation(programId, "u_TintColor");
+        int uTintColorLoc = GLES30.glGetUniformLocation(programId, "u_TintColor");
         float[] tintColor = {1f, 1f, 1f, 0f};
-        GLES20.glUniform4fv(uTintColorLoc, 1, tintColor, 0);
-        GLES20.glUniform1f(uAlphaLoc, 1.0f);
+        GLES30.glUniform4fv(uTintColorLoc, 1, tintColor, 0);
+        GLES30.glUniform1f(uAlphaLoc, 1.0f);
 
         // Bind textura
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureLoader.getTexture(textureResourceId));
-        GLES20.glUniform1i(uTexLoc, 0);
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureLoader.getTexture(textureResourceId));
+        GLES30.glUniform1i(uTexLoc, 0);
 
         // Enviar geometría
-        GLES20.glEnableVertexAttribArray(aPosLoc);
-        GLES20.glVertexAttribPointer(aPosLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glEnableVertexAttribArray(aPosLoc);
+        GLES30.glVertexAttribPointer(aPosLoc, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
-        GLES20.glEnableVertexAttribArray(aTexLoc);
-        GLES20.glVertexAttribPointer(aTexLoc, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
+        GLES30.glEnableVertexAttribArray(aTexLoc);
+        GLES30.glVertexAttribPointer(aTexLoc, 2, GLES30.GL_FLOAT, false, 0, texCoordBuffer);
 
         // Dibujar
-        GLES20.glDrawElements(GLES20.GL_TRIANGLES, INDICES.length, GLES20.GL_UNSIGNED_SHORT, indexBuffer);
+        GLES30.glDrawElements(GLES30.GL_TRIANGLES, INDICES.length, GLES30.GL_UNSIGNED_SHORT, indexBuffer);
 
         // Limpiar
-        GLES20.glDisableVertexAttribArray(aPosLoc);
-        GLES20.glDisableVertexAttribArray(aTexLoc);
+        GLES30.glDisableVertexAttribArray(aPosLoc);
+        GLES30.glDisableVertexAttribArray(aTexLoc);
 
         // Reactivar depth test para otros objetos
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
     }
 }

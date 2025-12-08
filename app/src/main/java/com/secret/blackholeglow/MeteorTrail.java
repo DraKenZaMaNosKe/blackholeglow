@@ -1,7 +1,7 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.Matrix;
 import android.util.Log;
 
@@ -131,7 +131,7 @@ public class MeteorTrail {
         }
 
         // SIEMPRE recrear el shader si no está inicializado o programId es inválido
-        if (!shaderInitialized || programId <= 0 || !GLES20.glIsProgram(programId)) {
+        if (!shaderInitialized || programId <= 0 || !GLES30.glIsProgram(programId)) {
             Log.d(TAG, "[MeteorTrail] Creando/Recreando shader (programId anterior: " + programId + ")");
 
             programId = ShaderUtils.createProgramFromAssets(context,
@@ -139,13 +139,13 @@ public class MeteorTrail {
                 "shaders/trail_fragment.glsl");
 
             if (programId > 0) {
-                aPositionLoc = GLES20.glGetAttribLocation(programId, "a_Position");
-                aColorLoc = GLES20.glGetAttribLocation(programId, "a_Color");
-                aAgeLoc = GLES20.glGetAttribLocation(programId, "a_Age");
-                uMvpLoc = GLES20.glGetUniformLocation(programId, "u_MVP");
-                uTimeLoc = GLES20.glGetUniformLocation(programId, "u_Time");
-                uTrailTypeLoc = GLES20.glGetUniformLocation(programId, "u_TrailType");
-                uTrailLengthLoc = GLES20.glGetUniformLocation(programId, "u_TrailLength");
+                aPositionLoc = GLES30.glGetAttribLocation(programId, "a_Position");
+                aColorLoc = GLES30.glGetAttribLocation(programId, "a_Color");
+                aAgeLoc = GLES30.glGetAttribLocation(programId, "a_Age");
+                uMvpLoc = GLES30.glGetUniformLocation(programId, "u_MVP");
+                uTimeLoc = GLES30.glGetUniformLocation(programId, "u_Time");
+                uTrailTypeLoc = GLES30.glGetUniformLocation(programId, "u_TrailType");
+                uTrailLengthLoc = GLES30.glGetUniformLocation(programId, "u_TrailLength");
 
                 shaderInitialized = true;
 
@@ -344,7 +344,7 @@ public class MeteorTrail {
         }
 
         // Verificar si el shader es válido (puede perder contexto en wallpaper)
-        if (context != null && (!GLES20.glIsProgram(programId) || !shaderInitialized)) {
+        if (context != null && (!GLES30.glIsProgram(programId) || !shaderInitialized)) {
             Log.w(TAG, "[MeteorTrail] Shader inválido, recreando... (programId: " + programId + ")");
             shaderInitialized = false;  // Forzar recreación
             initShader(context);
@@ -369,59 +369,59 @@ public class MeteorTrail {
 
         if (vertexBuffer == null) return;
 
-        GLES20.glUseProgram(programId);
+        GLES30.glUseProgram(programId);
 
         // Configurar blending para efecto translúcido (NO aditivo)
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);  // Translúcido
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);  // Translúcido
 
         // Desactivar depth write para transparencia
-        GLES20.glDepthMask(false);
+        GLES30.glDepthMask(false);
 
         // Calcular MVP (⚡ OPTIMIZADO: usar matrices cacheadas)
         Matrix.setIdentityM(modelMatrixCache, 0);
         camera.computeMvp(modelMatrixCache, mvpMatrixCache);
-        GLES20.glUniformMatrix4fv(uMvpLoc, 1, false, mvpMatrixCache, 0);
+        GLES30.glUniformMatrix4fv(uMvpLoc, 1, false, mvpMatrixCache, 0);
 
         // Configurar uniforms para efectos animados
         // ⚡ OPTIMIZACIÓN: Usar TimeManager
         float time = TimeManager.getTime() % 10.0f;
-        GLES20.glUniform1f(uTimeLoc, time);
+        GLES30.glUniform1f(uTimeLoc, time);
 
         // Tipo de estela (0 = fuego, 0.5 = plasma, 1 = arcoíris)
         float trailTypeValue = 0.0f;
         if (type == TrailType.PLASMA) trailTypeValue = 0.5f;
         else if (type == TrailType.RAINBOW) trailTypeValue = 1.0f;
-        GLES20.glUniform1f(uTrailTypeLoc, trailTypeValue);
+        GLES30.glUniform1f(uTrailTypeLoc, trailTypeValue);
 
-        GLES20.glUniform1f(uTrailLengthLoc, (float)trailPoints.size());
+        GLES30.glUniform1f(uTrailLengthLoc, (float)trailPoints.size());
 
         // Configurar atributos
-        GLES20.glEnableVertexAttribArray(aPositionLoc);
-        GLES20.glVertexAttribPointer(aPositionLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glEnableVertexAttribArray(aPositionLoc);
+        GLES30.glVertexAttribPointer(aPositionLoc, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
-        GLES20.glEnableVertexAttribArray(aColorLoc);
-        GLES20.glVertexAttribPointer(aColorLoc, 4, GLES20.GL_FLOAT, false, 0, colorBuffer);
+        GLES30.glEnableVertexAttribArray(aColorLoc);
+        GLES30.glVertexAttribPointer(aColorLoc, 4, GLES30.GL_FLOAT, false, 0, colorBuffer);
 
         // Configurar atributo age si existe
         if (aAgeLoc >= 0 && ageBuffer != null) {
-            GLES20.glEnableVertexAttribArray(aAgeLoc);
-            GLES20.glVertexAttribPointer(aAgeLoc, 1, GLES20.GL_FLOAT, false, 0, ageBuffer);
+            GLES30.glEnableVertexAttribArray(aAgeLoc);
+            GLES30.glVertexAttribPointer(aAgeLoc, 1, GLES30.GL_FLOAT, false, 0, ageBuffer);
         }
 
         // Dibujar
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, (trailPoints.size() - 1) * 6);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, (trailPoints.size() - 1) * 6);
 
         // Limpiar
-        GLES20.glDisableVertexAttribArray(aPositionLoc);
-        GLES20.glDisableVertexAttribArray(aColorLoc);
+        GLES30.glDisableVertexAttribArray(aPositionLoc);
+        GLES30.glDisableVertexAttribArray(aColorLoc);
         if (aAgeLoc >= 0) {
-            GLES20.glDisableVertexAttribArray(aAgeLoc);
+            GLES30.glDisableVertexAttribArray(aAgeLoc);
         }
 
         // Restaurar estados
-        GLES20.glDepthMask(true);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glDepthMask(true);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
     }
 
     /**

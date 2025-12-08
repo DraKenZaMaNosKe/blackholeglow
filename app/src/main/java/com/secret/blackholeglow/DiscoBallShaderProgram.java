@@ -7,7 +7,7 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 
 /**
  * Shader program específico para la bola disco.
@@ -36,7 +36,7 @@ public class DiscoBallShaderProgram extends BaseShaderProgram {
               "shaders/disco_ball_fragment.glsl");
 
         // Cachear ubicación del uniform de audio
-        uAudioBassLoc = GLES20.glGetUniformLocation(programId, "u_AudioBass");
+        uAudioBassLoc = GLES30.glGetUniformLocation(programId, "u_AudioBass");
     }
 
     /**
@@ -47,6 +47,6 @@ public class DiscoBallShaderProgram extends BaseShaderProgram {
     public void setAudioBass(float bassLevel) {
         // Clamp entre 0 y 1 por seguridad
         bassLevel = Math.max(0.0f, Math.min(1.0f, bassLevel));
-        GLES20.glUniform1f(uAudioBassLoc, bassLevel);
+        GLES30.glUniform1f(uAudioBassLoc, bassLevel);
     }
 }

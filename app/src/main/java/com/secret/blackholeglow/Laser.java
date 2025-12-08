@@ -1,6 +1,6 @@
 package com.secret.blackholeglow;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.Matrix;
 import android.util.Log;
 
@@ -194,12 +194,12 @@ public class Laser {
 
         coreProgram = createProgram(coreVertexCode, coreFragmentCode);
         if (coreProgram != 0) {
-            corePositionLoc = GLES20.glGetAttribLocation(coreProgram, "a_Position");
-            coreUVLoc = GLES20.glGetAttribLocation(coreProgram, "a_UV");
-            coreMVPLoc = GLES20.glGetUniformLocation(coreProgram, "u_MVP");
-            coreColorLoc = GLES20.glGetUniformLocation(coreProgram, "u_Color");
-            coreTimeLoc = GLES20.glGetUniformLocation(coreProgram, "u_Time");
-            coreIntensityLoc = GLES20.glGetUniformLocation(coreProgram, "u_Intensity");
+            corePositionLoc = GLES30.glGetAttribLocation(coreProgram, "a_Position");
+            coreUVLoc = GLES30.glGetAttribLocation(coreProgram, "a_UV");
+            coreMVPLoc = GLES30.glGetUniformLocation(coreProgram, "u_MVP");
+            coreColorLoc = GLES30.glGetUniformLocation(coreProgram, "u_Color");
+            coreTimeLoc = GLES30.glGetUniformLocation(coreProgram, "u_Time");
+            coreIntensityLoc = GLES30.glGetUniformLocation(coreProgram, "u_Intensity");
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -222,10 +222,10 @@ public class Laser {
 
         glowProgram = createProgram(glowVertexCode, glowFragmentCode);
         if (glowProgram != 0) {
-            glowPositionLoc = GLES20.glGetAttribLocation(glowProgram, "a_Position");
-            glowMVPLoc = GLES20.glGetUniformLocation(glowProgram, "u_MVP");
-            glowColorLoc = GLES20.glGetUniformLocation(glowProgram, "u_Color");
-            glowAlphaLoc = GLES20.glGetUniformLocation(glowProgram, "u_Alpha");
+            glowPositionLoc = GLES30.glGetAttribLocation(glowProgram, "a_Position");
+            glowMVPLoc = GLES30.glGetUniformLocation(glowProgram, "u_MVP");
+            glowColorLoc = GLES30.glGetUniformLocation(glowProgram, "u_Color");
+            glowAlphaLoc = GLES30.glGetUniformLocation(glowProgram, "u_Alpha");
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -253,10 +253,10 @@ public class Laser {
 
         particleProgram = createProgram(particleVertexCode, particleFragmentCode);
         if (particleProgram != 0) {
-            particlePositionLoc = GLES20.glGetAttribLocation(particleProgram, "a_Position");
-            particleMVPLoc = GLES20.glGetUniformLocation(particleProgram, "u_MVP");
-            particleColorLoc = GLES20.glGetUniformLocation(particleProgram, "u_Color");
-            particleSizeLoc = GLES20.glGetUniformLocation(particleProgram, "u_PointSize");
+            particlePositionLoc = GLES30.glGetAttribLocation(particleProgram, "a_Position");
+            particleMVPLoc = GLES30.glGetUniformLocation(particleProgram, "u_MVP");
+            particleColorLoc = GLES30.glGetUniformLocation(particleProgram, "u_Color");
+            particleSizeLoc = GLES30.glGetUniformLocation(particleProgram, "u_PointSize");
         }
 
         // Crear buffers de geometría
@@ -266,29 +266,29 @@ public class Laser {
     }
 
     private static int createProgram(String vertexCode, String fragmentCode) {
-        int vertexShader = compileShader(GLES20.GL_VERTEX_SHADER, vertexCode);
-        int fragmentShader = compileShader(GLES20.GL_FRAGMENT_SHADER, fragmentCode);
+        int vertexShader = compileShader(GLES30.GL_VERTEX_SHADER, vertexCode);
+        int fragmentShader = compileShader(GLES30.GL_FRAGMENT_SHADER, fragmentCode);
 
         if (vertexShader == 0 || fragmentShader == 0) return 0;
 
-        int program = GLES20.glCreateProgram();
-        GLES20.glAttachShader(program, vertexShader);
-        GLES20.glAttachShader(program, fragmentShader);
-        GLES20.glLinkProgram(program);
+        int program = GLES30.glCreateProgram();
+        GLES30.glAttachShader(program, vertexShader);
+        GLES30.glAttachShader(program, fragmentShader);
+        GLES30.glLinkProgram(program);
 
         return program;
     }
 
     private static int compileShader(int type, String code) {
-        int shader = GLES20.glCreateShader(type);
-        GLES20.glShaderSource(shader, code);
-        GLES20.glCompileShader(shader);
+        int shader = GLES30.glCreateShader(type);
+        GLES30.glShaderSource(shader, code);
+        GLES30.glCompileShader(shader);
 
         int[] compiled = new int[1];
-        GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0);
+        GLES30.glGetShaderiv(shader, GLES30.GL_COMPILE_STATUS, compiled, 0);
         if (compiled[0] == 0) {
-            Log.e(TAG, "Error: " + GLES20.glGetShaderInfoLog(shader));
-            GLES20.glDeleteShader(shader);
+            Log.e(TAG, "Error: " + GLES30.glGetShaderInfoLog(shader));
+            GLES30.glDeleteShader(shader);
             return 0;
         }
         return shader;
@@ -524,10 +524,10 @@ public class Laser {
     private void drawTrail(float time, float yaw, float pitch) {
         if (glowProgram == 0) return;
 
-        GLES20.glUseProgram(glowProgram);
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES30.glUseProgram(glowProgram);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
 
         float[] color = (team == TEAM_HUMAN) ? COLOR_HUMAN_GLOW : COLOR_ALIEN_GLOW;
 
@@ -547,26 +547,26 @@ public class Laser {
             float[] mvp = MatrixPool.obtain();
             camera.computeMvp(model, mvp);
 
-            GLES20.glUniformMatrix4fv(glowMVPLoc, 1, false, mvp, 0);
-            GLES20.glUniform4fv(glowColorLoc, 1, color, 0);
-            GLES20.glUniform1f(glowAlphaLoc, alpha);
+            GLES30.glUniformMatrix4fv(glowMVPLoc, 1, false, mvp, 0);
+            GLES30.glUniform4fv(glowColorLoc, 1, color, 0);
+            GLES30.glUniform1f(glowAlphaLoc, alpha);
 
             glowVertexBuffer.position(0);
-            GLES20.glEnableVertexAttribArray(glowPositionLoc);
-            GLES20.glVertexAttribPointer(glowPositionLoc, 3, GLES20.GL_FLOAT, false, 0, glowVertexBuffer);
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 4);
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 4, 4);
-            GLES20.glDisableVertexAttribArray(glowPositionLoc);
+            GLES30.glEnableVertexAttribArray(glowPositionLoc);
+            GLES30.glVertexAttribPointer(glowPositionLoc, 3, GLES30.GL_FLOAT, false, 0, glowVertexBuffer);
+            GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 4);
+            GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 4, 4);
+            GLES30.glDisableVertexAttribArray(glowPositionLoc);
         }
     }
 
     private void drawGlow(float yaw, float pitch) {
         if (glowProgram == 0) return;
 
-        GLES20.glUseProgram(glowProgram);
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES30.glUseProgram(glowProgram);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
 
         float[] color = (team == TEAM_HUMAN) ? COLOR_HUMAN_GLOW : COLOR_ALIEN_GLOW;
 
@@ -578,25 +578,25 @@ public class Laser {
 
         camera.computeMvp(modelMatrix, mvpMatrix);
 
-        GLES20.glUniformMatrix4fv(glowMVPLoc, 1, false, mvpMatrix, 0);
-        GLES20.glUniform4fv(glowColorLoc, 1, color, 0);
-        GLES20.glUniform1f(glowAlphaLoc, 0.7f);
+        GLES30.glUniformMatrix4fv(glowMVPLoc, 1, false, mvpMatrix, 0);
+        GLES30.glUniform4fv(glowColorLoc, 1, color, 0);
+        GLES30.glUniform1f(glowAlphaLoc, 0.7f);
 
         glowVertexBuffer.position(0);
-        GLES20.glEnableVertexAttribArray(glowPositionLoc);
-        GLES20.glVertexAttribPointer(glowPositionLoc, 3, GLES20.GL_FLOAT, false, 0, glowVertexBuffer);
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 4);
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 4, 4);
-        GLES20.glDisableVertexAttribArray(glowPositionLoc);
+        GLES30.glEnableVertexAttribArray(glowPositionLoc);
+        GLES30.glVertexAttribPointer(glowPositionLoc, 3, GLES30.GL_FLOAT, false, 0, glowVertexBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 4);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 4, 4);
+        GLES30.glDisableVertexAttribArray(glowPositionLoc);
     }
 
     private void drawCore(float time, float yaw, float pitch) {
         if (coreProgram == 0) return;
 
-        GLES20.glUseProgram(coreProgram);
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES30.glUseProgram(coreProgram);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
 
         float[] color = (team == TEAM_HUMAN) ? COLOR_HUMAN_CORE : COLOR_ALIEN_CORE;
 
@@ -610,30 +610,30 @@ public class Laser {
         float[] mvp = MatrixPool.obtain();
         camera.computeMvp(model, mvp);
 
-        GLES20.glUniformMatrix4fv(coreMVPLoc, 1, false, mvp, 0);
-        GLES20.glUniform4fv(coreColorLoc, 1, color, 0);
-        GLES20.glUniform1f(coreTimeLoc, time);
-        GLES20.glUniform1f(coreIntensityLoc, 1.0f);
+        GLES30.glUniformMatrix4fv(coreMVPLoc, 1, false, mvp, 0);
+        GLES30.glUniform4fv(coreColorLoc, 1, color, 0);
+        GLES30.glUniform1f(coreTimeLoc, time);
+        GLES30.glUniform1f(coreIntensityLoc, 1.0f);
 
         coreVertexBuffer.position(0);
         coreUVBuffer.position(0);
-        GLES20.glEnableVertexAttribArray(corePositionLoc);
-        GLES20.glEnableVertexAttribArray(coreUVLoc);
-        GLES20.glVertexAttribPointer(corePositionLoc, 3, GLES20.GL_FLOAT, false, 0, coreVertexBuffer);
-        GLES20.glVertexAttribPointer(coreUVLoc, 2, GLES20.GL_FLOAT, false, 0, coreUVBuffer);
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 4);
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 4, 4);
-        GLES20.glDisableVertexAttribArray(corePositionLoc);
-        GLES20.glDisableVertexAttribArray(coreUVLoc);
+        GLES30.glEnableVertexAttribArray(corePositionLoc);
+        GLES30.glEnableVertexAttribArray(coreUVLoc);
+        GLES30.glVertexAttribPointer(corePositionLoc, 3, GLES30.GL_FLOAT, false, 0, coreVertexBuffer);
+        GLES30.glVertexAttribPointer(coreUVLoc, 2, GLES30.GL_FLOAT, false, 0, coreUVBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 4);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 4, 4);
+        GLES30.glDisableVertexAttribArray(corePositionLoc);
+        GLES30.glDisableVertexAttribArray(coreUVLoc);
     }
 
     private void drawEnergyParticles(float time, float yaw, float pitch) {
         if (particleProgram == 0) return;
 
-        GLES20.glUseProgram(particleProgram);
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES30.glUseProgram(particleProgram);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
 
         float[] color = (team == TEAM_HUMAN) ? COLOR_HUMAN_CORE : COLOR_ALIEN_CORE;
 
@@ -654,25 +654,25 @@ public class Laser {
             float[] mvp = MatrixPool.obtain();
             camera.computeMvp(model, mvp);
 
-            GLES20.glUniformMatrix4fv(particleMVPLoc, 1, false, mvp, 0);
-            GLES20.glUniform4fv(particleColorLoc, 1, color, 0);
-            GLES20.glUniform1f(particleSizeLoc, 3f + (float)Math.sin(time * 5f + i) * 1.5f);
+            GLES30.glUniformMatrix4fv(particleMVPLoc, 1, false, mvp, 0);
+            GLES30.glUniform4fv(particleColorLoc, 1, color, 0);
+            GLES30.glUniform1f(particleSizeLoc, 3f + (float)Math.sin(time * 5f + i) * 1.5f);
 
             particleVertexBuffer.position(0);
-            GLES20.glEnableVertexAttribArray(particlePositionLoc);
-            GLES20.glVertexAttribPointer(particlePositionLoc, 3, GLES20.GL_FLOAT, false, 0, particleVertexBuffer);
-            GLES20.glDrawArrays(GLES20.GL_POINTS, 0, 1);
-            GLES20.glDisableVertexAttribArray(particlePositionLoc);
+            GLES30.glEnableVertexAttribArray(particlePositionLoc);
+            GLES30.glVertexAttribPointer(particlePositionLoc, 3, GLES30.GL_FLOAT, false, 0, particleVertexBuffer);
+            GLES30.glDrawArrays(GLES30.GL_POINTS, 0, 1);
+            GLES30.glDisableVertexAttribArray(particlePositionLoc);
         }
     }
 
     private void drawImpact() {
         if (particleProgram == 0 || camera == null) return;
 
-        GLES20.glUseProgram(particleProgram);
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES30.glUseProgram(particleProgram);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
 
         float[] color = (team == TEAM_HUMAN) ? COLOR_HUMAN_CORE : COLOR_ALIEN_CORE;
 
@@ -696,20 +696,20 @@ public class Laser {
                 impactLife[i]
             };
 
-            GLES20.glUniformMatrix4fv(particleMVPLoc, 1, false, mvp, 0);
-            GLES20.glUniform4fv(particleColorLoc, 1, particleColor, 0);
-            GLES20.glUniform1f(particleSizeLoc, impactSize[i] * impactLife[i]);
+            GLES30.glUniformMatrix4fv(particleMVPLoc, 1, false, mvp, 0);
+            GLES30.glUniform4fv(particleColorLoc, 1, particleColor, 0);
+            GLES30.glUniform1f(particleSizeLoc, impactSize[i] * impactLife[i]);
 
             particleVertexBuffer.position(0);
-            GLES20.glEnableVertexAttribArray(particlePositionLoc);
-            GLES20.glVertexAttribPointer(particlePositionLoc, 3, GLES20.GL_FLOAT, false, 0, particleVertexBuffer);
-            GLES20.glDrawArrays(GLES20.GL_POINTS, 0, 1);
-            GLES20.glDisableVertexAttribArray(particlePositionLoc);
+            GLES30.glEnableVertexAttribArray(particlePositionLoc);
+            GLES30.glVertexAttribPointer(particlePositionLoc, 3, GLES30.GL_FLOAT, false, 0, particleVertexBuffer);
+            GLES30.glDrawArrays(GLES30.GL_POINTS, 0, 1);
+            GLES30.glDisableVertexAttribArray(particlePositionLoc);
         }
 
         // Dibujar onda de choque (anillo expandiéndose)
         if (shockwaveAlpha > 0.1f && glowProgram != 0) {
-            GLES20.glUseProgram(glowProgram);
+            GLES30.glUseProgram(glowProgram);
 
             // Dibujar múltiples puntos en círculo para simular el anillo
             int ringPoints = 16;
@@ -727,19 +727,19 @@ public class Laser {
                 float[] mvp = MatrixPool.obtain();
                 camera.computeMvp(model, mvp);
 
-                GLES20.glUniformMatrix4fv(glowMVPLoc, 1, false, mvp, 0);
-                GLES20.glUniform4fv(glowColorLoc, 1, color, 0);
-                GLES20.glUniform1f(glowAlphaLoc, shockwaveAlpha * 0.5f);
+                GLES30.glUniformMatrix4fv(glowMVPLoc, 1, false, mvp, 0);
+                GLES30.glUniform4fv(glowColorLoc, 1, color, 0);
+                GLES30.glUniform1f(glowAlphaLoc, shockwaveAlpha * 0.5f);
 
                 glowVertexBuffer.position(0);
-                GLES20.glEnableVertexAttribArray(glowPositionLoc);
-                GLES20.glVertexAttribPointer(glowPositionLoc, 3, GLES20.GL_FLOAT, false, 0, glowVertexBuffer);
-                GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 4);
-                GLES20.glDisableVertexAttribArray(glowPositionLoc);
+                GLES30.glEnableVertexAttribArray(glowPositionLoc);
+                GLES30.glVertexAttribPointer(glowPositionLoc, 3, GLES30.GL_FLOAT, false, 0, glowVertexBuffer);
+                GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 4);
+                GLES30.glDisableVertexAttribArray(glowPositionLoc);
             }
         }
 
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
     }
 
     public boolean checkCollision(float targetX, float targetY, float targetZ, float radius) {
@@ -793,19 +793,19 @@ public class Laser {
         Log.d(TAG, "=== CLEANUP STATIC Laser ===");
 
         if (coreProgram != 0) {
-            GLES20.glDeleteProgram(coreProgram);
+            GLES30.glDeleteProgram(coreProgram);
             Log.d(TAG, "  Core program eliminado: " + coreProgram);
             coreProgram = 0;
         }
 
         if (glowProgram != 0) {
-            GLES20.glDeleteProgram(glowProgram);
+            GLES30.glDeleteProgram(glowProgram);
             Log.d(TAG, "  Glow program eliminado: " + glowProgram);
             glowProgram = 0;
         }
 
         if (particleProgram != 0) {
-            GLES20.glDeleteProgram(particleProgram);
+            GLES30.glDeleteProgram(particleProgram);
             Log.d(TAG, "  Particle program eliminado: " + particleProgram);
             particleProgram = 0;
         }

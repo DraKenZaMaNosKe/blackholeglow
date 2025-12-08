@@ -1,7 +1,7 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.Matrix;
 import android.util.Log;
 
@@ -111,9 +111,9 @@ public class SolMeshy extends BaseShaderProgram implements SceneObject, CameraAw
         indexBuffer.position(0);
 
         // Obtener uniform locations
-        aPosLoc = GLES20.glGetAttribLocation(programId, "a_Position");
-        aTexLoc = GLES20.glGetAttribLocation(programId, "a_TexCoord");
-        uTexLoc = GLES20.glGetUniformLocation(programId, "u_Texture");
+        aPosLoc = GLES30.glGetAttribLocation(programId, "a_Position");
+        aTexLoc = GLES30.glGetAttribLocation(programId, "a_TexCoord");
+        uTexLoc = GLES30.glGetUniformLocation(programId, "u_Texture");
 
         Log.d(TAG, "✅ Sol Meshy inicializado correctamente");
         Log.d(TAG, "   Vértices: " + mesh.vertexCount);
@@ -157,10 +157,10 @@ public class SolMeshy extends BaseShaderProgram implements SceneObject, CameraAw
     public void draw() {
         if (camera == null) return;
 
-        GLES20.glUseProgram(programId);
+        GLES30.glUseProgram(programId);
 
         // 🔧 DESACTIVAR FACE CULLING - Dibujar ambos lados de las caras
-        GLES20.glDisable(GLES20.GL_CULL_FACE);
+        GLES30.glDisable(GLES30.GL_CULL_FACE);
 
         // Construir matriz de modelo
         Matrix.setIdentityM(modelMatrix, 0);
@@ -172,39 +172,39 @@ public class SolMeshy extends BaseShaderProgram implements SceneObject, CameraAw
         camera.computeMvp(modelMatrix, mvpMatrix);
 
         // Pasar MVP al shader
-        int uMVPLoc = GLES20.glGetUniformLocation(programId, "u_MVP");
-        GLES20.glUniformMatrix4fv(uMVPLoc, 1, false, mvpMatrix, 0);
+        int uMVPLoc = GLES30.glGetUniformLocation(programId, "u_MVP");
+        GLES30.glUniformMatrix4fv(uMVPLoc, 1, false, mvpMatrix, 0);
 
         // Pasar tiempo para efectos de plasma
-        int uTimeLoc = GLES20.glGetUniformLocation(programId, "u_Time");
-        GLES20.glUniform1f(uTimeLoc, time);
+        int uTimeLoc = GLES30.glGetUniformLocation(programId, "u_Time");
+        GLES30.glUniform1f(uTimeLoc, time);
 
         // Alpha opaco
-        int uAlphaLoc = GLES20.glGetUniformLocation(programId, "u_Alpha");
-        GLES20.glUniform1f(uAlphaLoc, 1.0f);
+        int uAlphaLoc = GLES30.glGetUniformLocation(programId, "u_Alpha");
+        GLES30.glUniform1f(uAlphaLoc, 1.0f);
 
         // Activar textura
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-        GLES20.glUniform1i(uTexLoc, 0);
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
+        GLES30.glUniform1i(uTexLoc, 0);
 
         // Configurar atributos
-        GLES20.glEnableVertexAttribArray(aPosLoc);
-        GLES20.glVertexAttribPointer(aPosLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glEnableVertexAttribArray(aPosLoc);
+        GLES30.glVertexAttribPointer(aPosLoc, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
-        GLES20.glEnableVertexAttribArray(aTexLoc);
-        GLES20.glVertexAttribPointer(aTexLoc, 2, GLES20.GL_FLOAT, false, 0, uvBuffer);
+        GLES30.glEnableVertexAttribArray(aTexLoc);
+        GLES30.glVertexAttribPointer(aTexLoc, 2, GLES30.GL_FLOAT, false, 0, uvBuffer);
 
         // Dibujar
         indexBuffer.position(0);
-        GLES20.glDrawElements(GLES20.GL_TRIANGLES, indexCount, GLES20.GL_UNSIGNED_INT, indexBuffer);
+        GLES30.glDrawElements(GLES30.GL_TRIANGLES, indexCount, GLES30.GL_UNSIGNED_INT, indexBuffer);
 
         // Limpiar
-        GLES20.glDisableVertexAttribArray(aPosLoc);
-        GLES20.glDisableVertexAttribArray(aTexLoc);
+        GLES30.glDisableVertexAttribArray(aPosLoc);
+        GLES30.glDisableVertexAttribArray(aTexLoc);
 
         // Restaurar culling
-        GLES20.glEnable(GLES20.GL_CULL_FACE);
+        GLES30.glEnable(GLES30.GL_CULL_FACE);
     }
 
     // Getters

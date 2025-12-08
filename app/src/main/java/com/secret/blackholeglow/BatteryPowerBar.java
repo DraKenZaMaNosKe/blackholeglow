@@ -4,7 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.os.BatteryManager;
 import android.util.Log;
 
@@ -105,11 +105,11 @@ public class BatteryPowerBar implements SceneObject {
         programId = ShaderUtils.createProgramFromAssets(context,
             "shaders/battery_vertex.glsl",
             "shaders/battery_fragment.glsl");
-        aPositionLoc = GLES20.glGetAttribLocation(programId, "a_Position");
-        aColorLoc = GLES20.glGetAttribLocation(programId, "a_Color");
-        uTimeLoc = GLES20.glGetUniformLocation(programId, "u_Time");
-        uChargingGlowLoc = GLES20.glGetUniformLocation(programId, "u_ChargingGlow");
-        uBatteryLevelLoc = GLES20.glGetUniformLocation(programId, "u_BatteryLevel");
+        aPositionLoc = GLES30.glGetAttribLocation(programId, "a_Position");
+        aColorLoc = GLES30.glGetAttribLocation(programId, "a_Color");
+        uTimeLoc = GLES30.glGetUniformLocation(programId, "u_Time");
+        uChargingGlowLoc = GLES30.glGetUniformLocation(programId, "u_ChargingGlow");
+        uBatteryLevelLoc = GLES30.glGetUniformLocation(programId, "u_BatteryLevel");
 
         // Crear buffers iniciales
         createBuffers();
@@ -212,29 +212,29 @@ public class BatteryPowerBar implements SceneObject {
 
     @Override
     public void draw() {
-        GLES20.glUseProgram(programId);
+        GLES30.glUseProgram(programId);
 
         // Configurar blending
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         // Desactivar depth test para UI
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
 
         // Configurar uniforms
-        GLES20.glUniform1f(uTimeLoc, pulseTime);
-        GLES20.glUniform1f(uChargingGlowLoc, chargingGlow);
-        GLES20.glUniform1f(uBatteryLevelLoc, batteryLevel);
+        GLES30.glUniform1f(uTimeLoc, pulseTime);
+        GLES30.glUniform1f(uChargingGlowLoc, chargingGlow);
+        GLES30.glUniform1f(uBatteryLevelLoc, batteryLevel);
 
         // Configurar atributos
-        GLES20.glEnableVertexAttribArray(aPositionLoc);
-        GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glEnableVertexAttribArray(aPositionLoc);
+        GLES30.glVertexAttribPointer(aPositionLoc, 2, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
-        GLES20.glEnableVertexAttribArray(aColorLoc);
-        GLES20.glVertexAttribPointer(aColorLoc, 4, GLES20.GL_FLOAT, false, 0, colorBuffer);
+        GLES30.glEnableVertexAttribArray(aColorLoc);
+        GLES30.glVertexAttribPointer(aColorLoc, 4, GLES30.GL_FLOAT, false, 0, colorBuffer);
 
         // Dibujar marco
-        GLES20.glDrawArrays(GLES20.GL_LINE_LOOP, 0, 4);
+        GLES30.glDrawArrays(GLES30.GL_LINE_LOOP, 0, 4);
 
         // Dibujar relleno (solo la parte proporcional al nivel de batería)
         if (batteryLevel > 0.01f) {
@@ -255,16 +255,16 @@ public class BatteryPowerBar implements SceneObject {
             vertexBuffer.position(8);
 
             colorBuffer.position(16);
-            GLES20.glVertexAttribPointer(aColorLoc, 4, GLES20.GL_FLOAT, false, 0, colorBuffer);
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 4);
+            GLES30.glVertexAttribPointer(aColorLoc, 4, GLES30.GL_FLOAT, false, 0, colorBuffer);
+            GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 4);
         }
 
         // Limpiar
-        GLES20.glDisableVertexAttribArray(aPositionLoc);
-        GLES20.glDisableVertexAttribArray(aColorLoc);
+        GLES30.glDisableVertexAttribArray(aPositionLoc);
+        GLES30.glDisableVertexAttribArray(aColorLoc);
 
         // Restaurar estados
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
     }
 
     /**

@@ -1,7 +1,7 @@
 package com.secret.blackholeglow.sharing;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.util.Log;
 
 import java.nio.ByteBuffer;
@@ -96,18 +96,18 @@ public class LikeButton {
         if (isInitialized) return;
 
         // Crear programa de shaders
-        int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, VERTEX_SHADER);
-        int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
+        int vertexShader = loadShader(GLES30.GL_VERTEX_SHADER, VERTEX_SHADER);
+        int fragmentShader = loadShader(GLES30.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
 
-        programId = GLES20.glCreateProgram();
-        GLES20.glAttachShader(programId, vertexShader);
-        GLES20.glAttachShader(programId, fragmentShader);
-        GLES20.glLinkProgram(programId);
+        programId = GLES30.glCreateProgram();
+        GLES30.glAttachShader(programId, vertexShader);
+        GLES30.glAttachShader(programId, fragmentShader);
+        GLES30.glLinkProgram(programId);
 
         // Obtener handles
-        positionHandle = GLES20.glGetAttribLocation(programId, "a_Position");
-        mvpMatrixHandle = GLES20.glGetUniformLocation(programId, "u_MVPMatrix");
-        colorHandle = GLES20.glGetUniformLocation(programId, "u_Color");
+        positionHandle = GLES30.glGetAttribLocation(programId, "a_Position");
+        mvpMatrixHandle = GLES30.glGetUniformLocation(programId, "u_MVPMatrix");
+        colorHandle = GLES30.glGetUniformLocation(programId, "u_Color");
 
         // Crear geometría del corazón (simplificado como círculo con pico)
         createHeartGeometry();
@@ -157,11 +157,11 @@ public class LikeButton {
         if (!isInitialized) return;
 
         // Habilitar blending para transparencia
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         // Usar programa
-        GLES20.glUseProgram(programId);
+        GLES30.glUseProgram(programId);
 
         // Actualizar fase de pulso - más pronunciado
         pulsePhase = time;
@@ -186,7 +186,7 @@ public class LikeButton {
 
         android.opengl.Matrix.multiplyMM(finalMatrixCache, 0, mvpMatrix, 0, modelMatrixCache, 0);
 
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrixCache, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrixCache, 0);
 
         // Determinar color base (⚡ OPTIMIZADO: copiar en lugar de clone)
         float[] sourceColor;
@@ -200,12 +200,12 @@ public class LikeButton {
         System.arraycopy(sourceColor, 0, currentColorCache, 0, 4);
 
         // Pasar color
-        GLES20.glUniform4fv(colorHandle, 1, currentColorCache, 0);
+        GLES30.glUniform4fv(colorHandle, 1, currentColorCache, 0);
 
         // Dibujar corazón principal
-        GLES20.glEnableVertexAttribArray(positionHandle);
-        GLES20.glVertexAttribPointer(positionHandle, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 66);
+        GLES30.glEnableVertexAttribArray(positionHandle);
+        GLES30.glVertexAttribPointer(positionHandle, 2, GLES30.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 66);
 
         // ═══════════════════════════════════════════════════════════
         // CAPA 3: HIGHLIGHT INTERIOR (brillo en el centro)
@@ -219,7 +219,7 @@ public class LikeButton {
         // ═══════════════════════════════════════════════════════════
         drawBorder(finalMatrixCache);
 
-        GLES20.glDisableVertexAttribArray(positionHandle);
+        GLES30.glDisableVertexAttribArray(positionHandle);
     }
 
     /**
@@ -233,7 +233,7 @@ public class LikeButton {
 
         android.opengl.Matrix.multiplyMM(finalMatrixCache, 0, mvpMatrix, 0, modelMatrixCache, 0);
 
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrixCache, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrixCache, 0);
 
         // Interpolar entre cyan y rosa según el tiempo para efecto neón pulsante
         float colorMix = (float) (Math.sin(pulsePhase * 2.5) * 0.5 + 0.5);
@@ -241,11 +241,11 @@ public class LikeButton {
         glowColorCache[1] = glowCyan[1] * (1 - colorMix) + glowPink[1] * colorMix;
         glowColorCache[2] = glowCyan[2] * (1 - colorMix) + glowPink[2] * colorMix;
         glowColorCache[3] = alpha * 0.8f;
-        GLES20.glUniform4fv(colorHandle, 1, glowColorCache, 0);
+        GLES30.glUniform4fv(colorHandle, 1, glowColorCache, 0);
 
-        GLES20.glEnableVertexAttribArray(positionHandle);
-        GLES20.glVertexAttribPointer(positionHandle, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 66);
+        GLES30.glEnableVertexAttribArray(positionHandle);
+        GLES30.glVertexAttribPointer(positionHandle, 2, GLES30.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 66);
     }
 
     /**
@@ -259,7 +259,7 @@ public class LikeButton {
 
         android.opengl.Matrix.multiplyMM(finalMatrixCache, 0, mvpMatrix, 0, modelMatrixCache, 0);
 
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrixCache, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrixCache, 0);
 
         // Highlight cyan brillante para efecto neón interior
         float highlightPulse = (float) (Math.sin(pulsePhase * 3.0) * 0.2 + 0.5);
@@ -267,11 +267,11 @@ public class LikeButton {
         highlightColorCache[1] = 0.5f + glowCyan[1] * 0.5f;
         highlightColorCache[2] = 0.5f + glowCyan[2] * 0.5f;
         highlightColorCache[3] = highlightPulse;
-        GLES20.glUniform4fv(colorHandle, 1, highlightColorCache, 0);
+        GLES30.glUniform4fv(colorHandle, 1, highlightColorCache, 0);
 
-        GLES20.glEnableVertexAttribArray(positionHandle);
-        GLES20.glVertexAttribPointer(positionHandle, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 66);
+        GLES30.glEnableVertexAttribArray(positionHandle);
+        GLES30.glVertexAttribPointer(positionHandle, 2, GLES30.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 66);
     }
 
     /**
@@ -285,9 +285,9 @@ public class LikeButton {
         borderColorCache[1] = glowCyan[1] * borderPulse + 0.1f;
         borderColorCache[2] = glowCyan[2] * borderPulse;
         borderColorCache[3] = 1.0f;
-        GLES20.glUniform4fv(colorHandle, 1, borderColorCache, 0);
-        GLES20.glLineWidth(3.0f);  // Borde más grueso para efecto neón
-        GLES20.glDrawArrays(GLES20.GL_LINE_LOOP, 1, 65);
+        GLES30.glUniform4fv(colorHandle, 1, borderColorCache, 0);
+        GLES30.glLineWidth(3.0f);  // Borde más grueso para efecto neón
+        GLES30.glDrawArrays(GLES30.GL_LINE_LOOP, 1, 65);
     }
 
     /**
@@ -302,18 +302,18 @@ public class LikeButton {
 
         android.opengl.Matrix.multiplyMM(finalMatrixCache, 0, mvpMatrix, 0, modelMatrixCache, 0);
 
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrixCache, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrixCache, 0);
 
         heartColorCache[0] = 1.0f;
         heartColorCache[1] = 0.8f;
         heartColorCache[2] = 0.85f;
         heartColorCache[3] = 1.0f;
-        GLES20.glUniform4fv(colorHandle, 1, heartColorCache, 0);
+        GLES30.glUniform4fv(colorHandle, 1, heartColorCache, 0);
 
-        GLES20.glEnableVertexAttribArray(positionHandle);
-        GLES20.glVertexAttribPointer(positionHandle, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 34);
-        GLES20.glDisableVertexAttribArray(positionHandle);
+        GLES30.glEnableVertexAttribArray(positionHandle);
+        GLES30.glVertexAttribPointer(positionHandle, 2, GLES30.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 34);
+        GLES30.glDisableVertexAttribArray(positionHandle);
     }
 
     /**
@@ -385,9 +385,9 @@ public class LikeButton {
      * 🎨 Carga un shader
      */
     private int loadShader(int type, String shaderCode) {
-        int shader = GLES20.glCreateShader(type);
-        GLES20.glShaderSource(shader, shaderCode);
-        GLES20.glCompileShader(shader);
+        int shader = GLES30.glCreateShader(type);
+        GLES30.glShaderSource(shader, shaderCode);
+        GLES30.glCompileShader(shader);
         return shader;
     }
 
@@ -396,7 +396,7 @@ public class LikeButton {
      */
     public void cleanup() {
         if (programId != 0) {
-            GLES20.glDeleteProgram(programId);
+            GLES30.glDeleteProgram(programId);
             programId = 0;
         }
         isInitialized = false;

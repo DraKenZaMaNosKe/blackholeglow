@@ -1,7 +1,7 @@
 package com.secret.blackholeglow.sharing;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.util.Log;
 
 import java.nio.ByteBuffer;
@@ -94,18 +94,18 @@ public class SongNotification {
         if (isInitialized) return;
 
         // Crear programa de shaders
-        int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, VERTEX_SHADER);
-        int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
+        int vertexShader = loadShader(GLES30.GL_VERTEX_SHADER, VERTEX_SHADER);
+        int fragmentShader = loadShader(GLES30.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
 
-        programId = GLES20.glCreateProgram();
-        GLES20.glAttachShader(programId, vertexShader);
-        GLES20.glAttachShader(programId, fragmentShader);
-        GLES20.glLinkProgram(programId);
+        programId = GLES30.glCreateProgram();
+        GLES30.glAttachShader(programId, vertexShader);
+        GLES30.glAttachShader(programId, fragmentShader);
+        GLES30.glLinkProgram(programId);
 
         // Obtener handles
-        positionHandle = GLES20.glGetAttribLocation(programId, "a_Position");
-        mvpMatrixHandle = GLES20.glGetUniformLocation(programId, "u_MVPMatrix");
-        colorHandle = GLES20.glGetUniformLocation(programId, "u_Color");
+        positionHandle = GLES30.glGetAttribLocation(programId, "a_Position");
+        mvpMatrixHandle = GLES30.glGetUniformLocation(programId, "u_MVPMatrix");
+        colorHandle = GLES30.glGetUniformLocation(programId, "u_Color");
 
         // Crear geometría del rectángulo redondeado (simplificado como rectángulo)
         createRoundedRectGeometry();
@@ -209,11 +209,11 @@ public class SongNotification {
 
         update();
 
-        GLES20.glUseProgram(programId);
+        GLES30.glUseProgram(programId);
 
         // Habilitar blending para transparencia
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         // Calcular matriz de transformación (⚡ OPTIMIZADO: usar caches)
         android.opengl.Matrix.setIdentityM(modelMatrixCache, 0);
@@ -223,7 +223,7 @@ public class SongNotification {
         android.opengl.Matrix.multiplyMM(finalMatrixCache, 0, mvpMatrix, 0, modelMatrixCache, 0);
 
         // Pasar matriz
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrixCache, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrixCache, 0);
 
         // NO dibujar nada - solo el texto (se dibuja desde SceneRenderer)
         // El fondo y borde están ocultos para un look más limpio
@@ -249,18 +249,18 @@ public class SongNotification {
 
         android.opengl.Matrix.multiplyMM(finalMatrixCache, 0, mvpMatrix, 0, modelMatrixCache, 0);
 
-        GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrixCache, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandle, 1, false, finalMatrixCache, 0);
 
         // Color rojo vibrante que pulsa
         float colorPulse = 0.8f + 0.2f * (float)Math.sin(pulseTime * Math.PI * 4);
         float[] indicatorColor = {1.0f, 0.2f * colorPulse, 0.3f * colorPulse, alpha};
-        GLES20.glUniform4fv(colorHandle, 1, indicatorColor, 0);
+        GLES30.glUniform4fv(colorHandle, 1, indicatorColor, 0);
 
         // Dibujar el indicador
-        GLES20.glEnableVertexAttribArray(positionHandle);
-        GLES20.glVertexAttribPointer(positionHandle, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 4);
-        GLES20.glDisableVertexAttribArray(positionHandle);
+        GLES30.glEnableVertexAttribArray(positionHandle);
+        GLES30.glVertexAttribPointer(positionHandle, 2, GLES30.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 4);
+        GLES30.glDisableVertexAttribArray(positionHandle);
     }
 
     /**
@@ -294,9 +294,9 @@ public class SongNotification {
      * 🎨 Carga un shader
      */
     private int loadShader(int type, String shaderCode) {
-        int shader = GLES20.glCreateShader(type);
-        GLES20.glShaderSource(shader, shaderCode);
-        GLES20.glCompileShader(shader);
+        int shader = GLES30.glCreateShader(type);
+        GLES30.glShaderSource(shader, shaderCode);
+        GLES30.glCompileShader(shader);
         return shader;
     }
 
@@ -305,7 +305,7 @@ public class SongNotification {
      */
     public void cleanup() {
         if (programId != 0) {
-            GLES20.glDeleteProgram(programId);
+            GLES30.glDeleteProgram(programId);
             programId = 0;
         }
         isInitialized = false;

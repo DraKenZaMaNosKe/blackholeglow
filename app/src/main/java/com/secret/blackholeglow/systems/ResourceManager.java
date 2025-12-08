@@ -3,7 +3,7 @@ package com.secret.blackholeglow.systems;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.GLUtils;
 import android.util.Log;
 
@@ -157,14 +157,14 @@ public class ResourceManager implements TextureLoader {
     public void releaseTexture(int resourceId) {
         Integer textureId = textureCache.remove(resourceId);
         if (textureId != null && textureId != 0) {
-            GLES20.glDeleteTextures(1, new int[]{textureId}, 0);
+            GLES30.glDeleteTextures(1, new int[]{textureId}, 0);
             Log.d(TAG, "🗑️ Textura liberada: " + resourceId);
         }
     }
 
     private int loadTextureInternal(int resourceId) {
         final int[] handle = new int[1];
-        GLES20.glGenTextures(1, handle, 0);
+        GLES30.glGenTextures(1, handle, 0);
 
         if (handle[0] == 0) {
             Log.e(TAG, "❌ Error generando ID de textura");
@@ -193,21 +193,21 @@ public class ResourceManager implements TextureLoader {
         totalTextureMemory += bmp.getByteCount();
 
         // Subir a GPU
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, handle[0]);
-        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bmp, 0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, handle[0]);
+        GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bmp, 0);
 
         int width = bmp.getWidth();
         int height = bmp.getHeight();
         bmp.recycle();
 
         // Generar mipmaps
-        GLES20.glGenerateMipmap(GLES20.GL_TEXTURE_2D);
+        GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D);
 
         // Configurar filtros
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR_MIPMAP_LINEAR);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_REPEAT);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_REPEAT);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR_MIPMAP_LINEAR);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_REPEAT);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_REPEAT);
 
         Log.d(TAG, "✓ Textura cargada: " + resourceId + " (" + width + "x" + height + ") → ID:" + handle[0]);
 
@@ -222,17 +222,17 @@ public class ResourceManager implements TextureLoader {
      * Compilar shader desde código fuente
      */
     public int compileShader(int type, String source) {
-        int shader = GLES20.glCreateShader(type);
-        GLES20.glShaderSource(shader, source);
-        GLES20.glCompileShader(shader);
+        int shader = GLES30.glCreateShader(type);
+        GLES30.glShaderSource(shader, source);
+        GLES30.glCompileShader(shader);
 
         int[] status = new int[1];
-        GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, status, 0);
+        GLES30.glGetShaderiv(shader, GLES30.GL_COMPILE_STATUS, status, 0);
 
         if (status[0] == 0) {
-            String error = GLES20.glGetShaderInfoLog(shader);
+            String error = GLES30.glGetShaderInfoLog(shader);
             Log.e(TAG, "❌ Error compilando shader: " + error);
-            GLES20.glDeleteShader(shader);
+            GLES30.glDeleteShader(shader);
             return 0;
         }
 
@@ -271,31 +271,31 @@ public class ResourceManager implements TextureLoader {
      * Crear programa desde código fuente
      */
     public int createProgram(String vertexSource, String fragmentSource) {
-        int vs = compileShader(GLES20.GL_VERTEX_SHADER, vertexSource);
-        int fs = compileShader(GLES20.GL_FRAGMENT_SHADER, fragmentSource);
+        int vs = compileShader(GLES30.GL_VERTEX_SHADER, vertexSource);
+        int fs = compileShader(GLES30.GL_FRAGMENT_SHADER, fragmentSource);
 
         if (vs == 0 || fs == 0) {
             return 0;
         }
 
-        int program = GLES20.glCreateProgram();
-        GLES20.glAttachShader(program, vs);
-        GLES20.glAttachShader(program, fs);
-        GLES20.glLinkProgram(program);
+        int program = GLES30.glCreateProgram();
+        GLES30.glAttachShader(program, vs);
+        GLES30.glAttachShader(program, fs);
+        GLES30.glLinkProgram(program);
 
         int[] status = new int[1];
-        GLES20.glGetProgramiv(program, GLES20.GL_LINK_STATUS, status, 0);
+        GLES30.glGetProgramiv(program, GLES30.GL_LINK_STATUS, status, 0);
 
         if (status[0] == 0) {
-            String error = GLES20.glGetProgramInfoLog(program);
+            String error = GLES30.glGetProgramInfoLog(program);
             Log.e(TAG, "❌ Error enlazando programa: " + error);
-            GLES20.glDeleteProgram(program);
+            GLES30.glDeleteProgram(program);
             return 0;
         }
 
         // Limpiar shaders (ya están en el programa)
-        GLES20.glDeleteShader(vs);
-        GLES20.glDeleteShader(fs);
+        GLES30.glDeleteShader(vs);
+        GLES30.glDeleteShader(fs);
 
         programsLinked++;
         return program;
@@ -337,7 +337,7 @@ public class ResourceManager implements TextureLoader {
         String cacheKey = vertexAssetPath + "|" + fragmentAssetPath;
         Integer programId = programCache.remove(cacheKey);
         if (programId != null && programId != 0) {
-            GLES20.glDeleteProgram(programId);
+            GLES30.glDeleteProgram(programId);
             Log.d(TAG, "🗑️ Programa liberado: " + cacheKey);
         }
     }
@@ -430,7 +430,7 @@ public class ResourceManager implements TextureLoader {
         // Liberar texturas
         for (Integer textureId : textureCache.values()) {
             if (textureId != 0) {
-                GLES20.glDeleteTextures(1, new int[]{textureId}, 0);
+                GLES30.glDeleteTextures(1, new int[]{textureId}, 0);
             }
         }
         textureCache.clear();
@@ -438,7 +438,7 @@ public class ResourceManager implements TextureLoader {
         // Liberar programas
         for (Integer programId : programCache.values()) {
             if (programId != 0) {
-                GLES20.glDeleteProgram(programId);
+                GLES30.glDeleteProgram(programId);
             }
         }
         programCache.clear();
@@ -446,7 +446,7 @@ public class ResourceManager implements TextureLoader {
         // Liberar shaders (por si quedaron)
         for (Integer shaderId : shaderCache.values()) {
             if (shaderId != 0) {
-                GLES20.glDeleteShader(shaderId);
+                GLES30.glDeleteShader(shaderId);
             }
         }
         shaderCache.clear();

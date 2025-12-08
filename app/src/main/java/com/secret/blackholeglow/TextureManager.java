@@ -2,7 +2,7 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.util.Log;
 
 import java.util.HashMap;
@@ -58,5 +58,32 @@ public class TextureManager implements TextureLoader {
         return texId;
     }
 
+    /**
+     * 🔧 FIX: Libera todas las texturas cacheadas de la GPU.
+     * Llamar cuando la escena se destruye o la app se cierra.
+     */
+    public void release() {
+        if (textureCache.isEmpty()) return;
 
+        Log.d("TextureManager", "🗑️ Liberando " + textureCache.size() + " texturas...");
+
+        for (Map.Entry<Integer, Integer> entry : textureCache.entrySet()) {
+            int texId = entry.getValue();
+            if (texId != 0) {
+                int[] textures = {texId};
+                GLES30.glDeleteTextures(1, textures, 0);
+            }
+        }
+
+        textureCache.clear();
+        initialized = false;
+        Log.d("TextureManager", "✅ Todas las texturas liberadas");
+    }
+
+    /**
+     * Devuelve el número de texturas en caché.
+     */
+    public int getCachedTextureCount() {
+        return textureCache.size();
+    }
 }

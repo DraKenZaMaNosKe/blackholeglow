@@ -2,7 +2,7 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 
 /**
  * Base para todos los programas GLSL:
@@ -26,14 +26,14 @@ public abstract class BaseShaderProgram {
         programId = ShaderUtils.createProgramFromAssets(
                 ctx, vertexAssetPath, fragmentAssetPath);
         // 2) Cachea las ubicaciones de los uniforms
-        uTimeLoc       = GLES20.glGetUniformLocation(programId, "u_Time");
-        uMvpLoc        = GLES20.glGetUniformLocation(programId, "u_MVP");
-        uResolutionLoc = GLES20.glGetUniformLocation(programId, "u_Resolution");
+        uTimeLoc       = GLES30.glGetUniformLocation(programId, "u_Time");
+        uMvpLoc        = GLES30.glGetUniformLocation(programId, "u_MVP");
+        uResolutionLoc = GLES30.glGetUniformLocation(programId, "u_Resolution");
     }
 
     /** Activa este programa (glUseProgram). */
     public void useProgram() {
-        GLES20.glUseProgram(programId);
+        GLES30.glUseProgram(programId);
     }
 
     /**
@@ -41,7 +41,7 @@ public abstract class BaseShaderProgram {
      * Llama a esto UNA sola vez por draw, antes de dibujar.
      */
     public void setTime(float phase) {
-        GLES20.glUniform1f(uTimeLoc, phase);
+        GLES30.glUniform1f(uTimeLoc, phase);
     }
 
     /**
@@ -50,7 +50,7 @@ public abstract class BaseShaderProgram {
      */
     public void setMvpAndResolution(float[] mvpMatrix,
                                     int width, int height) {
-        GLES20.glUniformMatrix4fv(uMvpLoc, 1, false, mvpMatrix, 0);
-        GLES20.glUniform2f(uResolutionLoc, (float)width, (float)height);
+        GLES30.glUniformMatrix4fv(uMvpLoc, 1, false, mvpMatrix, 0);
+        GLES30.glUniform2f(uResolutionLoc, (float)width, (float)height);
     }
 }

@@ -1,7 +1,7 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.Matrix;
 import android.util.Log;
 
@@ -126,44 +126,44 @@ public class SunHeatEffect implements SceneObject, CameraAware {
             "    gl_FragColor = vec4(color, alpha);\n" +
             "}\n";
 
-        int vShader = compileShader(GLES20.GL_VERTEX_SHADER, vertexShader);
-        int fShader = compileShader(GLES20.GL_FRAGMENT_SHADER, fragmentShader);
+        int vShader = compileShader(GLES30.GL_VERTEX_SHADER, vertexShader);
+        int fShader = compileShader(GLES30.GL_FRAGMENT_SHADER, fragmentShader);
 
-        shaderProgram = GLES20.glCreateProgram();
-        GLES20.glAttachShader(shaderProgram, vShader);
-        GLES20.glAttachShader(shaderProgram, fShader);
-        GLES20.glLinkProgram(shaderProgram);
+        shaderProgram = GLES30.glCreateProgram();
+        GLES30.glAttachShader(shaderProgram, vShader);
+        GLES30.glAttachShader(shaderProgram, fShader);
+        GLES30.glLinkProgram(shaderProgram);
 
         int[] linkStatus = new int[1];
-        GLES20.glGetProgramiv(shaderProgram, GLES20.GL_LINK_STATUS, linkStatus, 0);
+        GLES30.glGetProgramiv(shaderProgram, GLES30.GL_LINK_STATUS, linkStatus, 0);
         if (linkStatus[0] == 0) {
-            Log.e(TAG, "Error linking shader: " + GLES20.glGetProgramInfoLog(shaderProgram));
-            GLES20.glDeleteProgram(shaderProgram);
+            Log.e(TAG, "Error linking shader: " + GLES30.glGetProgramInfoLog(shaderProgram));
+            GLES30.glDeleteProgram(shaderProgram);
             shaderProgram = 0;
             return;
         }
 
-        aPositionLoc = GLES20.glGetAttribLocation(shaderProgram, "a_Position");
-        uMVPLoc = GLES20.glGetUniformLocation(shaderProgram, "u_MVP");
-        uTimeLoc = GLES20.glGetUniformLocation(shaderProgram, "u_Time");
-        uAlphaLoc = GLES20.glGetUniformLocation(shaderProgram, "u_Alpha");
+        aPositionLoc = GLES30.glGetAttribLocation(shaderProgram, "a_Position");
+        uMVPLoc = GLES30.glGetUniformLocation(shaderProgram, "u_MVP");
+        uTimeLoc = GLES30.glGetUniformLocation(shaderProgram, "u_Time");
+        uAlphaLoc = GLES30.glGetUniformLocation(shaderProgram, "u_Alpha");
 
-        GLES20.glDeleteShader(vShader);
-        GLES20.glDeleteShader(fShader);
+        GLES30.glDeleteShader(vShader);
+        GLES30.glDeleteShader(fShader);
 
         Log.d(TAG, "✓ Shaders de calor compilados");
     }
 
     private int compileShader(int type, String source) {
-        int shader = GLES20.glCreateShader(type);
-        GLES20.glShaderSource(shader, source);
-        GLES20.glCompileShader(shader);
+        int shader = GLES30.glCreateShader(type);
+        GLES30.glShaderSource(shader, source);
+        GLES30.glCompileShader(shader);
 
         int[] compiled = new int[1];
-        GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0);
+        GLES30.glGetShaderiv(shader, GLES30.GL_COMPILE_STATUS, compiled, 0);
         if (compiled[0] == 0) {
-            Log.e(TAG, "Shader compile error: " + GLES20.glGetShaderInfoLog(shader));
-            GLES20.glDeleteShader(shader);
+            Log.e(TAG, "Shader compile error: " + GLES30.glGetShaderInfoLog(shader));
+            GLES30.glDeleteShader(shader);
             return 0;
         }
         return shader;
@@ -224,11 +224,11 @@ public class SunHeatEffect implements SceneObject, CameraAware {
         if (camera == null || shaderProgram == 0) return;
 
         // Configurar blending para efecto aditivo/transparente
-        GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE);  // Blending aditivo
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);  // Sin depth test para overlay
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE);  // Blending aditivo
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);  // Sin depth test para overlay
 
-        GLES20.glUseProgram(shaderProgram);
+        GLES30.glUseProgram(shaderProgram);
 
         // Construir matriz modelo (esfera centrada en el sol)
         // No necesita ser billboard, el efecto de calor rodea la esfera
@@ -246,22 +246,22 @@ public class SunHeatEffect implements SceneObject, CameraAware {
         camera.computeMvp(modelMatrix, mvpMatrix);
 
         // Enviar uniforms
-        GLES20.glUniformMatrix4fv(uMVPLoc, 1, false, mvpMatrix, 0);
-        GLES20.glUniform1f(uTimeLoc, time);
-        GLES20.glUniform1f(uAlphaLoc, 1.0f);
+        GLES30.glUniformMatrix4fv(uMVPLoc, 1, false, mvpMatrix, 0);
+        GLES30.glUniform1f(uTimeLoc, time);
+        GLES30.glUniform1f(uAlphaLoc, 1.0f);
 
         // Dibujar anillo
         vertexBuffer.position(0);
-        GLES20.glEnableVertexAttribArray(aPositionLoc);
-        GLES20.glVertexAttribPointer(aPositionLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glEnableVertexAttribArray(aPositionLoc);
+        GLES30.glVertexAttribPointer(aPositionLoc, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
         // Dibujar como triangle strip para el anillo
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, (NUM_SEGMENTS + 1) * 2);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, (NUM_SEGMENTS + 1) * 2);
 
-        GLES20.glDisableVertexAttribArray(aPositionLoc);
+        GLES30.glDisableVertexAttribArray(aPositionLoc);
 
         // Restaurar estado
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
     }
 }

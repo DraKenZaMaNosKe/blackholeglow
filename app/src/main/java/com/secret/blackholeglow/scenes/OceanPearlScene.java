@@ -743,50 +743,50 @@ public class OceanPearlScene extends WallpaperScene {
             String vertexSource = getVertexShaderSource();
             String fragmentSource = getFragmentShaderSource();
 
-            int vertexShader = compileShader(android.opengl.GLES20.GL_VERTEX_SHADER, vertexSource);
-            int fragmentShader = compileShader(android.opengl.GLES20.GL_FRAGMENT_SHADER, fragmentSource);
+            int vertexShader = compileShader(android.opengl.GLES30.GL_VERTEX_SHADER, vertexSource);
+            int fragmentShader = compileShader(android.opengl.GLES30.GL_FRAGMENT_SHADER, fragmentSource);
 
             if (vertexShader == 0 || fragmentShader == 0) {
                 Log.e("BaseOceanObject", "Error compilando shaders para " + name);
                 return;
             }
 
-            programId = android.opengl.GLES20.glCreateProgram();
-            android.opengl.GLES20.glAttachShader(programId, vertexShader);
-            android.opengl.GLES20.glAttachShader(programId, fragmentShader);
-            android.opengl.GLES20.glLinkProgram(programId);
+            programId = android.opengl.GLES30.glCreateProgram();
+            android.opengl.GLES30.glAttachShader(programId, vertexShader);
+            android.opengl.GLES30.glAttachShader(programId, fragmentShader);
+            android.opengl.GLES30.glLinkProgram(programId);
 
             // Verificar link
             int[] linkStatus = new int[1];
-            android.opengl.GLES20.glGetProgramiv(programId, android.opengl.GLES20.GL_LINK_STATUS, linkStatus, 0);
+            android.opengl.GLES30.glGetProgramiv(programId, android.opengl.GLES30.GL_LINK_STATUS, linkStatus, 0);
             if (linkStatus[0] == 0) {
-                Log.e("BaseOceanObject", "Error linking program: " + android.opengl.GLES20.glGetProgramInfoLog(programId));
-                android.opengl.GLES20.glDeleteProgram(programId);
+                Log.e("BaseOceanObject", "Error linking program: " + android.opengl.GLES30.glGetProgramInfoLog(programId));
+                android.opengl.GLES30.glDeleteProgram(programId);
                 programId = 0;
                 return;
             }
 
             // Obtener locations
-            aPositionLoc = android.opengl.GLES20.glGetAttribLocation(programId, "a_Position");
-            aTexCoordLoc = android.opengl.GLES20.glGetAttribLocation(programId, "a_TexCoord");
-            uTimeLoc = android.opengl.GLES20.glGetUniformLocation(programId, "u_Time");
+            aPositionLoc = android.opengl.GLES30.glGetAttribLocation(programId, "a_Position");
+            aTexCoordLoc = android.opengl.GLES30.glGetAttribLocation(programId, "a_TexCoord");
+            uTimeLoc = android.opengl.GLES30.glGetUniformLocation(programId, "u_Time");
 
             // Limpiar shaders (ya estan linkeados)
-            android.opengl.GLES20.glDeleteShader(vertexShader);
-            android.opengl.GLES20.glDeleteShader(fragmentShader);
+            android.opengl.GLES30.glDeleteShader(vertexShader);
+            android.opengl.GLES30.glDeleteShader(fragmentShader);
         }
 
         protected int compileShader(int type, String source) {
-            int shader = android.opengl.GLES20.glCreateShader(type);
-            android.opengl.GLES20.glShaderSource(shader, source);
-            android.opengl.GLES20.glCompileShader(shader);
+            int shader = android.opengl.GLES30.glCreateShader(type);
+            android.opengl.GLES30.glShaderSource(shader, source);
+            android.opengl.GLES30.glCompileShader(shader);
 
             int[] compiled = new int[1];
-            android.opengl.GLES20.glGetShaderiv(shader, android.opengl.GLES20.GL_COMPILE_STATUS, compiled, 0);
+            android.opengl.GLES30.glGetShaderiv(shader, android.opengl.GLES30.GL_COMPILE_STATUS, compiled, 0);
             if (compiled[0] == 0) {
                 Log.e("BaseOceanObject", "Shader compile error (" + name + "): " +
-                    android.opengl.GLES20.glGetShaderInfoLog(shader));
-                android.opengl.GLES20.glDeleteShader(shader);
+                    android.opengl.GLES30.glGetShaderInfoLog(shader));
+                android.opengl.GLES30.glDeleteShader(shader);
                 return 0;
             }
             return shader;
@@ -805,33 +805,33 @@ public class OceanPearlScene extends WallpaperScene {
         public void draw() {
             if (programId == 0 || disposed) return;
 
-            android.opengl.GLES20.glUseProgram(programId);
+            android.opengl.GLES30.glUseProgram(programId);
 
             // Habilitar blending
-            android.opengl.GLES20.glEnable(android.opengl.GLES20.GL_BLEND);
-            android.opengl.GLES20.glBlendFunc(
-                android.opengl.GLES20.GL_SRC_ALPHA,
-                android.opengl.GLES20.GL_ONE_MINUS_SRC_ALPHA
+            android.opengl.GLES30.glEnable(android.opengl.GLES30.GL_BLEND);
+            android.opengl.GLES30.glBlendFunc(
+                android.opengl.GLES30.GL_SRC_ALPHA,
+                android.opengl.GLES30.GL_ONE_MINUS_SRC_ALPHA
             );
 
             // Pasar tiempo
-            android.opengl.GLES20.glUniform1f(uTimeLoc, time);
+            android.opengl.GLES30.glUniform1f(uTimeLoc, time);
 
             // Configurar vertices
             vertexBuffer.position(0);
-            android.opengl.GLES20.glEnableVertexAttribArray(aPositionLoc);
-            android.opengl.GLES20.glVertexAttribPointer(aPositionLoc, 2, android.opengl.GLES20.GL_FLOAT, false, 16, vertexBuffer);
+            android.opengl.GLES30.glEnableVertexAttribArray(aPositionLoc);
+            android.opengl.GLES30.glVertexAttribPointer(aPositionLoc, 2, android.opengl.GLES30.GL_FLOAT, false, 16, vertexBuffer);
 
             vertexBuffer.position(2);
-            android.opengl.GLES20.glEnableVertexAttribArray(aTexCoordLoc);
-            android.opengl.GLES20.glVertexAttribPointer(aTexCoordLoc, 2, android.opengl.GLES20.GL_FLOAT, false, 16, vertexBuffer);
+            android.opengl.GLES30.glEnableVertexAttribArray(aTexCoordLoc);
+            android.opengl.GLES30.glVertexAttribPointer(aTexCoordLoc, 2, android.opengl.GLES30.GL_FLOAT, false, 16, vertexBuffer);
 
             // Dibujar
-            android.opengl.GLES20.glDrawArrays(android.opengl.GLES20.GL_TRIANGLES, 0, 6);
+            android.opengl.GLES30.glDrawArrays(android.opengl.GLES30.GL_TRIANGLES, 0, 6);
 
             // Limpiar
-            android.opengl.GLES20.glDisableVertexAttribArray(aPositionLoc);
-            android.opengl.GLES20.glDisableVertexAttribArray(aTexCoordLoc);
+            android.opengl.GLES30.glDisableVertexAttribArray(aPositionLoc);
+            android.opengl.GLES30.glDisableVertexAttribArray(aTexCoordLoc);
         }
 
         @Override
@@ -839,7 +839,7 @@ public class OceanPearlScene extends WallpaperScene {
             if (disposed) return;
 
             if (programId != 0) {
-                android.opengl.GLES20.glDeleteProgram(programId);
+                android.opengl.GLES30.glDeleteProgram(programId);
                 programId = 0;
             }
 

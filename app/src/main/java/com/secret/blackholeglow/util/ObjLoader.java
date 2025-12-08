@@ -59,61 +59,62 @@ public class ObjLoader {
         List<float[]> tmpUVs = new ArrayList<>();
         List<Face> faceList = new ArrayList<>();
 
-        InputStream is = ctx.getAssets().open(assetPath);
-        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-        String line;
+        // 🔧 FIX: Usar try-with-resources para cerrar streams automáticamente
+        try (InputStream is = ctx.getAssets().open(assetPath);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
 
-        while ((line = reader.readLine()) != null) {
-            String[] tokens = line.trim().split("\\s+");
-            if (tokens.length < 1) continue;
-            switch (tokens[0]) {
-                case "v":
-                    // Vertice XYZ
-                    float x = Float.parseFloat(tokens[1]);
-                    float y = Float.parseFloat(tokens[2]);
-                    float z = Float.parseFloat(tokens[3]);
-                    tmpVerts.add(new float[]{x, y, z});
-                    break;
-                case "vt":
-                    // Coordenada UV
-                    float u = Float.parseFloat(tokens[1]);
-                    float v = Float.parseFloat(tokens[2]);
-                    tmpUVs.add(new float[]{u, v});
-                    break;
-                case "f":
-                    // ═══════════════════════════════════════════════
-                    // ✅ FIX: Parsear correctamente v/vt/vn
-                    // ═══════════════════════════════════════════════
-                    // Formato: f v1/vt1/vn1 v2/vt2/vn2 v3/vt3/vn3...
-                    int nv = tokens.length - 1;
-                    int[] vertIndices = new int[nv];  // ✅ int[] para modelos grandes
-                    int[] uvIndices = new int[nv];    // ✅ int[] para modelos grandes
-                    boolean hasUVs = true;
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] tokens = line.trim().split("\\s+");
+                if (tokens.length < 1) continue;
+                switch (tokens[0]) {
+                    case "v":
+                        // Vertice XYZ
+                        float x = Float.parseFloat(tokens[1]);
+                        float y = Float.parseFloat(tokens[2]);
+                        float z = Float.parseFloat(tokens[3]);
+                        tmpVerts.add(new float[]{x, y, z});
+                        break;
+                    case "vt":
+                        // Coordenada UV
+                        float u = Float.parseFloat(tokens[1]);
+                        float v = Float.parseFloat(tokens[2]);
+                        tmpUVs.add(new float[]{u, v});
+                        break;
+                    case "f":
+                        // ═══════════════════════════════════════════════
+                        // ✅ FIX: Parsear correctamente v/vt/vn
+                        // ═══════════════════════════════════════════════
+                        // Formato: f v1/vt1/vn1 v2/vt2/vn2 v3/vt3/vn3...
+                        int nv = tokens.length - 1;
+                        int[] vertIndices = new int[nv];  // ✅ int[] para modelos grandes
+                        int[] uvIndices = new int[nv];    // ✅ int[] para modelos grandes
+                        boolean hasUVs = true;
 
-                    for (int i = 0; i < nv; i++) {
-                        String[] parts = tokens[i + 1].split("/");
+                        for (int i = 0; i < nv; i++) {
+                            String[] parts = tokens[i + 1].split("/");
 
-                        // Índice de vértice (siempre presente)
-                        int vertIndex = Integer.parseInt(parts[0]) - 1;
-                        vertIndices[i] = vertIndex;  // ✅ Sin cast a short
+                            // Índice de vértice (siempre presente)
+                            int vertIndex = Integer.parseInt(parts[0]) - 1;
+                            vertIndices[i] = vertIndex;  // ✅ Sin cast a short
 
-                        // Índice de UV (opcional - puede ser "v//vn" o "v/vt/vn")
-                        if (parts.length >= 2 && !parts[1].isEmpty()) {
-                            int uvIndex = Integer.parseInt(parts[1]) - 1;
-                            uvIndices[i] = uvIndex;  // ✅ Sin cast a short
-                        } else {
-                            hasUVs = false;
+                            // Índice de UV (opcional - puede ser "v//vn" o "v/vt/vn")
+                            if (parts.length >= 2 && !parts[1].isEmpty()) {
+                                int uvIndex = Integer.parseInt(parts[1]) - 1;
+                                uvIndices[i] = uvIndex;  // ✅ Sin cast a short
+                            } else {
+                                hasUVs = false;
+                            }
                         }
-                    }
 
-                    faceList.add(new Face(vertIndices, hasUVs ? uvIndices : null));
-                    break;
-                default:
-                    // ignorar normales, comentarios, etc.
-                    break;
+                        faceList.add(new Face(vertIndices, hasUVs ? uvIndices : null));
+                        break;
+                    default:
+                        // ignorar normales, comentarios, etc.
+                        break;
+                }
             }
-        }
-        reader.close();
+        } // Streams se cierran automáticamente aquí
 
         int vCount = tmpVerts.size();
         Log.d(TAG, "ObjLoader: vértices leídos = " + vCount);

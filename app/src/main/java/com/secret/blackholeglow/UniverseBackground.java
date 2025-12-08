@@ -1,7 +1,7 @@
 package com.secret.blackholeglow;
 
 import android.content.Context;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.Matrix;
 import android.os.SystemClock;
 import android.util.Log;
@@ -85,8 +85,8 @@ public class UniverseBackground
         this.timeOffset = SystemClock.uptimeMillis() * 0.001f;
 
         // Habilita test de profundidad y culling
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-        GLES20.glEnable(GLES20.GL_CULL_FACE);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_CULL_FACE);
 
         // Carga la malla del plano
         ObjLoader.Mesh mesh;
@@ -120,13 +120,13 @@ public class UniverseBackground
         indexBuffer = ib;
 
         // Obtiene locaciones de atributos y uniforms
-        aPosLoc         = GLES20.glGetAttribLocation(programId, "a_Position");
-        aTexLoc         = GLES20.glGetAttribLocation(programId, "a_TexCoord");
-        uMvpLoc         = GLES20.glGetUniformLocation(programId, "u_MVP");
-        uAlphaLoc       = GLES20.glGetUniformLocation(programId, "u_Alpha");
-        uTimeLoc        = GLES20.glGetUniformLocation(programId, "u_Time");
-        uTexLoc         = GLES20.glGetUniformLocation(programId, "u_Texture");
-        uResolutionLoc  = GLES20.glGetUniformLocation(programId, "u_Resolution");
+        aPosLoc         = GLES30.glGetAttribLocation(programId, "a_Position");
+        aTexLoc         = GLES30.glGetAttribLocation(programId, "a_TexCoord");
+        uMvpLoc         = GLES30.glGetUniformLocation(programId, "u_MVP");
+        uAlphaLoc       = GLES30.glGetUniformLocation(programId, "u_Alpha");
+        uTimeLoc        = GLES30.glGetUniformLocation(programId, "u_Time");
+        uTexLoc         = GLES30.glGetUniformLocation(programId, "u_Texture");
+        uResolutionLoc  = GLES30.glGetUniformLocation(programId, "u_Resolution");
 
         Log.d(TAG, "Shader Locations:");
         Log.d(TAG, "  a_Position: " + aPosLoc);
@@ -158,7 +158,7 @@ public class UniverseBackground
     public void release() {
         if (hasTexture && textureId > 0) {
             int[] textures = { textureId };
-            GLES20.glDeleteTextures(1, textures, 0);
+            GLES30.glDeleteTextures(1, textures, 0);
             Log.d(TAG, "✓ Texture released: " + textureId);
         }
     }
@@ -175,9 +175,9 @@ public class UniverseBackground
         useProgram();
 
         // Desactivar depth test para que el fondo siempre esté atrás
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
-        GLES20.glDisable(GLES20.GL_CULL_FACE);
-        GLES20.glDepthMask(false);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+        GLES30.glDisable(GLES30.GL_CULL_FACE);
+        GLES30.glDepthMask(false);
 
         float screenWidth = ScreenManager.getWidth();
         float screenHeight = ScreenManager.getHeight();
@@ -247,37 +247,37 @@ public class UniverseBackground
 
         // Calcula MVP (⚡ OPTIMIZADO: usar mvpCache)
         camera.computeMvp(modelCache, mvpCache);
-        GLES20.glUniformMatrix4fv(uMvpLoc, 1, false, mvpCache, 0);
+        GLES30.glUniformMatrix4fv(uMvpLoc, 1, false, mvpCache, 0);
 
         // Envía uniforms
-        GLES20.glUniform1f(uAlphaLoc, alpha);
+        GLES30.glUniform1f(uAlphaLoc, alpha);
         float t = (SystemClock.uptimeMillis() * 0.001f - timeOffset) % 60.0f;
-        GLES20.glUniform1f(uTimeLoc, t);
-        GLES20.glUniform2f(uResolutionLoc, screenWidth, screenHeight);
+        GLES30.glUniform1f(uTimeLoc, t);
+        GLES30.glUniform2f(uResolutionLoc, screenWidth, screenHeight);
 
         // Textura
         if (hasTexture) {
-            GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-            GLES20.glUniform1i(uTexLoc, 0);
+            GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
+            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
+            GLES30.glUniform1i(uTexLoc, 0);
         }
 
         // Dibuja
         vertexBuffer.position(0);
-        GLES20.glEnableVertexAttribArray(aPosLoc);
-        GLES20.glVertexAttribPointer(aPosLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glEnableVertexAttribArray(aPosLoc);
+        GLES30.glVertexAttribPointer(aPosLoc, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
         if (aTexLoc >= 0) {
             texCoordBuffer.position(0);
-            GLES20.glEnableVertexAttribArray(aTexLoc);
-            GLES20.glVertexAttribPointer(aTexLoc, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
+            GLES30.glEnableVertexAttribArray(aTexLoc);
+            GLES30.glVertexAttribPointer(aTexLoc, 2, GLES30.GL_FLOAT, false, 0, texCoordBuffer);
         }
         indexBuffer.position(0);
-        GLES20.glDrawElements(GLES20.GL_TRIANGLES, indexCount, GLES20.GL_UNSIGNED_SHORT, indexBuffer);
+        GLES30.glDrawElements(GLES30.GL_TRIANGLES, indexCount, GLES30.GL_UNSIGNED_SHORT, indexBuffer);
 
         // Restaura estados
-        GLES20.glDisableVertexAttribArray(aPosLoc);
-        if (aTexLoc >= 0) GLES20.glDisableVertexAttribArray(aTexLoc);
-        GLES20.glDepthMask(true);
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES30.glDisableVertexAttribArray(aPosLoc);
+        if (aTexLoc >= 0) GLES30.glDisableVertexAttribArray(aTexLoc);
+        GLES30.glDepthMask(true);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
     }
 }
