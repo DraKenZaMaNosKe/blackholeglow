@@ -393,12 +393,25 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         boolean shouldUseArcade = sceneName.contains("Batalla") || sceneName.contains("Universo");
         pendingArcadeMode = shouldUseArcade;
 
-        // Activar modo ARCADE para Batalla Cósmica
+        // 🎄 Determinar si debe usar modo CHRISTMAS (para Bosque Navideño)
+        boolean shouldUseChristmas = sceneName.contains("Bosque") || sceneName.contains("Navide");
+
+        // Activar el modo correcto en el panel
         if (panelRenderer != null) {
-            panelRenderer.setArcadeModeEnabled(shouldUseArcade);
-            Log.d(TAG, "🎮 Modo ARCADE " + (shouldUseArcade ? "ACTIVADO" : "desactivado") + " para: " + sceneName);
+            if (shouldUseArcade) {
+                panelRenderer.setArcadeModeEnabled(true);
+                Log.d(TAG, "🎮 Modo ARCADE ACTIVADO para: " + sceneName);
+            } else if (shouldUseChristmas) {
+                panelRenderer.setChristmasModeEnabled(true);
+                Log.d(TAG, "🎄 Modo CHRISTMAS ACTIVADO para: " + sceneName);
+            } else {
+                // Desactivar todos los modos especiales
+                panelRenderer.setArcadeModeEnabled(false);
+                panelRenderer.setChristmasModeEnabled(false);
+                Log.d(TAG, "📱 Modo ESTÁNDAR para: " + sceneName);
+            }
         } else {
-            Log.d(TAG, "🎮 Modo ARCADE pendiente (" + shouldUseArcade + ") - panelRenderer aún no inicializado");
+            Log.d(TAG, "Panel mode pendiente - panelRenderer aún no inicializado");
         }
     }
 

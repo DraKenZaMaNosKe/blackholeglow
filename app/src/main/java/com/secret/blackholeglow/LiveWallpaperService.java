@@ -292,7 +292,15 @@ public class LiveWallpaperService extends WallpaperService {
                 return;
             }
 
-            // PASO 1: Cambiar modo de render PRIMERO
+            // 🔧 FIX: Cargar wallpaper SINCRÓNICAMENTE ANTES de reanudar
+            // Esto asegura que arcadeModeEnabled esté correcto antes del primer frame
+            String wallpaperName = wallpaperPrefs.getSelectedWallpaperSync();
+            if (wallpaperDirector != null) {
+                wallpaperDirector.changeScene(wallpaperName);
+                Log.d(TAG, "🎬 Escena cargada síncronamente: " + wallpaperName);
+            }
+
+            // PASO 1: Cambiar modo de render
             glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
 
             // PASO 2: Reanudar lógica
@@ -304,9 +312,6 @@ public class LiveWallpaperService extends WallpaperService {
             currentState = RenderState.RUNNING;
 
             Log.d(TAG, "🟢 RUNNING");
-
-            // Cargar wallpaper en background
-            loadWallpaperAsync();
         }
 
         /**

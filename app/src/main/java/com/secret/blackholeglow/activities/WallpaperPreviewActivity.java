@@ -89,19 +89,16 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         Log.d(TAG, "🌀 Wallpaper elegido: " + nombre_wallpaper);
 
         // 2️⃣ Verificar si ya está activo
-        boolean isAlreadyActive = isOurWallpaperActive();
-        if (isAlreadyActive) {
-            Log.d(TAG, "⚠️ Wallpaper ya está activo");
-        }
 
         // 3️⃣ Construir layout
-        buildLayout(isAlreadyActive);
+        // 2️⃣ Construir layout (preferencia ya guardada en WallpaperAdapter)
+        buildLayout();
     }
 
     /**
      * Construye el layout completo de la Activity
      */
-    private void buildLayout(boolean wallpaperAlreadyActive) {
+    private void buildLayout() {
         rootContainer = new FrameLayout(this);
         rootContainer.setBackgroundColor(COLOR_DARK_BG);
 
@@ -129,7 +126,7 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         // ════════════════════════════════════════
         // 🔘 Botón Principal
         // ════════════════════════════════════════
-        View buttonSection = createButtonSection(wallpaperAlreadyActive);
+        View buttonSection = createButtonSection();
 
         // ════════════════════════════════════════
         // 📐 Agregar vistas al layout
@@ -271,22 +268,13 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
     /**
      * Crea la sección del botón principal
      */
-    private View createButtonSection(boolean wallpaperAlreadyActive) {
+    private View createButtonSection() {
         LinearLayout container = new LinearLayout(this);
         container.setOrientation(LinearLayout.VERTICAL);
         container.setPadding(30, 20, 30, 30);
         container.setGravity(Gravity.CENTER);
 
-        // Si ya está activo, mostrar mensaje
-        if (wallpaperAlreadyActive) {
             TextView activeMsg = new TextView(this);
-            activeMsg.setText("✓ Este wallpaper ya está instalado");
-            activeMsg.setTextColor(COLOR_GREEN);
-            activeMsg.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-            activeMsg.setGravity(Gravity.CENTER);
-            activeMsg.setPadding(0, 0, 0, 15);
-            container.addView(activeMsg);
-        }
 
         // ════════════════════════════════════════
         // 🔘 Botón Neón Premium
@@ -376,16 +364,14 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         animateGlow(glowView);
 
         // ════════════════════════════════════════
-        // 🗑️ Botón Desinstalar (solo si está instalado)
+        // 🗑️ Botón Desinstalar (siempre visible)
         // ════════════════════════════════════════
-        if (wallpaperAlreadyActive) {
-            View uninstallButton = createUninstallButton();
-            LinearLayout.LayoutParams uninstallParams = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT);
-            uninstallParams.setMargins(0, dpToPx(15), 0, 0);
-            container.addView(uninstallButton, uninstallParams);
-        }
+        View uninstallButton = createUninstallButton();
+        LinearLayout.LayoutParams uninstallParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        uninstallParams.setMargins(0, dpToPx(15), 0, 0);
+        container.addView(uninstallButton, uninstallParams);
 
         return container;
     }
@@ -752,12 +738,8 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
      * Maneja el click en el botón de establecer wallpaper
      */
     private void onSetWallpaperClicked() {
-        // Verificar si ya está activo
-        if (isOurWallpaperActive()) {
-            // Mostrar mensaje de que ya está instalado
-            showAlreadyInstalledMessage();
-            return;
-        }
+        // ✅ Siempre permitir cambiar/reinstalar wallpaper
+        // (El usuario puede querer cambiar de Batalla Cósmica a Bosque Navideño)
 
         // Mostrar anuncio y proceder
         AdsManager.get().showInterstitialAd(this, shown -> {

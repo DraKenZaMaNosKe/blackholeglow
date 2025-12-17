@@ -249,10 +249,21 @@ public class WallpaperCatalog {
                 .descripcion("Defiende la Tierra de meteoritos mientras el OVNI patrulla el cosmos. " +
                         "Sistema de combate espacial con escudos, armas láser y efectos visuales épicos.")
                 .preview(R.drawable.preview_universo)
-                .sceneName("Universo")  // Usa la escena Universo
+                .sceneName("Batalla Cósmica")  // Nombre directo, sin alias confusos
                 .tier(WallpaperTier.FREE)
                 .badge("🔥 POPULAR")
                 .glow(0xFFFF4500)  // Orange Red
+                .featured()
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("Bosque Navideño")
+                .descripcion("Un mágico bosque nevado con nieve cayendo y aurora boreal. "
+                        + "Toca la pantalla para crear ráfagas de nieve.")
+                .preview(R.drawable.christmas_background)
+                .sceneName("Bosque Navideño")
+                .tier(WallpaperTier.FREE)
+                .badge("🎄 NAVIDAD")
+                .glow(0xFF00FF7F)  // Spring Green
                 .featured()
                 .build());
 

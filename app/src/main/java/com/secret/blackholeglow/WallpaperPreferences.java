@@ -62,6 +62,8 @@ public class WallpaperPreferences {
         // 🎨 WALLPAPERS PRINCIPALES (v4.0)
         // ═══════════════════════════════════════════
         "Batalla Cósmica",    // Batalla espacial (modular)
+        "Universo",           // Alias de Batalla Cósmica (compatibilidad SceneFactory)
+        "Bosque Navideño",    // Escena navideña con arbol y nieve
         "Ocean Pearl",        // Fondo del mar con ostra y perla (modular)
 
         // ═══════════════════════════════════════════

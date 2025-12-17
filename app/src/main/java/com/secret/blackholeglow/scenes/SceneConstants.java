@@ -352,6 +352,90 @@ public final class SceneConstants {
     }
 
     // ═══════════════════════════════════════════════════════════════════
+    // 🎄 CHRISTMAS SCENE - Escena Navideña
+    // ═══════════════════════════════════════════════════════════════════
+
+    public static final class Christmas {
+        // ═══ FONDO ═══
+        /** Textura de fondo del bosque nevado */
+        public static final int BACKGROUND_TEXTURE = 0;  // Se asigna en runtime
+
+        // ═══ ÁRBOL DE NAVIDAD ═══
+        /** Posición X del árbol (centro) */
+        public static final float TREE_POSITION_X = 0.0f;
+        /** Posición Y del árbol (base) */
+        public static final float TREE_POSITION_Y = -1.2f;
+        /** Posición Z del árbol (profundidad) */
+        public static final float TREE_POSITION_Z = -3.0f;
+        /** Escala del árbol */
+        public static final float TREE_SCALE = 0.8f;
+        /** Velocidad de rotación del árbol */
+        public static final float TREE_ROTATION_SPEED = 2.0f;
+
+        // ═══ NIEVE ═══
+        /** Cantidad de copos de nieve */
+        public static final int SNOW_PARTICLE_COUNT = 400;
+        /** Velocidad base de caída */
+        public static final float SNOW_FALL_SPEED = 0.4f;
+        /** Fuerza del viento */
+        public static final float SNOW_WIND_STRENGTH = 0.25f;
+        /** Área de nieve - Ancho */
+        public static final float SNOW_AREA_WIDTH = 4.0f;
+        /** Área de nieve - Alto */
+        public static final float SNOW_AREA_HEIGHT = 5.0f;
+        /** Área de nieve - Profundidad */
+        public static final float SNOW_AREA_DEPTH = 2.0f;
+
+        // ═══ ESFERAS/ORNAMENTOS ═══
+        /** Cantidad de esferas en el árbol */
+        public static final int ORNAMENT_COUNT = 12;
+        /** Escala de las esferas */
+        public static final float ORNAMENT_SCALE = 0.08f;
+        /** Velocidad de rotación de esferas */
+        public static final float ORNAMENT_SPIN_SPEED = 15.0f;
+
+        // ═══ ESTRELLA ═══
+        /** Offset Y de la estrella sobre el árbol */
+        public static final float STAR_OFFSET_Y = 1.5f;
+        /** Escala de la estrella */
+        public static final float STAR_SCALE = 0.15f;
+        /** Intensidad del glow */
+        public static final float STAR_GLOW_INTENSITY = 1.5f;
+        /** Velocidad de pulso del glow */
+        public static final float STAR_PULSE_SPEED = 2.0f;
+
+        // ═══ LUCES NAVIDEÑAS ═══
+        /** Cantidad de luces en el árbol */
+        public static final int LIGHTS_COUNT = 30;
+        /** Velocidad de parpadeo */
+        public static final float LIGHTS_BLINK_SPEED = 3.0f;
+        /** Intensidad de las luces */
+        public static final float LIGHTS_INTENSITY = 0.8f;
+
+        // ═══ REGALOS ═══
+        /** Cantidad de regalos bajo el árbol */
+        public static final int GIFTS_COUNT = 3;
+        /** Escala de los regalos */
+        public static final float GIFT_SCALE = 0.12f;
+        /** Posición Y de los regalos (suelo) */
+        public static final float GIFT_POSITION_Y = -1.8f;
+
+        // ═══ SUELO NEVADO ═══
+        /** Posición Y del suelo */
+        public static final float GROUND_POSITION_Y = -1.9f;
+        /** Escala del suelo */
+        public static final float GROUND_SCALE = 5.0f;
+
+        // ═══ COLORES ═══
+        /** Color de la nieve (blanco azulado) */
+        public static final float[] SNOW_COLOR = {0.95f, 0.97f, 1.0f, 1.0f};
+        /** Color de luz cálida (amarillo) */
+        public static final float[] WARM_LIGHT_COLOR = {1.0f, 0.9f, 0.6f, 1.0f};
+        /** Color de la estrella (dorado) */
+        public static final float[] STAR_COLOR = {1.0f, 0.85f, 0.3f, 1.0f};
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
     // 📱 PANTALLA (valores por defecto)
     // ═══════════════════════════════════════════════════════════════════
 

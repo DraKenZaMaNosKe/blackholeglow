@@ -8,6 +8,9 @@ import com.secret.blackholeglow.ArcadeFooter;
 // import com.secret.blackholeglow.ArcadePreview; // REMOVIDO
 import com.secret.blackholeglow.ArcadeStartText;
 import com.secret.blackholeglow.ArcadeTitle;
+import com.secret.blackholeglow.ChristmasFooter;
+import com.secret.blackholeglow.ChristmasSnowfall;
+import com.secret.blackholeglow.ChristmasTitle;
 import com.secret.blackholeglow.HoroscopeDisplay;
 import com.secret.blackholeglow.LoadingBar;
 import com.secret.blackholeglow.MiniStopButton;
@@ -47,6 +50,12 @@ public class PanelModeRenderer {
     private ArcadeFooter arcadeFooter;
     // private ArcadePreview arcadePreview; // REMOVIDO
     private boolean arcadeModeEnabled = false;  // Modo arcade para Batalla
+
+    // 🎄 Componentes CHRISTMAS (para Bosque Navideño)
+    private ChristmasTitle christmasTitle;
+    private ChristmasSnowfall christmasSnowfall;
+    private ChristmasFooter christmasFooter;
+    private boolean christmasModeEnabled = false;  // Modo navideño para Bosque Navideño
 
     // Estado
     private boolean initialized = false;
@@ -102,6 +111,9 @@ public class PanelModeRenderer {
         // 🎮 Inicializar componentes ARCADE
         initArcadeComponents();
 
+        // 🎄 Inicializar componentes CHRISTMAS
+        initChristmasComponents();
+
         initialized = true;
         Log.d(TAG, "✅ Panel de Control inicializado");
     }
@@ -131,6 +143,28 @@ public class PanelModeRenderer {
         }
     }
 
+    /**
+     * 🎄 Inicializa los componentes del panel navideño
+     */
+    private void initChristmasComponents() {
+        try {
+            christmasTitle = new ChristmasTitle();
+            Log.d(TAG, "🎄 ChristmasTitle inicializado");
+
+            christmasSnowfall = new ChristmasSnowfall();
+            Log.d(TAG, "❄️ ChristmasSnowfall inicializado");
+
+            christmasFooter = new ChristmasFooter();
+            Log.d(TAG, "⭐ ChristmasFooter inicializado");
+
+            Log.d(TAG, "🎄 ═══════════════════════════════════════");
+            Log.d(TAG, "🎄 MODO CHRISTMAS COMPONENTES LISTOS");
+            Log.d(TAG, "🎄 ═══════════════════════════════════════");
+        } catch (Exception e) {
+            Log.e(TAG, "Error inicializando componentes Christmas: " + e.getMessage());
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // 🔄 UPDATE
     // ═══════════════════════════════════════════════════════════════
@@ -144,7 +178,13 @@ public class PanelModeRenderer {
             if (arcadeTitle != null) arcadeTitle.update(deltaTime);
             if (arcadeStartText != null) arcadeStartText.update(deltaTime);
             if (arcadeFooter != null) arcadeFooter.update(deltaTime);
-            // if (arcadePreview \!= null) arcadePreview.update(deltaTime);
+            // if (arcadePreview != null) arcadePreview.update(deltaTime);
+            if (playPauseButton != null) playPauseButton.update(deltaTime);
+        } else if (christmasModeEnabled) {
+            // 🎄 MODO CHRISTMAS
+            if (christmasSnowfall != null) christmasSnowfall.update(deltaTime);
+            if (christmasTitle != null) christmasTitle.update(deltaTime);
+            if (christmasFooter != null) christmasFooter.update(deltaTime);
             if (playPauseButton != null) playPauseButton.update(deltaTime);
         } else {
             // Modo estándar
@@ -194,6 +234,9 @@ public class PanelModeRenderer {
         if (arcadeModeEnabled) {
             // 🎮 MODO ARCADE - Panel estilo Street Fighter
             drawArcadePanel();
+        } else if (christmasModeEnabled) {
+            // 🎄 MODO CHRISTMAS - Panel navideño
+            drawChristmasPanel();
         } else {
             // Modo estándar
             if (orbixGreeting != null) {
@@ -235,6 +278,31 @@ public class PanelModeRenderer {
         // Footer "© Orbix iA 2025"
         if (arcadeFooter != null) {
             arcadeFooter.draw();
+        }
+    }
+
+    /**
+     * 🎄 Dibuja el panel navideño
+     */
+    private void drawChristmasPanel() {
+        // Copos de nieve cayendo (fondo)
+        if (christmasSnowfall != null) {
+            christmasSnowfall.draw();
+        }
+
+        // Título "FELIZ NAVIDAD"
+        if (christmasTitle != null) {
+            christmasTitle.draw();
+        }
+
+        // Botón de play (centrado)
+        if (playPauseButton != null) {
+            playPauseButton.draw();
+        }
+
+        // Footer "Toca para comenzar"
+        if (christmasFooter != null) {
+            christmasFooter.draw();
         }
     }
 
@@ -342,10 +410,13 @@ public class PanelModeRenderer {
 
         if (playPauseButton != null) {
             playPauseButton.setAspectRatio(aspectRatio);
-            // En modo arcade, el botón es más pequeño
+            // Configurar botón según el modo activo
             if (arcadeModeEnabled) {
                 playPauseButton.setSize(0.10f);  // 50% más pequeño
                 playPauseButton.setPosition(0.0f, 0.18f);  // Más arriba
+            } else if (christmasModeEnabled) {
+                playPauseButton.setSize(0.15f);  // Tamaño medio
+                playPauseButton.setPosition(0.0f, 0.05f);  // Ligeramente arriba
             } else {
                 playPauseButton.setSize(0.18f);  // Tamaño normal
                 playPauseButton.setPosition(0.0f, 0.0f);  // Centro
@@ -372,6 +443,17 @@ public class PanelModeRenderer {
             arcadeFooter.setAspectRatio(aspectRatio);
         }
         // arcadePreview removido
+
+        // 🎄 Componentes Christmas
+        if (christmasTitle != null) {
+            christmasTitle.setAspectRatio(aspectRatio);
+        }
+        if (christmasSnowfall != null) {
+            christmasSnowfall.setAspectRatio(aspectRatio);
+        }
+        if (christmasFooter != null) {
+            christmasFooter.setAspectRatio(aspectRatio);
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -461,6 +543,62 @@ public class PanelModeRenderer {
     }
 
     /**
+     * 🎄 Activa/desactiva el modo CHRISTMAS (para Bosque Navideño)
+     */
+    public void setChristmasModeEnabled(boolean enabled) {
+        this.christmasModeEnabled = enabled;
+
+        if (enabled) {
+            // Desactivar otros modos
+            arcadeModeEnabled = false;
+
+            // Ocultar componentes estándar y arcade
+            if (orbixGreeting != null) orbixGreeting.hide();
+            if (arcadeTitle != null) arcadeTitle.hide();
+            if (arcadeStartText != null) arcadeStartText.hide();
+            if (arcadeFooter != null) arcadeFooter.hide();
+
+            // Activar componentes navideños
+            if (christmasSnowfall != null) christmasSnowfall.show();
+            if (christmasTitle != null) christmasTitle.show();
+            if (christmasFooter != null) christmasFooter.show();
+
+            // Configurar botón para modo navideño (tamaño estándar)
+            if (playPauseButton != null) {
+                playPauseButton.setSize(0.15f);
+                playPauseButton.setPosition(0.0f, 0.05f);
+            }
+
+            Log.d(TAG, "🎄 ═══════════════════════════════════════");
+            Log.d(TAG, "🎄 MODO CHRISTMAS ACTIVADO");
+            Log.d(TAG, "🎄 ═══════════════════════════════════════");
+        } else {
+            // Ocultar componentes navideños
+            if (christmasSnowfall != null) christmasSnowfall.hide();
+            if (christmasTitle != null) christmasTitle.hide();
+            if (christmasFooter != null) christmasFooter.hide();
+
+            // Restaurar componentes estándar si no hay otro modo activo
+            if (!arcadeModeEnabled) {
+                if (orbixGreeting != null && greetingEnabled) orbixGreeting.show();
+                if (playPauseButton != null) {
+                    playPauseButton.setSize(0.18f);
+                    playPauseButton.setPosition(0.0f, 0.0f);
+                }
+            }
+
+            Log.d(TAG, "🎄 Modo Christmas desactivado");
+        }
+    }
+
+    /**
+     * @return true si el modo navideño está activo
+     */
+    public boolean isChristmasModeEnabled() {
+        return christmasModeEnabled;
+    }
+
+    /**
      * Libera recursos
      */
     public void release() {
@@ -487,6 +625,20 @@ public class PanelModeRenderer {
             arcadeFooter = null;
         }
         // arcadePreview removido - ya no se usa
+
+        // 🎄 Liberar recursos Christmas
+        if (christmasTitle != null) {
+            christmasTitle.dispose();
+            christmasTitle = null;
+        }
+        if (christmasSnowfall != null) {
+            christmasSnowfall.dispose();
+            christmasSnowfall = null;
+        }
+        if (christmasFooter != null) {
+            christmasFooter.dispose();
+            christmasFooter = null;
+        }
 
         Log.d(TAG, "🧹 PanelModeRenderer recursos liberados");
     }

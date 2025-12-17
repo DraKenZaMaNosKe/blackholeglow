@@ -22,6 +22,7 @@ import com.secret.blackholeglow.models.WallpaperItem;
 import com.secret.blackholeglow.models.WallpaperTier;
 import com.secret.blackholeglow.opengl.AnimatedBorderTextureView;
 import com.secret.blackholeglow.activities.WallpaperPreviewActivity;
+import com.secret.blackholeglow.WallpaperPreferences;
 
 import java.util.List;
 
@@ -129,6 +130,10 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
             holder.buttonPreview.setAlpha(1.0f);
             holder.buttonPreview.setText("✨ VER WALLPAPER");
             holder.buttonPreview.setOnClickListener(v -> {
+                // ✅ Guardar preferencia INMEDIATAMENTE al seleccionar
+                WallpaperPreferences.getInstance(context).setSelectedWallpaper(item.getSceneName());
+                Log.d("WallpaperAdapter", "💾 Wallpaper seleccionado: " + item.getSceneName());
+
                 // Ir a WallpaperLoadingActivity para precarga de recursos
                 Intent intent = new Intent(context, com.secret.blackholeglow.activities.WallpaperLoadingActivity.class);
 
