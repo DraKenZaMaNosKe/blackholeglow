@@ -78,20 +78,20 @@ public class ChristmasTree extends BaseShaderProgram implements SceneObject, Cam
               "shaders/gl3/christmas_tree_fragment.glsl");
 
         Log.d(TAG, "═══════════════════════════════════════════════");
-        Log.d(TAG, "🎄 Cargando Árbol de Navidad desde assets");
+        Log.d(TAG, "🎄 Cargando Árbol de Navidad (Meshy Pine)");
         Log.d(TAG, "═══════════════════════════════════════════════");
 
-        // Cargar textura del árbol
-        textureId = textureManager.getTexture(R.drawable.christmas_tree_texture);
+        // Cargar textura del árbol (modelo nuevo de Meshy)
+        textureId = textureManager.getTexture(R.drawable.christmas_pine_texture);
         Log.d(TAG, "✓ Textura del árbol cargada - ID: " + textureId);
 
-        // Cargar modelo OBJ
+        // Cargar modelo OBJ (9,927 triángulos - Meshy AI)
         ObjLoader.Mesh mesh = null;
         try {
-            mesh = ObjLoader.loadObj(context, "christmas_tree.obj");
+            mesh = ObjLoader.loadObj(context, "christmas_pine.obj");
             Log.d(TAG, "✅ Modelo cargado: " + mesh.vertexCount + " vértices, " + mesh.faces.size() + " caras");
         } catch (IOException e) {
-            Log.e(TAG, "❌ Error cargando christmas_tree.obj", e);
+            Log.e(TAG, "❌ Error cargando christmas_pine.obj", e);
             throw new RuntimeException("No se pudo cargar el modelo del árbol", e);
         }
 
