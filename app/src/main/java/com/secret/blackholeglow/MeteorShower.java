@@ -34,12 +34,10 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     // Referencias para colisiones
     private Planeta sol = null;
     private Planeta planetaOrbitante = null;
-    private ForceField campoFuerza = null;  // Campo de fuerza del sol
     private List<SceneObject> objetosColisionables = new ArrayList<>();
 
     // Referencias para sistema de HP
     private HPBar hpBarSun = null;
-    private HPBar hpBarForceField = null;
 
     // Efectos de impacto
     private List<ImpactEffect> efectosImpacto = new ArrayList<>();
@@ -126,13 +124,11 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
     }
 
     /**
-     * Conecta el sistema de HP (Sol, Campo de Fuerza y sus barras)
+     * Conecta el sistema de HP (Sol y su barra)
      */
-    public void setHPSystem(Planeta sol, ForceField forceField, HPBar hpBarSun, HPBar hpBarForceField) {
+    public void setHPSystem(Planeta sol, HPBar hpBarSun) {
         this.sol = sol;
-        this.campoFuerza = forceField;
         this.hpBarSun = hpBarSun;
-        this.hpBarForceField = hpBarForceField;
         Log.d(TAG, "[MeteorShower] ✓ Sistema HP conectado");
     }
 
@@ -195,9 +191,6 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
                 planetaOrbitante = p;
                 Log.d(TAG, "[MeteorShower] Planeta orbitante registrado para colisiones");
             }
-        } else if (objeto instanceof ForceField) {
-            campoFuerza = (ForceField) objeto;
-            Log.d(TAG, "[MeteorShower] Campo de fuerza registrado para colisiones");
         }
         objetosColisionables.add(objeto);
     }
@@ -290,17 +283,6 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         // Actualizar efectos de impacto
         for (ImpactEffect efecto : efectosImpacto) {
             efecto.update(deltaTime);
-        }
-
-        // 🛡️ ACTUALIZAR BARRA HP DEL FORCEFIELD (SIEMPRE)
-        if (campoFuerza != null && hpBarForceField != null) {
-            // Si está destruido, mostrar HP = 0
-            if (campoFuerza.isDestroyed()) {
-                hpBarForceField.setHealth(0);
-            } else {
-                // Si está vivo, actualizar con HP actual
-                hpBarForceField.setHealth(campoFuerza.getCurrentHealth());
-            }
         }
 
         // Log de estadísticas cada 5 segundos (simplificado)
@@ -485,39 +467,7 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
         float[] posMeteorito = m.getPosicion();
         float radioMeteorito = m.getTamaño();
 
-        // PRIORIDAD 1: Colisión con campo de fuerza (si existe y no está destruido)
-        if (campoFuerza != null && !campoFuerza.isDestroyed()) {
-            if (campoFuerza.containsPoint(posMeteorito[0], posMeteorito[1], posMeteorito[2])) {
-                // ¡IMPACTO EN CAMPO DE FUERZA!
-                m.impactar();
-                campoFuerza.registerImpact(posMeteorito[0], posMeteorito[1], posMeteorito[2]);
-                crearEfectoImpacto(posMeteorito[0], posMeteorito[1], posMeteorito[2], true);
-
-                // ACTUALIZAR HP BAR del escudo
-                if (hpBarForceField != null) {
-                    hpBarForceField.setHealth(campoFuerza.getCurrentHealth());
-                }
-
-                // 💥 EFECTO DE IMPACTO EN PANTALLA (ESCUDO) - MÁS SUTIL via EventBus
-                // Intensidad basada en tamaño del meteorito (0.05-0.20 → 0.15-0.3)
-                float intensityShield = 0.15f + (radioMeteorito / 0.20f) * 0.15f;
-                intensityShield = Math.min(0.3f, Math.max(0.15f, intensityShield));  // Clamp 0.15-0.3
-                EventBus.get().publish(EventBus.SCREEN_IMPACT,
-                    new EventBus.EventData().put("intensity", intensityShield));
-
-                totalImpactos++;
-
-                // 🎮 REGISTRAR IMPACTO EN ESTADÍSTICAS (campo de fuerza)
-                int points = playerStats.onImpact(false);
-
-                Log.d(TAG, "[MeteorShower] ¡¡IMPACTO EN CAMPO DE FUERZA!! HP: " +
-                           campoFuerza.getCurrentHealth() + "/" + campoFuerza.getMaxHealth() +
-                           " | +" + points + " pts");
-                return;  // No verificar más colisiones
-            }
-        }
-
-        // PRIORIDAD 2: Colisión con la TIERRA (si existe y no está muerta)
+        // PRIORIDAD 1: Colisión con la TIERRA (si existe y no está muerta)
         // NOTA: AsteroideRealista ahora maneja su propia colisión con la Tierra internamente
         // Pero MeteorShower necesita detectarla para aplicar daño y efectos
         if (sol != null && !sol.isDead()) {
@@ -570,7 +520,7 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
             }
         }
 
-        // PRIORIDAD 3: Colisión con planeta orbitante
+        // PRIORIDAD 2: Colisión con planeta orbitante
         if (planetaOrbitante != null) {
             // Aquí necesitaríamos obtener la posición actual del planeta
             // ⚡ OPTIMIZACIÓN: Usa array estático en vez de crear nuevo
@@ -583,7 +533,7 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
             }
         }
 
-        // PRIORIDAD 4: 🛰️ Colisión con ESTACIÓN ESPACIAL
+        // PRIORIDAD 3: 🛰️ Colisión con ESTACIÓN ESPACIAL
         if (spaceStationRef != null) {
             float stationX = spaceStationRef.getX();
             float stationY = spaceStationRef.getY();
@@ -613,7 +563,7 @@ public class MeteorShower implements SceneObject, CameraAware, MusicReactive {
             }
         }
 
-        // PRIORIDAD 5: ☀️ Colisión con SOL PROCEDURAL (SolMeshy)
+        // PRIORIDAD 4: ☀️ Colisión con SOL PROCEDURAL (SolMeshy)
         if (solMeshyRef != null) {
             float solX = solMeshyRef.getX();
             float solY = solMeshyRef.getY();

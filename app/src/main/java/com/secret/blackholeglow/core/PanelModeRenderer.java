@@ -11,7 +11,6 @@ import com.secret.blackholeglow.ArcadeTitle;
 import com.secret.blackholeglow.ChristmasFooter;
 import com.secret.blackholeglow.ChristmasSnowfall;
 import com.secret.blackholeglow.ChristmasTitle;
-import com.secret.blackholeglow.HoroscopeDisplay;
 import com.secret.blackholeglow.LoadingBar;
 import com.secret.blackholeglow.MiniStopButton;
 import com.secret.blackholeglow.OrbixGreeting;
@@ -42,7 +41,6 @@ public class PanelModeRenderer {
     private OrbixGreeting orbixGreeting;
     private LoadingBar loadingBar;
     private MiniStopButton miniStopButton;
-    private HoroscopeDisplay horoscopeDisplay;  // ✨ Horóscopo semanal
 
     // 🎮 Componentes ARCADE (para Batalla Cósmica)
     private ArcadeTitle arcadeTitle;
@@ -103,10 +101,6 @@ public class PanelModeRenderer {
         miniStopButton = new MiniStopButton();
         miniStopButton.hide();
         Log.d(TAG, "⏹️ MiniStopButton inicializado");
-
-        // HoroscopeDisplay - Horóscopo semanal personalizado (DESHABILITADO temporalmente)
-        // horoscopeDisplay = new HoroscopeDisplay(context);
-        // Log.d(TAG, "✨ HoroscopeDisplay inicializado");
 
         // 🎮 Inicializar componentes ARCADE
         initArcadeComponents();
@@ -194,9 +188,6 @@ public class PanelModeRenderer {
             if (playPauseButton != null) {
                 playPauseButton.update(deltaTime);
             }
-            if (horoscopeDisplay != null) {
-                horoscopeDisplay.update(deltaTime);
-            }
         }
     }
 
@@ -244,10 +235,6 @@ public class PanelModeRenderer {
             }
             if (playPauseButton != null) {
                 playPauseButton.draw();
-            }
-            // ✨ Horóscopo se dibuja encima de todo (cuando está visible)
-            if (horoscopeDisplay != null) {
-                horoscopeDisplay.draw();
             }
         }
 
@@ -428,9 +415,6 @@ public class PanelModeRenderer {
         if (miniStopButton != null) {
             miniStopButton.setAspectRatio(aspectRatio);
         }
-        if (horoscopeDisplay != null) {
-            horoscopeDisplay.setAspectRatio(aspectRatio);
-        }
 
         // 🎮 Componentes arcade
         if (arcadeTitle != null) {
@@ -477,7 +461,6 @@ public class PanelModeRenderer {
     public OrbixGreeting getOrbixGreeting() { return orbixGreeting; }
     public LoadingBar getLoadingBar() { return loadingBar; }
     public MiniStopButton getMiniStopButton() { return miniStopButton; }
-    public HoroscopeDisplay getHoroscopeDisplay() { return horoscopeDisplay; }
 
     /**
      * Deshabilita el saludo de Gemini (para wallpapers que no lo usan)
@@ -602,10 +585,6 @@ public class PanelModeRenderer {
      * Libera recursos
      */
     public void release() {
-        if (horoscopeDisplay != null) {
-            horoscopeDisplay.release();
-            horoscopeDisplay = null;
-        }
         if (orbixGreeting != null) {
             orbixGreeting.dispose();
             orbixGreeting = null;

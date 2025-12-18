@@ -94,7 +94,6 @@ public class ResourcePreloader {
         addShaderTask("Shader Planeta", "shaders/planeta_vertex.glsl", "shaders/planeta_fragment.glsl", 1);
         addShaderTask("Shader Sol", "shaders/sol_procedural_vertex.glsl", "shaders/sol_procedural_fragment.glsl", 1);
         addShaderTask("Shader Background", "shaders/starry_vertex.glsl", "shaders/starry_fragment.glsl", 1);
-        addShaderTask("Shader ForceField", "shaders/forcefield_vertex.glsl", "shaders/forcefield_fragment.glsl", 1);
         addShaderTask("Shader Meteoritos", "shaders/meteoro_vertex.glsl", "shaders/meteoro_fragment.glsl", 1);
         addShaderTask("Shader OVNI", "shaders/ovni_vertex.glsl", "shaders/ovni_fragment.glsl", 1);
 

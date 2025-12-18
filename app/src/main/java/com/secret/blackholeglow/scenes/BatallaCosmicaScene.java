@@ -903,7 +903,7 @@ public class BatallaCosmicaScene extends WallpaperScene implements Planeta.OnExp
 
             // Sistema HP simplificado (sin ForceField)
             if (tierra != null && hpBarTierra != null) {
-                meteorShower.setHPSystem(tierra, null, hpBarTierra, null);
+                meteorShower.setHPSystem(tierra, hpBarTierra);
             }
 
             // Registrar solo planetas como colisionables
