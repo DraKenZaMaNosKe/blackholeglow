@@ -43,7 +43,17 @@
       "Bash(printf:*)",
       "Bash(timeout 60 D:/adb/platform-tools/adb.exe install:*)",
       "Bash(grep:*)",
-      "Bash(./gradlew bundleRelease:*)"
+      "Bash(./gradlew bundleRelease:*)",
+      "Bash(timeout 10 D:/adb/platform-tools/adb.exe:*)",
+      "Bash(timeout 60 D:/adb/platform-tools/adb.exe:*)",
+      "Bash(ls:*)",
+      "Bash(timeout 45 D:/adb/platform-tools/adb.exe logcat:*)",
+      "Bash(cd:*)",
+      "Bash(for f in \"ArcadePreview\" \"EstrellaBailarina\" \"ForceField\" \"EarthShield\" \"CloudLayer\" \"ClapDetectorService\" \"SolProcedural\" \"DiscoBallShaderProgram\" \"CircularLoadingRing\" \"SunHeatEffect\" \"MusicReactive\")",
+      "Bash(do echo \"=== $f ===\")",
+      "Bash(done)",
+      "Bash(pip install:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []

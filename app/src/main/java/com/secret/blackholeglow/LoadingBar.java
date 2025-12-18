@@ -73,6 +73,7 @@ public class LoadingBar implements SceneObject {
     private Canvas textCanvas;
     private Paint textPaint;
     private Paint textGlowPaint;
+    private Paint reassuringPaint;
     private int textAPositionLoc = -1;
     private int textATexCoordLoc = -1;
     private int textUTextureLoc = -1;
@@ -80,7 +81,7 @@ public class LoadingBar implements SceneObject {
     private FloatBuffer textVertexBuffer;
 
     private static final int TEXT_TEX_WIDTH = 256;
-    private static final int TEXT_TEX_HEIGHT = 64;
+    private static final int TEXT_TEX_HEIGHT = 96;  // Aumentado para 2 líneas
     private int currentDots = 0;           // 0, 1, 2, 3 para "Loading", "Loading.", "Loading..", "Loading..."
     private float dotAnimTimer = 0f;
     private static final float DOT_ANIM_SPEED = 0.4f;  // segundos por punto
@@ -204,6 +205,13 @@ public class LoadingBar implements SceneObject {
         textGlowPaint.setColor(0xFF00AAFF);
         textGlowPaint.setMaskFilter(new android.graphics.BlurMaskFilter(8, android.graphics.BlurMaskFilter.Blur.NORMAL));
 
+        // Paint para el texto tranquilizador (más pequeño, verde suave)
+        reassuringPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        reassuringPaint.setTextSize(20);
+        reassuringPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.ITALIC));
+        reassuringPaint.setTextAlign(Paint.Align.CENTER);
+        reassuringPaint.setColor(0xFF88FF88);  // Verde suave
+
         // Crear shader program para texto
         int vs = compileShader(GLES30.GL_VERTEX_SHADER, TEXT_VERTEX_SHADER);
         int fs = compileShader(GLES30.GL_FRAGMENT_SHADER, TEXT_FRAGMENT_SHADER);
@@ -251,6 +259,7 @@ public class LoadingBar implements SceneObject {
 
     /**
      * Actualiza la textura del texto "Loading..." con los puntos animados
+     * y el mensaje tranquilizador "sí cargará :)"
      */
     private void updateTextTexture() {
         if (textBitmap == null || textCanvas == null) return;
@@ -270,12 +279,17 @@ public class LoadingBar implements SceneObject {
         }
 
         float centerX = TEXT_TEX_WIDTH / 2f;
-        float centerY = TEXT_TEX_HEIGHT / 2f + 12f;  // +12 para centrar verticalmente
+        float line1Y = TEXT_TEX_HEIGHT / 2f - 5f;   // Línea 1: "Loading..."
+        float line2Y = TEXT_TEX_HEIGHT / 2f + 30f;  // Línea 2: "sí cargará :)"
 
-        // Dibujar glow primero
-        textCanvas.drawText(loadingText, centerX, centerY, textGlowPaint);
-        // Dibujar texto principal
-        textCanvas.drawText(loadingText, centerX, centerY, textPaint);
+        // Dibujar glow primero (línea 1)
+        textCanvas.drawText(loadingText, centerX, line1Y, textGlowPaint);
+        // Dibujar texto principal (línea 1)
+        textCanvas.drawText(loadingText, centerX, line1Y, textPaint);
+
+        // 😊 Dibujar texto tranquilizador (línea 2)
+        String reassuringText = "sí cargará :)";
+        textCanvas.drawText(reassuringText, centerX, line2Y, reassuringPaint);
 
         // Subir textura a GPU
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textTextureId);
@@ -474,9 +488,9 @@ public class LoadingBar implements SceneObject {
         GLES30.glUseProgram(textShaderProgram);
 
         // Posición del texto (encima de la barra)
-        float textY = barY + 0.08f;  // Un poco arriba de la barra
+        float textY = barY + 0.06f;   // Un poco arriba de la barra
         float textWidth = 0.35f;      // Ancho del texto
-        float textHeight = 0.06f;     // Alto del texto
+        float textHeight = 0.10f;     // Alto del texto (aumentado para 2 líneas)
 
         // Ajustar por aspect ratio
         if (aspectRatio < 1f) {

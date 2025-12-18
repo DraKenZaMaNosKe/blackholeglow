@@ -156,6 +156,21 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
                 drawWallpaperMode();
                 break;
         }
+
+        // 🔴 STOP BUTTON: Dibujar como LO ÚLTIMO ABSOLUTO (solo en WALLPAPER_MODE)
+        if (mode == RenderModeController.RenderMode.WALLPAPER_MODE) {
+            GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+            GLES30.glDisable(GLES30.GL_CULL_FACE);
+            GLES30.glEnable(GLES30.GL_BLEND);
+            GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
+            GLES30.glViewport(0, 0, screenWidth, screenHeight);
+
+            // Dibujar MiniStopButton directamente
+            if (panelRenderer != null && panelRenderer.getMiniStopButton() != null) {
+                panelRenderer.getMiniStopButton().update(deltaTime);
+                panelRenderer.getMiniStopButton().draw();
+            }
+        }
     }
 
     private void updateWallpaperMode(float deltaTime) {
@@ -181,25 +196,39 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     }
 
     private void drawWallpaperMode() {
-        // ✨ Bloom: Capturar escena 3D a FBO
-        if (bloomEffect != null && bloomEffect.isEnabled()) {
-            bloomEffect.beginCapture();
-        }
+        // ✨ Bloom: DESHABILITADO TEMPORALMENTE para debug
+        // if (bloomEffect != null && bloomEffect.isEnabled()) {
+        //     bloomEffect.beginCapture();
+        // }
 
-        // Dibujar escena 3D (con bloom aplicado)
+        // Dibujar escena 3D
         sceneFactory.drawCurrentScene();
         if (screenEffects != null) screenEffects.draw();
 
-        // ✨ Bloom: Aplicar efecto post-procesado
-        if (bloomEffect != null && bloomEffect.isEnabled()) {
-            bloomEffect.endCaptureAndApply();
-        }
+        // ✨ Bloom: DESHABILITADO TEMPORALMENTE
+        // if (bloomEffect != null && bloomEffect.isEnabled()) {
+        //     bloomEffect.endCaptureAndApply();
+        // }
 
-        // UI overlay (sin bloom para mantener nitidez)
-        panelRenderer.drawWallpaperOverlay();
+        // Song sharing UI
         GLES30.glDisable(GLES30.GL_DEPTH_TEST);
         songSharing.draw(identityMatrix, totalTime);
+
+        // 🔴 STOP BUTTON: Asegurar que esté ENCIMA de todo
+        // Resetear completamente el estado OpenGL
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+        GLES30.glDisable(GLES30.GL_CULL_FACE);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
+
+        // Asegurar viewport correcto
+        GLES30.glViewport(0, 0, screenWidth, screenHeight);
+
+        panelRenderer.drawWallpaperOverlay();
+
+        // Restaurar estado
         GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_CULL_FACE);
     }
 
     private void checkLoadingComplete() {
@@ -249,7 +278,8 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         resources = ResourceManager.get();
         resources.init(context);
         textureManager = new TextureManager(context);
-        musicVisualizer = new MusicVisualizer();
+        // 🎵 Usar constructor con Context para habilitar auto-resume de música
+        musicVisualizer = new MusicVisualizer(context);
         musicVisualizer.initialize();
         screenEffects = new ScreenEffectsManager();
         resourceLoader = new ResourceLoader(context, textureManager);

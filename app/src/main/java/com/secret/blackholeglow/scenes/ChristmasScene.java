@@ -103,31 +103,18 @@ public class ChristmasScene extends WallpaperScene {
     @Override
     protected void setupScene() {
         Log.d(TAG, "╔═══════════════════════════════════════════════════════╗");
-        Log.d(TAG, "║   🎄 CONFIGURANDO ESCENA NAVIDEÑA                     ║");
+        Log.d(TAG, "║   🎄 CONFIGURANDO ESCENA NAVIDEÑA (SIMPLIFICADA)      ║");
         Log.d(TAG, "╚═══════════════════════════════════════════════════════╝");
 
-        // 1️⃣ Fondo de bosque nevado
+        // 1️⃣ SOLO el fondo de bosque nevado
         setupBackground();
 
-        // 2️⃣ Suelo con nieve
-        setupSnowGround();
+        // ❌ DESHABILITADO TEMPORALMENTE:
+        // setupSnowGround();      // Suelo con nieve - CUBRE EL BOTÓN STOP
+        // setupSnowParticles();   // Partículas de nieve
+        // setupChristmasTree();   // Árbol de Navidad
 
-        // 3️⃣ Sistema de partículas de nieve
-        setupSnowParticles();
-
-        // 4️⃣ Árbol de Navidad - SOLO ESTO PARA DEBUG
-        setupChristmasTree();
-
-        // 5️⃣ Decoraciones del árbol
-        // setupDecorations();
-
-        // 6️⃣ Luces navideñas
-        // setupChristmasLights();
-
-        // 7️⃣ Regalos bajo el árbol
-        // setupGiftBoxes();
-
-        Log.d(TAG, "✅ Escena navideña configurada con " + sceneObjects.size() + " objetos");
+        Log.d(TAG, "✅ Escena navideña SIMPLIFICADA: solo fondo");
     }
 
     // ═══════════════════════════════════════════════════════════════

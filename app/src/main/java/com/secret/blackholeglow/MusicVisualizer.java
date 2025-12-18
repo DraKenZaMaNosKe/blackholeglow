@@ -1,8 +1,20 @@
 package com.secret.blackholeglow;
 
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
 import android.media.AudioManager;
 import android.media.audiofx.Visualizer;
+import android.media.session.MediaController;
+import android.media.session.MediaSessionManager;
+import android.media.session.PlaybackState;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Log;
+import android.view.KeyEvent;
+
+import java.util.List;
 
 /**
  * MusicVisualizer - Sistema de captura y análisis de audio en tiempo real
@@ -52,6 +64,11 @@ public class MusicVisualizer {
     private int captureCount = 0;
     private long lastLogTime = 0;
 
+    // Context para auto-resume de música
+    private Context context;
+    private AudioManager audioManager;
+    private Handler handler;
+
     // Monitoreo de conexión (detectar si perdimos audio)
     private long lastAudioDataTime = 0;
     private long lastSignificantAudioTime = 0;  // Última vez que recibimos audio REAL (no silencio)
@@ -62,18 +79,46 @@ public class MusicVisualizer {
 
     /**
      * Constructor - Inicializa el visualizador
+     * @deprecated Usar MusicVisualizer(Context) para auto-resume de música
      */
     public MusicVisualizer() {
-        Log.d(TAG, "[MusicVisualizer] Inicializando...");
+        Log.d(TAG, "[MusicVisualizer] Inicializando (sin context - auto-resume deshabilitado)...");
+        this.context = null;
+        this.audioManager = null;
+        this.handler = new Handler(Looper.getMainLooper());
+    }
+
+    /**
+     * Constructor con Context - Permite auto-resume de música después de crear Visualizer
+     * @param context Context de la aplicación
+     */
+    public MusicVisualizer(Context context) {
+        Log.d(TAG, "[MusicVisualizer] Inicializando con context (auto-resume habilitado)...");
+        this.context = context.getApplicationContext();
+        this.audioManager = (AudioManager) this.context.getSystemService(Context.AUDIO_SERVICE);
+        this.handler = new Handler(Looper.getMainLooper());
     }
 
     /**
      * Inicializa y activa el visualizador de audio
      * Debe llamarse desde el hilo de OpenGL o UI thread
+     *
+     * ⚡ AUTO-RESUME: Si había música sonando antes de crear el Visualizer,
+     * intentará reanudarla automáticamente después de 500ms
      */
     public boolean initialize() {
         try {
+            // ════════════════════════════════════════════════════════════════════════
+            // 🎵 DETECTAR SI HAY MÚSICA SONANDO ANTES DE CREAR VISUALIZER
+            // ════════════════════════════════════════════════════════════════════════
+            boolean wasMusicPlaying = false;
+            if (audioManager != null) {
+                wasMusicPlaying = audioManager.isMusicActive();
+                Log.d(TAG, "[MusicVisualizer] 🎵 Música activa antes de crear Visualizer: " + wasMusicPlaying);
+            }
+
             // Crear visualizer usando session ID 0 (mezcla de audio del sistema)
+            // ⚠️ ESTO PUEDE PAUSAR/CERRAR OTRAS APPS DE AUDIO EN ALGUNOS DISPOSITIVOS
             visualizer = new Visualizer(0);
 
             // Configurar tamaño de captura
@@ -107,6 +152,20 @@ public class MusicVisualizer {
             Log.d(TAG, "[MusicVisualizer] Capture Size: " + CAPTURE_SIZE);
             Log.d(TAG, "[MusicVisualizer] Sampling Rate: " + visualizer.getSamplingRate() + " Hz");
 
+            // ════════════════════════════════════════════════════════════════════════
+            // 🎵 AUTO-RESUME: Si había música, enviar comandos PLAY con reintentos
+            // Samsung puede tardar en responder, así que intentamos varias veces
+            // ════════════════════════════════════════════════════════════════════════
+            if (wasMusicPlaying && context != null) {
+                Log.d(TAG, "[MusicVisualizer] 🎵 Programando auto-resume de música (3 intentos)...");
+                // Intento 1: después de 800ms
+                handler.postDelayed(this::sendMediaPlayCommand, 800);
+                // Intento 2: después de 1500ms (por si el primero no funcionó)
+                handler.postDelayed(this::sendMediaPlayCommand, 1500);
+                // Intento 3: después de 2500ms (último intento)
+                handler.postDelayed(this::sendMediaPlayCommand, 2500);
+            }
+
             return true;
 
         } catch (Exception e) {
@@ -114,6 +173,106 @@ public class MusicVisualizer {
             Log.e(TAG, "[MusicVisualizer] Es posible que falten permisos de audio");
             return false;
         }
+    }
+
+    /**
+     * Envía comando MEDIA_PLAY al sistema para reanudar cualquier reproductor de música
+     * Intenta múltiples métodos para máxima compatibilidad
+     */
+    private void sendMediaPlayCommand() {
+        Log.d(TAG, "[MusicVisualizer] 🎵 Intentando reanudar música...");
+
+        // ════════════════════════════════════════════════════════════════════════
+        // MÉTODO 1: Lanzar Spotify directamente (más confiable en Samsung)
+        // ════════════════════════════════════════════════════════════════════════
+        try {
+            if (context != null) {
+                // Intentar con Spotify
+                Intent spotifyIntent = context.getPackageManager()
+                    .getLaunchIntentForPackage("com.spotify.music");
+
+                if (spotifyIntent != null) {
+                    Log.d(TAG, "[MusicVisualizer] 🎵 Spotify detectado, intentando reabrir...");
+
+                    // Enviar intent para reanudar playback (no abre la UI)
+                    Intent playIntent = new Intent("com.spotify.mobile.android.ui.widget.PLAY");
+                    playIntent.setPackage("com.spotify.music");
+                    context.sendBroadcast(playIntent);
+
+                    Log.d(TAG, "[MusicVisualizer] 🎵 Broadcast PLAY enviado a Spotify");
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "[MusicVisualizer] ⚠️ Error con broadcast Spotify: " + e.getMessage());
+        }
+
+        // ════════════════════════════════════════════════════════════════════════
+        // MÉTODO 2: KeyEvent MEDIA_PLAY via AudioManager
+        // ════════════════════════════════════════════════════════════════════════
+        if (audioManager != null) {
+            try {
+                long eventTime = SystemClock.uptimeMillis();
+
+                // Enviar MEDIA_PLAY
+                KeyEvent downEvent = new KeyEvent(eventTime, eventTime,
+                    KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PLAY, 0);
+                audioManager.dispatchMediaKeyEvent(downEvent);
+
+                KeyEvent upEvent = new KeyEvent(eventTime, eventTime,
+                    KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PLAY, 0);
+                audioManager.dispatchMediaKeyEvent(upEvent);
+
+                Log.d(TAG, "[MusicVisualizer] 🎵 KeyEvent MEDIA_PLAY enviado");
+            } catch (Exception e) {
+                Log.w(TAG, "[MusicVisualizer] ⚠️ Error con KeyEvent: " + e.getMessage());
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════════════
+        // MÉTODO 3: Intent ACTION_MEDIA_BUTTON broadcast (legacy pero funciona)
+        // ════════════════════════════════════════════════════════════════════════
+        try {
+            if (context != null) {
+                long eventTime = SystemClock.uptimeMillis();
+
+                Intent mediaIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
+                KeyEvent keyEvent = new KeyEvent(eventTime, eventTime,
+                    KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PLAY, 0);
+                mediaIntent.putExtra(Intent.EXTRA_KEY_EVENT, keyEvent);
+                context.sendOrderedBroadcast(mediaIntent, null);
+
+                // También enviar UP
+                mediaIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
+                keyEvent = new KeyEvent(eventTime, eventTime,
+                    KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PLAY, 0);
+                mediaIntent.putExtra(Intent.EXTRA_KEY_EVENT, keyEvent);
+                context.sendOrderedBroadcast(mediaIntent, null);
+
+                Log.d(TAG, "[MusicVisualizer] 🎵 Broadcast ACTION_MEDIA_BUTTON enviado");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "[MusicVisualizer] ⚠️ Error con broadcast: " + e.getMessage());
+        }
+
+        // ════════════════════════════════════════════════════════════════════════
+        // MÉTODO 4: Intentar con otros reproductores populares
+        // ════════════════════════════════════════════════════════════════════════
+        try {
+            if (context != null) {
+                // YouTube Music
+                Intent ytIntent = new Intent("com.google.android.music.PLAY");
+                ytIntent.setPackage("com.google.android.apps.youtube.music");
+                context.sendBroadcast(ytIntent);
+
+                // Samsung Music
+                Intent samsungIntent = new Intent("com.sec.android.app.music.PLAY");
+                context.sendBroadcast(samsungIntent);
+            }
+        } catch (Exception e) {
+            // Ignorar silenciosamente
+        }
+
+        Log.d(TAG, "[MusicVisualizer] 🎵 ✓ Todos los comandos de reanudación enviados");
     }
 
     /**
@@ -371,9 +530,17 @@ public class MusicVisualizer {
      * Intenta reconectar el visualizer (útil cuando pierde conexión)
      * Retorna true si la reconexión fue exitosa
      * ⚡ Remueve listener correctamente antes de reconectar
+     * ⚡ Auto-resume de música si estaba sonando
      */
     public boolean reconnect() {
         Log.d(TAG, "[MusicVisualizer] 🔄 Intentando reconectar...");
+
+        // 🎵 Detectar si hay música antes de desconectar
+        boolean wasMusicPlaying = false;
+        if (audioManager != null) {
+            wasMusicPlaying = audioManager.isMusicActive();
+            Log.d(TAG, "[MusicVisualizer] 🎵 Música activa antes de reconectar: " + wasMusicPlaying);
+        }
 
         // Liberar visualizer existente
         if (visualizer != null) {
@@ -395,7 +562,62 @@ public class MusicVisualizer {
         lastAudioDataTime = System.currentTimeMillis();
         lastSignificantAudioTime = 0;
 
-        return initialize();
+        // Reinicializar (esto también manejará el auto-resume internamente)
+        boolean result = initializeInternal(wasMusicPlaying);
+        return result;
+    }
+
+    /**
+     * Versión interna de initialize que recibe el estado de música previo
+     */
+    private boolean initializeInternal(boolean wasMusicPlayingBefore) {
+        try {
+            // Si no teníamos el estado previo, detectar ahora
+            boolean wasMusicPlaying = wasMusicPlayingBefore;
+            if (!wasMusicPlaying && audioManager != null) {
+                wasMusicPlaying = audioManager.isMusicActive();
+            }
+
+            // Crear visualizer usando session ID 0 (mezcla de audio del sistema)
+            visualizer = new Visualizer(0);
+            visualizer.setCaptureSize(CAPTURE_SIZE);
+
+            visualizer.setDataCaptureListener(
+                new Visualizer.OnDataCaptureListener() {
+                    @Override
+                    public void onWaveFormDataCapture(Visualizer visualizer, byte[] waveform, int samplingRate) {
+                        processWaveform(waveform);
+                    }
+
+                    @Override
+                    public void onFftDataCapture(Visualizer visualizer, byte[] fft, int samplingRate) {
+                        processFft(fft);
+                    }
+                },
+                Visualizer.getMaxCaptureRate() / 2,
+                true,
+                true
+            );
+
+            visualizer.setEnabled(true);
+            isEnabled = true;
+
+            Log.d(TAG, "[MusicVisualizer] ✓ Inicializado correctamente (internal)");
+
+            // 🎵 AUTO-RESUME con reintentos
+            if (wasMusicPlaying && context != null) {
+                Log.d(TAG, "[MusicVisualizer] 🎵 Programando auto-resume de música (3 intentos)...");
+                handler.postDelayed(this::sendMediaPlayCommand, 800);
+                handler.postDelayed(this::sendMediaPlayCommand, 1500);
+                handler.postDelayed(this::sendMediaPlayCommand, 2500);
+            }
+
+            return true;
+
+        } catch (Exception e) {
+            Log.e(TAG, "[MusicVisualizer] ✗ Error inicializando (internal): " + e.getMessage());
+            return false;
+        }
     }
 
     /**

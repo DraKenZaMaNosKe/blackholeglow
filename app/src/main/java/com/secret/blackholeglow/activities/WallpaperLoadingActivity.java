@@ -238,7 +238,23 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         LinearLayout.LayoutParams taskParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT);
+        taskParams.bottomMargin = 40;
         centerContainer.addView(textCurrentTask, taskParams);
+
+        // ═══════════════════════════════════════════════════════════════
+        // 😊 MENSAJE TRANQUILIZADOR (para el usuario)
+        // ═══════════════════════════════════════════════════════════════
+        TextView reassuringText = new TextView(this);
+        reassuringText.setText("No te preocupes, sí cargará :)");
+        reassuringText.setTextSize(14);
+        reassuringText.setTextColor(Color.parseColor("#00D4FF"));
+        reassuringText.setGravity(Gravity.CENTER);
+        reassuringText.setAlpha(0.8f);
+
+        LinearLayout.LayoutParams reassuringParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        centerContainer.addView(reassuringText, reassuringParams);
 
         // Agregar container central al root
         FrameLayout.LayoutParams centerParams = new FrameLayout.LayoutParams(

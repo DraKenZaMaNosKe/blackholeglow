@@ -78,8 +78,8 @@ public class MusicSystem {
 
         this.context = ctx.getApplicationContext();
 
-        // Crear visualizador de audio
-        visualizer = new MusicVisualizer();
+        // Crear visualizador de audio (con Context para auto-resume de música)
+        visualizer = new MusicVisualizer(context);
         visualizer.initialize();
 
         if (enabled) {

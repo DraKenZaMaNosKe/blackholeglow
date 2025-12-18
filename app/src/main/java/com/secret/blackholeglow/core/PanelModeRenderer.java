@@ -8,11 +8,10 @@ import com.secret.blackholeglow.ArcadeFooter;
 // import com.secret.blackholeglow.ArcadePreview; // REMOVIDO
 import com.secret.blackholeglow.ArcadeStartText;
 import com.secret.blackholeglow.ArcadeTitle;
-import com.secret.blackholeglow.ChristmasFooter;
-import com.secret.blackholeglow.ChristmasSnowfall;
-import com.secret.blackholeglow.ChristmasTitle;
+import com.secret.blackholeglow.christmas.ChristmasPanelBackground;
+import com.secret.blackholeglow.christmas.ChristmasOrnamentButton;
+import com.secret.blackholeglow.christmas.MiniStopButton;
 import com.secret.blackholeglow.LoadingBar;
-import com.secret.blackholeglow.MiniStopButton;
 import com.secret.blackholeglow.OrbixGreeting;
 import com.secret.blackholeglow.PlayPauseButton;
 
@@ -49,11 +48,10 @@ public class PanelModeRenderer {
     // private ArcadePreview arcadePreview; // REMOVIDO
     private boolean arcadeModeEnabled = false;  // Modo arcade para Batalla
 
-    // 🎄 Componentes CHRISTMAS (para Bosque Navideño)
-    private ChristmasTitle christmasTitle;
-    private ChristmasSnowfall christmasSnowfall;
-    private ChristmasFooter christmasFooter;
-    private boolean christmasModeEnabled = false;  // Modo navideño para Bosque Navideño
+    // 🎄 Componentes CHRISTMAS (para Bosque Navideño) - SIMPLIFICADO
+    private ChristmasPanelBackground christmasBackground;   // Fondo estático (imagen)
+    private ChristmasOrnamentButton christmasOrnament;      // Botón esfera navideña
+    private boolean christmasModeEnabled = false;           // Modo navideño para Bosque Navideño
 
     // Estado
     private boolean initialized = false;
@@ -138,24 +136,29 @@ public class PanelModeRenderer {
     }
 
     /**
-     * 🎄 Inicializa los componentes del panel navideño
+     * 🎄 Inicializa los componentes del panel navideño (SIMPLIFICADO)
+     * Solo fondo estático + botón esfera = RÁPIDO Y BONITO
      */
     private void initChristmasComponents() {
         try {
-            christmasTitle = new ChristmasTitle();
-            Log.d(TAG, "🎄 ChristmasTitle inicializado");
+            // Fondo estático con la imagen christmas_background.png
+            christmasBackground = new ChristmasPanelBackground(context);
+            Log.d(TAG, "🎄 ChristmasPanelBackground inicializado (imagen estática)");
 
-            christmasSnowfall = new ChristmasSnowfall();
-            Log.d(TAG, "❄️ ChristmasSnowfall inicializado");
-
-            christmasFooter = new ChristmasFooter();
-            Log.d(TAG, "⭐ ChristmasFooter inicializado");
+            // Botón en forma de esfera navideña (pequeño y centrado)
+            christmasOrnament = new ChristmasOrnamentButton();
+            christmasOrnament.setPosition(0.0f, -0.1f);  // Ligeramente abajo del centro
+            christmasOrnament.setSize(0.09f);            // Tamaño pequeño
+            Log.d(TAG, "🔴 ChristmasOrnamentButton inicializado (pequeño + magia)");
 
             Log.d(TAG, "🎄 ═══════════════════════════════════════");
-            Log.d(TAG, "🎄 MODO CHRISTMAS COMPONENTES LISTOS");
+            Log.d(TAG, "🎄 MODO CHRISTMAS SIMPLIFICADO LISTO");
+            Log.d(TAG, "🎄 Fondo: Imagen estática (sin shaders)");
+            Log.d(TAG, "🎄 Botón: Esfera navideña");
             Log.d(TAG, "🎄 ═══════════════════════════════════════");
         } catch (Exception e) {
             Log.e(TAG, "Error inicializando componentes Christmas: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -175,11 +178,8 @@ public class PanelModeRenderer {
             // if (arcadePreview != null) arcadePreview.update(deltaTime);
             if (playPauseButton != null) playPauseButton.update(deltaTime);
         } else if (christmasModeEnabled) {
-            // 🎄 MODO CHRISTMAS
-            if (christmasSnowfall != null) christmasSnowfall.update(deltaTime);
-            if (christmasTitle != null) christmasTitle.update(deltaTime);
-            if (christmasFooter != null) christmasFooter.update(deltaTime);
-            if (playPauseButton != null) playPauseButton.update(deltaTime);
+            // 🎄 MODO CHRISTMAS (simplificado - solo botón necesita update)
+            if (christmasOrnament != null) christmasOrnament.update(deltaTime);
         } else {
             // Modo estándar
             if (orbixGreeting != null) {
@@ -269,27 +269,18 @@ public class PanelModeRenderer {
     }
 
     /**
-     * 🎄 Dibuja el panel navideño
+     * 🎄 Dibuja el panel navideño (SIMPLIFICADO)
+     * Solo fondo estático + botón esfera = RÁPIDO
      */
     private void drawChristmasPanel() {
-        // Copos de nieve cayendo (fondo)
-        if (christmasSnowfall != null) {
-            christmasSnowfall.draw();
+        // 1. Fondo estático (imagen christmas_background.png)
+        if (christmasBackground != null) {
+            christmasBackground.draw();
         }
 
-        // Título "FELIZ NAVIDAD"
-        if (christmasTitle != null) {
-            christmasTitle.draw();
-        }
-
-        // Botón de play (centrado)
-        if (playPauseButton != null) {
-            playPauseButton.draw();
-        }
-
-        // Footer "Toca para comenzar"
-        if (christmasFooter != null) {
-            christmasFooter.draw();
+        // 2. Botón esfera navideña (centrado)
+        if (christmasOrnament != null) {
+            christmasOrnament.draw();
         }
     }
 
@@ -313,12 +304,18 @@ public class PanelModeRenderer {
      * Dibuja MiniStopButton (overlay sobre wallpaper)
      */
     public void drawWallpaperOverlay() {
+        // Guardar estado
         GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+
+        // 🔧 FIX: Habilitar blending para que el botón sea visible
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
         if (miniStopButton != null && miniStopButton.isVisible()) {
             miniStopButton.draw();
         }
 
+        // Restaurar estado
         GLES30.glEnable(GLES30.GL_DEPTH_TEST);
     }
 
@@ -342,30 +339,75 @@ public class PanelModeRenderer {
 
     /**
      * Prepara UI para modo wallpaper
+     * Oculta el panel y muestra el MiniStopButton
      */
     public void onWallpaperActivated() {
+        Log.d(TAG, "🎬 Wallpaper activado - mostrando MiniStopButton");
+
+        // Mostrar botón stop
         if (miniStopButton != null) {
             miniStopButton.show();
         }
+
+        // 🎄 Si modo Christmas, ocultar panel navideño
+        if (christmasModeEnabled) {
+            if (christmasBackground != null) christmasBackground.hide();
+            if (christmasOrnament != null) christmasOrnament.hide();
+        }
+
+        // 🎮 Si modo Arcade, ocultar panel arcade
+        if (arcadeModeEnabled) {
+            if (arcadeTitle != null) arcadeTitle.hide();
+            if (arcadeStartText != null) arcadeStartText.hide();
+            if (arcadeFooter != null) arcadeFooter.hide();
+        }
+
+        // Ocultar elementos estándar
+        if (orbixGreeting != null) orbixGreeting.hide();
         if (playPauseButton != null) {
             playPauseButton.setPlaying(true);
+            playPauseButton.setVisible(false);
         }
     }
 
     /**
      * Prepara UI para volver al panel
+     * PRESERVA el modo activo (Christmas, Arcade, etc.)
      */
     public void onReturnToPanel() {
         if (miniStopButton != null) {
             miniStopButton.hide();
         }
-        // SIEMPRE rehabilitar greeting al volver al panel
-        // (solo se deshabilita DURANTE ciertas escenas, no en el panel)
+
+        // 🎄 Si está en modo Christmas, restaurar el panel navideño
+        if (christmasModeEnabled) {
+            Log.d(TAG, "🎄 Volviendo al panel CHRISTMAS");
+            if (christmasBackground != null) christmasBackground.show();
+            if (christmasOrnament != null) christmasOrnament.show();
+            // NO mostrar greeting ni playPauseButton en modo Christmas
+            return;
+        }
+
+        // 🎮 Si está en modo Arcade, restaurar el panel arcade
+        if (arcadeModeEnabled) {
+            Log.d(TAG, "🎮 Volviendo al panel ARCADE");
+            if (arcadeTitle != null) arcadeTitle.show();
+            if (arcadeStartText != null) arcadeStartText.show();
+            if (arcadeFooter != null) arcadeFooter.show();
+            if (playPauseButton != null) {
+                playPauseButton.setVisible(true);
+                playPauseButton.setPlaying(false);
+            }
+            return;
+        }
+
+        // Modo ESTÁNDAR: mostrar greeting y playPauseButton
         greetingEnabled = true;
         if (orbixGreeting != null) {
             orbixGreeting.show();
         }
         if (playPauseButton != null) {
+            playPauseButton.setVisible(true);
             playPauseButton.setPlaying(false);
         }
     }
@@ -376,8 +418,14 @@ public class PanelModeRenderer {
 
     /**
      * ¿Toque en PlayPauseButton?
+     * En modo Christmas, verifica el botón esfera navideña
      */
     public boolean isPlayButtonTouched(float nx, float ny) {
+        // En modo Christmas, usar el botón esfera
+        if (christmasModeEnabled && christmasOrnament != null && christmasOrnament.isVisible()) {
+            return christmasOrnament.contains(nx, ny);
+        }
+        // Modo normal o arcade
         return playPauseButton != null && playPauseButton.isInside(nx, ny);
     }
 
@@ -385,7 +433,15 @@ public class PanelModeRenderer {
      * ¿Toque en MiniStopButton?
      */
     public boolean isStopButtonTouched(float nx, float ny) {
-        return miniStopButton != null && miniStopButton.isVisible() && miniStopButton.isInside(nx, ny);
+        boolean exists = miniStopButton != null;
+        boolean visible = exists && miniStopButton.isVisible();
+        boolean inside = visible && miniStopButton.isInside(nx, ny);
+
+        // 🔍 DEBUG: Log touch detection
+        Log.d(TAG, String.format("⏹️ StopButton check: exists=%b, visible=%b, inside=%b, nx=%.2f, ny=%.2f",
+            exists, visible, inside, nx, ny));
+
+        return inside;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -413,7 +469,7 @@ public class PanelModeRenderer {
             orbixGreeting.setAspectRatio(aspectRatio);
         }
         if (miniStopButton != null) {
-            miniStopButton.setAspectRatio(aspectRatio);
+            miniStopButton.setScreenSize(width, height);  // Pasa width/height para u_Resolution
         }
 
         // 🎮 Componentes arcade
@@ -428,15 +484,12 @@ public class PanelModeRenderer {
         }
         // arcadePreview removido
 
-        // 🎄 Componentes Christmas
-        if (christmasTitle != null) {
-            christmasTitle.setAspectRatio(aspectRatio);
+        // 🎄 Componentes Christmas (simplificado)
+        if (christmasBackground != null) {
+            christmasBackground.setAspectRatio(aspectRatio);
         }
-        if (christmasSnowfall != null) {
-            christmasSnowfall.setAspectRatio(aspectRatio);
-        }
-        if (christmasFooter != null) {
-            christmasFooter.setAspectRatio(aspectRatio);
+        if (christmasOrnament != null) {
+            christmasOrnament.setScreenSize(width, height);  // Pass actual resolution
         }
     }
 
@@ -484,6 +537,11 @@ public class PanelModeRenderer {
         this.arcadeModeEnabled = enabled;
 
         if (enabled) {
+            // 🔧 FIX: Desactivar modo Christmas cuando se activa Arcade
+            christmasModeEnabled = false;
+            if (christmasBackground != null) christmasBackground.hide();
+            if (christmasOrnament != null) christmasOrnament.hide();
+
             // Activar componentes arcade, ocultar estándar
             if (orbixGreeting != null) orbixGreeting.hide();
             if (arcadeTitle != null) arcadeTitle.show();
@@ -527,6 +585,7 @@ public class PanelModeRenderer {
 
     /**
      * 🎄 Activa/desactiva el modo CHRISTMAS (para Bosque Navideño)
+     * Versión simplificada: fondo estático + botón esfera
      */
     public void setChristmasModeEnabled(boolean enabled) {
         this.christmasModeEnabled = enabled;
@@ -540,31 +599,27 @@ public class PanelModeRenderer {
             if (arcadeTitle != null) arcadeTitle.hide();
             if (arcadeStartText != null) arcadeStartText.hide();
             if (arcadeFooter != null) arcadeFooter.hide();
+            if (playPauseButton != null) playPauseButton.setVisible(false);  // Usamos el ornament en su lugar
 
-            // Activar componentes navideños
-            if (christmasSnowfall != null) christmasSnowfall.show();
-            if (christmasTitle != null) christmasTitle.show();
-            if (christmasFooter != null) christmasFooter.show();
-
-            // Configurar botón para modo navideño (tamaño estándar)
-            if (playPauseButton != null) {
-                playPauseButton.setSize(0.15f);
-                playPauseButton.setPosition(0.0f, 0.05f);
-            }
+            // Activar componentes navideños simplificados
+            if (christmasBackground != null) christmasBackground.show();
+            if (christmasOrnament != null) christmasOrnament.show();
 
             Log.d(TAG, "🎄 ═══════════════════════════════════════");
-            Log.d(TAG, "🎄 MODO CHRISTMAS ACTIVADO");
+            Log.d(TAG, "🎄 MODO CHRISTMAS ACTIVADO (Simplificado)");
+            Log.d(TAG, "🎄 Fondo: Imagen estática");
+            Log.d(TAG, "🎄 Botón: Esfera navideña");
             Log.d(TAG, "🎄 ═══════════════════════════════════════");
         } else {
             // Ocultar componentes navideños
-            if (christmasSnowfall != null) christmasSnowfall.hide();
-            if (christmasTitle != null) christmasTitle.hide();
-            if (christmasFooter != null) christmasFooter.hide();
+            if (christmasBackground != null) christmasBackground.hide();
+            if (christmasOrnament != null) christmasOrnament.hide();
 
             // Restaurar componentes estándar si no hay otro modo activo
             if (!arcadeModeEnabled) {
                 if (orbixGreeting != null && greetingEnabled) orbixGreeting.show();
                 if (playPauseButton != null) {
+                    playPauseButton.setVisible(true);
                     playPauseButton.setSize(0.18f);
                     playPauseButton.setPosition(0.0f, 0.0f);
                 }
@@ -605,18 +660,14 @@ public class PanelModeRenderer {
         }
         // arcadePreview removido - ya no se usa
 
-        // 🎄 Liberar recursos Christmas
-        if (christmasTitle != null) {
-            christmasTitle.dispose();
-            christmasTitle = null;
+        // 🎄 Liberar recursos Christmas (simplificado)
+        if (christmasBackground != null) {
+            christmasBackground.dispose();
+            christmasBackground = null;
         }
-        if (christmasSnowfall != null) {
-            christmasSnowfall.dispose();
-            christmasSnowfall = null;
-        }
-        if (christmasFooter != null) {
-            christmasFooter.dispose();
-            christmasFooter = null;
+        if (christmasOrnament != null) {
+            christmasOrnament.dispose();
+            christmasOrnament = null;
         }
 
         Log.d(TAG, "🧹 PanelModeRenderer recursos liberados");

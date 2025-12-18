@@ -5,7 +5,7 @@ import android.util.Log;
 import android.view.MotionEvent;
 
 import com.secret.blackholeglow.FireButton;
-import com.secret.blackholeglow.MiniStopButton;
+import com.secret.blackholeglow.christmas.MiniStopButton;
 import com.secret.blackholeglow.PlayPauseButton;
 import com.secret.blackholeglow.sharing.HeartParticleSystem;
 import com.secret.blackholeglow.sharing.LikeButton;

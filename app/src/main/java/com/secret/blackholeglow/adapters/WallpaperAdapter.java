@@ -1,6 +1,9 @@
 package com.secret.blackholeglow.adapters;
 
+import android.app.WallpaperManager;
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.os.Vibrator;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -130,17 +133,21 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
             holder.buttonPreview.setAlpha(1.0f);
             holder.buttonPreview.setText("✨ VER WALLPAPER");
             holder.buttonPreview.setOnClickListener(v -> {
-                // ✅ Guardar preferencia INMEDIATAMENTE al seleccionar
-                WallpaperPreferences.getInstance(context).setSelectedWallpaper(item.getSceneName());
-                Log.d("WallpaperAdapter", "💾 Wallpaper seleccionado: " + item.getSceneName());
+                // 🧹 LIMPIEZA AUTOMÁTICA: Limpiar wallpaper anterior antes de cargar nuevo
+                // Esto evita conflictos de estado entre escenas (ej: Christmas → Arcade)
+                clearCurrentWallpaperAsync(() -> {
+                    // ✅ Guardar preferencia INMEDIATAMENTE al seleccionar
+                    WallpaperPreferences.getInstance(context).setSelectedWallpaper(item.getSceneName());
+                    Log.d("WallpaperAdapter", "💾 Wallpaper seleccionado: " + item.getSceneName());
 
-                // Ir a WallpaperLoadingActivity para precarga de recursos
-                Intent intent = new Intent(context, com.secret.blackholeglow.activities.WallpaperLoadingActivity.class);
+                    // Ir a WallpaperLoadingActivity para precarga de recursos
+                    Intent intent = new Intent(context, com.secret.blackholeglow.activities.WallpaperLoadingActivity.class);
 
-                // Pasar datos del wallpaper (sceneName para SceneFactory)
-                intent.putExtra("WALLPAPER_PREVIEW_ID", item.getResourceIdPreview());
-                intent.putExtra("WALLPAPER_ID", item.getSceneName());  // Nombre interno para SceneFactory
-                context.startActivity(intent);
+                    // Pasar datos del wallpaper (sceneName para SceneFactory)
+                    intent.putExtra("WALLPAPER_PREVIEW_ID", item.getResourceIdPreview());
+                    intent.putExtra("WALLPAPER_ID", item.getSceneName());  // Nombre interno para SceneFactory
+                    context.startActivity(intent);
+                });
             });
         } else {
             // Wallpaper NO disponible - botón deshabilitado con texto especial
@@ -241,5 +248,57 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
             buttonPreview = itemView.findViewById(R.id.button_preview);
             animatedBorder = itemView.findViewById(R.id.animated_border);
         }
+    }
+
+    // ╔═════════════════════════════════════════════════════════════════╗
+    // ║  🧹 LIMPIEZA AUTOMÁTICA DE WALLPAPER                           ║
+    // ╠═════════════════════════════════════════════════════════════════╣
+    // ║  Limpia el wallpaper actual antes de cargar uno nuevo.          ║
+    // ║  Esto fuerza a Android a destruir el LiveWallpaperService       ║
+    // ║  anterior y evita conflictos de estado entre escenas.           ║
+    // ╚═════════════════════════════════════════════════════════════════╝
+
+    /**
+     * Limpia el wallpaper actual de forma asíncrona y ejecuta el callback al terminar.
+     * Esto evita el bug de conflicto de estado al cambiar entre escenas.
+     *
+     * @param onComplete Callback a ejecutar después de la limpieza
+     */
+    private void clearCurrentWallpaperAsync(Runnable onComplete) {
+        new Thread(() -> {
+            try {
+                WallpaperManager wm = WallpaperManager.getInstance(context);
+
+                // Verificar si hay un live wallpaper activo de nuestra app
+                android.app.WallpaperInfo info = wm.getWallpaperInfo();
+                if (info != null && info.getPackageName().equals(context.getPackageName())) {
+                    Log.d("WallpaperAdapter", "🧹 Limpiando wallpaper anterior: " + info.getServiceName());
+
+                    // Crear un bitmap negro temporal para "resetear" el wallpaper
+                    Bitmap blackBitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888);
+                    blackBitmap.eraseColor(Color.BLACK);
+                    wm.setBitmap(blackBitmap);
+                    blackBitmap.recycle();
+
+                    // Pequeña pausa para que Android destruya el servicio anterior
+                    Thread.sleep(200);
+
+                    Log.d("WallpaperAdapter", "✅ Wallpaper anterior limpiado correctamente");
+                } else {
+                    Log.d("WallpaperAdapter", "ℹ️ No hay live wallpaper activo de nuestra app, continuando...");
+                }
+            } catch (Exception e) {
+                Log.w("WallpaperAdapter", "⚠️ Error limpiando wallpaper (no crítico): " + e.getMessage());
+                // No es crítico, continuamos de todos modos
+            }
+
+            // Ejecutar callback en el UI thread
+            if (context instanceof android.app.Activity) {
+                ((android.app.Activity) context).runOnUiThread(onComplete);
+            } else {
+                // Fallback: ejecutar directamente (podría causar problemas de UI)
+                onComplete.run();
+            }
+        }).start();
     }
 }
