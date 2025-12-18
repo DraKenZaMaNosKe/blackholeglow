@@ -37,7 +37,7 @@ public class TierraLiveHD implements SceneObject, CameraAware {
     private FloatBuffer uvBuffer;
     private int vertexCount;
     private List<MaterialGroup> materialGroups;
-    private Map<MaterialGroup, ShortBuffer> indexBuffers = new HashMap<>();
+    private Map<MaterialGroup, java.nio.IntBuffer> indexBuffers = new HashMap<>();
 
     // Shader program
     private int shaderProgram;
@@ -110,8 +110,9 @@ public class TierraLiveHD implements SceneObject, CameraAware {
             vertexCount = mesh.vertexCount;
 
             // Crear index buffers para cada grupo de material
+            // ✅ FIX: Usa IntBuffer para modelos >32k vértices
             for (MaterialGroup group : materialGroups) {
-                ShortBuffer indexBuffer = ObjLoaderWithMaterials.buildIndexBufferForGroup(group);
+                java.nio.IntBuffer indexBuffer = ObjLoaderWithMaterials.buildIndexBufferForGroup(group);
                 indexBuffers.put(group, indexBuffer);
                 Log.d(TAG, "  - " + group.materialName + ": " +
                         group.faces.size() + " caras, " +
@@ -386,14 +387,15 @@ public class TierraLiveHD implements SceneObject, CameraAware {
             }
 
             // Draw este grupo con índices
-            ShortBuffer indexBuffer = indexBuffers.get(group);
+            // ✅ FIX: Usa IntBuffer + GL_UNSIGNED_INT para modelos >32k vértices
+            java.nio.IntBuffer indexBuffer = indexBuffers.get(group);
             if (indexBuffer != null) {
                 indexBuffer.position(0);
                 int indexCount = indexBuffer.capacity();
                 GLES30.glDrawElements(
                         GLES30.GL_TRIANGLES,
                         indexCount,
-                        GLES30.GL_UNSIGNED_SHORT,
+                        GLES30.GL_UNSIGNED_INT,
                         indexBuffer
                 );
             }

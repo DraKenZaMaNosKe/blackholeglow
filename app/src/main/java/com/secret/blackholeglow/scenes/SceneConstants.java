@@ -75,36 +75,12 @@ public final class SceneConstants {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // 🛡️ ESCUDOS
+    // 🛡️ ESCUDOS (NOTA: ForceField eliminado en limpieza Dec 2024)
     // ═══════════════════════════════════════════════════════════════════
 
     public static final class Shield {
         /** Radio del EarthShield (escudo de impactos) */
         public static final float EARTH_SHIELD_RADIUS = 1.30f;
-
-        /** Radio del ForceField (campo visible) */
-        public static final float FORCE_FIELD_RADIUS = 1.55f;
-
-        /** HP máximo del ForceField */
-        public static final int FORCE_FIELD_MAX_HP = 50;
-
-        /** Color del ForceField - Rojo (0-1) */
-        public static final float FORCE_FIELD_COLOR_R = 0.3f;
-
-        /** Color del ForceField - Verde (0-1) */
-        public static final float FORCE_FIELD_COLOR_G = 0.9f;
-
-        /** Color del ForceField - Azul (0-1) */
-        public static final float FORCE_FIELD_COLOR_B = 1.0f;
-
-        /** Intensidad base del ForceField */
-        public static final float FORCE_FIELD_INTENSITY = 0.08f;
-
-        /** Velocidad de pulso del ForceField */
-        public static final float FORCE_FIELD_PULSE_SPEED = 0.028f;
-
-        /** Amplitud de pulso del ForceField */
-        public static final float FORCE_FIELD_PULSE_AMPLITUDE = 0.240f;
     }
 
     // ═══════════════════════════════════════════════════════════════════

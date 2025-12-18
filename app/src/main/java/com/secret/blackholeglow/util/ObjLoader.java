@@ -289,21 +289,46 @@ public class ObjLoader {
     }
 
     /**
-     * Utility: Construye un ShortBuffer de índices a partir de una lista de caras.
+     * Utility: Construye un IntBuffer de índices a partir de una lista de caras.
      * Triangula polígonos usando fan triangulation.
+     *
+     * ✅ FIX: Usa int[] en lugar de short[] para soportar modelos >32,767 vértices
      *
      * @param faces Lista de caras (cada cara es un array de índices de vértices)
      * @param indexCount Número total de índices (triCount * 3)
-     * @return ShortBuffer listo para glDrawElements
+     * @return IntBuffer listo para glDrawElements con GL_UNSIGNED_INT
      */
-    public static ShortBuffer buildIndexBuffer(List<short[]> faces, int indexCount) {
+    public static java.nio.IntBuffer buildIndexBuffer(List<int[]> faces, int indexCount) {
+        java.nio.IntBuffer ib = ByteBuffer
+                .allocateDirect(indexCount * Integer.BYTES)
+                .order(ByteOrder.nativeOrder())
+                .asIntBuffer();
+
+        for (int[] face : faces) {
+            // Fan triangulation: v0, v1, v2 -> v0, v2, v3 -> ...
+            int v0 = face[0];
+            for (int i = 1; i < face.length - 1; i++) {
+                ib.put(v0);
+                ib.put(face[i]);
+                ib.put(face[i + 1]);
+            }
+        }
+
+        ib.position(0);
+        return ib;
+    }
+
+    /**
+     * @deprecated Usar buildIndexBuffer(List<int[]>, int) para soportar modelos grandes
+     */
+    @Deprecated
+    public static ShortBuffer buildIndexBufferShort(List<short[]> faces, int indexCount) {
         ShortBuffer ib = ByteBuffer
                 .allocateDirect(indexCount * Short.BYTES)
                 .order(ByteOrder.nativeOrder())
                 .asShortBuffer();
 
         for (short[] face : faces) {
-            // Fan triangulation: v0, v1, v2 -> v0, v2, v3 -> ...
             short v0 = face[0];
             for (int i = 1; i < face.length - 1; i++) {
                 ib.put(v0);

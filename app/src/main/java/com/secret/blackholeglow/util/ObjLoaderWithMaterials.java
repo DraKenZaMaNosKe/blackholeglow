@@ -275,24 +275,28 @@ public class ObjLoaderWithMaterials {
     }
 
     /**
-     * Construye un ShortBuffer de índices para un MaterialGroup específico
+     * Construye un IntBuffer de índices para un MaterialGroup específico
+     *
+     * ✅ FIX: Usa IntBuffer en lugar de ShortBuffer para soportar modelos >32,767 vértices
+     *
+     * IMPORTANTE: Al usar este buffer con glDrawElements, usar GL_UNSIGNED_INT
      */
-    public static ShortBuffer buildIndexBufferForGroup(MaterialGroup group) {
+    public static java.nio.IntBuffer buildIndexBufferForGroup(MaterialGroup group) {
         int triangleCount = group.getTriangleCount();
         int indexCount = triangleCount * 3;
 
-        ShortBuffer ib = ByteBuffer
-                .allocateDirect(indexCount * Short.BYTES)
+        java.nio.IntBuffer ib = ByteBuffer
+                .allocateDirect(indexCount * Integer.BYTES)
                 .order(ByteOrder.nativeOrder())
-                .asShortBuffer();
+                .asIntBuffer();
 
         for (ObjLoader.Face face : group.faces) {
             // Fan triangulation
-            short v0 = (short) face.vertexIndices[0];  // ✅ Cast a short
+            int v0 = face.vertexIndices[0];
             for (int i = 1; i < face.vertexIndices.length - 1; i++) {
                 ib.put(v0);
-                ib.put((short) face.vertexIndices[i]);      // ✅ Cast a short
-                ib.put((short) face.vertexIndices[i + 1]);  // ✅ Cast a short
+                ib.put(face.vertexIndices[i]);
+                ib.put(face.vertexIndices[i + 1]);
             }
         }
 
