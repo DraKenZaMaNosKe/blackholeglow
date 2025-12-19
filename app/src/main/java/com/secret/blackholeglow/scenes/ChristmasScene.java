@@ -177,10 +177,10 @@ public class ChristmasScene extends WallpaperScene {
         try {
             christmasTree = new ChristmasTree(context, textureManager);
             christmasTree.setCameraController(camera);
-            // Posición centrada, en frente y visible
+            // Posición cerca de la casita del fondo (derecha-arriba)
             // Camera está en (4,3,6) mirando a (0,0,0)
-            christmasTree.setPosition(0f, -1.0f, 1.0f);  // Z positivo = más cerca de cámara
-            christmasTree.setScale(1.2f);  // Escala mayor para ser visible
+            christmasTree.setPosition(0.358f, 0.2f, -1.5f);  // Derecha, arriba, al fondo
+            christmasTree.setScale(0.5f);  // Más pequeño (perspectiva de distancia)
             christmasTree.setWindStrength(0.015f);
             addSceneObject(christmasTree);
             Log.d(TAG, "  ✓ 🎄 Árbol de Navidad agregado");

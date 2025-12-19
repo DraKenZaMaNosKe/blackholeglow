@@ -15,6 +15,7 @@ import android.opengl.GLSurfaceView;
 import androidx.annotation.NonNull;
 
 import com.secret.blackholeglow.core.WallpaperDirector;
+import com.secret.blackholeglow.filament.FilamentChristmasRenderer;
 import com.secret.blackholeglow.systems.UsageTracker;
 import com.secret.blackholeglow.systems.RewardsManager;
 import com.secret.blackholeglow.systems.RemoteConfigManager;
@@ -57,10 +58,18 @@ public class LiveWallpaperService extends WallpaperService {
         private WallpaperDirector wallpaperDirector;  // Sistema modular de renderizado
         private ChargingScreenManager chargingScreenManager;
 
+        // 🎄 Filament para escena navideña con Santa animado
+        private FilamentChristmasRenderer filamentRenderer;
+        private boolean useFilament = false;
+
         private final Object stateLock = new Object();
         private RenderState currentState = RenderState.UNINITIALIZED;
         private boolean surfaceExists = false;
         private boolean isSystemPreviewMode = false;  // 🎬 Para mantener el wallpaper visible en preview del sistema
+        private android.os.Handler mainHandler;  // 🎄 Para switches de renderer seguros
+        private long touchDownTime = 0;  // 🎄 Para detectar long-press en modo Filament
+        private static final long LONG_PRESS_DURATION = 1500; // 1.5 segundos
+        private Runnable longPressRunnable;
 
         // ═══════════════════════════════════════════════════════════════
         // 📱 DETECCIÓN DE EVENTOS DEL SISTEMA
@@ -89,6 +98,9 @@ public class LiveWallpaperService extends WallpaperService {
 
             // Habilitar touch
             setTouchEventsEnabled(true);
+
+            // 🎄 Handler para switches de renderer seguros en main thread
+            mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
 
             // Gestor de pantalla de carga
             chargingScreenManager = new ChargingScreenManager(context);
@@ -156,10 +168,14 @@ public class LiveWallpaperService extends WallpaperService {
                         // Esto se dispara cuando: Home, Recents, App Switcher
                         String reason = intent.getStringExtra("reason");
                         Log.d(TAG, "📱 CLOSE_SYSTEM_DIALOGS reason=" + reason);
-                        if ("homekey".equals(reason) || "recentapps".equals(reason) ||
-                            "assist".equals(reason) || "voiceinteraction".equals(reason)) {
-                            // Usuario presionó Home o abrió Recents
-                            forceStopAnimation();
+                        // 🎄 Filament NO usa panel, así que no lo detenemos aquí
+                        // Solo detener para OpenGL ES con panel de control
+                        if (!useFilament) {
+                            if ("homekey".equals(reason) || "recentapps".equals(reason) ||
+                                "assist".equals(reason) || "voiceinteraction".equals(reason)) {
+                                // Usuario presionó Home o abrió Recents
+                                forceStopAnimation();
+                            }
                         }
                         break;
                 }
@@ -172,6 +188,14 @@ public class LiveWallpaperService extends WallpaperService {
          */
         private void forceStopAnimation() {
             synchronized (stateLock) {
+                // 🎄 Filament
+                if (useFilament && filamentRenderer != null) {
+                    filamentRenderer.stop();
+                    currentState = RenderState.STOPPED;
+                    Log.d(TAG, "⚡ Filament detenido");
+                    return;
+                }
+
                 if (wallpaperDirector != null) {
                     wallpaperDirector.pause();
                 }
@@ -182,6 +206,38 @@ public class LiveWallpaperService extends WallpaperService {
         @Override
         public void onTouchEvent(MotionEvent event) {
             super.onTouchEvent(event);
+
+            // 🎄 Modo Filament: Detectar LONG-PRESS (1.5s) para volver al panel
+            if (useFilament) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        touchDownTime = System.currentTimeMillis();
+                        // Programar callback para long-press
+                        if (longPressRunnable != null) {
+                            mainHandler.removeCallbacks(longPressRunnable);
+                        }
+                        longPressRunnable = () -> {
+                            Log.d(TAG, "🎄 Long-press detectado (1.5s) - Volviendo al panel");
+                            switchToOpenGL();
+                        };
+                        mainHandler.postDelayed(longPressRunnable, LONG_PRESS_DURATION);
+                        break;
+
+                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL:
+                        // Cancelar long-press si levantó el dedo antes
+                        if (longPressRunnable != null) {
+                            mainHandler.removeCallbacks(longPressRunnable);
+                            longPressRunnable = null;
+                        }
+                        break;
+                }
+                return; // No procesar más en modo Filament
+            }
+
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                Log.d(TAG, "👆 Touch DOWN en (" + event.getX() + ", " + event.getY() + ") state=" + currentState);
+            }
             synchronized (stateLock) {
                 // 🔧 FIX: Procesar touch cuando está RUNNING (incluye PANEL_MODE del Director)
                 // El WallpaperDirector necesita touch para el botón Play incluso en Panel de Control
@@ -195,6 +251,12 @@ public class LiveWallpaperService extends WallpaperService {
 
         private void initializeGL() {
             try {
+                String nombreWallpaper = wallpaperPrefs.getSelectedWallpaperSync();
+                Log.d(TAG, "🎬 Escena seleccionada: " + nombreWallpaper);
+
+                // 🚀 SIEMPRE usar OpenGL ES con panel de control primero
+                // Filament se activará cuando el usuario presione PLAY
+                useFilament = false;
                 Log.d(TAG, "Inicializando OpenGL ES 3.0...");
 
                 glSurfaceView = new GLWallpaperSurfaceView(context);
@@ -212,9 +274,13 @@ public class LiveWallpaperService extends WallpaperService {
                 Log.d(TAG, "🎬 Usando WallpaperDirector");
                 wallpaperDirector = new WallpaperDirector(context);
 
-                // ⚠️ IMPORTANTE: Cargar escena ANTES de setRenderer
-                String nombreWallpaper = wallpaperPrefs.getSelectedWallpaperSync();
-                Log.d(TAG, "🎬 Escena seleccionada: " + nombreWallpaper);
+                // 🎄 Listener para cambio a Filament (escenas con animación 3D)
+                wallpaperDirector.setOnFilamentSceneListener(sceneName -> {
+                    Log.d(TAG, "🎄 Callback recibido: Cambiar a Filament para " + sceneName);
+                    // Postear al main thread con delay para asegurar cleanup de OpenGL ES
+                    mainHandler.postDelayed(() -> switchToFilament(), 100);
+                });
+
                 wallpaperDirector.changeScene(nombreWallpaper);
 
                 glSurfaceView.setRenderer(wallpaperDirector);
@@ -240,7 +306,38 @@ public class LiveWallpaperService extends WallpaperService {
 
             Log.d(TAG, visible ? "👁️ VISIBLE" : "🔒 OCULTO");
 
+            // 🎄 Filament: Al ocultarse, DESTRUIR completamente para liberar recursos
+            if (useFilament && !visible) {
+                Log.d(TAG, "🎄 Wallpaper oculto - Destruyendo Filament para liberar recursos");
+                UsageTracker.get().onWallpaperHidden();
+
+                // Destruir Filament completamente
+                if (filamentRenderer != null) {
+                    filamentRenderer.stop();
+                    filamentRenderer.destroy();
+                    filamentRenderer = null;
+                }
+
+                synchronized (stateLock) {
+                    useFilament = false;
+                    currentState = RenderState.STOPPED;
+                }
+
+                Log.d(TAG, "✓ Filament destruido - Panel se mostrará al volver");
+                return;
+            }
+
+            // 🚀 Si volvemos visible y no hay renderer (después de destruir Filament), recrear
+            Log.d(TAG, "🔍 Check recreate: visible=" + visible + " glSurfaceView=" + (glSurfaceView != null) +
+                       " useFilament=" + useFilament + " surfaceExists=" + surfaceExists);
+            if (visible && glSurfaceView == null && !useFilament && surfaceExists) {
+                Log.d(TAG, "🚀 Recreando OpenGL ES con panel (volviendo de Filament)");
+                mainHandler.post(() -> recreateOpenGLWithPanel());
+                return;
+            }
+
             synchronized (stateLock) {
+                // OpenGL ES normal
                 if (glSurfaceView == null || currentState == RenderState.UNINITIALIZED) {
                     Log.w(TAG, "GL no inicializado, ignorando cambio de visibilidad");
                     return;
@@ -253,27 +350,67 @@ public class LiveWallpaperService extends WallpaperService {
 
                 if (visible) {
                     startRendering();
-                    // ⏱️ Iniciar tracking de uso
                     UsageTracker.get().onWallpaperVisible();
                 } else {
-                    // ⏱️ Detener tracking de uso
                     UsageTracker.get().onWallpaperHidden();
 
-                    // 🎬 En preview del sistema, NO forzar panel - mantener wallpaper visible
+                    // 🎬 En preview del sistema, NO forzar panel
                     if (isSystemPreviewMode) {
                         Log.d(TAG, "🎬 Preview del sistema: Manteniendo wallpaper visible");
-                        // Solo pausar el rendering, no volver a panel
                         stopRendering();
                     } else {
-                        // 📱 IMPORTANTE: Cuando no es visible, volver a PANEL_MODE
                         stopRendering();
-                        // Forzar PANEL_MODE para evitar flickering al volver
                         if (wallpaperDirector != null) {
                             wallpaperDirector.pause();
                             Log.d(TAG, "⚡ Director pausado por pérdida de visibilidad");
                         }
                     }
                 }
+            }
+        }
+
+        /**
+         * 🚀 Recrea OpenGL ES con el panel (después de destruir Filament)
+         */
+        private void recreateOpenGLWithPanel() {
+            Log.d(TAG, "🚀 Recreando sistema OpenGL ES...");
+
+            try {
+                String nombreWallpaper = wallpaperPrefs.getSelectedWallpaperSync();
+
+                glSurfaceView = new GLWallpaperSurfaceView(context);
+                glSurfaceView.setEGLContextClientVersion(3);
+                glSurfaceView.setPreserveEGLContextOnPause(true);
+                glSurfaceView.setEGLConfigChooser(8, 8, 8, 8, 24, 0);
+
+                wallpaperDirector = new WallpaperDirector(context);
+
+                // Reconectar el listener de Filament
+                wallpaperDirector.setOnFilamentSceneListener(sceneName -> {
+                    Log.d(TAG, "🎄 Callback: Cambiar a Filament para " + sceneName);
+                    mainHandler.postDelayed(() -> switchToFilament(), 100);
+                });
+
+                wallpaperDirector.changeScene(nombreWallpaper);
+                glSurfaceView.setRenderer(wallpaperDirector);
+                glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+
+                // 🔑 Forzar inicio del renderer ya que la Surface ya existe
+                SurfaceHolder holder = getSurfaceHolder();
+                if (holder != null && holder.getSurface() != null && holder.getSurface().isValid()) {
+                    Log.d(TAG, "🔑 Surface válida, forzando surfaceCreated");
+                    android.graphics.Rect rect = holder.getSurfaceFrame();
+                    glSurfaceView.surfaceCreated(holder);
+                    glSurfaceView.surfaceChanged(holder, android.graphics.PixelFormat.RGBA_8888, rect.width(), rect.height());
+                }
+
+                synchronized (stateLock) {
+                    currentState = RenderState.RUNNING;
+                }
+
+                Log.d(TAG, "✅ OpenGL ES recreado con panel navideño");
+            } catch (Exception e) {
+                Log.e(TAG, "Error recreando OpenGL ES", e);
             }
         }
 
@@ -289,6 +426,14 @@ public class LiveWallpaperService extends WallpaperService {
 
             if (currentState != RenderState.STOPPED) {
                 Log.w(TAG, "Estado inválido para iniciar: " + currentState);
+                return;
+            }
+
+            // 🎄 Filament
+            if (useFilament && filamentRenderer != null) {
+                filamentRenderer.start();
+                currentState = RenderState.RUNNING;
+                Log.d(TAG, "🟢 RUNNING (Filament + Santa)");
                 return;
             }
 
@@ -329,6 +474,14 @@ public class LiveWallpaperService extends WallpaperService {
                 return;
             }
 
+            // 🎄 Filament
+            if (useFilament && filamentRenderer != null) {
+                filamentRenderer.stop();
+                currentState = RenderState.STOPPED;
+                Log.d(TAG, "🔴 STOPPED (Filament)");
+                return;
+            }
+
             // PASO 1: Pausar lógica PRIMERO
             if (wallpaperDirector != null) {
                 wallpaperDirector.pause();
@@ -341,6 +494,126 @@ public class LiveWallpaperService extends WallpaperService {
             currentState = RenderState.STOPPED;
 
             Log.d(TAG, "🔴 STOPPED");
+        }
+
+        /**
+         * 🎄 Cambia de OpenGL ES a Filament para escenas con animación 3D (Christmas)
+         */
+        private void switchToFilament() {
+            Log.d(TAG, "╔════════════════════════════════════════╗");
+            Log.d(TAG, "║   🎄 CAMBIANDO A FILAMENT...          ║");
+            Log.d(TAG, "╚════════════════════════════════════════╝");
+
+            // 1. DESTRUIR completamente OpenGL ES FUERA del lock para evitar deadlock
+            if (glSurfaceView != null) {
+                Log.d(TAG, "🔧 Destruyendo OpenGL ES...");
+
+                // Pausar y detener el render thread
+                glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+                glSurfaceView.onPause();
+
+                // Liberar el director
+                if (wallpaperDirector != null) {
+                    wallpaperDirector.pause();
+                    wallpaperDirector.release();
+                    wallpaperDirector = null;
+                }
+
+                glSurfaceView = null;
+                Log.d(TAG, "✓ OpenGL ES destruido");
+            }
+
+            synchronized (stateLock) {
+                // 2. Activar modo Filament
+                useFilament = true;
+                currentState = RenderState.STOPPED;
+            }
+
+            // 3. Dar tiempo para que EGL se libere completamente
+            mainHandler.postDelayed(() -> {
+                Log.d(TAG, "🎄 Iniciando Filament después de cleanup...");
+
+                // 4. Crear renderer de Filament
+                if (filamentRenderer == null) {
+                    filamentRenderer = new FilamentChristmasRenderer(context);
+                }
+
+                // 5. Inicializar con el SurfaceHolder actual
+                SurfaceHolder holder = getSurfaceHolder();
+                if (holder != null && holder.getSurface() != null && holder.getSurface().isValid()) {
+                    filamentRenderer.initialize(holder);
+                    android.graphics.Rect frame = holder.getSurfaceFrame();
+                    filamentRenderer.setSize(frame.width(), frame.height());
+                    filamentRenderer.start();
+                    synchronized (stateLock) {
+                        currentState = RenderState.RUNNING;
+                    }
+                    Log.d(TAG, "🎄 ¡Filament ACTIVO con Santa!");
+                } else {
+                    Log.w(TAG, "Surface no válido para Filament");
+                }
+            }, 200); // 200ms delay para asegurar cleanup de EGL
+        }
+
+        /**
+         * 🔙 Vuelve de Filament a OpenGL ES (panel de control)
+         */
+        private void switchToOpenGL() {
+            Log.d(TAG, "╔════════════════════════════════════════╗");
+            Log.d(TAG, "║   🔙 VOLVIENDO A OPENGL ES...         ║");
+            Log.d(TAG, "╚════════════════════════════════════════╝");
+
+            // 1. Detener Filament FUERA del lock
+            if (filamentRenderer != null) {
+                Log.d(TAG, "🔧 Destruyendo Filament...");
+                filamentRenderer.stop();
+                filamentRenderer.destroy();
+                filamentRenderer = null;
+                Log.d(TAG, "✓ Filament destruido");
+            }
+
+            synchronized (stateLock) {
+                // 2. Desactivar modo Filament
+                useFilament = false;
+                currentState = RenderState.STOPPED;
+            }
+
+            // 3. Dar tiempo para que Filament se libere
+            mainHandler.postDelayed(() -> {
+                Log.d(TAG, "🚀 Recreando OpenGL ES...");
+
+                // 4. Reinicializar OpenGL ES completo
+                try {
+                    String nombreWallpaper = wallpaperPrefs.getSelectedWallpaperSync();
+
+                    glSurfaceView = new GLWallpaperSurfaceView(context);
+                    glSurfaceView.setEGLContextClientVersion(3);
+                    glSurfaceView.setPreserveEGLContextOnPause(true);
+                    glSurfaceView.setEGLConfigChooser(8, 8, 8, 8, 24, 0);
+
+                    wallpaperDirector = new WallpaperDirector(context);
+
+                    // Reconectar el listener de Filament
+                    wallpaperDirector.setOnFilamentSceneListener(sceneName -> {
+                        Log.d(TAG, "🎄 Callback recibido: Cambiar a Filament para " + sceneName);
+                        mainHandler.postDelayed(() -> switchToFilament(), 100);
+                    });
+
+                    wallpaperDirector.changeScene(nombreWallpaper);
+                    glSurfaceView.setRenderer(wallpaperDirector);
+
+                    // Iniciar rendering
+                    glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+
+                    synchronized (stateLock) {
+                        currentState = RenderState.RUNNING;
+                    }
+
+                    Log.d(TAG, "🚀 ¡OpenGL ES restaurado con panel!");
+                } catch (Exception e) {
+                    Log.e(TAG, "Error recreando OpenGL ES", e);
+                }
+            }, 200);
         }
 
         private void loadWallpaperAsync() {
@@ -365,6 +638,17 @@ public class LiveWallpaperService extends WallpaperService {
         public void onSurfaceCreated(SurfaceHolder holder) {
             super.onSurfaceCreated(holder);
             Log.d(TAG, "📐 Surface CREATED");
+
+            // 🎄 Si usamos Filament, inicializar aquí
+            if (useFilament && filamentRenderer != null) {
+                Log.d(TAG, "🎄 Inicializando Filament con SurfaceHolder");
+                filamentRenderer.initialize(holder);
+                synchronized (stateLock) {
+                    surfaceExists = true;
+                    currentState = RenderState.STOPPED;
+                }
+                return;
+            }
 
             // 🎬 Detectar si es preview del sistema AHORA (seguro de llamar después de attach)
             try {
@@ -401,6 +685,12 @@ public class LiveWallpaperService extends WallpaperService {
             super.onSurfaceChanged(holder, format, width, height);
             Log.d(TAG, "📐 Surface CHANGED: " + width + "x" + height);
 
+            // 🎄 Filament
+            if (useFilament && filamentRenderer != null) {
+                filamentRenderer.setSize(width, height);
+                return;
+            }
+
             if (glSurfaceView != null) {
                 glSurfaceView.surfaceChanged(holder, format, width, height);
             }
@@ -411,6 +701,15 @@ public class LiveWallpaperService extends WallpaperService {
             Log.d(TAG, "📐 Surface DESTROYED");
 
             synchronized (stateLock) {
+                // 🎄 Filament
+                if (useFilament && filamentRenderer != null) {
+                    filamentRenderer.stop();
+                    currentState = RenderState.STOPPED;
+                    surfaceExists = false;
+                    super.onSurfaceDestroyed(holder);
+                    return;
+                }
+
                 // Detener si está corriendo
                 if (currentState == RenderState.RUNNING) {
                     if (wallpaperDirector != null) {
@@ -463,6 +762,13 @@ public class LiveWallpaperService extends WallpaperService {
 
             if (chargingScreenManager != null) {
                 chargingScreenManager.unregister();
+            }
+
+            // 🎄 Liberar Filament
+            if (filamentRenderer != null) {
+                filamentRenderer.destroy();
+                filamentRenderer = null;
+                Log.d(TAG, "🎄 Filament destruido");
             }
 
             // Liberar WallpaperDirector

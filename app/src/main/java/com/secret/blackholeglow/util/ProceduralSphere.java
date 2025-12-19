@@ -130,10 +130,10 @@ public class ProceduralSphere {
                 normals.add(z / radius);
 
                 // ═══════════════════════════════════════════════════
-                // UVs (mapeo esférico natural)
+                // UVs (mapeo esférico equirectangular)
                 // ═══════════════════════════════════════════════════
-                // U: recorre horizontalmente [0, 1]
-                // V: recorre verticalmente [0, 1] (0=polo norte, 1=polo sur)
+                // U: [0, 1] alrededor del ecuador
+                // V: [0, 1] de polo a polo
                 float u = (float) lon / longitudes;
                 float v = (float) lat / latitudes;
 
@@ -156,13 +156,13 @@ public class ProceduralSphere {
                 int first = (lat * (longitudes + 1)) + lon;
                 int second = first + longitudes + 1;
 
-                // Primer triángulo del quad (v0, v1, v2)
+                // Triángulo 1 (superior)
                 indices.add((short) first);
                 indices.add((short) second);
                 indices.add((short) (first + 1));
 
-                // Segundo triángulo del quad (v2, v1, v3)
-                indices.add((short) (second));
+                // Triángulo 2 (inferior)
+                indices.add((short) second);
                 indices.add((short) (second + 1));
                 indices.add((short) (first + 1));
             }

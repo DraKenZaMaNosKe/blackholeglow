@@ -14,6 +14,7 @@ import com.secret.blackholeglow.christmas.MiniStopButton;
 import com.secret.blackholeglow.LoadingBar;
 import com.secret.blackholeglow.OrbixGreeting;
 import com.secret.blackholeglow.PlayPauseButton;
+import com.secret.blackholeglow.R;
 
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
@@ -86,14 +87,14 @@ public class PanelModeRenderer {
         orbixGreeting.show();
         Log.d(TAG, "🤖 OrbixGreeting inicializado");
 
-        // LoadingBar
+        // LoadingBar (el fondo se configura dinámicamente en onStartLoading)
         loadingBar = new LoadingBar();
         loadingBar.setOnLoadingCompleteListener(() -> {
             if (loadingListener != null) {
                 loadingListener.onLoadingComplete();
             }
         });
-        Log.d(TAG, "📊 LoadingBar inicializado");
+        Log.d(TAG, "📊 LoadingBar inicializado (fondo dinámico por escena)");
 
         // MiniStopButton
         miniStopButton = new MiniStopButton();
@@ -325,16 +326,27 @@ public class PanelModeRenderer {
 
     /**
      * Prepara UI para modo de carga
+     * @param sceneName Nombre de la escena que se va a cargar (para fondo dinámico)
      */
-    public void onStartLoading() {
+    public void onStartLoading(String sceneName) {
         if (orbixGreeting != null) {
             orbixGreeting.hide();
         }
         if (loadingBar != null) {
             loadingBar.reset();
+            // 🖼️ Configurar fondo según la escena que se va a cargar
+            loadingBar.setBackgroundForScene(context, sceneName);
             loadingBar.show();
             loadingBar.setProgress(1.0f);
         }
+        Log.d(TAG, "📊 Cargando escena: " + sceneName);
+    }
+
+    /**
+     * Prepara UI para modo de carga (sin escena específica - usa default)
+     */
+    public void onStartLoading() {
+        onStartLoading(null);
     }
 
     /**
@@ -514,6 +526,18 @@ public class PanelModeRenderer {
     public OrbixGreeting getOrbixGreeting() { return orbixGreeting; }
     public LoadingBar getLoadingBar() { return loadingBar; }
     public MiniStopButton getMiniStopButton() { return miniStopButton; }
+
+    /**
+     * 🔴 Configura la posición del botón stop según la escena activa
+     * @param x Posición X (-1 izquierda, 0 centro, 1 derecha)
+     * @param y Posición Y (-1 abajo, 0 centro, 1 arriba)
+     */
+    public void setStopButtonPosition(float x, float y) {
+        if (miniStopButton != null) {
+            miniStopButton.setPosition(x, y);
+            Log.d(TAG, "🔴 StopButton posición: (" + x + ", " + y + ")");
+        }
+    }
 
     /**
      * Deshabilita el saludo de Gemini (para wallpapers que no lo usan)

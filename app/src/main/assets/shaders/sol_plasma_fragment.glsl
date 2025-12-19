@@ -192,8 +192,9 @@ void main() {
     // 1. CONFIGURACIÓN BÁSICA
     // ═══════════════════════════════════════════════════════════
     vec2 uv = v_TexCoord;
-    // Invertir V para compatibilidad con modelos Meshy
-    vec2 texUV = vec2(uv.x, 1.0 - uv.y);
+    // ✅ FIX: ObjLoader ya maneja el flip de V para modelos Meshy
+    // NO voltear aquí para evitar doble flip
+    vec2 texUV = uv;
 
     vec3 normal = normalize(v_Normal);
     vec3 viewDir = normalize(-v_WorldPos);

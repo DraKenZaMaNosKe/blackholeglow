@@ -238,6 +238,10 @@ public class ChristmasOrnamentButton {
 
     public void update(float deltaTime) {
         time += deltaTime;
+        // ✅ FIX: Evitar overflow - ciclo cada ~10 minutos
+        if (time > 628.318f) {
+            time -= 628.318f;
+        }
 
         // ✨ Decaimiento del shake
         if (shakeIntensity > 0) {

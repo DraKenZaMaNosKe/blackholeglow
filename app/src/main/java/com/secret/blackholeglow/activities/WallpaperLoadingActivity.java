@@ -111,17 +111,11 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         centerContainer.setPadding(60, 0, 60, 0);
 
         // ═══════════════════════════════════════════════════════════════
-        // ICONO DE PLANETA GIRATORIO
+        // 🐱 ICONO DE ORBIX (GATITO MASCOTA) GIRATORIO
         // ═══════════════════════════════════════════════════════════════
         iconPlanet = new ImageView(this);
-        iconPlanet.setImageResource(R.drawable.texturaplanetatierra);
-
-        // Hacer circular
-        GradientDrawable planetMask = new GradientDrawable();
-        planetMask.setShape(GradientDrawable.OVAL);
-        iconPlanet.setBackground(planetMask);
-        iconPlanet.setClipToOutline(true);
-        iconPlanet.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        iconPlanet.setImageResource(R.mipmap.ic_launcher_foreground);
+        iconPlanet.setScaleType(ImageView.ScaleType.FIT_CENTER);
 
         LinearLayout.LayoutParams planetParams = new LinearLayout.LayoutParams(200, 200);
         planetParams.gravity = Gravity.CENTER;
@@ -176,15 +170,15 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
                 FrameLayout.LayoutParams.MATCH_PARENT, 40);
         progressContainer.addView(progressBg, bgParams);
 
-        // Relleno de la barra (animado)
+        // Relleno de la barra (animado) - ❄️ TEMA HELADO
         progressBarFill = new View(this);
         GradientDrawable fillDrawable = new GradientDrawable();
         fillDrawable.setCornerRadius(20f);
         fillDrawable.setOrientation(GradientDrawable.Orientation.LEFT_RIGHT);
         fillDrawable.setColors(new int[]{
-                Color.parseColor("#00D4FF"),  // Cyan
-                Color.parseColor("#7B2FF7"),  // Purpura
-                Color.parseColor("#FF00E5")   // Magenta
+                Color.parseColor("#FFFFFF"),  // Blanco hielo
+                Color.parseColor("#B8E4F0"),  // Azul hielo claro
+                Color.parseColor("#7DD3E8")   // Cyan helado
         });
         progressBarFill.setBackground(fillDrawable);
 
@@ -192,13 +186,13 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         fillParams.setMargins(2, 2, 2, 2);
         progressContainer.addView(progressBarFill, fillParams);
 
-        // Glow effect sobre la barra
+        // Glow effect sobre la barra - ❄️ TEMA HELADO
         glowEffect = new View(this);
         GradientDrawable glowDrawable = new GradientDrawable();
         glowDrawable.setCornerRadius(20f);
-        glowDrawable.setColor(Color.parseColor("#4000D4FF"));
+        glowDrawable.setColor(Color.parseColor("#60FFFFFF"));  // Brillo blanco
         glowEffect.setBackground(glowDrawable);
-        glowEffect.setAlpha(0.5f);
+        glowEffect.setAlpha(0.6f);
 
         FrameLayout.LayoutParams glowParams = new FrameLayout.LayoutParams(60, 36);
         glowParams.setMargins(2, 2, 2, 2);
@@ -216,7 +210,7 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         textProgress = new TextView(this);
         textProgress.setText("0%");
         textProgress.setTextSize(24);
-        textProgress.setTextColor(Color.parseColor("#00D4FF"));
+        textProgress.setTextColor(Color.parseColor("#E0F7FA"));  // ❄️ Cyan helado claro
         textProgress.setGravity(Gravity.CENTER);
         textProgress.setTypeface(null, android.graphics.Typeface.BOLD);
 
@@ -245,11 +239,11 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         // 😊 MENSAJE TRANQUILIZADOR (para el usuario)
         // ═══════════════════════════════════════════════════════════════
         TextView reassuringText = new TextView(this);
-        reassuringText.setText("No te preocupes, sí cargará :)");
+        reassuringText.setText("✨ Preparando tu wallpaper...");
         reassuringText.setTextSize(14);
-        reassuringText.setTextColor(Color.parseColor("#00D4FF"));
+        reassuringText.setTextColor(Color.parseColor("#B2EBF2"));
         reassuringText.setGravity(Gravity.CENTER);
-        reassuringText.setAlpha(0.8f);
+        reassuringText.setAlpha(0.9f);
 
         LinearLayout.LayoutParams reassuringParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,

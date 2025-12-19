@@ -88,7 +88,8 @@ public class ChristmasTree extends BaseShaderProgram implements SceneObject, Cam
         // Cargar modelo OBJ (9,927 triángulos - Meshy AI)
         ObjLoader.Mesh mesh = null;
         try {
-            mesh = ObjLoader.loadObj(context, "christmas_pine.obj");
+            // ✅ flipV=true para modelos de Blender (UV invertido)
+            mesh = ObjLoader.loadObj(context, "christmas_pine.obj", true);
             Log.d(TAG, "✅ Modelo cargado: " + mesh.vertexCount + " vértices, " + mesh.faces.size() + " caras");
         } catch (IOException e) {
             Log.e(TAG, "❌ Error cargando christmas_pine.obj", e);

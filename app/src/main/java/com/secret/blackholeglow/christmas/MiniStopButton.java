@@ -11,13 +11,13 @@ import java.nio.FloatBuffer;
 
 /**
  * ╔═══════════════════════════════════════════════════════════════════════════╗
- * ║   🟢 MiniStopButton - Esfera Navideña VERDE (Botón Stop)                  ║
+ * ║   🔴 MiniStopButton - Botón Stop Genérico (ROJO)                          ║
  * ╚═══════════════════════════════════════════════════════════════════════════╝
  *
- * Copia exacta del ChristmasOrnamentButton pero:
- * - Color VERDE en lugar de rojo
- * - Icono de STOP (cuadrado) en lugar de PLAY
- * - Posición en esquina superior derecha
+ * Botón minimalista para detener el wallpaper:
+ * - Círculo rojo con icono de STOP (cuadrado blanco)
+ * - Glow sutil rojo
+ * - Funciona para TODAS las escenas (genérico)
  */
 public class MiniStopButton implements SceneObject {
     private static final String TAG = "MiniStopButton";
@@ -44,9 +44,9 @@ public class MiniStopButton implements SceneObject {
     private boolean initialized = false;
     private boolean visible = true;
     private boolean isPressed = false;
-    private float posX = 0.25f;   // Más centrado horizontalmente
-    private float posY = 0.6f;    // Un poco más abajo
-    private float size = 0.08f;   // Pequeño
+    private float posX = -0.35f;   // Izquierda
+    private float posY = 0.55f;   // Debajo de la barra de vida
+    private float size = 0.04f;   // Pequeño
     private float aspectRatio = 1.0f;
     private float time = 0.0f;
 
@@ -61,7 +61,7 @@ public class MiniStopButton implements SceneObject {
         "    gl_Position = vec4(a_Position, 0.0, 1.0);\n" +
         "}\n";
 
-    // Fragment shader - Esfera VERDE navideña con icono STOP (OPTIMIZADO)
+    // Fragment shader - Botón STOP genérico (rojo, minimalista)
     private static final String FRAGMENT_SHADER =
         "precision mediump float;\n" +
         "\n" +
@@ -78,63 +78,35 @@ public class MiniStopButton implements SceneObject {
         "    uv = uv * 2.0 - 1.0;\n" +
         "    uv.x *= u_Aspect;\n" +
         "    \n" +
-        "    float radius = u_Size * (1.0 - u_Pressed * 0.08);\n" +
+        "    float radius = u_Size * (1.0 - u_Pressed * 0.1);\n" +
         "    \n" +
-        "    // ⚡ EARLY DISCARD: Descartar píxeles muy lejos del botón\n" +
+        "    // Early discard\n" +
         "    float quickDist = abs(uv.x - u_Position.x) + abs(uv.y - u_Position.y);\n" +
-        "    if (quickDist > radius * 3.0) {\n" +
-        "        discard;\n" +
-        "    }\n" +
+        "    if (quickDist > radius * 2.5) { discard; }\n" +
         "    \n" +
-        "    // Movimiento mágico: flotar suavemente\n" +
-        "    vec2 magicPos = u_Position;\n" +
-        "    magicPos.y += sin(u_Time * 1.5) * 0.008;\n" +
-        "    magicPos.x += sin(u_Time * 1.2) * 0.003;\n" +
+        "    vec2 pos = uv - u_Position;\n" +
         "    \n" +
-        "    // Efecto shake cuando se toca\n" +
-        "    magicPos.x += sin(u_Time * 25.0) * u_Shake * 0.02;\n" +
-        "    magicPos.y += cos(u_Time * 30.0) * u_Shake * 0.015;\n" +
+        "    // Shake effect\n" +
+        "    pos.x += sin(u_Time * 25.0) * u_Shake * 0.02;\n" +
+        "    pos.y += cos(u_Time * 30.0) * u_Shake * 0.015;\n" +
         "    \n" +
-        "    vec2 pos = uv - magicPos;\n" +
         "    float dist = length(pos);\n" +
         "    \n" +
-        "    // ⚡ EARLY DISCARD 2: Descartar si muy lejos del área visible\n" +
-        "    if (dist > radius * 2.0) {\n" +
-        "        discard;\n" +
-        "    }\n" +
+        "    if (dist > radius * 1.5) { discard; }\n" +
         "    \n" +
-        "    // PARTÍCULAS: Solo 2 para rendimiento (en lugar de 4)\n" +
-        "    float sparkleZone = radius * 1.8;\n" +
-        "    if (dist > radius && dist < sparkleZone) {\n" +
-        "        for (float i = 0.0; i < 2.0; i++) {\n" +
-        "            float angle = u_Time * 0.8 + i * 3.14;\n" +
-        "            vec2 sparklePos = magicPos + vec2(cos(angle), sin(angle)) * radius * 1.3;\n" +
-        "            float sparkDist = length(uv - sparklePos);\n" +
-        "            if (sparkDist < 0.01) {\n" +
-        "                float sparkle = 1.0 - sparkDist / 0.01;\n" +
-        "                float twinkle = 0.5 + 0.5 * sin(u_Time * 6.0 + i * 2.0);\n" +
-        "                gl_FragColor = vec4(vec3(0.7, 1.0, 0.8) * sparkle * twinkle, sparkle * 0.7);\n" +
-        "                return;\n" +
-        "            }\n" +
-        "        }\n" +
-        "    }\n" +
-        "    \n" +
-        "    // ESFERA VERDE\n" +
+        "    // Circulo rojo\n" +
         "    if (dist < radius) {\n" +
-        "        vec3 baseColor = vec3(0.1, 0.65, 0.25);\n" +
+        "        vec3 baseColor = vec3(0.85, 0.15, 0.15);\n" +
         "        float sphere = sqrt(1.0 - dist / radius);\n" +
-        "        vec3 color = baseColor * (0.5 + 0.5 * sphere);\n" +
+        "        vec3 color = baseColor * (0.6 + 0.4 * sphere);\n" +
         "        \n" +
-        "        // Reflejo\n" +
-        "        vec2 highlightPos = pos + vec2(0.02, 0.03);\n" +
-        "        float highlight = max(0.0, 1.0 - length(highlightPos) / (radius * 0.4));\n" +
-        "        color += vec3(0.9, 1.0, 0.95) * highlight * highlight * highlight * 0.8;\n" +
+        "        // Highlight\n" +
+        "        vec2 hlPos = pos + vec2(0.015, 0.02);\n" +
+        "        float hl = max(0.0, 1.0 - length(hlPos) / (radius * 0.35));\n" +
+        "        color += vec3(1.0, 0.8, 0.8) * hl * hl * hl * 0.6;\n" +
         "        \n" +
-        "        // Pulso\n" +
-        "        color += baseColor * (0.06 + 0.06 * sin(u_Time * 2.0));\n" +
-        "        \n" +
-        "        // ICONO STOP\n" +
-        "        float stopSize = radius * 0.35;\n" +
+        "        // Icono STOP (cuadrado blanco)\n" +
+        "        float stopSize = radius * 0.32;\n" +
         "        if (abs(pos.x) < stopSize && abs(pos.y) < stopSize) {\n" +
         "            color = vec3(1.0);\n" +
         "        }\n" +
@@ -143,30 +115,12 @@ public class MiniStopButton implements SceneObject {
         "        return;\n" +
         "    }\n" +
         "    \n" +
-        "    // GANCHO DORADO (simplificado)\n" +
-        "    vec2 hookBase = vec2(magicPos.x, magicPos.y + radius);\n" +
-        "    vec2 hookPos = uv - hookBase;\n" +
-        "    float capW = radius * 0.22;\n" +
-        "    float capH = radius * 0.12;\n" +
-        "    if (abs(hookPos.x) < capW && hookPos.y > 0.0 && hookPos.y < capH) {\n" +
-        "        gl_FragColor = vec4(0.85, 0.65, 0.2, 1.0);\n" +
-        "        return;\n" +
-        "    }\n" +
-        "    \n" +
-        "    // Anillo\n" +
-        "    vec2 ringC = hookBase + vec2(0.0, capH + radius * 0.06);\n" +
-        "    float ringD = abs(length(uv - ringC) - radius * 0.08);\n" +
-        "    if (ringD < radius * 0.02) {\n" +
-        "        gl_FragColor = vec4(0.85, 0.65, 0.2, 1.0);\n" +
-        "        return;\n" +
-        "    }\n" +
-        "    \n" +
-        "    // GLOW\n" +
+        "    // Glow sutil\n" +
         "    float glowDist = dist - radius;\n" +
-        "    if (glowDist > 0.0 && glowDist < radius * 0.35) {\n" +
-        "        float glow = 1.0 - glowDist / (radius * 0.35);\n" +
+        "    if (glowDist > 0.0 && glowDist < radius * 0.3) {\n" +
+        "        float glow = 1.0 - glowDist / (radius * 0.3);\n" +
         "        glow = glow * glow;\n" +
-        "        gl_FragColor = vec4(vec3(0.3, 1.0, 0.5) * glow * 0.3, glow * 0.35);\n" +
+        "        gl_FragColor = vec4(vec3(1.0, 0.3, 0.3) * glow * 0.4, glow * 0.4);\n" +
         "        return;\n" +
         "    }\n" +
         "    \n" +
@@ -238,6 +192,10 @@ public class MiniStopButton implements SceneObject {
     @Override
     public void update(float deltaTime) {
         time += deltaTime;
+        // ✅ FIX: Evitar overflow - ciclo cada ~10 minutos (628 segundos ≈ 2π * 100)
+        if (time > 628.318f) {
+            time -= 628.318f;
+        }
         if (shakeIntensity > 0) {
             shakeIntensity -= deltaTime * SHAKE_DECAY;
             if (shakeIntensity < 0) shakeIntensity = 0;

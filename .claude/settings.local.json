@@ -53,7 +53,10 @@
       "Bash(do echo \"=== $f ===\")",
       "Bash(done)",
       "Bash(pip install:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(./gradlew dependencies:*)",
+      "Bash(timeout 40 D:/adb/platform-tools/adb.exe logcat:*)",
+      "Bash(timeout 50 D:/adb/platform-tools/adb.exe logcat:*)"
     ],
     "deny": [],
     "ask": []

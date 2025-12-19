@@ -181,7 +181,8 @@ public class ObjLoaderWithMaterials {
             }
 
             // Convertir a Face de ObjLoader
-            ObjLoader.Face objFace = new ObjLoader.Face(face.vertexIndices, face.uvIndices);
+            // Crear Face con null para normales (no las usamos en este loader)
+            ObjLoader.Face objFace = new ObjLoader.Face(face.vertexIndices, face.uvIndices, null);
             groupMap.get(matName).faces.add(objFace);
         }
 

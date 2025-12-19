@@ -215,6 +215,19 @@
 
         <!--
           ╔═══════════════════════════════════════════════════════════════╗
+          ║   🎅 ACTIVITY: FILAMENT TEST (Santa Claus animado) 🎅        ║
+          ╚═══════════════════════════════════════════════════════════════╝
+          🧪 Activity de prueba para validar renderizado de modelos GLB
+          con animaciones usando Google Filament.
+        -->
+        <activity
+            android:name=".filament.FilamentTestActivity"
+            android:exported="true"
+            android:label="🎅 Santa Test"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+
+        <!--
+          ╔═══════════════════════════════════════════════════════════════╗
           ║   🌌 SERVICE: DAYDREAM (PROTECTOR DE PANTALLA) 🌌            ║
           ╚═══════════════════════════════════════════════════════════════╝
           🔋 Se activa automáticamente durante la carga del dispositivo

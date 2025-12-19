@@ -12,6 +12,7 @@ import com.secret.blackholeglow.MusicVisualizer;
 import com.secret.blackholeglow.ResourceLoader;
 import com.secret.blackholeglow.TextureManager;
 import com.secret.blackholeglow.scenes.BatallaCosmicaScene;
+import com.secret.blackholeglow.scenes.SceneConstants;
 import com.secret.blackholeglow.scenes.WallpaperScene;
 import com.secret.blackholeglow.systems.AspectRatioManager;
 import com.secret.blackholeglow.systems.EventBus;
@@ -68,6 +69,16 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     private boolean pendingPreviewMode = false; // Para guardar preview mode antes de inicializar
     private boolean pendingArcadeMode = false;  // 🎮 Para guardar arcade mode antes de inicializar
 
+    // 🎄 FILAMENT CALLBACK - Para escenas que usan Filament (Christmas)
+    public interface OnFilamentSceneListener {
+        void onFilamentSceneRequested(String sceneName);
+    }
+    private OnFilamentSceneListener filamentListener;
+
+    public void setOnFilamentSceneListener(OnFilamentSceneListener listener) {
+        this.filamentListener = listener;
+    }
+
     // TIMING (deltaTime y FPS manejados por GLStateManager)
     private static final float TIME_WRAP = 3600f;  // Reset cada hora para evitar overflow
     private float totalTime = 0f;
@@ -92,9 +103,15 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         wireActors();
 
         if (modeController.isPreviewMode()) {
-            Log.d(TAG, "PREVIEW MODE - cargando escena directamente");
-            modeController.goDirectToWallpaper();
-            sceneFactory.createScene(pendingSceneName);
+            // 🎄 Para Christmas: SIEMPRE mostrar panel primero (para el botón de Filament)
+            if (pendingSceneName != null && pendingSceneName.contains("Navideño")) {
+                Log.d(TAG, "🎄 PREVIEW MODE + Christmas: Mostrando panel con botón");
+                // No cargar escena directamente - dejar que el usuario presione el botón
+            } else {
+                Log.d(TAG, "PREVIEW MODE - cargando escena directamente");
+                modeController.goDirectToWallpaper();
+                sceneFactory.createScene(pendingSceneName);
+            }
         }
 
         initialized = true;
@@ -261,7 +278,19 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     }
 
     public void startLoading() {
-        if (modeController.startLoading()) panelRenderer.onStartLoading();
+        // 🎄 Si es escena navideña, usar Filament en lugar de OpenGL ES
+        if (pendingSceneName != null && pendingSceneName.contains("Navideño")) {
+            if (filamentListener != null) {
+                Log.d(TAG, "🎄 Solicitando cambio a Filament para: " + pendingSceneName);
+                filamentListener.onFilamentSceneRequested(pendingSceneName);
+                return;
+            }
+        }
+
+        if (modeController.startLoading()) {
+            // 🖼️ Pasar el nombre de la escena para fondo dinámico
+            panelRenderer.onStartLoading(pendingSceneName);
+        }
     }
 
     public void switchToPanelMode() {
@@ -345,6 +374,47 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         });
         panelRenderer.setLoadingListener(this::onLoadingComplete);
         Log.d(TAG, "Actores conectados OK");
+
+        // 🎄 Aplicar modo pendiente ahora que panelRenderer está listo
+        if (pendingSceneName != null) {
+            applySceneModeToPanel(pendingSceneName);
+        }
+    }
+
+    /**
+     * 🎄 Aplica el modo correcto al panel según el nombre de la escena
+     */
+    private void applySceneModeToPanel(String sceneName) {
+        if (panelRenderer == null || sceneName == null) return;
+
+        boolean shouldUseArcade = sceneName.contains("Batalla") || sceneName.contains("Universo");
+        boolean shouldUseChristmas = sceneName.contains("Bosque") || sceneName.contains("Navide");
+
+        if (shouldUseArcade) {
+            panelRenderer.setChristmasModeEnabled(false);
+            panelRenderer.setArcadeModeEnabled(true);
+            panelRenderer.setStopButtonPosition(
+                SceneConstants.StopButton.BATALLA_X,
+                SceneConstants.StopButton.BATALLA_Y
+            );
+            Log.d(TAG, "🎮 Modo ARCADE APLICADO en panel: " + sceneName);
+        } else if (shouldUseChristmas) {
+            panelRenderer.setArcadeModeEnabled(false);
+            panelRenderer.setChristmasModeEnabled(true);
+            panelRenderer.setStopButtonPosition(
+                SceneConstants.StopButton.CHRISTMAS_X,
+                SceneConstants.StopButton.CHRISTMAS_Y
+            );
+            Log.d(TAG, "🎄 Modo CHRISTMAS APLICADO en panel: " + sceneName);
+        } else {
+            panelRenderer.setArcadeModeEnabled(false);
+            panelRenderer.setChristmasModeEnabled(false);
+            panelRenderer.setStopButtonPosition(
+                SceneConstants.StopButton.DEFAULT_X,
+                SceneConstants.StopButton.DEFAULT_Y
+            );
+            Log.d(TAG, "📱 Modo ESTÁNDAR aplicado: " + sceneName);
+        }
     }
 
     public boolean onTouchEvent(MotionEvent event) {
@@ -430,14 +500,29 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         if (panelRenderer != null) {
             if (shouldUseArcade) {
                 panelRenderer.setArcadeModeEnabled(true);
+                // 🔴 Posición del botón stop para Batalla Cósmica
+                panelRenderer.setStopButtonPosition(
+                    SceneConstants.StopButton.BATALLA_X,
+                    SceneConstants.StopButton.BATALLA_Y
+                );
                 Log.d(TAG, "🎮 Modo ARCADE ACTIVADO para: " + sceneName);
             } else if (shouldUseChristmas) {
                 panelRenderer.setChristmasModeEnabled(true);
+                // 🔴 Posición del botón stop para Christmas
+                panelRenderer.setStopButtonPosition(
+                    SceneConstants.StopButton.CHRISTMAS_X,
+                    SceneConstants.StopButton.CHRISTMAS_Y
+                );
                 Log.d(TAG, "🎄 Modo CHRISTMAS ACTIVADO para: " + sceneName);
             } else {
                 // Desactivar todos los modos especiales
                 panelRenderer.setArcadeModeEnabled(false);
                 panelRenderer.setChristmasModeEnabled(false);
+                // 🔴 Posición por defecto del botón stop
+                panelRenderer.setStopButtonPosition(
+                    SceneConstants.StopButton.DEFAULT_X,
+                    SceneConstants.StopButton.DEFAULT_Y
+                );
                 Log.d(TAG, "📱 Modo ESTÁNDAR para: " + sceneName);
             }
         } else {

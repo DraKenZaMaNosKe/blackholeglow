@@ -71,6 +71,14 @@ dependencies {
     implementation(libs.material)
     implementation(libs.activity)  // Edge-to-Edge support para Android 15
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🎬 FILAMENT - Motor de renderizado 3D de Google (para modelos GLB animados)
+    // ═══════════════════════════════════════════════════════════════════════════
+    val filamentVersion = "1.51.0"
+    implementation("com.google.android.filament:filament-android:$filamentVersion")
+    implementation("com.google.android.filament:gltfio-android:$filamentVersion")
+    implementation("com.google.android.filament:filament-utils-android:$filamentVersion")
+
     // Firebase BoM (Bill of Materials) - gestiona versiones automáticamente
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)

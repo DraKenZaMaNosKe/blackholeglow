@@ -60,8 +60,8 @@ float fbm(vec2 p) {
 // ═══════════════════════════════════════════════════════════════
 
 void main() {
-    // Invertir V para compatibilidad con modelos Meshy
-    vec2 uv = vec2(v_TexCoord.x, 1.0 - v_TexCoord.y);
+    // ✅ FIX: ObjLoader ya maneja el flip de V para modelos Meshy
+    vec2 uv = v_TexCoord;
 
     // ─────────────────────────────────────────────────────────────
     // 1. TEXTURA BASE DE LA TIERRA

@@ -1,6 +1,8 @@
 package com.secret.blackholeglow;
 
+import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -12,6 +14,8 @@ import android.util.Log;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+
+import com.secret.blackholeglow.R;
 
 /**
  * ╔═══════════════════════════════════════════════════════════════════╗
@@ -89,6 +93,22 @@ public class LoadingBar implements SceneObject {
     // Texto del recurso actual (opcional)
     private String currentResourceName = null;
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🖼️ FONDO DE IMAGEN (Bosque Navideño)
+    // ═══════════════════════════════════════════════════════════════════════════
+    private int bgShaderProgram = 0;
+    private int bgTextureId = 0;
+    private int bgAPositionLoc = -1;
+    private int bgATexCoordLoc = -1;
+    private int bgUTextureLoc = -1;
+    private int bgUAlphaLoc = -1;
+    private int bgUDarkenLoc = -1;
+    private FloatBuffer bgVertexBuffer;
+    private Context context;
+    private int backgroundResourceId = 0;
+    private boolean backgroundLoaded = false;
+    private float bgDarkenAmount = 0.3f;  // Oscurecer 30% para que el texto resalte
+
     // Vertex shader
     private static final String VERTEX_SHADER =
         "attribute vec2 aPosition;\n" +
@@ -136,6 +156,29 @@ public class LoadingBar implements SceneObject {
         "void main() {\n" +
         "    vec4 texColor = texture2D(u_Texture, v_TexCoord);\n" +
         "    gl_FragColor = vec4(texColor.rgb, texColor.a * u_Alpha);\n" +
+        "}\n";
+
+    // 🖼️ Shader para el fondo con oscurecimiento
+    private static final String BG_VERTEX_SHADER =
+        "attribute vec2 a_Position;\n" +
+        "attribute vec2 a_TexCoord;\n" +
+        "varying vec2 v_TexCoord;\n" +
+        "void main() {\n" +
+        "    v_TexCoord = a_TexCoord;\n" +
+        "    gl_Position = vec4(a_Position, 0.0, 1.0);\n" +
+        "}\n";
+
+    private static final String BG_FRAGMENT_SHADER =
+        "precision mediump float;\n" +
+        "varying vec2 v_TexCoord;\n" +
+        "uniform sampler2D u_Texture;\n" +
+        "uniform float u_Alpha;\n" +
+        "uniform float u_Darken;\n" +
+        "void main() {\n" +
+        "    vec4 texColor = texture2D(u_Texture, v_TexCoord);\n" +
+        "    // Oscurecer la imagen para que el texto resalte\n" +
+        "    vec3 darkened = texColor.rgb * (1.0 - u_Darken);\n" +
+        "    gl_FragColor = vec4(darkened, texColor.a * u_Alpha);\n" +
         "}\n";
 
     public LoadingBar() {
@@ -258,6 +301,147 @@ public class LoadingBar implements SceneObject {
     }
 
     /**
+     * 🖼️ Configura el fondo de imagen para la pantalla de carga
+     * @param ctx Context de la aplicación
+     * @param resourceId ID del drawable (ej: R.drawable.christmas_background)
+     */
+    public void setBackgroundImage(Context ctx, int resourceId) {
+        this.context = ctx;
+        this.backgroundResourceId = resourceId;
+        this.backgroundLoaded = false;
+        Log.d(TAG, "🖼️ Fondo configurado: " + resourceId);
+    }
+
+    /**
+     * 🖼️ Configura el fondo automáticamente según el nombre de la escena/wallpaper
+     * @param ctx Context de la aplicación
+     * @param sceneName Nombre de la escena (ej: "Bosque Navideño", "Batalla Cósmica")
+     */
+    public void setBackgroundForScene(Context ctx, String sceneName) {
+        this.context = ctx;
+
+        // Mapeo de escenas a fondos
+        if (sceneName == null) {
+            this.backgroundResourceId = R.drawable.universo03;  // Default
+        } else if (sceneName.contains("Navide") || sceneName.contains("Christmas")) {
+            this.backgroundResourceId = R.drawable.christmas_background;
+        } else if (sceneName.contains("Batalla") || sceneName.contains("Universo") || sceneName.contains("Cósmica")) {
+            this.backgroundResourceId = R.drawable.universo03;
+        } else if (sceneName.contains("Ocean") || sceneName.contains("Pearl")) {
+            this.backgroundResourceId = R.drawable.universo03;  // TODO: agregar fondo de océano
+        } else {
+            this.backgroundResourceId = R.drawable.universo03;  // Default
+        }
+
+        this.backgroundLoaded = false;
+        Log.d(TAG, "🖼️ Fondo para '" + sceneName + "': " + backgroundResourceId);
+    }
+
+    /**
+     * 🖼️ Inicializa los recursos OpenGL del fondo (llamar desde GL thread)
+     */
+    private void initBackgroundOpenGL() {
+        if (context == null || backgroundResourceId == 0 || backgroundLoaded) return;
+
+        // Crear shader program
+        int vs = compileShader(GLES30.GL_VERTEX_SHADER, BG_VERTEX_SHADER);
+        int fs = compileShader(GLES30.GL_FRAGMENT_SHADER, BG_FRAGMENT_SHADER);
+        if (vs == 0 || fs == 0) {
+            Log.e(TAG, "Error compilando shaders de fondo");
+            return;
+        }
+
+        bgShaderProgram = GLES30.glCreateProgram();
+        GLES30.glAttachShader(bgShaderProgram, vs);
+        GLES30.glAttachShader(bgShaderProgram, fs);
+        GLES30.glLinkProgram(bgShaderProgram);
+
+        // Obtener locations
+        bgAPositionLoc = GLES30.glGetAttribLocation(bgShaderProgram, "a_Position");
+        bgATexCoordLoc = GLES30.glGetAttribLocation(bgShaderProgram, "a_TexCoord");
+        bgUTextureLoc = GLES30.glGetUniformLocation(bgShaderProgram, "u_Texture");
+        bgUAlphaLoc = GLES30.glGetUniformLocation(bgShaderProgram, "u_Alpha");
+        bgUDarkenLoc = GLES30.glGetUniformLocation(bgShaderProgram, "u_Darken");
+
+        // Vertex buffer para fullscreen quad (pos + texcoord)
+        float[] vertices = {
+            -1f, -1f,  0f, 1f,   // Bottom-left
+             1f, -1f,  1f, 1f,   // Bottom-right
+            -1f,  1f,  0f, 0f,   // Top-left
+             1f,  1f,  1f, 0f    // Top-right
+        };
+
+        ByteBuffer bb = ByteBuffer.allocateDirect(vertices.length * 4);
+        bb.order(ByteOrder.nativeOrder());
+        bgVertexBuffer = bb.asFloatBuffer();
+        bgVertexBuffer.put(vertices);
+        bgVertexBuffer.position(0);
+
+        // Cargar textura del fondo
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inScaled = false;
+        Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), backgroundResourceId, options);
+
+        if (bitmap != null) {
+            int[] textures = new int[1];
+            GLES30.glGenTextures(1, textures, 0);
+            bgTextureId = textures[0];
+
+            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, bgTextureId);
+            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
+            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
+            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
+            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
+
+            GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0);
+            bitmap.recycle();
+
+            Log.d(TAG, "✅ Fondo cargado: textureId=" + bgTextureId);
+        } else {
+            Log.e(TAG, "❌ Error cargando bitmap del fondo");
+        }
+
+        // Eliminar shaders
+        GLES30.glDeleteShader(vs);
+        GLES30.glDeleteShader(fs);
+
+        backgroundLoaded = true;
+    }
+
+    /**
+     * 🖼️ Dibuja el fondo de imagen
+     */
+    private void drawBackground() {
+        if (!backgroundLoaded || bgShaderProgram == 0 || bgTextureId == 0) return;
+
+        GLES30.glUseProgram(bgShaderProgram);
+
+        // Uniforms
+        GLES30.glUniform1f(bgUAlphaLoc, alpha);
+        GLES30.glUniform1f(bgUDarkenLoc, bgDarkenAmount);
+
+        // Textura
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, bgTextureId);
+        GLES30.glUniform1i(bgUTextureLoc, 0);
+
+        // Vertex attributes
+        GLES30.glEnableVertexAttribArray(bgAPositionLoc);
+        GLES30.glEnableVertexAttribArray(bgATexCoordLoc);
+
+        bgVertexBuffer.position(0);
+        GLES30.glVertexAttribPointer(bgAPositionLoc, 2, GLES30.GL_FLOAT, false, 16, bgVertexBuffer);
+        bgVertexBuffer.position(2);
+        GLES30.glVertexAttribPointer(bgATexCoordLoc, 2, GLES30.GL_FLOAT, false, 16, bgVertexBuffer);
+
+        // Dibujar fullscreen quad
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
+
+        GLES30.glDisableVertexAttribArray(bgAPositionLoc);
+        GLES30.glDisableVertexAttribArray(bgATexCoordLoc);
+    }
+
+    /**
      * Actualiza la textura del texto "Loading..." con los puntos animados
      * y el mensaje tranquilizador "sí cargará :)"
      */
@@ -351,6 +535,12 @@ public class LoadingBar implements SceneObject {
     @Override
     public void draw() {
         if (alpha <= 0.01f || shaderProgram == 0) return;
+
+        // 🖼️ Inicializar y dibujar fondo (si está configurado)
+        if (backgroundResourceId != 0 && !backgroundLoaded) {
+            initBackgroundOpenGL();
+        }
+        drawBackground();
 
         GLES30.glUseProgram(shaderProgram);
 
@@ -660,5 +850,16 @@ public class LoadingBar implements SceneObject {
             textBitmap.recycle();
             textBitmap = null;
         }
+        // 🖼️ Liberar recursos del fondo
+        if (bgShaderProgram != 0) {
+            GLES30.glDeleteProgram(bgShaderProgram);
+            bgShaderProgram = 0;
+        }
+        if (bgTextureId != 0) {
+            int[] textures = {bgTextureId};
+            GLES30.glDeleteTextures(1, textures, 0);
+            bgTextureId = 0;
+        }
+        backgroundLoaded = false;
     }
 }
