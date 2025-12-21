@@ -37,9 +37,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("${rootProject.projectDir}/blackholeglow-release-key.jks")
-            storePassword = "blackholeglow2025"
-            keyAlias = "blackholeglow"
-            keyPassword = "blackholeglow2025"
+            storePassword = localProperties.getProperty("KEYSTORE_PASSWORD", "")
+            keyAlias = localProperties.getProperty("KEY_ALIAS", "")
+            keyPassword = localProperties.getProperty("KEY_PASSWORD", "")
         }
     }
 

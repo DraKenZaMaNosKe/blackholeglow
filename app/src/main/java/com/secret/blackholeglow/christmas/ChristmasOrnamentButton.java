@@ -61,7 +61,7 @@ public class ChristmasOrnamentButton {
         "    gl_Position = vec4(a_Position, 0.0, 1.0);\n" +
         "}\n";
 
-    // Fragment shader - Esfera navideña ROJA (OPTIMIZADO con early discard)
+    // Fragment shader - Esfera navideña ROJA (SUAVIZADO con smoothstep)
     private static final String FRAGMENT_SHADER =
         "precision mediump float;\n" +
         "\n" +
@@ -72,6 +72,12 @@ public class ChristmasOrnamentButton {
         "uniform float u_Pressed;\n" +
         "uniform float u_Shake;\n" +
         "uniform vec2 u_Resolution;\n" +
+        "\n" +
+        "// 🎯 Función suave para animaciones\n" +
+        "float smoothWave(float t, float speed) {\n" +
+        "    float phase = mod(t * speed, 6.28318);\n" +
+        "    return sin(phase);\n" +
+        "}\n" +
         "\n" +
         "void main() {\n" +
         "    vec2 uv = gl_FragCoord.xy / u_Resolution;\n" +
@@ -84,12 +90,15 @@ public class ChristmasOrnamentButton {
         "    float quickDist = abs(uv.x - u_Position.x) + abs(uv.y - u_Position.y);\n" +
         "    if (quickDist > radius * 3.0) { discard; }\n" +
         "    \n" +
-        "    // Movimiento mágico\n" +
+        "    // 🎈 Movimiento flotante SUAVE (usando mod para evitar overflow)\n" +
         "    vec2 magicPos = u_Position;\n" +
-        "    magicPos.y += sin(u_Time * 1.5) * 0.008;\n" +
-        "    magicPos.x += sin(u_Time * 1.2) * 0.003;\n" +
-        "    magicPos.x += sin(u_Time * 25.0) * u_Shake * 0.02;\n" +
-        "    magicPos.y += cos(u_Time * 30.0) * u_Shake * 0.015;\n" +
+        "    magicPos.y += smoothWave(u_Time, 0.8) * 0.006;\n" +
+        "    magicPos.x += smoothWave(u_Time, 0.5) * 0.003;\n" +
+        "    \n" +
+        "    // ✨ Shake suave (frecuencia reducida)\n" +
+        "    float shakeSmooth = smoothstep(0.0, 1.0, u_Shake);\n" +
+        "    magicPos.x += smoothWave(u_Time, 8.0) * shakeSmooth * 0.015;\n" +
+        "    magicPos.y += smoothWave(u_Time + 1.57, 10.0) * shakeSmooth * 0.012;\n" +
         "    \n" +
         "    vec2 pos = uv - magicPos;\n" +
         "    float dist = length(pos);\n" +
@@ -97,37 +106,38 @@ public class ChristmasOrnamentButton {
         "    // ⚡ EARLY DISCARD 2\n" +
         "    if (dist > radius * 2.0) { discard; }\n" +
         "    \n" +
-        "    // PARTÍCULAS (2 en lugar de 4)\n" +
+        "    // ✨ PARTÍCULAS con movimiento suave\n" +
         "    float sparkleZone = radius * 1.8;\n" +
         "    if (dist > radius && dist < sparkleZone) {\n" +
         "        for (float i = 0.0; i < 2.0; i++) {\n" +
-        "            float angle = u_Time * 0.8 + i * 3.14;\n" +
+        "            float angle = mod(u_Time * 0.5, 6.28318) + i * 3.14159;\n" +
         "            vec2 sparklePos = magicPos + vec2(cos(angle), sin(angle)) * radius * 1.3;\n" +
         "            float sparkDist = length(uv - sparklePos);\n" +
-        "            if (sparkDist < 0.01) {\n" +
-        "                float sparkle = 1.0 - sparkDist / 0.01;\n" +
-        "                float twinkle = 0.5 + 0.5 * sin(u_Time * 6.0 + i * 2.0);\n" +
-        "                gl_FragColor = vec4(vec3(1.0, 0.95, 0.7) * sparkle * twinkle, sparkle * 0.7);\n" +
+        "            if (sparkDist < 0.012) {\n" +
+        "                float sparkle = smoothstep(0.012, 0.0, sparkDist);\n" +
+        "                float twinkle = 0.6 + 0.4 * smoothWave(u_Time + i, 2.0);\n" +
+        "                gl_FragColor = vec4(vec3(1.0, 0.95, 0.7) * sparkle * twinkle, sparkle * 0.8);\n" +
         "                return;\n" +
         "            }\n" +
         "        }\n" +
         "    }\n" +
         "    \n" +
-        "    // ESFERA ROJA\n" +
+        "    // 🔴 ESFERA ROJA\n" +
         "    if (dist < radius) {\n" +
         "        vec3 baseColor = vec3(0.85, 0.1, 0.15);\n" +
         "        float sphere = sqrt(1.0 - dist / radius);\n" +
         "        vec3 color = baseColor * (0.5 + 0.5 * sphere);\n" +
         "        \n" +
-        "        // Reflejo\n" +
+        "        // Reflejo suave\n" +
         "        vec2 highlightPos = pos + vec2(0.02, 0.03);\n" +
-        "        float highlight = max(0.0, 1.0 - length(highlightPos) / (radius * 0.4));\n" +
-        "        color += vec3(1.0, 0.95, 0.9) * highlight * highlight * highlight * 0.8;\n" +
+        "        float highlight = smoothstep(radius * 0.4, 0.0, length(highlightPos));\n" +
+        "        color += vec3(1.0, 0.95, 0.9) * highlight * highlight * 0.7;\n" +
         "        \n" +
-        "        // Pulso\n" +
-        "        color += baseColor * (0.06 + 0.06 * sin(u_Time * 2.0));\n" +
+        "        // Pulso suave\n" +
+        "        float pulse = 0.5 + 0.5 * smoothWave(u_Time, 1.2);\n" +
+        "        color += baseColor * 0.08 * pulse;\n" +
         "        \n" +
-        "        // ICONO PLAY\n" +
+        "        // ▶️ ICONO PLAY\n" +
         "        vec2 playPos = pos;\n" +
         "        playPos.x += radius * 0.1;\n" +
         "        float playSize = radius * 0.45;\n" +
@@ -141,7 +151,7 @@ public class ChristmasOrnamentButton {
         "        return;\n" +
         "    }\n" +
         "    \n" +
-        "    // GANCHO DORADO\n" +
+        "    // 🪝 GANCHO DORADO\n" +
         "    vec2 hookBase = vec2(magicPos.x, magicPos.y + radius);\n" +
         "    vec2 hookPos = uv - hookBase;\n" +
         "    float capW = radius * 0.22;\n" +

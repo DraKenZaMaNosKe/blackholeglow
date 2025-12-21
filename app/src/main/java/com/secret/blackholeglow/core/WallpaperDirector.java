@@ -103,15 +103,10 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         wireActors();
 
         if (modeController.isPreviewMode()) {
-            // 🎄 Para Christmas: SIEMPRE mostrar panel primero (para el botón de Filament)
-            if (pendingSceneName != null && pendingSceneName.contains("Navideño")) {
-                Log.d(TAG, "🎄 PREVIEW MODE + Christmas: Mostrando panel con botón");
-                // No cargar escena directamente - dejar que el usuario presione el botón
-            } else {
-                Log.d(TAG, "PREVIEW MODE - cargando escena directamente");
-                modeController.goDirectToWallpaper();
-                sceneFactory.createScene(pendingSceneName);
-            }
+            // 🎄 Navideño ahora usa OpenGL - carga directa como todos los demás
+            Log.d(TAG, "PREVIEW MODE - cargando escena directamente: " + pendingSceneName);
+            modeController.goDirectToWallpaper();
+            sceneFactory.createScene(pendingSceneName);
         }
 
         initialized = true;
@@ -278,14 +273,8 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     }
 
     public void startLoading() {
-        // 🎄 Si es escena navideña, usar Filament en lugar de OpenGL ES
-        if (pendingSceneName != null && pendingSceneName.contains("Navideño")) {
-            if (filamentListener != null) {
-                Log.d(TAG, "🎄 Solicitando cambio a Filament para: " + pendingSceneName);
-                filamentListener.onFilamentSceneRequested(pendingSceneName);
-                return;
-            }
-        }
+        // 🎄 Navideño ahora usa OpenGL ES (Filament deshabilitado temporalmente)
+        // El código de Filament se mantiene para uso futuro en otros wallpapers
 
         if (modeController.startLoading()) {
             // 🖼️ Pasar el nombre de la escena para fondo dinámico

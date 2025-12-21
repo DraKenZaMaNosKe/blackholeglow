@@ -13,3 +13,18 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# 🔐 SEGURIDAD - Archivos sensibles (NUNCA subir)
+*.jks
+*.keystore
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+google-services.json
+secrets.properties
+keystore.properties
+
+# 📝 Notas de sesión locales
+SESSION_NOTES*.md

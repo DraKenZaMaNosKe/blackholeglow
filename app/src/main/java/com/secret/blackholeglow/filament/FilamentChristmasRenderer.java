@@ -27,6 +27,7 @@ import com.google.android.filament.Viewport;
 import com.google.android.filament.gltfio.Animator;
 import com.google.android.filament.gltfio.AssetLoader;
 import com.google.android.filament.gltfio.FilamentAsset;
+import com.google.android.filament.gltfio.FilamentInstance;
 import com.google.android.filament.gltfio.Gltfio;
 import com.google.android.filament.gltfio.MaterialProvider;
 import com.google.android.filament.gltfio.ResourceLoader;
@@ -64,22 +65,26 @@ public class FilamentChristmasRenderer {
     private View view;
     private Camera camera;
     private SwapChain swapChain;
+    private Skybox skybox;  // 🌤️ Cielo
+
+    // 🎥 CAMERA CONTROLLER - Estilo FPS/COD Mobile
+    private ChristmasCameraController cameraController;
 
     // GLTF Loading
     private AssetLoader assetLoader;
     private ResourceLoader resourceLoader;
     private MaterialProvider materialProvider;
 
-    // Santa - Current animation
-    private FilamentAsset santaAsset;
-    private Animator santaAnimator;
-    private int currentAnimationIndex = 0;
+    // ═══════════════════════════════════════════════════════════════════
+    // 🎅 SISTEMA PRE-CARGA: Todas las animaciones cargadas al inicio
+    // ═══════════════════════════════════════════════════════════════════
+    private FilamentAsset[] santaAssets = new FilamentAsset[3];  // walk, wave, look
+    private Animator[] santaAnimators = new Animator[3];
+    private int currentAnimationIndex = 0;  // Cuál está visible ahora
 
-    // Background - Plano con textura del bosque navideño
-    private FilamentAsset backgroundAsset;
-    private static final String BACKGROUND_FILE = "christmas_background.glb";
-
-    // Christmas Tree - Árbol de navidad
+    // Terrain y Tree (Mundo 3D)
+    private FilamentAsset terrainAsset;
+    private static final String TERRAIN_FILE = "terrain.glb";  // Terreno 3D nevado
     private FilamentAsset treeAsset;
     private static final String TREE_FILE = "christmas_tree.glb";
 
@@ -87,36 +92,92 @@ public class FilamentChristmasRenderer {
     private static final String[] ANIMATION_FILES = {
         "santa_walk.glb",   // 0 - Caminando
         "santa_wave.glb",   // 1 - Saludando
-        "santa_look.glb"    // 2 - Mirando a los lados
+        "santa_look.glb"    // 2 - Mirando
     };
-    private static final String[] ANIMATION_NAMES = {
-        "Caminando", "Saludando", "Mirando"
-    };
-    private int currentFileIndex = 0;
+    private static final String[] ANIMATION_NAMES = {"Caminando", "Saludando", "Mirando"};
+
     private float animationCycleTime = 0f;
-    private static final float ANIMATION_CYCLE_DURATION = 10f; // Cambiar cada 10 segundos
+    private static final float ANIMATION_CYCLE_DURATION = 30f; // 30 seg caminando
 
-    // Walking movement - Santa camina por un sendero natural
-    private float santaX = 2f;           // Posición X actual (empieza a la derecha)
-    private float santaY = -1.5f;        // Posición Y (altura - más abajo en la nieve)
-    private float santaZ = 0f;           // Posición Z (profundidad)
-    private float santaRotation = 0f;    // Rotación actual (hacia donde mira)
-    private int currentWaypoint = 0;     // Punto actual del sendero
-    private static final float WALK_SPEED = 0.5f;    // Velocidad de caminata
+    // ═══════════════════════════════════════════════════════════════════
+    // 🤖 IA DE EXPLORACIÓN: Santa camina inteligentemente
+    // ═══════════════════════════════════════════════════════════════════
+    private float santaX = 0.0f;
+    private float santaY = 0.3f;   // Sobre el terreno (más bajo)
+    private float santaZ = 4.0f;   // Más adentro del terreno
+    private float santaRotation = 0f;
+    private static final float SANTA_SCALE = 0.12f;  // Santa pequeño como humano a distancia
+    private int currentWaypoint = 0;
+    private int targetWaypoint = 0;      // Destino elegido por IA
+    private static final float WALK_SPEED = 0.15f;   // Más lento para verse natural
     private TransformManager transformManager;
+    private java.util.Random random = new java.util.Random();
 
-    // Sendero natural por la nieve (waypoints X, Y, Z)
-    // Sigue el camino visible en la imagen del fondo
+    // 🗺️ SENDERO COMPLETO - Circuito sobre el terreno 3D
+    // Todos los puntos a Y=0.3 (sobre el terreno)
     private static final float[][] PATH_WAYPOINTS = {
-        { 2.0f, -1.5f,  0.0f},   // 0: Inicio derecha (frente)
-        { 0.0f, -1.2f,  3.0f},   // 1: Centro, un poco atrás
-        {-1.5f, -1.0f,  5.0f},   // 2: Izquierda, hacia la cabaña
-        { 0.0f, -1.2f,  3.0f},   // 3: Regreso al centro
-        { 2.0f, -1.5f,  0.0f},   // 4: Regreso a inicio
+        // ═══ FRENTE (cerca de cámara) ═══
+        { 1.0f, 0.3f,  3.0f},    // 0: Derecha frontal
+        { 0.0f, 0.3f,  3.5f},    // 1: Centro
+        {-1.0f, 0.3f,  3.0f},    // 2: Izquierda frontal
+
+        // ═══ CENTRO DEL TERRENO ═══
+        {-1.5f, 0.3f,  5.0f},    // 3: Izquierda
+        { 0.0f, 0.3f,  6.0f},    // 4: Centro
+        { 1.5f, 0.3f,  5.0f},    // 5: Derecha
+
+        // ═══ FONDO DEL TERRENO ═══
+        { 1.0f, 0.3f,  7.0f},    // 6: Derecha-fondo
+        { 0.0f, 0.3f,  8.0f},    // 7: Centro-fondo
+        {-1.0f, 0.3f,  7.0f},    // 8: Izquierda-fondo
+
+        // ═══ REGRESO ═══
+        {-0.5f, 0.3f,  5.5f},    // 9: Bajando
+        { 0.5f, 0.3f,  4.5f},    // 10: Centro
+        { 0.0f, 0.3f,  4.0f},    // 11: Centro-frente
     };
+
+    // Para IA: índices de waypoints por zona de interés
+    private static final int[] FRONT_WAYPOINTS = {0, 1, 2, 11};     // Frente (cerca de cámara)
+    private static final int[] CENTER_WAYPOINTS = {3, 4, 5};        // Centro del terreno
+    private static final int[] BACK_WAYPOINTS = {6, 7, 8};          // Fondo del terreno
+    private static final int[] PATH_WAYPOINTS_ALL;                   // Todos
+
+    static {
+        PATH_WAYPOINTS_ALL = new int[PATH_WAYPOINTS.length];
+        for (int i = 0; i < PATH_WAYPOINTS.length; i++) {
+            PATH_WAYPOINTS_ALL[i] = i;
+        }
+    }
 
     // Lighting
     private int sunLight;
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ✨ MAGIC ORBS - Bolitas brillantes flotantes con efecto de viento
+    // ═══════════════════════════════════════════════════════════════════
+    private static final String MAGIC_ORB_FILE = "magic_orb.glb";
+    private static final int NUM_ORBS = 15;  // Más bolitas para llenar la escena
+    private static final float ORB_SCALE_MIN = 0.15f;  // Tamaño mínimo
+    private static final float ORB_SCALE_MAX = 0.45f;  // Tamaño máximo
+
+    private FilamentAsset[] orbAssets = new FilamentAsset[NUM_ORBS];
+    private float[] orbBaseX = new float[NUM_ORBS];   // Posición base X
+    private float[] orbBaseY = new float[NUM_ORBS];   // Posición base Y
+    private float[] orbBaseZ = new float[NUM_ORBS];   // Posición base Z
+    private float[] orbScale = new float[NUM_ORBS];   // Escala individual de cada bolita
+    private float[] orbPhase = new float[NUM_ORBS];     // Fase para movimiento ondulante
+    private float[] orbSpeedX = new float[NUM_ORBS];    // Velocidad horizontal
+    private float[] orbSpeedY = new float[NUM_ORBS];    // Velocidad vertical
+    private float[] orbAmplitude = new float[NUM_ORBS]; // Amplitud del movimiento
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 🎄 CHRISTMAS TREE - Posición y escala configurables
+    // ═══════════════════════════════════════════════════════════════════
+    private float treeX = -1.5f;   // A la izquierda
+    private float treeY = 0.2f;    // Sobre el terreno
+    private float treeZ = 3.0f;    // Cerca del frente
+    private float treeScale = 0.35f;  // Árbol proporcional al nuevo Santa
 
     // Animation timing
     private long startTime;
@@ -167,17 +228,28 @@ public class FilamentChristmasRenderer {
             view = engine.createView();
             view.setScene(scene);
 
+            // ✨ Activar BLOOM para que las bolitas brillen mágicamente
+            View.BloomOptions bloomOptions = new View.BloomOptions();
+            bloomOptions.enabled = true;
+            bloomOptions.strength = 0.3f;      // Intensidad del brillo (0.0 - 1.0)
+            bloomOptions.threshold = true;     // Solo objetos brillantes
+            bloomOptions.levels = 6;           // Niveles de blur
+            bloomOptions.blendMode = View.BloomOptions.BlendMode.ADD;
+            view.setBloomOptions(bloomOptions);
+            Log.d(TAG, "✨ Bloom activado para efectos mágicos");
+
             // Camera
             int cameraEntity = EntityManager.get().create();
             camera = engine.createCamera(cameraEntity);
             view.setCamera(camera);
             setupCamera();
 
-            // Skybox con gradiente navideño
-            Skybox skybox = new Skybox.Builder()
-                    .color(0.02f, 0.06f, 0.12f, 1.0f)
+            // 🌤️ CIELO INVERNAL - Azul claro brillante
+            skybox = new Skybox.Builder()
+                    .color(0.4f, 0.6f, 0.9f, 1.0f)  // Azul cielo invernal
                     .build(engine);
             scene.setSkybox(skybox);
+            Log.d(TAG, "✓ Cielo azul invernal configurado");
 
             // Luz
             setupLighting();
@@ -185,14 +257,20 @@ public class FilamentChristmasRenderer {
             // GLTF Loader
             setupGltfLoader();
 
-            // Cargar fondo del bosque navideño
-            loadBackground();
+            // ✨ Cargar bolitas mágicas (después del loader)
+            setupMagicOrbs();
+
+            // Cargar terreno 3D nevado
+            loadTerrain();
 
             // Cargar árbol de navidad
             loadChristmasTree();
 
-            // Cargar primera animación de Santa
-            loadSantaAnimation(currentFileIndex);
+            // 🎅 PRE-CARGAR todas las animaciones de Santa (cambio instantáneo)
+            preloadAllSantaAnimations();
+
+            // Elegir primer destino inteligente
+            chooseNextDestination();
 
             // SwapChain
             swapChain = engine.createSwapChain(holder.getSurface());
@@ -208,27 +286,148 @@ public class FilamentChristmasRenderer {
     }
 
     private void setupCamera() {
-        // Santa pequeño en la parte inferior-derecha
-        camera.setProjection(45.0, 1.0, 0.1, 100.0, Camera.Fov.VERTICAL);
-        camera.lookAt(
-                2.0, 3.0, -25.0,  // eye - lejos para Santa pequeño
-                2.0, 0.0, 0.0,    // center - Santa a la derecha
-                0.0, 1.0, 0.0     // up
-        );
-        Log.d(TAG, "✓ Cámara: Santa pequeño en esquina");
+        // 🎥 Inicializar el controlador de cámara FPS
+        cameraController = new ChristmasCameraController(camera);
+        cameraController.setAspectRatio((float) width / height);
+
+        // Modo: recorrido automático por el terreno
+        cameraController.setMode(ChristmasCameraController.CameraMode.AUTO_WALK);
+
+        Log.d(TAG, "✓ Cámara FPS inicializada - Recorrido automático");
     }
 
     private void setupLighting() {
-        // Luz principal - Luna fría navideña
+        // ☀️ SOL BRILLANTE - Iluminación de día invernal
         sunLight = EntityManager.get().create();
         new LightManager.Builder(LightManager.Type.DIRECTIONAL)
-                .color(0.7f, 0.8f, 1.0f)      // Azul frío (luna)
-                .intensity(80000.0f)
-                .direction(-0.3f, -1.0f, 0.5f)
+                .color(1.0f, 0.95f, 0.85f)    // Luz cálida de sol invernal
+                .intensity(120000.0f)          // Intensidad de sol real
+                .direction(0.2f, -0.8f, -0.5f) // Sol desde arriba-izquierda
                 .castShadows(true)
+                .shadowOptions(new LightManager.ShadowOptions())
                 .build(engine, sunLight);
         scene.addEntity(sunLight);
-        Log.d(TAG, "✓ Iluminación nocturna configurada");
+
+        // 💡 LUZ DE RELLENO - Para que no haya sombras muy oscuras
+        int fillLight = EntityManager.get().create();
+        new LightManager.Builder(LightManager.Type.DIRECTIONAL)
+                .color(0.6f, 0.7f, 0.9f)      // Azul cielo (luz ambiental)
+                .intensity(30000.0f)           // Más suave
+                .direction(-0.5f, -0.3f, 0.5f) // Desde el lado opuesto
+                .castShadows(false)
+                .build(engine, fillLight);
+        scene.addEntity(fillLight);
+
+        Log.d(TAG, "✓ Iluminación solar configurada (sol + relleno)");
+    }
+
+    /**
+     * ✨ Carga las bolitas mágicas GLB que flotan con el viento
+     */
+    private void setupMagicOrbs() {
+        Log.d(TAG, "✨ Cargando " + NUM_ORBS + " bolitas mágicas GLB...");
+
+        try {
+            // Leer el archivo GLB una vez
+            InputStream inputStream = context.getAssets().open(MAGIC_ORB_FILE);
+            byte[] bytes = new byte[inputStream.available()];
+            inputStream.read(bytes);
+            inputStream.close();
+
+            for (int i = 0; i < NUM_ORBS; i++) {
+                // Posición distribuida por TODA la escena visible
+                // Más dispersas para cubrir todo el fondo nevado
+                orbBaseX[i] = (random.nextFloat() * 6f) - 3f;    // -3 a 3 (ancho visible)
+                orbBaseY[i] = random.nextFloat() * 2f + 1.0f;    // 1.0 a 3.0 (flotando a altura humana)
+                orbBaseZ[i] = random.nextFloat() * 8f + 2f;      // 2 a 10 (sobre el terreno visible)
+
+                // Escala variada: algunas pequeñitas, otras más grandes
+                orbScale[i] = ORB_SCALE_MIN + random.nextFloat() * (ORB_SCALE_MAX - ORB_SCALE_MIN);
+
+                // Fase aleatoria para movimiento desfasado
+                orbPhase[i] = random.nextFloat() * (float) Math.PI * 2f;
+
+                // Velocidades y amplitudes aleatorias para variedad natural
+                orbSpeedX[i] = 0.4f + random.nextFloat() * 0.6f;  // 0.4 - 1.0
+                orbSpeedY[i] = 0.3f + random.nextFloat() * 0.4f;  // 0.3 - 0.7
+                orbAmplitude[i] = 0.4f + random.nextFloat() * 0.6f;  // 0.4 - 1.0
+
+                // Cargar GLB para esta bolita
+                ByteBuffer buffer = ByteBuffer.allocateDirect(bytes.length);
+                buffer.put(bytes);
+                buffer.flip();
+
+                orbAssets[i] = assetLoader.createAsset(buffer);
+                if (orbAssets[i] != null) {
+                    resourceLoader.loadResources(orbAssets[i]);
+                    scene.addEntities(orbAssets[i].getEntities());
+
+                    // Posicionar la bolita
+                    updateOrbTransform(i, orbBaseX[i], orbBaseY[i], orbBaseZ[i]);
+                    Log.d(TAG, "✨ Orb " + i + " pos(" +
+                          String.format("%.1f", orbBaseX[i]) + "," +
+                          String.format("%.1f", orbBaseY[i]) + "," +
+                          String.format("%.1f", orbBaseZ[i]) + ")");
+                }
+            }
+
+            Log.d(TAG, "✨ " + NUM_ORBS + " bolitas mágicas cargadas! Escala=" + ORB_SCALE_MIN + "-" + ORB_SCALE_MAX);
+
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error cargando bolitas mágicas: " + e.getMessage());
+        }
+    }
+
+    /**
+     * ✨ Actualiza la transformación de una bolita específica
+     */
+    private void updateOrbTransform(int index, float x, float y, float z) {
+        if (orbAssets[index] == null) return;
+
+        int rootEntity = orbAssets[index].getRoot();
+        int instance = transformManager.getInstance(rootEntity);
+        if (instance == 0) return;
+
+        // Matriz de transformación: escala individual + posición
+        float s = orbScale[index];
+        float[] matrix = new float[] {
+            s, 0, 0, 0,      // columna 0
+            0, s, 0, 0,      // columna 1
+            0, 0, s, 0,      // columna 2
+            x, y, z, 1       // columna 3 (posición)
+        };
+
+        transformManager.setTransform(instance, matrix);
+    }
+
+    /**
+     * ✨ Actualiza la posición de las bolitas con movimiento de viento mágico
+     */
+    private void updateMagicOrbs(float time) {
+        for (int i = 0; i < NUM_ORBS; i++) {
+            if (orbAssets[i] == null) continue;
+
+            // Movimiento ondulante simulando viento mágico
+            float phase = orbPhase[i];
+            float speedX = orbSpeedX[i];
+            float speedY = orbSpeedY[i];
+            float amp = orbAmplitude[i];
+
+            // Movimiento sinusoidal en X (viento horizontal suave)
+            float windX = (float) Math.sin(time * speedX + phase) * amp;
+            // Movimiento sinusoidal en Y (flotando arriba/abajo)
+            float windY = (float) Math.sin(time * speedY + phase * 1.5f) * amp * 0.5f;
+            // Movimiento lento en Z (deriva hacia adelante/atrás)
+            float windZ = (float) Math.sin(time * 0.15f + phase * 2f) * amp * 0.4f;
+
+            // Posición final = base + ondulación
+            float finalX = orbBaseX[i] + windX;
+            float finalY = orbBaseY[i] + windY;
+            float finalZ = orbBaseZ[i] + windZ;
+
+            // Actualizar transformación de la bolita GLB
+            updateOrbTransform(i, finalX, finalY, finalZ);
+        }
     }
 
     private void setupGltfLoader() {
@@ -238,14 +437,22 @@ public class FilamentChristmasRenderer {
         Log.d(TAG, "✓ GLTF loader configurado");
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    // 🏔️ TERRAIN 3D - Terreno nevado con camino
+    // ═══════════════════════════════════════════════════════════════════
+    private float terrainX = 0.0f;
+    private float terrainY = 0.0f;   // A nivel del suelo
+    private float terrainZ = 5.0f;   // Centrado en la escena
+    private float terrainScale = 4.0f;  // Un poco más grande
+
     /**
-     * Carga el fondo del bosque navideño (plano con textura)
+     * Carga el terreno 3D nevado
      */
-    private void loadBackground() {
-        Log.d(TAG, "🌲 Cargando fondo: " + BACKGROUND_FILE);
+    private void loadTerrain() {
+        Log.d(TAG, "🏔️ Cargando terreno 3D: " + TERRAIN_FILE);
 
         try {
-            InputStream inputStream = context.getAssets().open(BACKGROUND_FILE);
+            InputStream inputStream = context.getAssets().open(TERRAIN_FILE);
             byte[] bytes = new byte[inputStream.available()];
             inputStream.read(bytes);
             inputStream.close();
@@ -254,81 +461,70 @@ public class FilamentChristmasRenderer {
             buffer.put(bytes);
             buffer.flip();
 
-            backgroundAsset = assetLoader.createAsset(buffer);
-            if (backgroundAsset == null) {
-                Log.e(TAG, "❌ Error cargando fondo");
+            terrainAsset = assetLoader.createAsset(buffer);
+            if (terrainAsset == null) {
+                Log.e(TAG, "❌ Error cargando terreno");
                 return;
             }
 
-            resourceLoader.loadResources(backgroundAsset);
-            scene.addEntities(backgroundAsset.getEntities());
+            resourceLoader.loadResources(terrainAsset);
+            scene.addEntities(terrainAsset.getEntities());
 
-            // Posicionar el fondo detrás de Santa
-            positionBackground();
+            // Posicionar el terreno como suelo
+            positionTerrain();
 
-            Log.d(TAG, "✅ Fondo cargado - Entidades: " + backgroundAsset.getEntities().length);
+            Log.d(TAG, "✅ Terreno cargado - Entidades: " + terrainAsset.getEntities().length);
 
         } catch (IOException e) {
-            Log.e(TAG, "❌ Error cargando fondo: " + e.getMessage());
+            Log.e(TAG, "❌ Error cargando terreno: " + e.getMessage());
         }
     }
 
     /**
-     * Posiciona y escala el fondo para que llene EXACTAMENTE la pantalla
-     * Calcula el tamaño basado en la geometría de la cámara
+     * Posiciona el terreno 3D en la escena
      */
-    private void positionBackground() {
-        if (backgroundAsset == null || transformManager == null) return;
+    private void positionTerrain() {
+        if (terrainAsset == null || transformManager == null) return;
 
-        int rootEntity = backgroundAsset.getRoot();
+        int rootEntity = terrainAsset.getRoot();
         int transformInstance = transformManager.getInstance(rootEntity);
 
         if (transformInstance == 0) return;
 
-        // Posición del fondo (detrás de Santa)
-        float posZ = 40.0f;
-
-        // La cámara está en Z=-25, mirando hacia Z=0
-        // Distancia desde cámara al fondo = posZ - (-25) = posZ + 25
-        float cameraZ = -25.0f;
-        float distance = posZ - cameraZ;
-
-        // FOV vertical = 45 grados
-        float fovRadians = (float) Math.toRadians(45.0 / 2.0);
-
-        // Altura visible a esa distancia: h = 2 * d * tan(fov/2)
-        float visibleHeight = 2.0f * distance * (float) Math.tan(fovRadians);
-
-        // Ancho visible basado en aspect ratio de pantalla
-        float aspectRatio = (float) width / (float) height;
-        float visibleWidth = visibleHeight * aspectRatio;
-
-        // El plano en Blender es 9x16 unidades (después del escalado)
-        // Necesitamos escalar para que cubra el área visible
-        float planeWidth = 9.0f;   // Ancho del plano en Blender
-        float planeHeight = 16.0f; // Alto del plano en Blender
-
-        // Calcular escala para mostrar TODA la imagen (sin recortar)
-        float scaleX = visibleWidth / planeWidth;
-        float scaleY = visibleHeight / planeHeight;
-
-        // Usar la escala MENOR para que toda la imagen sea visible
-        float scale = Math.min(scaleX, scaleY);
-
-        // Centrar con la cámara (cámara mira a X=2, Y=0)
-        float posX = 2.0f;
-        float posY = 0.0f;  // Centrado verticalmente
-
-        // Matriz de transformación: escala + rotación 90° en X + traslación
+        // Matriz de transformación: escala + posición
+        float s = terrainScale;
         float[] transform = new float[] {
-            scale, 0f,    0f,    0f,   // columna 0
-            0f,    0f,    scale, 0f,   // columna 1 (rotación Y→Z)
-            0f,    -scale, 0f,   0f,   // columna 2 (rotación Z→-Y)
-            posX,  posY,  posZ,  1f    // columna 3 (traslación)
+            s,        0f, 0f, 0f,   // columna 0
+            0f,       s,  0f, 0f,   // columna 1
+            0f,       0f, s,  0f,   // columna 2
+            terrainX, terrainY, terrainZ, 1f  // columna 3 (posición)
         };
 
         transformManager.setTransform(transformInstance, transform);
-        Log.d(TAG, "✓ Fondo: dist=" + distance + " visible=" + visibleWidth + "x" + visibleHeight + " scale=" + scale);
+        Log.d(TAG, "🏔️ Terreno posicionado: (" + terrainX + ", " + terrainY + ", " + terrainZ + ") escala=" + terrainScale);
+    }
+
+    /**
+     * Setters para ajustar el terreno manualmente
+     */
+    public void setTerrainPosition(float x, float y, float z) {
+        this.terrainX = x;
+        this.terrainY = y;
+        this.terrainZ = z;
+        positionTerrain();
+    }
+
+    public void setTerrainScale(float scale) {
+        this.terrainScale = scale;
+        positionTerrain();
+    }
+
+    public void setTerrainTransform(float x, float y, float z, float scale) {
+        this.terrainX = x;
+        this.terrainY = y;
+        this.terrainZ = z;
+        this.terrainScale = scale;
+        positionTerrain();
     }
 
     /**
@@ -377,92 +573,248 @@ public class FilamentChristmasRenderer {
 
         if (transformInstance == 0) return;
 
-        // Posición del árbol (a la derecha del sendero)
-        float scale = 0.8f;   // Tamaño del árbol
-        float posX = 3.5f;    // A la derecha
-        float posY = -2.0f;   // En el suelo
-        float posZ = 2.0f;    // Un poco atrás
-
-        // Matriz de transformación simple (solo escala y traslación)
+        // Usa las variables configurables
         float[] transform = new float[] {
-            scale, 0f,    0f,    0f,
-            0f,    scale, 0f,    0f,
-            0f,    0f,    scale, 0f,
-            posX,  posY,  posZ,  1f
+            treeScale, 0f,        0f,        0f,
+            0f,        treeScale, 0f,        0f,
+            0f,        0f,        treeScale, 0f,
+            treeX,     treeY,     treeZ,     1f
         };
 
         transformManager.setTransform(transformInstance, transform);
-        Log.d(TAG, "✓ Árbol posicionado: (" + posX + ", " + posY + ", " + posZ + ") escala=" + scale);
+        Log.d(TAG, "🎄 Árbol posicionado: (" + treeX + ", " + treeY + ", " + treeZ + ") escala=" + treeScale);
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    // 🎄 SETTERS PARA ÁRBOL DE NAVIDAD - Ajuste manual de posición
+    // ═══════════════════════════════════════════════════════════════════
+
     /**
-     * Carga una animación de Santa desde assets
+     * Establece la posición del árbol de navidad
+     * @param x Posición horizontal (-5 izquierda, 5 derecha)
+     * @param y Posición vertical (negativo = abajo)
+     * @param z Profundidad (0 = frente, 10 = fondo/lejos)
      */
-    private void loadSantaAnimation(int fileIndex) {
-        // Limpiar asset anterior si existe
-        if (santaAsset != null) {
-            scene.removeEntities(santaAsset.getEntities());
-            assetLoader.destroyAsset(santaAsset);
-            santaAsset = null;
-            santaAnimator = null;
-        }
-
-        String filename = ANIMATION_FILES[fileIndex];
-        Log.d(TAG, "🎅 Cargando animación: " + ANIMATION_NAMES[fileIndex] + " (" + filename + ")");
-
-        try {
-            InputStream inputStream = context.getAssets().open(filename);
-            byte[] bytes = new byte[inputStream.available()];
-            inputStream.read(bytes);
-            inputStream.close();
-
-            ByteBuffer buffer = ByteBuffer.allocateDirect(bytes.length);
-            buffer.put(bytes);
-            buffer.flip();
-
-            santaAsset = assetLoader.createAsset(buffer);
-            if (santaAsset == null) {
-                Log.e(TAG, "❌ Error cargando: " + filename);
-                return;
-            }
-
-            resourceLoader.loadResources(santaAsset);
-            scene.addEntities(santaAsset.getEntities());
-
-            // Animator
-            santaAsset.getInstance();
-            santaAnimator = santaAsset.getInstance().getAnimator();
-
-            if (santaAnimator != null) {
-                Log.d(TAG, "✅ " + ANIMATION_NAMES[fileIndex] + " cargado - Duración: " +
-                      santaAnimator.getAnimationDuration(0) + "s");
-            }
-
-            currentFileIndex = fileIndex;
-
-        } catch (IOException e) {
-            Log.e(TAG, "❌ Error: " + e.getMessage());
-        }
+    public void setTreePosition(float x, float y, float z) {
+        this.treeX = x;
+        this.treeY = y;
+        this.treeZ = z;
+        positionTree();
+        Log.d(TAG, "🎄 Nueva posición árbol: (" + x + ", " + y + ", " + z + ")");
     }
 
     /**
-     * Cambia a la siguiente animación
+     * Establece la escala del árbol
+     * @param scale Tamaño (0.5 = pequeño, 1.0 = normal, 2.0 = grande)
+     */
+    public void setTreeScale(float scale) {
+        this.treeScale = scale;
+        positionTree();
+        Log.d(TAG, "🎄 Nueva escala árbol: " + scale);
+    }
+
+    /**
+     * Establece posición y escala del árbol en una sola llamada
+     */
+    public void setTreeTransform(float x, float y, float z, float scale) {
+        this.treeX = x;
+        this.treeY = y;
+        this.treeZ = z;
+        this.treeScale = scale;
+        positionTree();
+        Log.d(TAG, "🎄 Árbol transform: pos(" + x + ", " + y + ", " + z + ") escala=" + scale);
+    }
+
+    // Getters para leer valores actuales
+    public float getTreeX() { return treeX; }
+    public float getTreeY() { return treeY; }
+    public float getTreeZ() { return treeZ; }
+    public float getTreeScale() { return treeScale; }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 🎅 SISTEMA PRE-CARGA: Carga todas las animaciones al inicio
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * Pre-carga TODAS las animaciones de Santa al inicio
+     * Solo la primera se muestra, las otras quedan listas para cambio instantáneo
+     */
+    private void preloadAllSantaAnimations() {
+        Log.d(TAG, "🎅 Pre-cargando todas las animaciones de Santa...");
+
+        for (int i = 0; i < ANIMATION_FILES.length; i++) {
+            try {
+                String filename = ANIMATION_FILES[i];
+                InputStream inputStream = context.getAssets().open(filename);
+                byte[] bytes = new byte[inputStream.available()];
+                inputStream.read(bytes);
+                inputStream.close();
+
+                ByteBuffer buffer = ByteBuffer.allocateDirect(bytes.length);
+                buffer.put(bytes);
+                buffer.flip();
+
+                FilamentAsset asset = assetLoader.createAsset(buffer);
+                if (asset == null) {
+                    Log.e(TAG, "❌ Error cargando: " + filename);
+                    continue;
+                }
+
+                resourceLoader.loadResources(asset);
+                santaAssets[i] = asset;
+                santaAnimators[i] = asset.getInstance().getAnimator();
+
+                // Solo agregar la primera animación a la escena
+                if (i == 0) {
+                    scene.addEntities(asset.getEntities());
+                    currentAnimationIndex = 0;
+                }
+
+                Log.d(TAG, "✅ " + ANIMATION_NAMES[i] + " pre-cargado");
+
+            } catch (IOException e) {
+                Log.e(TAG, "❌ Error pre-cargando " + ANIMATION_FILES[i] + ": " + e.getMessage());
+            }
+        }
+
+        updateAllSantaTransforms();
+        Log.d(TAG, "🎅 Todas las animaciones pre-cargadas!");
+    }
+
+    /**
+     * Cambia a la siguiente animación - INSTANTÁNEO (sin carga)
      */
     public void nextAnimation() {
-        int nextIndex = (currentFileIndex + 1) % ANIMATION_FILES.length;
-        loadSantaAnimation(nextIndex);
+        int nextIndex = (currentAnimationIndex + 1) % ANIMATION_FILES.length;
+        switchToAnimation(nextIndex);
+    }
+
+    /**
+     * Cambia a una animación específica - INSTANTÁNEO
+     */
+    private void switchToAnimation(int index) {
+        if (index < 0 || index >= santaAssets.length) return;
+        if (santaAssets[index] == null) return;
+        if (index == currentAnimationIndex) return;
+
+        // Quitar animación actual de la escena
+        if (santaAssets[currentAnimationIndex] != null) {
+            scene.removeEntities(santaAssets[currentAnimationIndex].getEntities());
+        }
+
+        // Agregar nueva animación a la escena
+        scene.addEntities(santaAssets[index].getEntities());
+        currentAnimationIndex = index;
+
+        // Aplicar posición actual a la nueva animación
+        updateCurrentSantaTransform();
+
+        Log.d(TAG, "🔄 Cambio instantáneo a: " + ANIMATION_NAMES[index]);
         animationCycleTime = 0f;
     }
 
     /**
-     * Cambia a una animación específica
-     * @param index 0=walk, 1=wave, 2=look
+     * Aplica la transformación a TODAS las animaciones pre-cargadas
      */
-    public void setAnimation(int index) {
-        if (index >= 0 && index < ANIMATION_FILES.length && index != currentFileIndex) {
-            loadSantaAnimation(index);
-            animationCycleTime = 0f;
+    private void updateAllSantaTransforms() {
+        for (int i = 0; i < santaAssets.length; i++) {
+            if (santaAssets[i] != null) {
+                updateSantaTransformForAsset(santaAssets[i]);
+            }
         }
+    }
+
+    /**
+     * Aplica la transformación solo a la animación actual
+     */
+    private void updateCurrentSantaTransform() {
+        if (santaAssets[currentAnimationIndex] != null) {
+            updateSantaTransformForAsset(santaAssets[currentAnimationIndex]);
+        }
+    }
+
+    /**
+     * Aplica transformación a un asset específico
+     */
+    private void updateSantaTransformForAsset(FilamentAsset asset) {
+        if (asset == null || transformManager == null) return;
+
+        int root = asset.getRoot();
+        int transformInstance = transformManager.getInstance(root);
+        if (transformInstance == 0) return;
+
+        float scale = SANTA_SCALE;  // Escala proporcional para primera persona
+        float cos = (float) Math.cos(santaRotation);
+        float sin = (float) Math.sin(santaRotation);
+
+        float[] transform = new float[] {
+            scale * cos,  0f,           scale * sin,  0f,
+            0f,           scale,        0f,           0f,
+            -scale * sin, 0f,           scale * cos,  0f,
+            santaX,       santaY,       santaZ,       1f
+        };
+
+        transformManager.setTransform(transformInstance, transform);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 🤖 IA DE EXPLORACIÓN: Santa camina dinámicamente por el sendero
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * Elige el próximo destino - Exploración por el terreno 3D
+     */
+    private void chooseNextDestination() {
+        int roll = random.nextInt(100);
+        int[] selectedZone;
+        String zoneName;
+
+        // Probabilidades para exploración natural del terreno
+        if (roll < 40) {
+            // Seguir el circuito natural (40%) - FAVORECIDO
+            targetWaypoint = (targetWaypoint + 1) % PATH_WAYPOINTS.length;
+            Log.d(TAG, "🚶 Circuito → wp " + targetWaypoint +
+                  " pos(" + PATH_WAYPOINTS[targetWaypoint][0] + "," + PATH_WAYPOINTS[targetWaypoint][2] + ")");
+            return;
+        } else if (roll < 60) {
+            // Zona frontal (20%) - más cerca de la cámara
+            selectedZone = FRONT_WAYPOINTS;
+            zoneName = "👀 FRENTE";
+        } else if (roll < 80) {
+            // Centro del terreno (20%)
+            selectedZone = CENTER_WAYPOINTS;
+            zoneName = "🎯 CENTRO";
+        } else if (roll < 95) {
+            // Fondo del terreno (15%)
+            selectedZone = BACK_WAYPOINTS;
+            zoneName = "🌲 FONDO";
+        } else {
+            // Punto completamente aleatorio (5%)
+            selectedZone = PATH_WAYPOINTS_ALL;
+            zoneName = "🎲 ALEATORIO";
+        }
+
+        // Elegir waypoint dentro de la zona
+        int oldTarget = targetWaypoint;
+        int attempts = 0;
+        do {
+            targetWaypoint = selectedZone[random.nextInt(selectedZone.length)];
+            attempts++;
+        } while (targetWaypoint == oldTarget && selectedZone.length > 1 && attempts < 5);
+
+        float[] pos = PATH_WAYPOINTS[targetWaypoint];
+        Log.d(TAG, "🤖 " + zoneName + " → wp " + targetWaypoint +
+              " pos(" + pos[0] + "," + pos[2] + ")");
+    }
+
+    /**
+     * Calcula la distancia al destino actual
+     */
+    private float distanceToTarget() {
+        float[] target = PATH_WAYPOINTS[targetWaypoint];
+        float dx = target[0] - santaX;
+        float dz = target[2] - santaZ;
+        return (float) Math.sqrt(dx * dx + dz * dz);
     }
 
     /**
@@ -475,13 +827,14 @@ public class FilamentChristmasRenderer {
         if (view != null) {
             view.setViewport(new Viewport(0, 0, width, height));
         }
-        if (camera != null) {
-            double aspect = (double) width / height;
-            camera.setProjection(45.0, aspect, 0.1, 100.0, Camera.Fov.VERTICAL);
+
+        // 🎥 Actualizar aspect ratio del controlador de cámara
+        if (cameraController != null) {
+            cameraController.setAspectRatio((float) width / height);
         }
 
-        // Recalcular posición del fondo para nuevas dimensiones
-        positionBackground();
+        // Recalcular posición del terreno para nuevas dimensiones
+        positionTerrain();
 
         Log.d(TAG, "📐 Viewport: " + width + "x" + height);
     }
@@ -495,51 +848,61 @@ public class FilamentChristmasRenderer {
         float deltaTime = 0.016f; // ~60fps
         float time = (frameTimeNanos - startTime) / 1_000_000_000f;
 
-        // Actualizar animación de Santa
-        if (santaAnimator != null) {
-            float duration = santaAnimator.getAnimationDuration(0);
+        // 🎥 ACTUALIZAR CÁMARA FPS - Recorrido por el terreno
+        if (cameraController != null) {
+            cameraController.update(deltaTime);
+        }
+
+        // ✨ Actualizar bolitas mágicas flotantes
+        updateMagicOrbs(time);
+
+        // Actualizar animación actual de Santa (sistema pre-cargado)
+        Animator currentAnimator = santaAnimators[currentAnimationIndex];
+        if (currentAnimator != null) {
+            float duration = currentAnimator.getAnimationDuration(0);
             float animTime = time % duration;
-            santaAnimator.applyAnimation(0, animTime);
-            santaAnimator.updateBoneMatrices();
+            currentAnimator.applyAnimation(0, animTime);
+            currentAnimator.updateBoneMatrices();
         }
 
-        // Mover a Santa cuando está caminando (animación 0)
-        if (currentFileIndex == 0 && santaAsset != null) {
-            // Obtener waypoint destino
-            float[] target = PATH_WAYPOINTS[currentWaypoint];
-            float targetX = target[0];
-            float targetY = target[1];
-            float targetZ = target[2];
+        // 🤖 IA DE MOVIMIENTO: Solo camina en animación 0
+        if (santaAssets[currentAnimationIndex] != null) {
+            if (currentAnimationIndex == 0) {
+                // 🚶 Caminando hacia destino elegido por IA
+                float[] target = PATH_WAYPOINTS[targetWaypoint];
+                float targetX = target[0];
+                float targetY = target[1];
+                float targetZ = target[2];
 
-            // Calcular dirección hacia el waypoint
-            float dx = targetX - santaX;
-            float dy = targetY - santaY;
-            float dz = targetZ - santaZ;
-            float distance = (float) Math.sqrt(dx * dx + dz * dz);
+                float dx = targetX - santaX;
+                float dy = targetY - santaY;
+                float dz = targetZ - santaZ;
+                float distance = (float) Math.sqrt(dx * dx + dz * dz);
 
-            // Si llegamos al waypoint, ir al siguiente
-            if (distance < 0.1f) {
-                currentWaypoint = (currentWaypoint + 1) % PATH_WAYPOINTS.length;
-            } else {
-                // Mover hacia el waypoint
-                float moveX = (dx / distance) * WALK_SPEED * deltaTime;
-                float moveY = (dy / distance) * WALK_SPEED * deltaTime * 0.5f; // Y más lento
-                float moveZ = (dz / distance) * WALK_SPEED * deltaTime;
+                // ¿Llegó al destino?
+                if (distance < 0.3f) {  // Aumentado threshold
+                    // 🤖 IA elige nuevo destino aleatorio
+                    chooseNextDestination();
+                } else {
+                    // Mover hacia el destino - velocidad aumentada
+                    float speed = WALK_SPEED * 1.5f;  // Más rápido
+                    float moveX = (dx / distance) * speed * deltaTime;
+                    float moveY = (dy / distance) * speed * deltaTime * 0.3f;
+                    float moveZ = (dz / distance) * speed * deltaTime;
 
-                santaX += moveX;
-                santaY += moveY;
-                santaZ += moveZ;
+                    santaX += moveX;
+                    santaY += moveY;
+                    santaZ += moveZ;
 
-                // Calcular rotación para mirar hacia donde camina
-                // +PI porque el modelo de Santa mira hacia -Z por defecto
-                santaRotation = (float) Math.atan2(dx, dz) + (float) Math.PI;
+                    // 🔄 Mirar hacia donde camina (rotación completa)
+                    santaRotation = (float) Math.atan2(dx, dz) + (float) Math.PI;
+                }
             }
-
-            // Aplicar transformación al root entity
-            updateSantaTransform();
+            // Aplicar transformación (mantiene posición en wave/look)
+            updateCurrentSantaTransform();
         }
 
-        // Ciclo automático de animaciones (cada 10 segundos)
+        // Ciclo automático de animaciones
         animationCycleTime += deltaTime;
         if (animationCycleTime >= ANIMATION_CYCLE_DURATION) {
             nextAnimation();
@@ -550,33 +913,6 @@ public class FilamentChristmasRenderer {
             renderer.render(view);
             renderer.endFrame();
         }
-    }
-
-    /**
-     * Aplica la transformación de posición y rotación a Santa
-     * Santa mira hacia donde camina (usa santaRotation calculado de la dirección)
-     */
-    private void updateSantaTransform() {
-        if (santaAsset == null || transformManager == null) return;
-
-        int rootEntity = santaAsset.getRoot();
-        int transformInstance = transformManager.getInstance(rootEntity);
-
-        if (transformInstance == 0) return;
-
-        // Matriz de rotación en Y (Santa mira hacia donde camina)
-        float cosY = (float) Math.cos(santaRotation);
-        float sinY = (float) Math.sin(santaRotation);
-
-        // Matriz 4x4 en formato column-major (como OpenGL)
-        float[] transform = new float[] {
-            cosY,  0f, sinY, 0f,      // columna 0
-            0f,    1f, 0f,   0f,      // columna 1
-            -sinY, 0f, cosY, 0f,      // columna 2
-            santaX, santaY, santaZ, 1f // columna 3 (traslación X, Y, Z)
-        };
-
-        transformManager.setTransform(transformInstance, transform);
     }
 
     /**
@@ -617,16 +953,29 @@ public class FilamentChristmasRenderer {
     public void destroy() {
         stop();
 
-        // Limpiar Santa
-        if (santaAsset != null) {
-            scene.removeEntities(santaAsset.getEntities());
-            assetLoader.destroyAsset(santaAsset);
+        // Limpiar TODAS las animaciones de Santa pre-cargadas
+        for (int i = 0; i < santaAssets.length; i++) {
+            if (santaAssets[i] != null) {
+                scene.removeEntities(santaAssets[i].getEntities());
+                assetLoader.destroyAsset(santaAssets[i]);
+                santaAssets[i] = null;
+                santaAnimators[i] = null;
+            }
         }
 
-        // Limpiar fondo
-        if (backgroundAsset != null) {
-            scene.removeEntities(backgroundAsset.getEntities());
-            assetLoader.destroyAsset(backgroundAsset);
+        // ✨ Limpiar bolitas mágicas GLB
+        for (int i = 0; i < NUM_ORBS; i++) {
+            if (orbAssets[i] != null) {
+                scene.removeEntities(orbAssets[i].getEntities());
+                assetLoader.destroyAsset(orbAssets[i]);
+                orbAssets[i] = null;
+            }
+        }
+
+        // Limpiar terreno
+        if (terrainAsset != null) {
+            scene.removeEntities(terrainAsset.getEntities());
+            assetLoader.destroyAsset(terrainAsset);
         }
 
         // Limpiar árbol
@@ -667,8 +1016,8 @@ public class FilamentChristmasRenderer {
 
     // Getters
     public boolean isInitialized() { return initialized; }
-    public int getCurrentAnimationIndex() { return currentFileIndex; }
+    public int getCurrentAnimationIndex() { return currentAnimationIndex; }
     public String getCurrentAnimationName() {
-        return ANIMATION_NAMES[currentFileIndex];
+        return ANIMATION_NAMES[currentAnimationIndex];
     }
 }

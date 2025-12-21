@@ -56,7 +56,8 @@
       "Bash(python:*)",
       "Bash(./gradlew dependencies:*)",
       "Bash(timeout 40 D:/adb/platform-tools/adb.exe logcat:*)",
-      "Bash(timeout 50 D:/adb/platform-tools/adb.exe logcat:*)"
+      "Bash(timeout 50 D:/adb/platform-tools/adb.exe logcat:*)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []
