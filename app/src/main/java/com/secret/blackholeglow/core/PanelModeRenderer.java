@@ -10,6 +10,7 @@ import com.secret.blackholeglow.ArcadeStartText;
 import com.secret.blackholeglow.ArcadeTitle;
 import com.secret.blackholeglow.christmas.ChristmasPanelBackground;
 import com.secret.blackholeglow.christmas.ChristmasOrnamentButton;
+import com.secret.blackholeglow.christmas.ChristmasSnowEffect;
 import com.secret.blackholeglow.christmas.MiniStopButton;
 import com.secret.blackholeglow.LoadingBar;
 import com.secret.blackholeglow.OrbixGreeting;
@@ -52,6 +53,7 @@ public class PanelModeRenderer {
     // 🎄 Componentes CHRISTMAS (para Bosque Navideño) - SIMPLIFICADO
     private ChristmasPanelBackground christmasBackground;   // Fondo estático (imagen)
     private ChristmasOrnamentButton christmasOrnament;      // Botón esfera navideña
+    private ChristmasSnowEffect christmasSnow;              // ❄️ Efecto de nieve cayendo
     private boolean christmasModeEnabled = false;           // Modo navideño para Bosque Navideño
 
     // Estado
@@ -101,14 +103,11 @@ public class PanelModeRenderer {
         miniStopButton.hide();
         Log.d(TAG, "⏹️ MiniStopButton inicializado");
 
-        // 🎮 Inicializar componentes ARCADE
-        initArcadeComponents();
-
-        // 🎄 Inicializar componentes CHRISTMAS
-        initChristmasComponents();
+        // ⚠️ LAZY INITIALIZATION - Los componentes arcade/christmas
+        // se inicializan SOLO cuando se activan (ver setChristmasMode/setArcadeMode)
 
         initialized = true;
-        Log.d(TAG, "✅ Panel de Control inicializado");
+        Log.d(TAG, "✅ Panel de Control inicializado (componentes temáticos: LAZY)");
     }
 
     /**
@@ -146,16 +145,23 @@ public class PanelModeRenderer {
             christmasBackground = new ChristmasPanelBackground(context);
             Log.d(TAG, "🎄 ChristmasPanelBackground inicializado (imagen estática)");
 
-            // Botón en forma de esfera navideña (pequeño y centrado)
+            // ❄️ Efecto de nieve cayendo con textura PNG
+            christmasSnow = new ChristmasSnowEffect();
+            christmasSnow.init(context);
+            Log.d(TAG, "❄️ ChristmasSnowEffect inicializado (60 copos con textura)");
+
+            // Botón en forma de cajita de regalo (abajo con los demás regalos)
             christmasOrnament = new ChristmasOrnamentButton();
-            christmasOrnament.setPosition(0.0f, -0.1f);  // Ligeramente abajo del centro
-            christmasOrnament.setSize(0.09f);            // Tamaño pequeño
-            Log.d(TAG, "🔴 ChristmasOrnamentButton inicializado (pequeño + magia)");
+            christmasOrnament.init(context);              // Inicializar con contexto para cargar textura
+            christmasOrnament.setPosition(0.250f, -0.440f);  // Abajo donde están los regalos
+            christmasOrnament.setSize(0.10f);             // Tamaño para que se vea bien
+            Log.d(TAG, "🎁 ChristmasGiftButton inicializado (imagen PNG + glow)");
 
             Log.d(TAG, "🎄 ═══════════════════════════════════════");
-            Log.d(TAG, "🎄 MODO CHRISTMAS SIMPLIFICADO LISTO");
+            Log.d(TAG, "🎄 MODO CHRISTMAS COMPLETO LISTO");
             Log.d(TAG, "🎄 Fondo: Imagen estática (sin shaders)");
-            Log.d(TAG, "🎄 Botón: Esfera navideña");
+            Log.d(TAG, "🎄 Nieve: 60 copos con textura PNG");
+            Log.d(TAG, "🎄 Botón: Cajita de regalo");
             Log.d(TAG, "🎄 ═══════════════════════════════════════");
         } catch (Exception e) {
             Log.e(TAG, "Error inicializando componentes Christmas: " + e.getMessage());
@@ -179,7 +185,8 @@ public class PanelModeRenderer {
             // if (arcadePreview != null) arcadePreview.update(deltaTime);
             if (playPauseButton != null) playPauseButton.update(deltaTime);
         } else if (christmasModeEnabled) {
-            // 🎄 MODO CHRISTMAS (simplificado - solo botón necesita update)
+            // 🎄 MODO CHRISTMAS
+            if (christmasSnow != null) christmasSnow.update(deltaTime);  // ❄️ Actualizar nieve
             if (christmasOrnament != null) christmasOrnament.update(deltaTime);
         } else {
             // Modo estándar
@@ -270,8 +277,8 @@ public class PanelModeRenderer {
     }
 
     /**
-     * 🎄 Dibuja el panel navideño (SIMPLIFICADO)
-     * Solo fondo estático + botón esfera = RÁPIDO
+     * 🎄 Dibuja el panel navideño completo
+     * Fondo + Nieve cayendo + Botón
      */
     private void drawChristmasPanel() {
         // 1. Fondo estático (imagen christmas_background.png)
@@ -279,7 +286,12 @@ public class PanelModeRenderer {
             christmasBackground.draw();
         }
 
-        // 2. Botón esfera navideña (centrado)
+        // 2. ❄️ Efecto de nieve cayendo (encima del fondo, debajo del botón)
+        if (christmasSnow != null) {
+            christmasSnow.draw();
+        }
+
+        // 3. Botón cajita de regalo (encima de todo)
         if (christmasOrnament != null) {
             christmasOrnament.draw();
         }
@@ -496,9 +508,12 @@ public class PanelModeRenderer {
         }
         // arcadePreview removido
 
-        // 🎄 Componentes Christmas (simplificado)
+        // 🎄 Componentes Christmas
         if (christmasBackground != null) {
             christmasBackground.setAspectRatio(aspectRatio);
+        }
+        if (christmasSnow != null) {
+            christmasSnow.setScreenSize(width, height);  // ❄️ Resolución para la nieve
         }
         if (christmasOrnament != null) {
             christmasOrnament.setScreenSize(width, height);  // Pass actual resolution
@@ -561,17 +576,22 @@ public class PanelModeRenderer {
         this.arcadeModeEnabled = enabled;
 
         if (enabled) {
-            // 🔧 FIX: Desactivar modo Christmas cuando se activa Arcade
+            // Desactivar modo Christmas
             christmasModeEnabled = false;
             if (christmasBackground != null) christmasBackground.hide();
             if (christmasOrnament != null) christmasOrnament.hide();
+
+            // 🚀 LAZY INIT - Solo inicializar Arcade cuando se necesita
+            if (arcadeTitle == null || arcadeStartText == null || arcadeFooter == null) {
+                Log.d(TAG, "🎮 LAZY INIT: Inicializando componentes Arcade...");
+                initArcadeComponents();
+            }
 
             // Activar componentes arcade, ocultar estándar
             if (orbixGreeting != null) orbixGreeting.hide();
             if (arcadeTitle != null) arcadeTitle.show();
             if (arcadeStartText != null) arcadeStartText.show();
             if (arcadeFooter != null) arcadeFooter.show();
-            // if (arcadePreview \!= null) arcadePreview.show();
 
             // Configurar botón para modo arcade (más pequeño)
             if (playPauseButton != null) {
@@ -579,9 +599,7 @@ public class PanelModeRenderer {
                 playPauseButton.setPosition(0.0f, 0.18f);
             }
 
-            Log.d(TAG, "🎮 ═══════════════════════════════════════");
             Log.d(TAG, "🎮 MODO ARCADE ACTIVADO");
-            Log.d(TAG, "🎮 ═══════════════════════════════════════");
         } else {
             // Desactivar componentes arcade, mostrar estándar
             if (arcadeTitle != null) arcadeTitle.hide();
@@ -618,22 +636,24 @@ public class PanelModeRenderer {
             // Desactivar otros modos
             arcadeModeEnabled = false;
 
+            // 🚀 LAZY INIT - Solo inicializar Christmas cuando se necesita
+            if (christmasBackground == null || christmasOrnament == null || christmasSnow == null) {
+                Log.d(TAG, "🎄 LAZY INIT: Inicializando componentes Christmas...");
+                initChristmasComponents();
+            }
+
             // Ocultar componentes estándar y arcade
             if (orbixGreeting != null) orbixGreeting.hide();
             if (arcadeTitle != null) arcadeTitle.hide();
             if (arcadeStartText != null) arcadeStartText.hide();
             if (arcadeFooter != null) arcadeFooter.hide();
-            if (playPauseButton != null) playPauseButton.setVisible(false);  // Usamos el ornament en su lugar
+            if (playPauseButton != null) playPauseButton.setVisible(false);
 
-            // Activar componentes navideños simplificados
+            // Activar componentes navideños
             if (christmasBackground != null) christmasBackground.show();
             if (christmasOrnament != null) christmasOrnament.show();
 
-            Log.d(TAG, "🎄 ═══════════════════════════════════════");
-            Log.d(TAG, "🎄 MODO CHRISTMAS ACTIVADO (Simplificado)");
-            Log.d(TAG, "🎄 Fondo: Imagen estática");
-            Log.d(TAG, "🎄 Botón: Esfera navideña");
-            Log.d(TAG, "🎄 ═══════════════════════════════════════");
+            Log.d(TAG, "🎄 MODO CHRISTMAS ACTIVADO");
         } else {
             // Ocultar componentes navideños
             if (christmasBackground != null) christmasBackground.hide();
@@ -684,10 +704,14 @@ public class PanelModeRenderer {
         }
         // arcadePreview removido - ya no se usa
 
-        // 🎄 Liberar recursos Christmas (simplificado)
+        // 🎄 Liberar recursos Christmas
         if (christmasBackground != null) {
             christmasBackground.dispose();
             christmasBackground = null;
+        }
+        if (christmasSnow != null) {
+            christmasSnow.dispose();
+            christmasSnow = null;
         }
         if (christmasOrnament != null) {
             christmasOrnament.dispose();

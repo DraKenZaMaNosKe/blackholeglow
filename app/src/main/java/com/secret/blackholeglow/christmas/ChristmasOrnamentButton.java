@@ -1,7 +1,13 @@
 package com.secret.blackholeglow.christmas;
 
-import android.opengl.GLES30;
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.opengl.GLES20;
+import android.opengl.GLUtils;
 import android.util.Log;
+
+import com.secret.blackholeglow.R;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -9,238 +15,167 @@ import java.nio.FloatBuffer;
 
 /**
  * ╔═══════════════════════════════════════════════════════════════════════════╗
- * ║   🔴 ChristmasOrnamentButton - Botón Esfera Navideña                     ║
+ * ║   🎁 ChristmasGiftButton - OPTIMIZADO (Solo dibuja quad local)           ║
  * ╚═══════════════════════════════════════════════════════════════════════════╝
  *
- * Un botón con forma de esfera de Navidad:
- * - Círculo rojo brillante con degradado
- * - Reflejo de luz (highlight)
- * - Pequeño gancho dorado arriba
- * - Icono de PLAY en el centro
- * - Efecto de brillo suave pulsante
+ * Botón cajita de regalo con textura PNG:
+ * - Dibuja SOLO un quad pequeño, no fullscreen
+ * - Glow dorado alrededor
+ * - Animación flotante suave
  */
 public class ChristmasOrnamentButton {
-    private static final String TAG = "ChristmasOrnament";
+    private static final String TAG = "ChristmasGiftBtn";
 
     // OpenGL
     private int shaderProgram;
+    private int textureId;
     private FloatBuffer vertexBuffer;
 
-    // Uniforms
-    private int uTimeLoc;
-    private int uAspectLoc;
-    private int uPositionLoc;
-    private int uSizeLoc;
-    private int uPressedLoc;
-    private int uShakeLoc;
-    private int uResolutionLoc;
+    // Uniforms/Attributes
     private int aPositionLoc;
+    private int aTexCoordLoc;
+    private int uTextureLoc;
+    private int uTimeLoc;
 
-    // Screen resolution
+    // Screen
     private float screenWidth = 1080f;
     private float screenHeight = 1920f;
+    private float aspectRatio = 1.0f;
 
-    // Estado
+    // State
     private boolean initialized = false;
     private boolean visible = true;
     private boolean isPressed = false;
-    private float posX = 0.0f;
-    private float posY = 0.0f;
-    private float size = 0.10f;  // Tamaño PEQUEÑO (antes 0.18)
-    private float aspectRatio = 1.0f;
+    // Posición y tamaño - MODIFICA AQUÍ o usa los setters
+    // NDC: X(-1 izq, 0 centro, 1 der) Y(-1 abajo, 0 centro, 1 arriba)
+    private float posX = 0.0f;    // Centro horizontal
+    private float posY = -0.65f;  // Abajo (sobre los regalos)
+    private float size = 0.22f;   // Tamaño mediano-grande
     private float time = 0.0f;
-
-    // ✨ Efecto shake al tocar
     private float shakeIntensity = 0.0f;
-    private static final float SHAKE_DECAY = 3.0f;  // Velocidad de decaimiento
 
-    // Vertex shader
+    private Context context;
+
+    // Simple vertex shader - just transform and pass through
     private static final String VERTEX_SHADER =
         "attribute vec2 a_Position;\n" +
+        "attribute vec2 a_TexCoord;\n" +
+        "varying vec2 v_TexCoord;\n" +
         "void main() {\n" +
+        "    v_TexCoord = a_TexCoord;\n" +
         "    gl_Position = vec4(a_Position, 0.0, 1.0);\n" +
         "}\n";
 
-    // Fragment shader - Esfera navideña ROJA (SUAVIZADO con smoothstep)
+    // Fragment shader - texture + glow DIFUMINADO (sin bordes visibles)
     private static final String FRAGMENT_SHADER =
         "precision mediump float;\n" +
-        "\n" +
+        "varying vec2 v_TexCoord;\n" +
+        "uniform sampler2D u_Texture;\n" +
         "uniform float u_Time;\n" +
-        "uniform float u_Aspect;\n" +
-        "uniform vec2 u_Position;\n" +
-        "uniform float u_Size;\n" +
-        "uniform float u_Pressed;\n" +
-        "uniform float u_Shake;\n" +
-        "uniform vec2 u_Resolution;\n" +
-        "\n" +
-        "// 🎯 Función suave para animaciones\n" +
-        "float smoothWave(float t, float speed) {\n" +
-        "    float phase = mod(t * speed, 6.28318);\n" +
-        "    return sin(phase);\n" +
-        "}\n" +
         "\n" +
         "void main() {\n" +
-        "    vec2 uv = gl_FragCoord.xy / u_Resolution;\n" +
-        "    uv = uv * 2.0 - 1.0;\n" +
-        "    uv.x *= u_Aspect;\n" +
+        "    vec4 tex = texture2D(u_Texture, v_TexCoord);\n" +
+        "    vec2 uv = v_TexCoord;\n" +
         "    \n" +
-        "    float radius = u_Size * (1.0 - u_Pressed * 0.08);\n" +
+        "    // Distancia desde el centro (0.5, 0.5)\n" +
+        "    vec2 center = uv - 0.5;\n" +
+        "    float dist = length(center);\n" +
         "    \n" +
-        "    // ⚡ EARLY DISCARD: Descartar píxeles muy lejos del botón\n" +
-        "    float quickDist = abs(uv.x - u_Position.x) + abs(uv.y - u_Position.y);\n" +
-        "    if (quickDist > radius * 3.0) { discard; }\n" +
+        "    // Fade en los bordes del quad para evitar contorno visible\n" +
+        "    float edgeFade = smoothstep(0.5, 0.35, abs(uv.x - 0.5));\n" +
+        "    edgeFade *= smoothstep(0.5, 0.35, abs(uv.y - 0.5));\n" +
         "    \n" +
-        "    // 🎈 Movimiento flotante SUAVE (usando mod para evitar overflow)\n" +
-        "    vec2 magicPos = u_Position;\n" +
-        "    magicPos.y += smoothWave(u_Time, 0.8) * 0.006;\n" +
-        "    magicPos.x += smoothWave(u_Time, 0.5) * 0.003;\n" +
+        "    // Pulse suave\n" +
+        "    float phase = mod(u_Time * 1.2, 6.28318);\n" +
+        "    float pulse = 0.9 + 0.1 * sin(phase);\n" +
         "    \n" +
-        "    // ✨ Shake suave (frecuencia reducida)\n" +
-        "    float shakeSmooth = smoothstep(0.0, 1.0, u_Shake);\n" +
-        "    magicPos.x += smoothWave(u_Time, 8.0) * shakeSmooth * 0.015;\n" +
-        "    magicPos.y += smoothWave(u_Time + 1.57, 10.0) * shakeSmooth * 0.012;\n" +
-        "    \n" +
-        "    vec2 pos = uv - magicPos;\n" +
-        "    float dist = length(pos);\n" +
-        "    \n" +
-        "    // ⚡ EARLY DISCARD 2\n" +
-        "    if (dist > radius * 2.0) { discard; }\n" +
-        "    \n" +
-        "    // ✨ PARTÍCULAS con movimiento suave\n" +
-        "    float sparkleZone = radius * 1.8;\n" +
-        "    if (dist > radius && dist < sparkleZone) {\n" +
-        "        for (float i = 0.0; i < 2.0; i++) {\n" +
-        "            float angle = mod(u_Time * 0.5, 6.28318) + i * 3.14159;\n" +
-        "            vec2 sparklePos = magicPos + vec2(cos(angle), sin(angle)) * radius * 1.3;\n" +
-        "            float sparkDist = length(uv - sparklePos);\n" +
-        "            if (sparkDist < 0.012) {\n" +
-        "                float sparkle = smoothstep(0.012, 0.0, sparkDist);\n" +
-        "                float twinkle = 0.6 + 0.4 * smoothWave(u_Time + i, 2.0);\n" +
-        "                gl_FragColor = vec4(vec3(1.0, 0.95, 0.7) * sparkle * twinkle, sparkle * 0.8);\n" +
-        "                return;\n" +
-        "            }\n" +
-        "        }\n" +
-        "    }\n" +
-        "    \n" +
-        "    // 🔴 ESFERA ROJA\n" +
-        "    if (dist < radius) {\n" +
-        "        vec3 baseColor = vec3(0.85, 0.1, 0.15);\n" +
-        "        float sphere = sqrt(1.0 - dist / radius);\n" +
-        "        vec3 color = baseColor * (0.5 + 0.5 * sphere);\n" +
-        "        \n" +
-        "        // Reflejo suave\n" +
-        "        vec2 highlightPos = pos + vec2(0.02, 0.03);\n" +
-        "        float highlight = smoothstep(radius * 0.4, 0.0, length(highlightPos));\n" +
-        "        color += vec3(1.0, 0.95, 0.9) * highlight * highlight * 0.7;\n" +
-        "        \n" +
-        "        // Pulso suave\n" +
-        "        float pulse = 0.5 + 0.5 * smoothWave(u_Time, 1.2);\n" +
-        "        color += baseColor * 0.08 * pulse;\n" +
-        "        \n" +
-        "        // ▶️ ICONO PLAY\n" +
-        "        vec2 playPos = pos;\n" +
-        "        playPos.x += radius * 0.1;\n" +
-        "        float playSize = radius * 0.45;\n" +
-        "        float px = playPos.x / playSize;\n" +
-        "        float py = playPos.y / playSize;\n" +
-        "        if (px > -0.5 && px < 0.5 && abs(py) < (0.5 - px) * 0.866) {\n" +
-        "            color = vec3(1.0);\n" +
-        "        }\n" +
-        "        \n" +
-        "        gl_FragColor = vec4(color, 1.0);\n" +
+        "    // Si hay textura visible, mostrarla\n" +
+        "    if (tex.a > 0.1) {\n" +
+        "        vec3 finalColor = tex.rgb * pulse;\n" +
+        "        gl_FragColor = vec4(finalColor, tex.a);\n" +
         "        return;\n" +
         "    }\n" +
         "    \n" +
-        "    // 🪝 GANCHO DORADO\n" +
-        "    vec2 hookBase = vec2(magicPos.x, magicPos.y + radius);\n" +
-        "    vec2 hookPos = uv - hookBase;\n" +
-        "    float capW = radius * 0.22;\n" +
-        "    float capH = radius * 0.12;\n" +
-        "    if (abs(hookPos.x) < capW && hookPos.y > 0.0 && hookPos.y < capH) {\n" +
-        "        gl_FragColor = vec4(0.85, 0.65, 0.2, 1.0);\n" +
-        "        return;\n" +
-        "    }\n" +
-        "    \n" +
-        "    // Anillo\n" +
-        "    vec2 ringC = hookBase + vec2(0.0, capH + radius * 0.06);\n" +
-        "    float ringD = abs(length(uv - ringC) - radius * 0.08);\n" +
-        "    if (ringD < radius * 0.02) {\n" +
-        "        gl_FragColor = vec4(0.85, 0.65, 0.2, 1.0);\n" +
-        "        return;\n" +
-        "    }\n" +
-        "    \n" +
-        "    // GLOW\n" +
-        "    float glowDist = dist - radius;\n" +
-        "    if (glowDist > 0.0 && glowDist < radius * 0.35) {\n" +
-        "        float glow = 1.0 - glowDist / (radius * 0.35);\n" +
-        "        glow = glow * glow;\n" +
-        "        gl_FragColor = vec4(vec3(1.0, 0.4, 0.3) * glow * 0.3, glow * 0.35);\n" +
-        "        return;\n" +
-        "    }\n" +
-        "    \n" +
-        "    discard;\n" +
+        "    // Glow solo donde NO hay textura, con fade suave\n" +
+        "    float glow = smoothstep(0.5, 0.15, dist) * edgeFade * pulse * 0.4;\n" +
+        "    vec3 glowColor = vec3(1.0, 0.85, 0.3) * glow;\n" +
+        "    gl_FragColor = vec4(glowColor, glow);\n" +
         "}\n";
 
-    public ChristmasOrnamentButton() {
-        init();
+    public ChristmasOrnamentButton() {}
+
+    public void init(Context ctx) {
+        this.context = ctx;
+        initGL();
     }
 
-    private void init() {
-        // Crear shader program
-        int vertexShader = compileShader(GLES30.GL_VERTEX_SHADER, VERTEX_SHADER);
-        int fragmentShader = compileShader(GLES30.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
+    private void initGL() {
+        int vs = compileShader(GLES20.GL_VERTEX_SHADER, VERTEX_SHADER);
+        int fs = compileShader(GLES20.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
+        if (vs == 0 || fs == 0) return;
 
-        if (vertexShader == 0 || fragmentShader == 0) {
-            Log.e(TAG, "Error compilando shaders");
+        shaderProgram = GLES20.glCreateProgram();
+        GLES20.glAttachShader(shaderProgram, vs);
+        GLES20.glAttachShader(shaderProgram, fs);
+        GLES20.glLinkProgram(shaderProgram);
+
+        int[] status = new int[1];
+        GLES20.glGetProgramiv(shaderProgram, GLES20.GL_LINK_STATUS, status, 0);
+        if (status[0] == 0) {
+            Log.e(TAG, "Link error: " + GLES20.glGetProgramInfoLog(shaderProgram));
             return;
         }
 
-        shaderProgram = GLES30.glCreateProgram();
-        GLES30.glAttachShader(shaderProgram, vertexShader);
-        GLES30.glAttachShader(shaderProgram, fragmentShader);
-        GLES30.glLinkProgram(shaderProgram);
+        GLES20.glDeleteShader(vs);
+        GLES20.glDeleteShader(fs);
 
-        // Obtener locations
-        aPositionLoc = GLES30.glGetAttribLocation(shaderProgram, "a_Position");
-        uTimeLoc = GLES30.glGetUniformLocation(shaderProgram, "u_Time");
-        uAspectLoc = GLES30.glGetUniformLocation(shaderProgram, "u_Aspect");
-        uPositionLoc = GLES30.glGetUniformLocation(shaderProgram, "u_Position");
-        uSizeLoc = GLES30.glGetUniformLocation(shaderProgram, "u_Size");
-        uPressedLoc = GLES30.glGetUniformLocation(shaderProgram, "u_Pressed");
-        uShakeLoc = GLES30.glGetUniformLocation(shaderProgram, "u_Shake");
-        uResolutionLoc = GLES30.glGetUniformLocation(shaderProgram, "u_Resolution");
+        // Get locations
+        aPositionLoc = GLES20.glGetAttribLocation(shaderProgram, "a_Position");
+        aTexCoordLoc = GLES20.glGetAttribLocation(shaderProgram, "a_TexCoord");
+        uTextureLoc = GLES20.glGetUniformLocation(shaderProgram, "u_Texture");
+        uTimeLoc = GLES20.glGetUniformLocation(shaderProgram, "u_Time");
 
-        // Fullscreen quad
-        float[] vertices = {
-            -1.0f, -1.0f,
-             1.0f, -1.0f,
-            -1.0f,  1.0f,
-             1.0f,  1.0f
-        };
+        // Create vertex buffer (will be updated per frame with position)
+        vertexBuffer = ByteBuffer.allocateDirect(6 * 4 * 4) // 6 vertices, 4 floats each
+            .order(ByteOrder.nativeOrder()).asFloatBuffer();
 
-        ByteBuffer bb = ByteBuffer.allocateDirect(vertices.length * 4);
-        bb.order(ByteOrder.nativeOrder());
-        vertexBuffer = bb.asFloatBuffer();
-        vertexBuffer.put(vertices);
-        vertexBuffer.position(0);
-
-        GLES30.glDeleteShader(vertexShader);
-        GLES30.glDeleteShader(fragmentShader);
+        // Load texture
+        loadTexture();
 
         initialized = true;
-        Log.d(TAG, "✅ ChristmasOrnamentButton inicializado");
+        Log.d(TAG, "🎁 GiftButton OPTIMIZADO (quad local, no fullscreen)");
+    }
+
+    private void loadTexture() {
+        int[] textures = new int[1];
+        GLES20.glGenTextures(1, textures, 0);
+        textureId = textures[0];
+
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+
+        BitmapFactory.Options opts = new BitmapFactory.Options();
+        opts.inScaled = false;
+        Bitmap bmp = BitmapFactory.decodeResource(context.getResources(), R.drawable.cajitaderegalo, opts);
+        if (bmp != null) {
+            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bmp, 0);
+            Log.d(TAG, "🎁 Texture: " + bmp.getWidth() + "x" + bmp.getHeight());
+            bmp.recycle();
+        }
     }
 
     private int compileShader(int type, String source) {
-        int shader = GLES30.glCreateShader(type);
-        GLES30.glShaderSource(shader, source);
-        GLES30.glCompileShader(shader);
-
+        int shader = GLES20.glCreateShader(type);
+        GLES20.glShaderSource(shader, source);
+        GLES20.glCompileShader(shader);
         int[] compiled = new int[1];
-        GLES30.glGetShaderiv(shader, GLES30.GL_COMPILE_STATUS, compiled, 0);
+        GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0);
         if (compiled[0] == 0) {
-            Log.e(TAG, "Error: " + GLES30.glGetShaderInfoLog(shader));
-            GLES30.glDeleteShader(shader);
+            Log.e(TAG, "Shader error: " + GLES20.glGetShaderInfoLog(shader));
+            GLES20.glDeleteShader(shader);
             return 0;
         }
         return shader;
@@ -248,14 +183,9 @@ public class ChristmasOrnamentButton {
 
     public void update(float deltaTime) {
         time += deltaTime;
-        // ✅ FIX: Evitar overflow - ciclo cada ~10 minutos
-        if (time > 628.318f) {
-            time -= 628.318f;
-        }
-
-        // ✨ Decaimiento del shake
+        if (time > 1000f) time -= 1000f;
         if (shakeIntensity > 0) {
-            shakeIntensity -= deltaTime * SHAKE_DECAY;
+            shakeIntensity -= deltaTime * 3.0f;
             if (shakeIntensity < 0) shakeIntensity = 0;
         }
     }
@@ -263,93 +193,109 @@ public class ChristmasOrnamentButton {
     public void draw() {
         if (!initialized || !visible || shaderProgram == 0) return;
 
-        GLES30.glUseProgram(shaderProgram);
+        // Calculate floating position
+        float floatX = posX + (float)Math.sin(time * 0.5f) * 0.003f;
+        float floatY = posY + (float)Math.sin(time * 0.8f) * 0.008f;
+
+        // Add shake
+        if (shakeIntensity > 0) {
+            floatX += (float)Math.sin(time * 12f) * shakeIntensity * 0.015f;
+            floatY += (float)Math.sin(time * 15f + 1.57f) * shakeIntensity * 0.012f;
+        }
+
+        // Calculate quad corners in NDC (mantener proporciones cuadradas)
+        float halfW = size * 1.3f;
+        float halfH = size * 1.3f * aspectRatio;  // Multiplicar por aspect para compensar
+
+        float left = floatX - halfW;
+        float right = floatX + halfW;
+        float bottom = floatY - halfH;
+        float top = floatY + halfH;
+
+        // Build vertex data: position(2) + texcoord(2) for 6 vertices (2 triangles)
+        float[] vertices = {
+            // Triangle 1
+            left, bottom,   0, 1,
+            right, bottom,  1, 1,
+            left, top,      0, 0,
+            // Triangle 2
+            right, bottom,  1, 1,
+            right, top,     1, 0,
+            left, top,      0, 0
+        };
+
+        vertexBuffer.clear();
+        vertexBuffer.put(vertices);
+        vertexBuffer.position(0);
+
+        // Draw
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+
+        GLES20.glUseProgram(shaderProgram);
 
         // Uniforms
-        GLES30.glUniform1f(uTimeLoc, time);
-        GLES30.glUniform1f(uAspectLoc, aspectRatio);
-        GLES30.glUniform2f(uPositionLoc, posX, posY);
-        GLES30.glUniform1f(uSizeLoc, size);
-        GLES30.glUniform1f(uPressedLoc, isPressed ? 1.0f : 0.0f);
-        GLES30.glUniform1f(uShakeLoc, shakeIntensity);
-        GLES30.glUniform2f(uResolutionLoc, screenWidth, screenHeight);
+        GLES20.glUniform1f(uTimeLoc, time);
 
-        // Vertex attribute
-        GLES30.glEnableVertexAttribArray(aPositionLoc);
-        GLES30.glVertexAttribPointer(aPositionLoc, 2, GLES30.GL_FLOAT, false, 0, vertexBuffer);
+        // Texture
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
+        GLES20.glUniform1i(uTextureLoc, 0);
 
-        // Dibujar
-        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
+        // Attributes
+        int stride = 4 * 4; // 4 floats * 4 bytes
+        vertexBuffer.position(0);
+        GLES20.glEnableVertexAttribArray(aPositionLoc);
+        GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, stride, vertexBuffer);
 
-        GLES30.glDisableVertexAttribArray(aPositionLoc);
+        vertexBuffer.position(2);
+        GLES20.glEnableVertexAttribArray(aTexCoordLoc);
+        GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, stride, vertexBuffer);
+
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6);
+
+        GLES20.glDisableVertexAttribArray(aPositionLoc);
+        GLES20.glDisableVertexAttribArray(aTexCoordLoc);
     }
 
-    /**
-     * Verifica si un toque está dentro del botón
-     * NOTA: El shader usa uv.x *= aspect, así que el touch debe multiplicarse
-     */
     public boolean contains(float touchX, float touchY) {
-        // Convertir coordenadas de toque al espacio del shader
-        // El shader escala X por aspectRatio, así que el touch también
-        float shaderTouchX = touchX * aspectRatio;
-        float dx = shaderTouchX - posX;
+        float dx = touchX * aspectRatio - posX;
         float dy = touchY - posY;
-        float dist = (float) Math.sqrt(dx * dx + dy * dy);
-        return dist < size * 1.5f;  // Área de toque generosa
+        return Math.abs(dx) < size * 1.3f && Math.abs(dy) < size * 1.3f;
     }
 
     public void setPressed(boolean pressed) {
         this.isPressed = pressed;
-        // ✨ Activar shake al presionar
-        if (pressed) {
-            shake();
-        }
+        if (pressed) shake();
     }
 
-    /**
-     * ✨ Activa el efecto de agitación mágica
-     */
-    public void shake() {
-        shakeIntensity = 1.0f;
+    public void shake() { shakeIntensity = 1.0f; }
+    public void setPosition(float x, float y) { posX = x; posY = y; }
+    public void setSize(float s) { size = s; }
+    public void setAspectRatio(float r) { aspectRatio = r; }
+
+    public void setScreenSize(int w, int h) {
+        screenWidth = w;
+        screenHeight = h;
+        aspectRatio = (float)w / h;
     }
 
-    public void setPosition(float x, float y) {
-        this.posX = x;
-        this.posY = y;
-    }
-
-    public void setSize(float size) {
-        this.size = size;
-    }
-
-    public void setAspectRatio(float ratio) {
-        this.aspectRatio = ratio;
-    }
-
-    public void setScreenSize(int width, int height) {
-        this.screenWidth = width;
-        this.screenHeight = height;
-        this.aspectRatio = (float) width / height;
-    }
-
-    public void show() {
-        visible = true;
-    }
-
-    public void hide() {
-        visible = false;
-    }
-
-    public boolean isVisible() {
-        return visible;
-    }
+    public void show() { visible = true; }
+    public void hide() { visible = false; }
+    public boolean isVisible() { return visible; }
+    public void setVisible(boolean v) { visible = v; }
 
     public void dispose() {
+        if (textureId != 0) {
+            int[] t = {textureId};
+            GLES20.glDeleteTextures(1, t, 0);
+            textureId = 0;
+        }
         if (shaderProgram != 0) {
-            GLES30.glDeleteProgram(shaderProgram);
+            GLES20.glDeleteProgram(shaderProgram);
             shaderProgram = 0;
         }
         initialized = false;
-        Log.d(TAG, "🗑️ ChristmasOrnamentButton liberado");
+        Log.d(TAG, "🗑️ GiftButton disposed");
     }
 }

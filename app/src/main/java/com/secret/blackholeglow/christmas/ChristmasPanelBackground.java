@@ -145,14 +145,14 @@ public class ChristmasPanelBackground {
         options.inScaled = false;  // No escalar
 
         Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(),
-            R.drawable.christmas_background01, options);
+            R.drawable.christmas_bg, options);
 
         if (bitmap != null) {
             GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0);
             bitmap.recycle();
-            Log.d(TAG, "✅ Textura christmas_background01 cargada");
+            Log.d(TAG, "✅ Textura christmas_bg cargada");
         } else {
-            Log.e(TAG, "❌ Error cargando christmas_background01");
+            Log.e(TAG, "❌ Error cargando christmas_bg");
         }
     }
 
