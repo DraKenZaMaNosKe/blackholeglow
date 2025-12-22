@@ -44,25 +44,28 @@ public class ChristmasPanelBackground {
     // Context para cargar recursos
     private Context context;
 
-    // Vertex shader simple
+    // Vertex shader simple (GLES 3.0)
     private static final String VERTEX_SHADER =
-        "attribute vec2 a_Position;\n" +
-        "attribute vec2 a_TexCoord;\n" +
-        "varying vec2 v_TexCoord;\n" +
+        "#version 300 es\n" +
+        "in vec2 a_Position;\n" +
+        "in vec2 a_TexCoord;\n" +
+        "out vec2 v_TexCoord;\n" +
         "void main() {\n" +
         "    v_TexCoord = a_TexCoord;\n" +
         "    gl_Position = vec4(a_Position, 0.0, 1.0);\n" +
         "}\n";
 
-    // Fragment shader simple
+    // Fragment shader simple (GLES 3.0)
     private static final String FRAGMENT_SHADER =
+        "#version 300 es\n" +
         "precision mediump float;\n" +
-        "varying vec2 v_TexCoord;\n" +
+        "in vec2 v_TexCoord;\n" +
         "uniform sampler2D u_Texture;\n" +
         "uniform float u_Alpha;\n" +
+        "out vec4 fragColor;\n" +
         "void main() {\n" +
-        "    vec4 texColor = texture2D(u_Texture, v_TexCoord);\n" +
-        "    gl_FragColor = vec4(texColor.rgb, texColor.a * u_Alpha);\n" +
+        "    vec4 texColor = texture(u_Texture, v_TexCoord);\n" +
+        "    fragColor = vec4(texColor.rgb, texColor.a * u_Alpha);\n" +
         "}\n";
 
     public ChristmasPanelBackground(Context context) {

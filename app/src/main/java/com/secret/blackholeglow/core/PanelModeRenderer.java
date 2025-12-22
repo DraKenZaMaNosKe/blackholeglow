@@ -11,6 +11,7 @@ import com.secret.blackholeglow.ArcadeTitle;
 import com.secret.blackholeglow.christmas.ChristmasPanelBackground;
 import com.secret.blackholeglow.christmas.ChristmasOrnamentButton;
 import com.secret.blackholeglow.christmas.ChristmasSnowEffect;
+import com.secret.blackholeglow.christmas.ChristmasTreeLights;
 import com.secret.blackholeglow.christmas.MiniStopButton;
 import com.secret.blackholeglow.LoadingBar;
 import com.secret.blackholeglow.OrbixGreeting;
@@ -52,6 +53,7 @@ public class PanelModeRenderer {
 
     // 🎄 Componentes CHRISTMAS (para Bosque Navideño) - SIMPLIFICADO
     private ChristmasPanelBackground christmasBackground;   // Fondo estático (imagen)
+    private ChristmasTreeLights christmasTreeLights;        // 💡 Luces animadas del árbol
     private ChristmasOrnamentButton christmasOrnament;      // Botón esfera navideña
     private ChristmasSnowEffect christmasSnow;              // ❄️ Efecto de nieve cayendo
     private boolean christmasModeEnabled = false;           // Modo navideño para Bosque Navideño
@@ -145,6 +147,11 @@ public class PanelModeRenderer {
             christmasBackground = new ChristmasPanelBackground(context);
             Log.d(TAG, "🎄 ChristmasPanelBackground inicializado (imagen estática)");
 
+            // 💡 Luces animadas del árbol de navidad
+            christmasTreeLights = new ChristmasTreeLights();
+            christmasTreeLights.init();
+            Log.d(TAG, "💡 ChristmasTreeLights inicializado (35 luces con twinkle)");
+
             // ❄️ Efecto de nieve cayendo con textura PNG
             christmasSnow = new ChristmasSnowEffect();
             christmasSnow.init(context);
@@ -160,6 +167,7 @@ public class PanelModeRenderer {
             Log.d(TAG, "🎄 ═══════════════════════════════════════");
             Log.d(TAG, "🎄 MODO CHRISTMAS COMPLETO LISTO");
             Log.d(TAG, "🎄 Fondo: Imagen estática (sin shaders)");
+            Log.d(TAG, "🎄 Luces: 35 luces con twinkle effect");
             Log.d(TAG, "🎄 Nieve: 60 copos con textura PNG");
             Log.d(TAG, "🎄 Botón: Cajita de regalo");
             Log.d(TAG, "🎄 ═══════════════════════════════════════");
@@ -186,6 +194,7 @@ public class PanelModeRenderer {
             if (playPauseButton != null) playPauseButton.update(deltaTime);
         } else if (christmasModeEnabled) {
             // 🎄 MODO CHRISTMAS
+            if (christmasTreeLights != null) christmasTreeLights.update(deltaTime);  // 💡 Actualizar luces
             if (christmasSnow != null) christmasSnow.update(deltaTime);  // ❄️ Actualizar nieve
             if (christmasOrnament != null) christmasOrnament.update(deltaTime);
         } else {
@@ -278,7 +287,7 @@ public class PanelModeRenderer {
 
     /**
      * 🎄 Dibuja el panel navideño completo
-     * Fondo + Nieve cayendo + Botón
+     * Fondo + Luces + Nieve cayendo + Botón
      */
     private void drawChristmasPanel() {
         // 1. Fondo estático (imagen christmas_background.png)
@@ -286,12 +295,17 @@ public class PanelModeRenderer {
             christmasBackground.draw();
         }
 
-        // 2. ❄️ Efecto de nieve cayendo (encima del fondo, debajo del botón)
+        // 2. 💡 Luces del árbol (encima del fondo)
+        if (christmasTreeLights != null) {
+            christmasTreeLights.draw();
+        }
+
+        // 3. ❄️ Efecto de nieve cayendo (encima de las luces)
         if (christmasSnow != null) {
             christmasSnow.draw();
         }
 
-        // 3. Botón cajita de regalo (encima de todo)
+        // 4. Botón cajita de regalo (encima de todo)
         if (christmasOrnament != null) {
             christmasOrnament.draw();
         }
@@ -512,6 +526,9 @@ public class PanelModeRenderer {
         if (christmasBackground != null) {
             christmasBackground.setAspectRatio(aspectRatio);
         }
+        if (christmasTreeLights != null) {
+            christmasTreeLights.setScreenSize(width, height);  // 💡 Resolución para las luces
+        }
         if (christmasSnow != null) {
             christmasSnow.setScreenSize(width, height);  // ❄️ Resolución para la nieve
         }
@@ -637,7 +654,7 @@ public class PanelModeRenderer {
             arcadeModeEnabled = false;
 
             // 🚀 LAZY INIT - Solo inicializar Christmas cuando se necesita
-            if (christmasBackground == null || christmasOrnament == null || christmasSnow == null) {
+            if (christmasBackground == null || christmasTreeLights == null || christmasOrnament == null || christmasSnow == null) {
                 Log.d(TAG, "🎄 LAZY INIT: Inicializando componentes Christmas...");
                 initChristmasComponents();
             }
@@ -708,6 +725,10 @@ public class PanelModeRenderer {
         if (christmasBackground != null) {
             christmasBackground.dispose();
             christmasBackground = null;
+        }
+        if (christmasTreeLights != null) {
+            christmasTreeLights.dispose();
+            christmasTreeLights = null;
         }
         if (christmasSnow != null) {
             christmasSnow.dispose();
