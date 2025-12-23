@@ -510,14 +510,10 @@ public class PanelModeRenderer {
      * En modo Christmas, verifica el botón cajita de regalo
      */
     public boolean isPlayButtonTouched(float nx, float ny) {
-        // 🎄 En modo Christmas, la cajita abre fotos de la galería
+        // 🎄 En modo Christmas, la cajita es solo decorativa (sin función de fotos)
         if (christmasModeEnabled) {
-            boolean isInsideGift = christmasOrnament != null && christmasOrnament.isInside(nx, ny);
-            Log.d(TAG, String.format("🎁 Touch check: nx=%.2f, ny=%.2f, isInside=%b", nx, ny, isInsideGift));
-            if (isInsideGift) {
-                Log.d(TAG, "🎁 ¡Botón regalo tocado! Activando foto...");
-                triggerGiftPhotoReveal();
-            }
+            // Función de galería deshabilitada para Play Store
+            // La cajita de regalo es solo decorativa
             return false;  // No activar wallpaper en modo navideño
         }
         // Modo normal o arcade

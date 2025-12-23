@@ -362,20 +362,7 @@ public class LoginActivity extends AppCompatActivity {
             permissionsNeeded.add(Manifest.permission.RECORD_AUDIO);
         }
 
-        // 📷 Permiso para galería (según versión de Android)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+ (API 33+)
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
-                    != PackageManager.PERMISSION_GRANTED) {
-                permissionsNeeded.add(Manifest.permission.READ_MEDIA_IMAGES);
-            }
-        } else {
-            // Android 12 y anteriores
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                    != PackageManager.PERMISSION_GRANTED) {
-                permissionsNeeded.add(Manifest.permission.READ_EXTERNAL_STORAGE);
-            }
-        }
+        // 📷 Permiso de galería REMOVIDO - función deshabilitada para Play Store
 
         if (!permissionsNeeded.isEmpty()) {
             Log.d(TAG, "📋 Solicitando " + permissionsNeeded.size() + " permisos: " + permissionsNeeded);
