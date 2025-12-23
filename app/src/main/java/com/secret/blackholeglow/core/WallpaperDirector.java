@@ -84,6 +84,10 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     private float totalTime = 0f;
     private final float[] identityMatrix = new float[16];
 
+    // 🎵 Auto-reconexión del MusicVisualizer
+    private float musicVisualizerCheckTimer = 0f;
+    private static final float MUSIC_VISUALIZER_CHECK_INTERVAL = 2.0f;  // Verificar cada 2 segundos
+
     public WallpaperDirector(Context context) {
         this.context = context.getApplicationContext();
         this.eventBus = EventBus.get();
@@ -155,6 +159,24 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         RenderModeController.RenderMode mode = modeController.getCurrentMode();
         switch (mode) {
             case PANEL_MODE:
+                // 🎵 Pasar bandas de audio al panel (para ecualizador navideño)
+                if (musicVisualizer != null && panelRenderer != null) {
+                    panelRenderer.updateMusicBands(musicVisualizer.getFrequencyBands());
+
+                    // 🎵 Auto-reconexión periódica para modo Christmas
+                    if (panelRenderer.isChristmasModeEnabled()) {
+                        musicVisualizerCheckTimer += deltaTime;
+                        if (musicVisualizerCheckTimer >= MUSIC_VISUALIZER_CHECK_INTERVAL) {
+                            musicVisualizerCheckTimer = 0f;
+                            // Solo reconectar si el visualizador está deshabilitado
+                            // (no si simplemente no hay música sonando)
+                            if (!musicVisualizer.isEnabled()) {
+                                Log.d(TAG, "🎵 Auto-reconexión: MusicVisualizer deshabilitado, reconectando...");
+                                musicVisualizer.reconnect();
+                            }
+                        }
+                    }
+                }
                 panelRenderer.updatePanelMode(deltaTime);
                 panelRenderer.drawPanelMode();
                 break;
@@ -394,6 +416,11 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
                 SceneConstants.StopButton.CHRISTMAS_X,
                 SceneConstants.StopButton.CHRISTMAS_Y
             );
+            // 🎵 Reconectar MusicVisualizer para el ecualizador navideño
+            if (musicVisualizer != null) {
+                Log.d(TAG, "🎵 Reconectando MusicVisualizer para modo Christmas...");
+                musicVisualizer.reconnect();
+            }
             Log.d(TAG, "🎄 Modo CHRISTMAS APLICADO en panel: " + sceneName);
         } else {
             panelRenderer.setArcadeModeEnabled(false);
@@ -451,15 +478,24 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             modeController.goDirectToWallpaper();
         }
 
-        // 🎵 Reanudar MusicVisualizer - SIEMPRE reconectar en WALLPAPER_MODE
+        // 🎵 Reanudar MusicVisualizer - Reconectar en WALLPAPER_MODE o PANEL_MODE con Christmas
         // para evitar problemas de conexión perdida
         if (musicVisualizer != null) {
+            boolean needsReconnect = false;
+
             if (modeController != null && modeController.isWallpaperMode()) {
-                // En WALLPAPER_MODE siempre reconectar para garantizar funcionamiento
+                // En WALLPAPER_MODE siempre reconectar
+                needsReconnect = true;
                 Log.d(TAG, "🎵 Resume en WALLPAPER_MODE: Reconectando MusicVisualizer...");
+            } else if (panelRenderer != null && panelRenderer.isChristmasModeEnabled()) {
+                // 🎄 En PANEL_MODE con Christmas, también reconectar para el ecualizador
+                needsReconnect = true;
+                Log.d(TAG, "🎵 Resume en PANEL_MODE (Christmas): Reconectando MusicVisualizer...");
+            }
+
+            if (needsReconnect) {
                 musicVisualizer.reconnect();
             } else {
-                // En otros modos, solo hacer resume normal
                 musicVisualizer.resume();
             }
             Log.d(TAG, "🎵 MusicVisualizer estado después de resume: enabled=" + musicVisualizer.isEnabled());
@@ -502,6 +538,11 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
                     SceneConstants.StopButton.CHRISTMAS_X,
                     SceneConstants.StopButton.CHRISTMAS_Y
                 );
+                // 🎵 Reconectar MusicVisualizer para el ecualizador navideño
+                if (musicVisualizer != null) {
+                    Log.d(TAG, "🎵 Reconectando MusicVisualizer para ecualizador navideño...");
+                    musicVisualizer.reconnect();
+                }
                 Log.d(TAG, "🎄 Modo CHRISTMAS ACTIVADO para: " + sceneName);
             } else {
                 // Desactivar todos los modos especiales

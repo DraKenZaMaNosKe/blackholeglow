@@ -15,19 +15,20 @@ import java.nio.FloatBuffer;
 
 /**
  * ╔═══════════════════════════════════════════════════════════════════════════╗
- * ║   ❄️ ChristmasSnowEffect - OPTIMIZADO (Sin VAO, compatible GLES20)       ║
+ * ║   ❄️ ChristmasSnowEffect - OPTIMIZADO (ES 2.0 compatible)                 ║
  * ╚═══════════════════════════════════════════════════════════════════════════╝
  *
  * Renderiza copos de nieve usando instanced-like rendering:
- * - 18 copos, 6 vértices cada uno = 108 vértices total
+ * - 28 copos, 6 vértices cada uno = 168 vértices total
  * - UN SOLO draw call para todos
  * - Vertex shader hace toda la animación
  * - Fragment shader simple = RÁPIDO
+ * - Uses ES 2.0 compatible shaders (work in ES 3.0 context)
  */
 public class ChristmasSnowEffect {
     private static final String TAG = "ChristmasSnow";
 
-    private static final int NUM_SNOWFLAKES = 28;  // Más copos para densidad
+    private static final int NUM_SNOWFLAKES = 28;
 
     // OpenGL handles
     private int shaderProgram;
@@ -55,7 +56,7 @@ public class ChristmasSnowEffect {
 
     private Context context;
 
-    // VERTEX SHADER - Calcula posición y pasa datos mágicos
+    // VERTEX SHADER - ES 2.0 compatible
     private static final String VERTEX_SHADER =
         "attribute vec2 a_Position;\n" +
         "attribute vec2 a_TexCoord;\n" +
@@ -67,8 +68,8 @@ public class ChristmasSnowEffect {
         "\n" +
         "varying vec2 v_TexCoord;\n" +
         "varying float v_Alpha;\n" +
-        "varying float v_Twinkle;\n" +     // Para efecto twinkle
-        "varying vec3 v_Color;\n" +        // Color del copo
+        "varying float v_Twinkle;\n" +
+        "varying vec3 v_Color;\n" +
         "\n" +
         "void main() {\n" +
         "    float baseX = a_FlakeData.x;\n" +
@@ -94,21 +95,20 @@ public class ChristmasSnowEffect {
         "    float baseAlpha = 0.95 - layer * 0.15;\n" +
         "    v_Alpha = baseAlpha * fade;\n" +
         "    \n" +
-        "    // Twinkle - cada copo parpadea a su propio ritmo\n" +
         "    v_Twinkle = 0.7 + 0.3 * sin(u_Time * (2.0 + phase) + phase * 6.28);\n" +
         "    \n" +
-        "    // Color variado según phase\n" +
         "    float colorType = mod(phase * 3.0, 3.0);\n" +
         "    if (colorType < 1.0) {\n" +
-        "        v_Color = vec3(1.0, 1.0, 1.0);\n" +           // Blanco puro
+        "        v_Color = vec3(1.0, 1.0, 1.0);\n" +
         "    } else if (colorType < 2.0) {\n" +
-        "        v_Color = vec3(0.85, 0.92, 1.0);\n" +         // Azul hielo
+        "        v_Color = vec3(0.85, 0.92, 1.0);\n" +
         "    } else {\n" +
-        "        v_Color = vec3(1.0, 0.95, 0.85);\n" +         // Toque dorado
+        "        v_Color = vec3(1.0, 0.95, 0.85);\n" +
         "    }\n" +
         "    \n" +
         "    float angle = wt * 0.4 + wind * 2.0;\n" +
-        "    float c = cos(angle), s = sin(angle);\n" +
+        "    float c = cos(angle);\n" +
+        "    float s = sin(angle);\n" +
         "    vec2 rotated = vec2(a_Position.x * c - a_Position.y * s,\n" +
         "                        a_Position.x * s + a_Position.y * c);\n" +
         "    \n" +
@@ -121,7 +121,7 @@ public class ChristmasSnowEffect {
         "    v_TexCoord = a_TexCoord;\n" +
         "}\n";
 
-    // FRAGMENT SHADER - Textura + Glow + Twinkle + Color ✨
+    // FRAGMENT SHADER - ES 2.0 compatible
     private static final String FRAGMENT_SHADER =
         "precision mediump float;\n" +
         "\n" +
@@ -137,24 +137,19 @@ public class ChristmasSnowEffect {
         "    \n" +
         "    vec4 tex = texture2D(u_Texture, v_TexCoord);\n" +
         "    \n" +
-        "    // Distancia desde el centro del copo para glow\n" +
         "    vec2 center = v_TexCoord - 0.5;\n" +
         "    float dist = length(center);\n" +
         "    \n" +
-        "    // Glow suave azul-cyan alrededor del copo\n" +
         "    float glow = smoothstep(0.5, 0.2, dist) * 0.5;\n" +
         "    vec3 glowColor = vec3(0.7, 0.85, 1.0) * glow * v_Twinkle;\n" +
         "    \n" +
-        "    // Si hay textura, mostrarla con color y twinkle\n" +
         "    if (tex.a > 0.1) {\n" +
         "        vec3 snowColor = tex.rgb * v_Color * v_Twinkle;\n" +
-        "        // Añadir un poco de glow al copo mismo\n" +
         "        snowColor += glowColor * 0.3;\n" +
         "        gl_FragColor = vec4(snowColor, tex.a * v_Alpha);\n" +
         "        return;\n" +
         "    }\n" +
         "    \n" +
-        "    // Zona transparente - solo mostrar glow difuminado\n" +
         "    float glowAlpha = glow * v_Alpha * 0.6;\n" +
         "    if (glowAlpha < 0.01) discard;\n" +
         "    gl_FragColor = vec4(glowColor, glowAlpha);\n" +
@@ -169,8 +164,8 @@ public class ChristmasSnowEffect {
 
     private void initGL() {
         // Compile shaders
-        int vs = compileShader(GLES20.GL_VERTEX_SHADER, VERTEX_SHADER);
-        int fs = compileShader(GLES20.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
+        int vs = compileShader(GLES20.GL_VERTEX_SHADER, VERTEX_SHADER, "vertex");
+        int fs = compileShader(GLES20.GL_FRAGMENT_SHADER, FRAGMENT_SHADER, "fragment");
         if (vs == 0 || fs == 0) {
             Log.e(TAG, "❌ Shader compilation failed");
             return;
@@ -207,7 +202,7 @@ public class ChristmasSnowEffect {
         loadTexture();
 
         initialized = true;
-        Log.d(TAG, "❄️ Snow OPTIMIZADO: " + NUM_SNOWFLAKES + " copos, " + vertexCount + " vertices, 1 draw call");
+        Log.d(TAG, "❄️ Snow inicializado: " + NUM_SNOWFLAKES + " copos, " + vertexCount + " vertices");
     }
 
     private void buildVertexData() {
@@ -228,10 +223,8 @@ public class ChristmasSnowEffect {
 
         int idx = 0;
         for (int i = 0; i < NUM_SNOWFLAKES; i++) {
-            // Calculate flake properties
-            float layer = i % 3; // 0=close, 1=mid, 2=far
+            float layer = i % 3;
             float baseX = 0.05f + (i / (float)NUM_SNOWFLAKES) * 0.9f;
-            // Tamaños pequeños y delicados
             float size = layer == 0 ? 0.011f : layer == 1 ? 0.008f : 0.006f;
             size += (i * 0.31f % 1.0f) * 0.002f;
             float speed = layer == 0 ? 0.055f : layer == 1 ? 0.04f : 0.028f;
@@ -240,22 +233,20 @@ public class ChristmasSnowEffect {
             float destiny = (i * 0.67f % 1.0f);
             float endY = destiny < 0.4f ? 0.12f : destiny < 0.7f ? 0.3f : 0.5f;
 
-            // Add 6 vertices for this flake
             for (int v = 0; v < 6; v++) {
-                data[idx++] = quad[v][0]; // position X
-                data[idx++] = quad[v][1]; // position Y
-                data[idx++] = quad[v][2]; // texCoord U
-                data[idx++] = quad[v][3]; // texCoord V
-                data[idx++] = baseX;      // flakeData.x
-                data[idx++] = size;       // flakeData.y
-                data[idx++] = speed;      // flakeData.z
-                data[idx++] = phase;      // flakeData.w
-                data[idx++] = endY;       // flakeData2.x
-                data[idx++] = layer;      // flakeData2.y
+                data[idx++] = quad[v][0];
+                data[idx++] = quad[v][1];
+                data[idx++] = quad[v][2];
+                data[idx++] = quad[v][3];
+                data[idx++] = baseX;
+                data[idx++] = size;
+                data[idx++] = speed;
+                data[idx++] = phase;
+                data[idx++] = endY;
+                data[idx++] = layer;
             }
         }
 
-        // Create FloatBuffer
         vertexBuffer = ByteBuffer.allocateDirect(data.length * 4)
             .order(ByteOrder.nativeOrder()).asFloatBuffer();
         vertexBuffer.put(data).position(0);
@@ -282,14 +273,18 @@ public class ChristmasSnowEffect {
         }
     }
 
-    private int compileShader(int type, String source) {
+    private int compileShader(int type, String source, String name) {
         int shader = GLES20.glCreateShader(type);
+        if (shader == 0) {
+            Log.e(TAG, "❌ glCreateShader returned 0 for " + name);
+            return 0;
+        }
         GLES20.glShaderSource(shader, source);
         GLES20.glCompileShader(shader);
         int[] compiled = new int[1];
         GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0);
         if (compiled[0] == 0) {
-            Log.e(TAG, "Shader error: " + GLES20.glGetShaderInfoLog(shader));
+            Log.e(TAG, "Shader error (" + name + "): " + GLES20.glGetShaderInfoLog(shader));
             GLES20.glDeleteShader(shader);
             return 0;
         }
@@ -301,32 +296,22 @@ public class ChristmasSnowEffect {
         if (time > 1000f) time -= 1000f;
     }
 
-    private int drawCount = 0;
-
     public void draw() {
         if (!initialized || !visible || shaderProgram == 0) return;
-
-        // Debug cada 60 frames
-        if (++drawCount % 60 == 1) {
-            Log.d(TAG, "❄️ draw() #" + drawCount + " res=" + screenWidth + "x" + screenHeight + " vertices=" + vertexCount);
-        }
 
         GLES20.glEnable(GLES20.GL_BLEND);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
 
         GLES20.glUseProgram(shaderProgram);
 
-        // Uniforms
         GLES20.glUniform1f(uTimeLoc, time);
         GLES20.glUniform2f(uResolutionLoc, screenWidth, screenHeight);
 
-        // Texture
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
         GLES20.glUniform1i(uTextureLoc, 0);
 
-        // Vertex attributes - stride = 10 floats * 4 bytes = 40
-        int stride = 40;
+        int stride = 40; // 10 floats * 4 bytes
 
         vertexBuffer.position(0);
         GLES20.glEnableVertexAttribArray(aPositionLoc);
@@ -344,10 +329,8 @@ public class ChristmasSnowEffect {
         GLES20.glEnableVertexAttribArray(aFlakeData2Loc);
         GLES20.glVertexAttribPointer(aFlakeData2Loc, 2, GLES20.GL_FLOAT, false, stride, vertexBuffer);
 
-        // Draw all flakes
         GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, vertexCount);
 
-        // Cleanup
         GLES20.glDisableVertexAttribArray(aPositionLoc);
         GLES20.glDisableVertexAttribArray(aTexCoordLoc);
         GLES20.glDisableVertexAttribArray(aFlakeDataLoc);

@@ -15,36 +15,32 @@ import java.nio.FloatBuffer;
 
 /**
  * ╔═══════════════════════════════════════════════════════════════════════════╗
- * ║   🎄 ChristmasPanelBackground - Fondo Estático del Panel Navideño        ║
+ * ║   🎄 ChristmasPanelBackground - Fondo con Humo Animado                    ║
+ * ╠═══════════════════════════════════════════════════════════════════════════╣
+ * ║   Distorsiona suavemente el área del humo para dar efecto de movimiento  ║
  * ╚═══════════════════════════════════════════════════════════════════════════╝
- *
- * Renderiza la imagen christmas_background.png como fondo del panel.
- * Sin shaders complejos, solo una textura estática = RÁPIDO y BONITO.
  */
 public class ChristmasPanelBackground {
     private static final String TAG = "ChristmasPanelBg";
 
-    // OpenGL
+    // 📍 Área del humo en coordenadas de textura (0-1)
+    // Ajustar estos valores para mover el área de distorsión
+    private static final float SMOKE_CENTER_X = 0.72f;  // Posición X del humo en la imagen
+    private static final float SMOKE_CENTER_Y = 0.22f;  // Posición Y del humo (arriba = 0)
+    private static final float SMOKE_RADIUS = 0.15f;    // Radio del área afectada
+
     private int shaderProgram;
     private int textureId;
     private FloatBuffer vertexBuffer;
 
-    // Uniforms
-    private int uTextureLoc;
-    private int uAlphaLoc;
-    private int aPositionLoc;
-    private int aTexCoordLoc;
+    private int uTextureLoc, uAlphaLoc, uTimeLoc, aPositionLoc, aTexCoordLoc;
 
-    // Estado
     private boolean initialized = false;
     private boolean visible = true;
     private float alpha = 1.0f;
-    private float aspectRatio = 1.0f;
-
-    // Context para cargar recursos
+    private float time = 0f;
     private Context context;
 
-    // Vertex shader simple (GLES 3.0)
     private static final String VERTEX_SHADER =
         "#version 300 es\n" +
         "in vec2 a_Position;\n" +
@@ -55,62 +51,114 @@ public class ChristmasPanelBackground {
         "    gl_Position = vec4(a_Position, 0.0, 1.0);\n" +
         "}\n";
 
-    // Fragment shader simple (GLES 3.0)
     private static final String FRAGMENT_SHADER =
         "#version 300 es\n" +
         "precision mediump float;\n" +
         "in vec2 v_TexCoord;\n" +
         "uniform sampler2D u_Texture;\n" +
         "uniform float u_Alpha;\n" +
+        "uniform float u_Time;\n" +
         "out vec4 fragColor;\n" +
+        "\n" +
         "void main() {\n" +
-        "    vec4 texColor = texture(u_Texture, v_TexCoord);\n" +
+        "    vec2 uv = v_TexCoord;\n" +
+        "    \n" +
+        "    // 🔧 Tiempo con ciclo muy largo (10 minutos = 600s)\n" +
+        "    float t = mod(u_Time, 600.0);\n" +
+        "    \n" +
+        "    // ═══════════════════════════════════════════════════════\n" +
+        "    // 🌌 AURORAS BOREALES (zona superior + color verde/cyan)\n" +
+        "    // ═══════════════════════════════════════════════════════\n" +
+        "    if (uv.y < 0.40) {\n" +
+        "        vec4 col = texture(u_Texture, uv);\n" +
+        "        \n" +
+        "        // Detectar colores de aurora: verde o cyan o magenta\n" +
+        "        float hasGreen = col.g;\n" +
+        "        float hasColor = max(col.g, col.b) - col.r * 0.3;\n" +
+        "        \n" +
+        "        // Zona vertical (más fuerte arriba)\n" +
+        "        float zone = smoothstep(0.40, 0.08, uv.y);\n" +
+        "        \n" +
+        "        // Combinar\n" +
+        "        float auroraFactor = zone * smoothstep(0.2, 0.5, hasColor);\n" +
+        "        \n" +
+        "        // Movimiento orgánico\n" +
+        "        float wave = sin(uv.x * 3.5 + t * 0.3) * 0.010\n" +
+        "                   + sin(uv.x * 6.0 - t * 0.2 + 2.0) * 0.007;\n" +
+        "        uv.y += wave * auroraFactor;\n" +
+        "    }\n" +
+        "    \n" +
+        "    // ═══════════════════════════════════════════════════════\n" +
+        "    // 🌫️ HUMO: Solo base, área muy pequeña, transición MUY suave\n" +
+        "    // ═══════════════════════════════════════════════════════\n" +
+        "    vec2 smokeBase = vec2(0.77, 0.30);\n" +
+        "    \n" +
+        "    // Distancia elíptica (más alto que ancho)\n" +
+        "    vec2 diff = uv - smokeBase;\n" +
+        "    diff.x *= 2.5;  // Más angosto horizontalmente\n" +
+        "    float dist = length(diff);\n" +
+        "    \n" +
+        "    // Transición MUY suave desde el centro hacia afuera\n" +
+        "    float smokeFactor = 1.0 - smoothstep(0.0, 0.08, dist);\n" +
+        "    smokeFactor = smokeFactor * smokeFactor;  // Curva cuadrática = más suave\n" +
+        "    \n" +
+        "    // Solo aplicar si hay efecto significativo\n" +
+        "    if (smokeFactor > 0.001) {\n" +
+        "        // Onda horizontal muy sutil\n" +
+        "        float wave = sin(uv.y * 20.0 - t * 1.0) * 0.004 * smokeFactor;\n" +
+        "        uv.x += wave;\n" +
+        "    }\n" +
+        "    \n" +
+        "    vec4 texColor = texture(u_Texture, uv);\n" +
         "    fragColor = vec4(texColor.rgb, texColor.a * u_Alpha);\n" +
         "}\n";
 
     public ChristmasPanelBackground(Context context) {
         this.context = context;
-        init();
     }
 
-    private void init() {
-        // Crear shader program
-        int vertexShader = compileShader(GLES30.GL_VERTEX_SHADER, VERTEX_SHADER);
-        int fragmentShader = compileShader(GLES30.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
+    public void update(float dt) {
+        time += dt;
+        if (time > 1000f) time = 0f;  // Reset para evitar overflow
+    }
 
-        if (vertexShader == 0 || fragmentShader == 0) {
-            Log.e(TAG, "Error compilando shaders");
+    private void initOpenGL() {
+        if (initialized) return;
+
+        Log.d(TAG, "🔧 Inicializando OpenGL con distorsión de humo...");
+
+        int vs = compileShader(GLES30.GL_VERTEX_SHADER, VERTEX_SHADER);
+        int fs = compileShader(GLES30.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
+
+        if (vs == 0 || fs == 0) {
+            Log.e(TAG, "❌ Error en shaders");
             return;
         }
 
         shaderProgram = GLES30.glCreateProgram();
-        GLES30.glAttachShader(shaderProgram, vertexShader);
-        GLES30.glAttachShader(shaderProgram, fragmentShader);
+        GLES30.glAttachShader(shaderProgram, vs);
+        GLES30.glAttachShader(shaderProgram, fs);
         GLES30.glLinkProgram(shaderProgram);
 
-        // Verificar linkeo
-        int[] linkStatus = new int[1];
-        GLES30.glGetProgramiv(shaderProgram, GLES30.GL_LINK_STATUS, linkStatus, 0);
-        if (linkStatus[0] == 0) {
-            Log.e(TAG, "Error linkeando programa");
+        int[] status = new int[1];
+        GLES30.glGetProgramiv(shaderProgram, GLES30.GL_LINK_STATUS, status, 0);
+        if (status[0] == 0) {
+            Log.e(TAG, "❌ Error link: " + GLES30.glGetProgramInfoLog(shaderProgram));
             GLES30.glDeleteProgram(shaderProgram);
             return;
         }
 
-        // Obtener locations
         aPositionLoc = GLES30.glGetAttribLocation(shaderProgram, "a_Position");
         aTexCoordLoc = GLES30.glGetAttribLocation(shaderProgram, "a_TexCoord");
         uTextureLoc = GLES30.glGetUniformLocation(shaderProgram, "u_Texture");
         uAlphaLoc = GLES30.glGetUniformLocation(shaderProgram, "u_Alpha");
+        uTimeLoc = GLES30.glGetUniformLocation(shaderProgram, "u_Time");
 
-        // Crear vertex buffer (fullscreen quad)
-        // Vertices: posición (x,y) + texcoord (u,v)
         float[] vertices = {
-            // Posición      // TexCoord
-            -1.0f, -1.0f,    0.0f, 1.0f,  // Bottom-left
-             1.0f, -1.0f,    1.0f, 1.0f,  // Bottom-right
-            -1.0f,  1.0f,    0.0f, 0.0f,  // Top-left
-             1.0f,  1.0f,    1.0f, 0.0f   // Top-right
+            -1.0f, -1.0f,  0.0f, 1.0f,
+             1.0f, -1.0f,  1.0f, 1.0f,
+            -1.0f,  1.0f,  0.0f, 0.0f,
+             1.0f,  1.0f,  1.0f, 0.0f
         };
 
         ByteBuffer bb = ByteBuffer.allocateDirect(vertices.length * 4);
@@ -119,15 +167,13 @@ public class ChristmasPanelBackground {
         vertexBuffer.put(vertices);
         vertexBuffer.position(0);
 
-        // Cargar textura
         loadTexture();
 
-        // Eliminar shaders (ya están en el programa)
-        GLES30.glDeleteShader(vertexShader);
-        GLES30.glDeleteShader(fragmentShader);
+        GLES30.glDeleteShader(vs);
+        GLES30.glDeleteShader(fs);
 
         initialized = true;
-        Log.d(TAG, "✅ ChristmasPanelBackground inicializado");
+        Log.d(TAG, "✅ Fondo con humo animado inicializado");
     }
 
     private void loadTexture() {
@@ -136,26 +182,19 @@ public class ChristmasPanelBackground {
         textureId = textures[0];
 
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
-
-        // Parámetros de textura
         GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
         GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
         GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
         GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
 
-        // Cargar imagen
         BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inScaled = false;  // No escalar
+        options.inScaled = false;
 
-        Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(),
-            R.drawable.christmas_bg, options);
-
+        Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.christmas_bg, options);
         if (bitmap != null) {
             GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0);
             bitmap.recycle();
-            Log.d(TAG, "✅ Textura christmas_bg cargada");
-        } else {
-            Log.e(TAG, "❌ Error cargando christmas_bg");
+            Log.d(TAG, "✅ Textura cargada");
         }
     }
 
@@ -163,11 +202,10 @@ public class ChristmasPanelBackground {
         int shader = GLES30.glCreateShader(type);
         GLES30.glShaderSource(shader, source);
         GLES30.glCompileShader(shader);
-
         int[] compiled = new int[1];
         GLES30.glGetShaderiv(shader, GLES30.GL_COMPILE_STATUS, compiled, 0);
         if (compiled[0] == 0) {
-            Log.e(TAG, "Error compilando shader: " + GLES30.glGetShaderInfoLog(shader));
+            Log.e(TAG, "Shader error: " + GLES30.glGetShaderInfoLog(shader));
             GLES30.glDeleteShader(shader);
             return 0;
         }
@@ -175,17 +213,21 @@ public class ChristmasPanelBackground {
     }
 
     public void draw() {
-        if (!initialized || !visible || shaderProgram == 0) return;
+        if (!visible) return;
+
+        if (!initialized) {
+            initOpenGL();
+            if (!initialized) return;
+        }
 
         GLES30.glUseProgram(shaderProgram);
 
-        // Bind textura
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
         GLES30.glUniform1i(uTextureLoc, 0);
         GLES30.glUniform1f(uAlphaLoc, alpha);
+        GLES30.glUniform1f(uTimeLoc, time);
 
-        // Configurar vertex attributes
         vertexBuffer.position(0);
         GLES30.glEnableVertexAttribArray(aPositionLoc);
         GLES30.glVertexAttribPointer(aPositionLoc, 2, GLES30.GL_FLOAT, false, 16, vertexBuffer);
@@ -194,41 +236,20 @@ public class ChristmasPanelBackground {
         GLES30.glEnableVertexAttribArray(aTexCoordLoc);
         GLES30.glVertexAttribPointer(aTexCoordLoc, 2, GLES30.GL_FLOAT, false, 16, vertexBuffer);
 
-        // Dibujar
         GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
 
-        // Cleanup
         GLES30.glDisableVertexAttribArray(aPositionLoc);
         GLES30.glDisableVertexAttribArray(aTexCoordLoc);
     }
 
-    public void show() {
-        visible = true;
-    }
-
-    public void hide() {
-        visible = false;
-    }
-
-    public void setAlpha(float alpha) {
-        this.alpha = Math.max(0f, Math.min(1f, alpha));
-    }
-
-    public void setAspectRatio(float ratio) {
-        this.aspectRatio = ratio;
-    }
+    public void show() { visible = true; }
+    public void hide() { visible = false; }
+    public void setAlpha(float a) { alpha = Math.max(0f, Math.min(1f, a)); }
+    public void setAspectRatio(float r) { }
 
     public void dispose() {
-        if (shaderProgram != 0) {
-            GLES30.glDeleteProgram(shaderProgram);
-            shaderProgram = 0;
-        }
-        if (textureId != 0) {
-            int[] textures = {textureId};
-            GLES30.glDeleteTextures(1, textures, 0);
-            textureId = 0;
-        }
+        if (shaderProgram != 0) { GLES30.glDeleteProgram(shaderProgram); shaderProgram = 0; }
+        if (textureId != 0) { GLES30.glDeleteTextures(1, new int[]{textureId}, 0); textureId = 0; }
         initialized = false;
-        Log.d(TAG, "🗑️ ChristmasPanelBackground liberado");
     }
 }

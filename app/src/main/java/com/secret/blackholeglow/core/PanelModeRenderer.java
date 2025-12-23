@@ -12,7 +12,11 @@ import com.secret.blackholeglow.christmas.ChristmasPanelBackground;
 import com.secret.blackholeglow.christmas.ChristmasOrnamentButton;
 import com.secret.blackholeglow.christmas.ChristmasSnowEffect;
 import com.secret.blackholeglow.christmas.ChristmasTreeLights;
+import com.secret.blackholeglow.christmas.ChristmasTouchSparkles;
+import com.secret.blackholeglow.christmas.ChimneySmoke;
+import com.secret.blackholeglow.christmas.GiftPhotoReveal;
 import com.secret.blackholeglow.christmas.MiniStopButton;
+import com.secret.blackholeglow.EqualizerBarsDJ;
 import com.secret.blackholeglow.LoadingBar;
 import com.secret.blackholeglow.OrbixGreeting;
 import com.secret.blackholeglow.PlayPauseButton;
@@ -56,6 +60,10 @@ public class PanelModeRenderer {
     private ChristmasTreeLights christmasTreeLights;        // 💡 Luces animadas del árbol
     private ChristmasOrnamentButton christmasOrnament;      // Botón esfera navideña
     private ChristmasSnowEffect christmasSnow;              // ❄️ Efecto de nieve cayendo
+    private ChimneySmoke chimneySmoke;                      // 🌫️ Humo de la chimenea
+    private ChristmasTouchSparkles touchSparkles;           // ✨ Chispitas al tocar
+    private EqualizerBarsDJ equalizerDJ;                    // 🎵 Ecualizador musical
+    private GiftPhotoReveal giftPhotoReveal;                // 🎁 Revelación de fotos navideña
     private boolean christmasModeEnabled = false;           // Modo navideño para Bosque Navideño
 
     // Estado
@@ -164,11 +172,29 @@ public class PanelModeRenderer {
             christmasOrnament.setSize(0.10f);             // Tamaño para que se vea bien
             Log.d(TAG, "🎁 ChristmasGiftButton inicializado (imagen PNG + glow)");
 
+            // 🌫️ Humo de la chimenea
+            chimneySmoke = new ChimneySmoke();
+            Log.d(TAG, "🌫️ ChimneySmoke inicializado (25 partículas)");
+
+            // ✨ Chispitas al tocar la pantalla
+            touchSparkles = new ChristmasTouchSparkles();
+            Log.d(TAG, "✨ TouchSparkles inicializado");
+
+            // 🎵 Ecualizador musical DJ
+            equalizerDJ = new EqualizerBarsDJ();
+            equalizerDJ.initialize();
+            Log.d(TAG, "🎵 EqualizerBarsDJ inicializado (32 barras)");
+
+            // 🎁 Revelación de fotos navideña
+            giftPhotoReveal = new GiftPhotoReveal(context);
+            Log.d(TAG, "🎁 GiftPhotoReveal inicializado");
+
             Log.d(TAG, "🎄 ═══════════════════════════════════════");
             Log.d(TAG, "🎄 MODO CHRISTMAS COMPLETO LISTO");
             Log.d(TAG, "🎄 Fondo: Imagen estática (sin shaders)");
-            Log.d(TAG, "🎄 Luces: 35 luces con twinkle effect");
+            Log.d(TAG, "🎄 Luces: 11 luces con twinkle effect");
             Log.d(TAG, "🎄 Nieve: 60 copos con textura PNG");
+            Log.d(TAG, "🎄 Humo: 25 partículas desde chimenea");
             Log.d(TAG, "🎄 Botón: Cajita de regalo");
             Log.d(TAG, "🎄 ═══════════════════════════════════════");
         } catch (Exception e) {
@@ -194,9 +220,14 @@ public class PanelModeRenderer {
             if (playPauseButton != null) playPauseButton.update(deltaTime);
         } else if (christmasModeEnabled) {
             // 🎄 MODO CHRISTMAS
+            if (christmasBackground != null) christmasBackground.update(deltaTime);  // 🖼️ Actualizar fondo (humo animado)
             if (christmasTreeLights != null) christmasTreeLights.update(deltaTime);  // 💡 Actualizar luces
             if (christmasSnow != null) christmasSnow.update(deltaTime);  // ❄️ Actualizar nieve
+            if (chimneySmoke != null) chimneySmoke.update(deltaTime);    // 🌫️ Actualizar humo
             if (christmasOrnament != null) christmasOrnament.update(deltaTime);
+            if (touchSparkles != null) touchSparkles.update(deltaTime);  // ✨ Actualizar chispitas
+            if (equalizerDJ != null) equalizerDJ.update(deltaTime);      // 🎵 Actualizar ecualizador
+            if (giftPhotoReveal != null) giftPhotoReveal.update(deltaTime);  // 🎁 Actualizar foto reveal
         } else {
             // Modo estándar
             if (orbixGreeting != null) {
@@ -287,7 +318,7 @@ public class PanelModeRenderer {
 
     /**
      * 🎄 Dibuja el panel navideño completo
-     * Fondo + Luces + Nieve cayendo + Botón
+     * Fondo + Ecualizador + Humo + Luces + Nieve + Botón + Chispitas
      */
     private void drawChristmasPanel() {
         // 1. Fondo estático (imagen christmas_background.png)
@@ -295,19 +326,39 @@ public class PanelModeRenderer {
             christmasBackground.draw();
         }
 
-        // 2. 💡 Luces del árbol (encima del fondo)
+        // 1.5 🎵 Ecualizador musical (detrás de todo, en la base)
+        if (equalizerDJ != null) {
+            equalizerDJ.draw();
+        }
+
+        // 2. 🌫️ Humo de la chimenea (detrás de las luces y nieve)
+        if (chimneySmoke != null) {
+            chimneySmoke.draw();
+        }
+
+        // 3. 💡 Luces del árbol (encima del fondo)
         if (christmasTreeLights != null) {
             christmasTreeLights.draw();
         }
 
-        // 3. ❄️ Efecto de nieve cayendo (encima de las luces)
+        // 4. ❄️ Efecto de nieve cayendo (encima de las luces)
         if (christmasSnow != null) {
             christmasSnow.draw();
         }
 
-        // 4. Botón cajita de regalo (encima de todo)
+        // 5. Botón cajita de regalo (encima de todo)
         if (christmasOrnament != null) {
             christmasOrnament.draw();
+        }
+
+        // 6. ✨ Chispitas al tocar (encima de todo)
+        if (touchSparkles != null) {
+            touchSparkles.draw();
+        }
+
+        // 7. 🎁 Revelación de foto (encima de todo cuando está activa)
+        if (giftPhotoReveal != null && giftPhotoReveal.isActive()) {
+            giftPhotoReveal.draw();
         }
     }
 
@@ -456,15 +507,57 @@ public class PanelModeRenderer {
 
     /**
      * ¿Toque en PlayPauseButton?
-     * En modo Christmas, verifica el botón esfera navideña
+     * En modo Christmas, verifica el botón cajita de regalo
      */
     public boolean isPlayButtonTouched(float nx, float ny) {
-        // En modo Christmas, usar el botón esfera
-        if (christmasModeEnabled && christmasOrnament != null && christmasOrnament.isVisible()) {
-            return christmasOrnament.contains(nx, ny);
+        // 🎄 En modo Christmas, la cajita abre fotos de la galería
+        if (christmasModeEnabled) {
+            boolean isInsideGift = christmasOrnament != null && christmasOrnament.isInside(nx, ny);
+            Log.d(TAG, String.format("🎁 Touch check: nx=%.2f, ny=%.2f, isInside=%b", nx, ny, isInsideGift));
+            if (isInsideGift) {
+                Log.d(TAG, "🎁 ¡Botón regalo tocado! Activando foto...");
+                triggerGiftPhotoReveal();
+            }
+            return false;  // No activar wallpaper en modo navideño
         }
         // Modo normal o arcade
         return playPauseButton != null && playPauseButton.isInside(nx, ny);
+    }
+
+    /**
+     * 🎁 Activa la revelación de una foto aleatoria de la galería
+     */
+    public void triggerGiftPhotoReveal() {
+        Log.d(TAG, "🎁 triggerGiftPhotoReveal() llamado");
+        if (giftPhotoReveal == null) {
+            Log.w(TAG, "🎁 GiftPhotoReveal no inicializado");
+            return;
+        }
+
+        boolean hasPermission = giftPhotoReveal.hasGalleryPermission();
+        Log.d(TAG, "🎁 Permiso de galería: " + hasPermission);
+
+        if (!hasPermission) {
+            Log.w(TAG, "🎁 No hay permiso de galería - se necesita solicitar");
+            return;
+        }
+
+        Log.d(TAG, "🎁 Llamando a giftPhotoReveal.trigger()...");
+        giftPhotoReveal.trigger();
+    }
+
+    /**
+     * 🎁 Verifica si hay permiso de galería
+     */
+    public boolean hasGalleryPermission() {
+        return giftPhotoReveal != null && giftPhotoReveal.hasGalleryPermission();
+    }
+
+    /**
+     * 🎁 Obtiene el permiso requerido para la galería
+     */
+    public String getGalleryPermission() {
+        return giftPhotoReveal != null ? giftPhotoReveal.getRequiredPermission() : null;
     }
 
     /**
@@ -532,8 +625,56 @@ public class PanelModeRenderer {
         if (christmasSnow != null) {
             christmasSnow.setScreenSize(width, height);  // ❄️ Resolución para la nieve
         }
+        if (chimneySmoke != null) {
+            chimneySmoke.setScreenSize(width, height);  // 🌫️ Resolución para el humo
+        }
         if (christmasOrnament != null) {
             christmasOrnament.setScreenSize(width, height);  // Pass actual resolution
+        }
+        if (touchSparkles != null) {
+            touchSparkles.setScreenSize(width, height);  // ✨ Resolución para chispitas
+        }
+        if (equalizerDJ != null) {
+            equalizerDJ.setScreenSize(width, height);    // 🎵 Resolución para ecualizador
+        }
+        if (giftPhotoReveal != null) {
+            giftPhotoReveal.setScreenSize(width, height);  // 🎁 Resolución para foto reveal
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ✨ TOUCH SPARKLES (modo Christmas)
+    // ═══════════════════════════════════════════════════════════════
+
+    public void onTouchDown(float nx, float ny) {
+        if (christmasModeEnabled && touchSparkles != null) {
+            touchSparkles.onTouchDown(nx, ny);
+        }
+    }
+
+    public void onTouchMove(float nx, float ny) {
+        if (christmasModeEnabled && touchSparkles != null) {
+            touchSparkles.onTouchMove(nx, ny);
+        }
+    }
+
+    public void onTouchUp() {
+        if (christmasModeEnabled && touchSparkles != null) {
+            touchSparkles.onTouchUp();
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🎵 MUSIC BANDS (modo Christmas - Ecualizador)
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * 🎵 Recibe las bandas de audio para actualizar el ecualizador
+     * @param bands Array de 32 valores de frecuencia (0.0 - 1.0)
+     */
+    public void updateMusicBands(float[] bands) {
+        if (christmasModeEnabled && equalizerDJ != null && bands != null) {
+            equalizerDJ.updateFromBands(bands);
         }
     }
 
@@ -654,7 +795,7 @@ public class PanelModeRenderer {
             arcadeModeEnabled = false;
 
             // 🚀 LAZY INIT - Solo inicializar Christmas cuando se necesita
-            if (christmasBackground == null || christmasTreeLights == null || christmasOrnament == null || christmasSnow == null) {
+            if (christmasBackground == null || christmasTreeLights == null || christmasOrnament == null || christmasSnow == null || chimneySmoke == null || touchSparkles == null || equalizerDJ == null || giftPhotoReveal == null) {
                 Log.d(TAG, "🎄 LAZY INIT: Inicializando componentes Christmas...");
                 initChristmasComponents();
             }
@@ -734,9 +875,25 @@ public class PanelModeRenderer {
             christmasSnow.dispose();
             christmasSnow = null;
         }
+        if (chimneySmoke != null) {
+            chimneySmoke.dispose();
+            chimneySmoke = null;
+        }
         if (christmasOrnament != null) {
             christmasOrnament.dispose();
             christmasOrnament = null;
+        }
+        if (touchSparkles != null) {
+            touchSparkles.dispose();
+            touchSparkles = null;
+        }
+        if (equalizerDJ != null) {
+            equalizerDJ.release();
+            equalizerDJ = null;
+        }
+        if (giftPhotoReveal != null) {
+            giftPhotoReveal.dispose();
+            giftPhotoReveal = null;
         }
 
         Log.d(TAG, "🧹 PanelModeRenderer recursos liberados");

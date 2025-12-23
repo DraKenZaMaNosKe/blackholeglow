@@ -1,6 +1,9 @@
 package com.secret.blackholeglow;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -12,10 +15,15 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.graphics.Insets;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import com.secret.blackholeglow.activities.MainActivity;
 
@@ -48,6 +56,7 @@ import java.net.URL;
 public class LoginActivity extends AppCompatActivity {
     private static final String TAG = "LoginActivity";
     private static final int RC_SIGN_IN = 9001;
+    private static final int RC_PERMISSIONS = 9002;
 
     // Scope para obtener fecha de nacimiento
     private static final String BIRTHDAY_SCOPE = "https://www.googleapis.com/auth/user.birthday.read";
@@ -334,9 +343,74 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     /**
-     * Navega a MainActivity
+     * Navega a MainActivity después de verificar permisos
      */
     private void goToMainActivity() {
+        // Solicitar permisos necesarios antes de ir a MainActivity
+        requestAppPermissions();
+    }
+
+    /**
+     * Solicita los permisos necesarios para la app
+     */
+    private void requestAppPermissions() {
+        List<String> permissionsNeeded = new ArrayList<>();
+
+        // 🎵 Permiso para audio (ecualizador)
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            permissionsNeeded.add(Manifest.permission.RECORD_AUDIO);
+        }
+
+        // 📷 Permiso para galería (según versión de Android)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Android 13+ (API 33+)
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
+                    != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.READ_MEDIA_IMAGES);
+            }
+        } else {
+            // Android 12 y anteriores
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                    != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+            }
+        }
+
+        if (!permissionsNeeded.isEmpty()) {
+            Log.d(TAG, "📋 Solicitando " + permissionsNeeded.size() + " permisos: " + permissionsNeeded);
+            ActivityCompat.requestPermissions(this,
+                    permissionsNeeded.toArray(new String[0]),
+                    RC_PERMISSIONS);
+        } else {
+            Log.d(TAG, "✓ Todos los permisos ya están concedidos");
+            navigateToMain();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == RC_PERMISSIONS) {
+            // Verificar qué permisos fueron concedidos
+            for (int i = 0; i < permissions.length; i++) {
+                if (grantResults[i] == PackageManager.PERMISSION_GRANTED) {
+                    Log.d(TAG, "✓ Permiso concedido: " + permissions[i]);
+                } else {
+                    Log.w(TAG, "✗ Permiso denegado: " + permissions[i]);
+                }
+            }
+            // Continuar a MainActivity aunque algunos permisos sean denegados
+            navigateToMain();
+        }
+    }
+
+    /**
+     * Navega a MainActivity (llamado después de permisos)
+     */
+    private void navigateToMain() {
         Intent intent = new Intent(this, MainActivity.class);
         startActivity(intent);
         finish();

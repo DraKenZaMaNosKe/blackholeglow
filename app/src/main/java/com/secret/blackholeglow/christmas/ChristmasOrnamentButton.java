@@ -15,13 +15,14 @@ import java.nio.FloatBuffer;
 
 /**
  * ╔═══════════════════════════════════════════════════════════════════════════╗
- * ║   🎁 ChristmasGiftButton - OPTIMIZADO (Solo dibuja quad local)           ║
+ * ║   🎁 ChristmasGiftButton - OPTIMIZADO (ES 2.0 compatible)                 ║
  * ╚═══════════════════════════════════════════════════════════════════════════╝
  *
  * Botón cajita de regalo con textura PNG:
  * - Dibuja SOLO un quad pequeño, no fullscreen
  * - Glow dorado alrededor
  * - Animación flotante suave
+ * - ES 2.0 compatible shaders (work in ES 3.0 context)
  */
 public class ChristmasOrnamentButton {
     private static final String TAG = "ChristmasGiftBtn";
@@ -56,7 +57,7 @@ public class ChristmasOrnamentButton {
 
     private Context context;
 
-    // Simple vertex shader - just transform and pass through
+    // Simple vertex shader - ES 2.0 compatible
     private static final String VERTEX_SHADER =
         "attribute vec2 a_Position;\n" +
         "attribute vec2 a_TexCoord;\n" +
@@ -66,7 +67,7 @@ public class ChristmasOrnamentButton {
         "    gl_Position = vec4(a_Position, 0.0, 1.0);\n" +
         "}\n";
 
-    // Fragment shader - texture + glow DIFUMINADO (sin bordes visibles)
+    // Fragment shader - ES 2.0 compatible
     private static final String FRAGMENT_SHADER =
         "precision mediump float;\n" +
         "varying vec2 v_TexCoord;\n" +
@@ -77,26 +78,21 @@ public class ChristmasOrnamentButton {
         "    vec4 tex = texture2D(u_Texture, v_TexCoord);\n" +
         "    vec2 uv = v_TexCoord;\n" +
         "    \n" +
-        "    // Distancia desde el centro (0.5, 0.5)\n" +
         "    vec2 center = uv - 0.5;\n" +
         "    float dist = length(center);\n" +
         "    \n" +
-        "    // Fade en los bordes del quad para evitar contorno visible\n" +
         "    float edgeFade = smoothstep(0.5, 0.35, abs(uv.x - 0.5));\n" +
         "    edgeFade *= smoothstep(0.5, 0.35, abs(uv.y - 0.5));\n" +
         "    \n" +
-        "    // Pulse suave\n" +
         "    float phase = mod(u_Time * 1.2, 6.28318);\n" +
         "    float pulse = 0.9 + 0.1 * sin(phase);\n" +
         "    \n" +
-        "    // Si hay textura visible, mostrarla\n" +
         "    if (tex.a > 0.1) {\n" +
         "        vec3 finalColor = tex.rgb * pulse;\n" +
         "        gl_FragColor = vec4(finalColor, tex.a);\n" +
         "        return;\n" +
         "    }\n" +
         "    \n" +
-        "    // Glow solo donde NO hay textura, con fade suave\n" +
         "    float glow = smoothstep(0.5, 0.15, dist) * edgeFade * pulse * 0.4;\n" +
         "    vec3 glowColor = vec3(1.0, 0.85, 0.3) * glow;\n" +
         "    gl_FragColor = vec4(glowColor, glow);\n" +
@@ -110,8 +106,8 @@ public class ChristmasOrnamentButton {
     }
 
     private void initGL() {
-        int vs = compileShader(GLES20.GL_VERTEX_SHADER, VERTEX_SHADER);
-        int fs = compileShader(GLES20.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
+        int vs = compileShader(GLES20.GL_VERTEX_SHADER, VERTEX_SHADER, "vertex");
+        int fs = compileShader(GLES20.GL_FRAGMENT_SHADER, FRAGMENT_SHADER, "fragment");
         if (vs == 0 || fs == 0) return;
 
         shaderProgram = GLES20.glCreateProgram();
@@ -143,7 +139,7 @@ public class ChristmasOrnamentButton {
         loadTexture();
 
         initialized = true;
-        Log.d(TAG, "🎁 GiftButton OPTIMIZADO (quad local, no fullscreen)");
+        Log.d(TAG, "🎁 GiftButton inicializado");
     }
 
     private void loadTexture() {
@@ -167,14 +163,18 @@ public class ChristmasOrnamentButton {
         }
     }
 
-    private int compileShader(int type, String source) {
+    private int compileShader(int type, String source, String name) {
         int shader = GLES20.glCreateShader(type);
+        if (shader == 0) {
+            Log.e(TAG, "❌ glCreateShader returned 0 for " + name);
+            return 0;
+        }
         GLES20.glShaderSource(shader, source);
         GLES20.glCompileShader(shader);
         int[] compiled = new int[1];
         GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0);
         if (compiled[0] == 0) {
-            Log.e(TAG, "Shader error: " + GLES20.glGetShaderInfoLog(shader));
+            Log.e(TAG, "Shader error (" + name + "): " + GLES20.glGetShaderInfoLog(shader));
             GLES20.glDeleteShader(shader);
             return 0;
         }
@@ -205,7 +205,7 @@ public class ChristmasOrnamentButton {
 
         // Calculate quad corners in NDC (mantener proporciones cuadradas)
         float halfW = size * 1.3f;
-        float halfH = size * 1.3f * aspectRatio;  // Multiplicar por aspect para compensar
+        float halfH = size * 1.3f * aspectRatio;
 
         float left = floatX - halfW;
         float right = floatX + halfW;
@@ -259,9 +259,21 @@ public class ChristmasOrnamentButton {
     }
 
     public boolean contains(float touchX, float touchY) {
-        float dx = touchX * aspectRatio - posX;
+        // Simple distance check - generous hit area
+        float dx = touchX - posX;
         float dy = touchY - posY;
-        return Math.abs(dx) < size * 1.3f && Math.abs(dy) < size * 1.3f;
+        // Use generous hit area (0.35) to ensure button is easy to tap
+        return Math.abs(dx) < 0.35f && Math.abs(dy) < 0.35f;
+    }
+
+    /**
+     * Check if normalized coordinates are inside the button
+     * @param nx Normalized X (-1 to 1)
+     * @param ny Normalized Y (-1 to 1)
+     * @return true if inside button area
+     */
+    public boolean isInside(float nx, float ny) {
+        return contains(nx, ny);
     }
 
     public void setPressed(boolean pressed) {

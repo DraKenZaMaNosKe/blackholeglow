@@ -6,89 +6,94 @@ import android.util.Log;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.util.Random;
 
 /**
  * ╔═══════════════════════════════════════════════════════════════════════════╗
- * ║   💡 ChristmasTreeLights - Luces Animadas del Árbol de Navidad           ║
+ * ║   💡 ChristmasTreeLights - 11 Luces Navideñas con Colores Individuales   ║
+ * ╠═══════════════════════════════════════════════════════════════════════════╣
+ * ║                                                                           ║
+ * ║   CÓMO EDITAR:                                                            ║
+ * ║   1. Posición: Edita LIGHT_POSITIONS[i] = {X, Y}                         ║
+ * ║   2. Color:    Edita LIGHT_COLORS[i] = {R, G, B}                         ║
+ * ║                                                                           ║
+ * ║   Coordenadas: X (-1 izq, 1 der), Y (-1 abajo, 1 arriba)                 ║
+ * ║   Colores:     R, G, B de 0.0 a 1.0                                      ║
+ * ║                                                                           ║
  * ╚═══════════════════════════════════════════════════════════════════════════╝
- *
- * Renderiza luces brillantes con efecto twinkle sobre el árbol navideño.
- *
- * Características:
- * - 35 luces distribuidas en forma de cono (silueta del árbol)
- * - Colores: Dorado cálido (40%), Rojo (20%), Verde (15%), Azul (15%), Blanco (10%)
- * - Cada luz parpadea a su propio ritmo (fase aleatoria)
- * - Glow suave difuminado alrededor de cada punto
- * - Efecto "ola" opcional que enciende luces en secuencia
- *
- * Técnica: GL_POINTS con fragment shader para glow radial
  */
 public class ChristmasTreeLights {
     private static final String TAG = "TreeLights";
 
     // ═══════════════════════════════════════════════════════════════
-    // CONFIGURACIÓN
+    // 🎯 POSICIONES DE LAS 11 LUCES (edita aquí)
     // ═══════════════════════════════════════════════════════════════
 
-    private static final int NUM_LIGHTS = 45;           // Cantidad de luces
-    private static final float TREE_CENTER_X = -0.05f;  // Centro X del árbol (ligeramente izquierda)
-    private static final float TREE_TOP_Y = 0.72f;      // Punta del árbol (cerca de la estrella)
-    private static final float TREE_BOTTOM_Y = 0.18f;   // Base del árbol (encima de los regalos)
-    private static final float TREE_WIDTH = 0.26f;      // Ancho máximo en la base
+    // ═══════════════════════════════════════════════════════════════
+    // 📍 POSICIONES: X(-1=izq, 0=centro, 1=der) Y(-1=abajo, 0=centro, 1=arriba)
+    // ═══════════════════════════════════════════════════════════════
+    private static final float[][] LIGHT_POSITIONS = {
+        // ⭐ Estrella en la punta (CENTRO: X=-0.069)
+        { -0.069f,  0.460f },  // Luz 0  - ESTRELLA ⭐
 
-    // Tamaños de las luces
-    private static final float MIN_POINT_SIZE = 12.0f;
-    private static final float MAX_POINT_SIZE = 22.0f;
-
-    // Velocidades de parpadeo
-    private static final float MIN_TWINKLE_SPEED = 1.5f;
-    private static final float MAX_TWINKLE_SPEED = 4.0f;
+        // Todas en línea recta debajo de la estrella (X=-0.069)
+        // Muévelas manualmente desde aquí
+        { -0.069f,  0.38f },   // Luz 1  - NARANJA
+        { -0.069f,  0.32f },   // Luz 2  - AMARILLO
+        { -0.069f,  0.26f },   // Luz 3  - VERDE LIMA
+        { -0.069f,  0.20f },   // Luz 4  - VERDE
+        { -0.069f,  0.14f },   // Luz 5  - VERDE AGUA
+        { -0.069f,  0.08f },   // Luz 6  - CYAN
+        { -0.069f,  0.02f },   // Luz 7  - AZUL CLARO
+        { -0.069f, -0.04f },   // Luz 8  - AZUL
+        { -0.069f, -0.10f },   // Luz 9  - VIOLETA
+        { -0.069f, -0.16f },   // Luz 10 - MAGENTA
+    };
 
     // ═══════════════════════════════════════════════════════════════
-    // COLORES NAVIDEÑOS (RGBA)
+    // 🎨 COLORES DE LAS 11 LUCES (edita aquí) - RGB de 0.0 a 1.0
     // ═══════════════════════════════════════════════════════════════
 
-    // Dorado cálido - 40%
-    private static final float[] COLOR_GOLD = {1.0f, 0.85f, 0.4f, 1.0f};
-    // Rojo festivo - 20%
-    private static final float[] COLOR_RED = {1.0f, 0.25f, 0.2f, 1.0f};
-    // Verde pino - 15%
-    private static final float[] COLOR_GREEN = {0.3f, 0.9f, 0.4f, 1.0f};
-    // Azul hielo - 15%
-    private static final float[] COLOR_BLUE = {0.4f, 0.7f, 1.0f, 1.0f};
-    // Blanco cálido - 10%
-    private static final float[] COLOR_WHITE = {1.0f, 0.95f, 0.85f, 1.0f};
+    private static final float[][] LIGHT_COLORS = {
+        // Colores únicos para identificar cada luz fácilmente
+        { 1.00f, 0.50f, 0.00f },  // Luz 0  - ROJO
+        { 1.00f, 0.50f, 0.00f },  // Luz 1  - NARANJA
+        { 1.00f, 1.00f, 0.00f },  // Luz 2  - AMARILLO
+        { 0.50f, 1.00f, 0.00f },  // Luz 3  - VERDE LIMA
+        { 0.00f, 1.00f, 0.00f },  // Luz 4  - VERDE
+        { 0.00f, 1.00f, 0.50f },  // Luz 5  - VERDE AGUA
+        { 0.00f, 1.00f, 1.00f },  // Luz 6  - CYAN
+        { 0.00f, 0.50f, 1.00f },  // Luz 7  - AZUL CLARO
+        { 0.00f, 0.00f, 1.00f },  // Luz 8  - AZUL
+        { 0.50f, 0.00f, 1.00f },  // Luz 9  - VIOLETA
+        { 1.00f, 0.00f, 1.00f },  // Luz 10 - MAGENTA
+    };
+
+    private static final int NUM_LIGHTS = LIGHT_POSITIONS.length;
+    private static final float POINT_SIZE = 80.0f;       // Tamaño luces normales
+    private static final float STAR_SIZE = 180.0f;       // ⭐ Tamaño de la estrella (Luz 0)
 
     // ═══════════════════════════════════════════════════════════════
     // OPENGL
     // ═══════════════════════════════════════════════════════════════
 
-    private int shaderProgram;
-    private int vboId;
+    private int shaderProgram, vboId;
     private FloatBuffer vertexBuffer;
+    private int aPositionLoc, aColorLoc, aSizeLoc, aPhaseLoc, aSpeedLoc;
+    private int uTimeLoc, uAspectLoc;
 
-    // Attribute locations
-    private int aPositionLoc;
-    private int aColorLoc;
-    private int aSizeLoc;
-    private int aPhaseLoc;
-    private int aSpeedLoc;
-
-    // Uniform locations
-    private int uTimeLoc;
-    private int uAspectLoc;
-
-    // Estado
     private boolean initialized = false;
     private boolean dataGenerated = false;
+    private boolean needsUpdate = false;
     private boolean visible = true;
     private float time = 0f;
     private float aspectRatio = 1.0f;
 
-    // Datos de las luces
-    private float[] lightData;  // x, y, r, g, b, a, size, phase, speed (9 floats por luz)
+    private float[] lightData;
     private static final int FLOATS_PER_LIGHT = 9;
+
+    // Copias locales editables
+    private float[][] positions;
+    private float[][] colors;
 
     // ═══════════════════════════════════════════════════════════════
     // SHADERS
@@ -97,38 +102,22 @@ public class ChristmasTreeLights {
     private static final String VERTEX_SHADER =
         "#version 300 es\n" +
         "precision highp float;\n" +
-        "\n" +
-        "// Atributos por luz\n" +
-        "in vec2 a_Position;   // Posición de la luz\n" +
-        "in vec4 a_Color;      // Color RGBA\n" +
-        "in float a_Size;      // Tamaño base del punto\n" +
-        "in float a_Phase;     // Fase inicial del parpadeo\n" +
-        "in float a_Speed;     // Velocidad de parpadeo\n" +
-        "\n" +
-        "// Uniforms\n" +
+        "in vec2 a_Position;\n" +
+        "in vec4 a_Color;\n" +
+        "in float a_Size;\n" +
+        "in float a_Phase;\n" +
+        "in float a_Speed;\n" +
         "uniform float u_Time;\n" +
         "uniform float u_Aspect;\n" +
-        "\n" +
-        "// Output al fragment shader\n" +
         "out vec4 v_Color;\n" +
         "out float v_Brightness;\n" +
-        "\n" +
         "void main() {\n" +
-        "    // Calcular brillo con parpadeo suave\n" +
-        "    float twinkle = sin(u_Time * a_Speed + a_Phase);\n" +
-        "    twinkle = twinkle * 0.5 + 0.5;  // Normalizar a [0, 1]\n" +
-        "    twinkle = 0.4 + twinkle * 0.6;   // Rango [0.4, 1.0] - nunca se apaga del todo\n" +
-        "    \n" +
-        "    // Posición con corrección de aspecto\n" +
+        "    float twinkle = sin(u_Time * a_Speed + a_Phase) * 0.5 + 0.5;\n" +
+        "    twinkle = 0.6 + twinkle * 0.4;\n" +
         "    vec2 pos = a_Position;\n" +
         "    pos.x /= u_Aspect;\n" +
-        "    \n" +
         "    gl_Position = vec4(pos, 0.0, 1.0);\n" +
-        "    \n" +
-        "    // Tamaño del punto varía con el brillo\n" +
-        "    gl_PointSize = a_Size * (0.8 + twinkle * 0.4);\n" +
-        "    \n" +
-        "    // Pasar color y brillo al fragment\n" +
+        "    gl_PointSize = a_Size * (0.85 + twinkle * 0.3);\n" +
         "    v_Color = a_Color;\n" +
         "    v_Brightness = twinkle;\n" +
         "}\n";
@@ -136,195 +125,213 @@ public class ChristmasTreeLights {
     private static final String FRAGMENT_SHADER =
         "#version 300 es\n" +
         "precision mediump float;\n" +
-        "\n" +
         "in vec4 v_Color;\n" +
         "in float v_Brightness;\n" +
-        "\n" +
         "out vec4 fragColor;\n" +
-        "\n" +
         "void main() {\n" +
-        "    // Distancia desde el centro del punto\n" +
         "    vec2 coord = gl_PointCoord - vec2(0.5);\n" +
-        "    float dist = length(coord) * 2.0;  // [0, 1] desde centro a borde\n" +
+        "    float dist = length(coord) * 2.0;\n" +
+        "    bool isStar = v_Color.a > 1.5;\n" +
         "    \n" +
-        "    // Descartar píxeles fuera del círculo\n" +
-        "    if (dist > 1.0) discard;\n" +
-        "    \n" +
-        "    // Crear glow suave con múltiples capas\n" +
-        "    // Núcleo brillante\n" +
-        "    float core = 1.0 - smoothstep(0.0, 0.3, dist);\n" +
-        "    // Glow medio\n" +
-        "    float midGlow = 1.0 - smoothstep(0.0, 0.6, dist);\n" +
-        "    // Glow exterior\n" +
-        "    float outerGlow = 1.0 - smoothstep(0.0, 1.0, dist);\n" +
-        "    \n" +
-        "    // Combinar capas\n" +
-        "    float glow = core * 0.6 + midGlow * 0.3 + outerGlow * 0.1;\n" +
-        "    glow *= v_Brightness;\n" +
-        "    \n" +
-        "    // Color final con brillo\n" +
-        "    vec3 finalColor = v_Color.rgb * (0.8 + v_Brightness * 0.4);\n" +
-        "    \n" +
-        "    // Añadir blanco al centro para efecto de luz intensa\n" +
-        "    finalColor = mix(finalColor, vec3(1.0), core * 0.5 * v_Brightness);\n" +
-        "    \n" +
-        "    fragColor = vec4(finalColor, glow * v_Color.a);\n" +
+        "    if (isStar) {\n" +
+        "        // ⭐ ESTRELLA con rayos orgánicos y bordes suaves\n" +
+        "        float angle = atan(coord.y, coord.x);\n" +
+        "        \n" +
+        "        // Rayos de diferentes tamaños (4 principales + 4 secundarios)\n" +
+        "        float ray1 = pow(abs(sin(angle * 2.0)), 8.0);\n" +  // 4 rayos largos
+        "        float ray2 = pow(abs(sin(angle * 2.0 + 0.785)), 12.0) * 0.6;\n" +  // 4 rayos cortos (45°)
+        "        float rays = ray1 + ray2;\n" +
+        "        \n" +
+        "        // Los rayos se desvanecen con la distancia (no linealmente)\n" +
+        "        float rayFade = 1.0 - smoothstep(0.0, 0.9, dist);\n" +
+        "        rays *= rayFade * rayFade;\n" +
+        "        \n" +
+        "        // Núcleo brillante\n" +
+        "        float core = 1.0 - smoothstep(0.0, 0.12, dist);\n" +
+        "        float innerGlow = 1.0 - smoothstep(0.0, 0.35, dist);\n" +
+        "        \n" +
+        "        // Glow exterior muy suave (desvanece los bordes)\n" +
+        "        float outerGlow = 1.0 - smoothstep(0.0, 1.0, dist * dist);\n" +
+        "        \n" +
+        "        // Combinar todo\n" +
+        "        float glow = core * 0.7 + innerGlow * 0.4 + outerGlow * 0.15 + rays * 0.5;\n" +
+        "        glow *= v_Brightness;\n" +
+        "        \n" +
+        "        // Fade suave en los bordes (elimina el cuadrado)\n" +
+        "        float edgeFade = 1.0 - smoothstep(0.4, 0.5, max(abs(coord.x), abs(coord.y)));\n" +
+        "        glow *= edgeFade;\n" +
+        "        \n" +
+        "        vec3 gold = vec3(1.0, 0.85, 0.4);\n" +
+        "        vec3 white = vec3(1.0, 1.0, 0.9);\n" +
+        "        vec3 finalColor = mix(gold, white, core * v_Brightness);\n" +
+        "        finalColor += rays * gold * 0.4 * v_Brightness;\n" +
+        "        fragColor = vec4(finalColor, glow);\n" +
+        "    } else {\n" +
+        "        // Luces normales\n" +
+        "        if (dist > 1.0) discard;\n" +
+        "        float core = 1.0 - smoothstep(0.0, 0.25, dist);\n" +
+        "        float innerGlow = 1.0 - smoothstep(0.0, 0.5, dist);\n" +
+        "        float outerGlow = 1.0 - smoothstep(0.0, 1.0, dist);\n" +
+        "        float glow = core * 0.5 + innerGlow * 0.35 + outerGlow * 0.15;\n" +
+        "        glow *= v_Brightness;\n" +
+        "        vec3 baseColor = v_Color.rgb * (0.9 + v_Brightness * 0.3);\n" +
+        "        vec3 finalColor = mix(baseColor, vec3(1.0, 1.0, 0.9), core * 0.7 * v_Brightness);\n" +
+        "        fragColor = vec4(finalColor, glow);\n" +
+        "    }\n" +
         "}\n";
 
     // ═══════════════════════════════════════════════════════════════
-    // CONSTRUCTOR E INICIALIZACIÓN
+    // CONSTRUCTOR
     // ═══════════════════════════════════════════════════════════════
 
     public ChristmasTreeLights() {
-        // Constructor vacío - init() se llama después
+        positions = new float[NUM_LIGHTS][2];
+        colors = new float[NUM_LIGHTS][3];
+        for (int i = 0; i < NUM_LIGHTS; i++) {
+            positions[i][0] = LIGHT_POSITIONS[i][0];
+            positions[i][1] = LIGHT_POSITIONS[i][1];
+            colors[i][0] = LIGHT_COLORS[i][0];
+            colors[i][1] = LIGHT_COLORS[i][1];
+            colors[i][2] = LIGHT_COLORS[i][2];
+        }
     }
 
     public void init() {
         if (dataGenerated) return;
-
-        Log.d(TAG, "💡 Preparando datos de luces del árbol...");
-
-        // Solo generar datos - la inicialización OpenGL se hace en draw()
+        Log.d(TAG, "💡 Inicializando " + NUM_LIGHTS + " luces...");
         generateLightData();
         dataGenerated = true;
-
-        Log.d(TAG, "✅ Datos de " + NUM_LIGHTS + " luces preparados");
-    }
-
-    /**
-     * Inicializa recursos OpenGL (llamado desde draw cuando el contexto está listo)
-     */
-    private void initOpenGL() {
-        if (initialized) return;
-
-        Log.d(TAG, "🔧 Inicializando OpenGL para luces...");
-
-        // Crear shader program
-        if (!createShaderProgram()) {
-            Log.e(TAG, "❌ Error creando shader program - reintentando en próximo frame");
-            return;
-        }
-
-        // Crear VBO
-        createVBO();
-
-        initialized = true;
-        Log.d(TAG, "✅ OpenGL inicializado para " + NUM_LIGHTS + " luces");
+        logAll();
     }
 
     private void generateLightData() {
         lightData = new float[NUM_LIGHTS * FLOATS_PER_LIGHT];
-        Random random = new Random(42);  // Seed fijo para reproducibilidad
-
-        int index = 0;
         for (int i = 0; i < NUM_LIGHTS; i++) {
-            // Distribución en forma de cono (árbol)
-            // t va de 0 (punta) a 1 (base)
-            float t = random.nextFloat();
-            t = (float) Math.pow(t, 0.7);  // Más luces hacia la base
+            int idx = i * FLOATS_PER_LIGHT;
+            lightData[idx + 0] = positions[i][0];
+            lightData[idx + 1] = positions[i][1];
+            lightData[idx + 2] = colors[i][0];
+            lightData[idx + 3] = colors[i][1];
+            lightData[idx + 4] = colors[i][2];
 
-            // Altura: interpolación entre punta y base
-            float y = TREE_TOP_Y - t * (TREE_TOP_Y - TREE_BOTTOM_Y);
-
-            // Ancho disponible a esta altura (cono)
-            float widthAtHeight = TREE_WIDTH * t;
-
-            // Posición X aleatoria dentro del cono
-            float x = TREE_CENTER_X + (random.nextFloat() - 0.5f) * 2.0f * widthAtHeight;
-
-            // Pequeña variación para que no queden en línea perfecta
-            x += (random.nextFloat() - 0.5f) * 0.03f;
-            y += (random.nextFloat() - 0.5f) * 0.02f;
-
-            // Seleccionar color basado en probabilidad
-            float[] color = selectColor(random.nextFloat());
-
-            // Tamaño aleatorio
-            float size = MIN_POINT_SIZE + random.nextFloat() * (MAX_POINT_SIZE - MIN_POINT_SIZE);
-
-            // Fase inicial aleatoria (para que parpadeen desfasadas)
-            float phase = random.nextFloat() * (float)(Math.PI * 2.0);
-
-            // Velocidad de parpadeo aleatoria
-            float speed = MIN_TWINKLE_SPEED + random.nextFloat() * (MAX_TWINKLE_SPEED - MIN_TWINKLE_SPEED);
-
-            // Guardar datos: x, y, r, g, b, a, size, phase, speed
-            lightData[index++] = x;
-            lightData[index++] = y;
-            lightData[index++] = color[0];  // R
-            lightData[index++] = color[1];  // G
-            lightData[index++] = color[2];  // B
-            lightData[index++] = color[3];  // A
-            lightData[index++] = size;
-            lightData[index++] = phase;
-            lightData[index++] = speed;
-        }
-
-        Log.d(TAG, "📊 Datos de " + NUM_LIGHTS + " luces generados");
-    }
-
-    private float[] selectColor(float probability) {
-        // Distribución: Dorado 40%, Rojo 20%, Verde 15%, Azul 15%, Blanco 10%
-        if (probability < 0.40f) {
-            return COLOR_GOLD;
-        } else if (probability < 0.60f) {
-            return COLOR_RED;
-        } else if (probability < 0.75f) {
-            return COLOR_GREEN;
-        } else if (probability < 0.90f) {
-            return COLOR_BLUE;
-        } else {
-            return COLOR_WHITE;
+            if (i == 0) {
+                // ⭐ ESTRELLA - Luz 0: más grande, pulso más rápido, alpha especial
+                lightData[idx + 5] = 2.0f;       // alpha > 1 = flag de estrella
+                lightData[idx + 6] = STAR_SIZE;  // Tamaño grande
+                lightData[idx + 7] = 0.0f;       // Phase
+                lightData[idx + 8] = 4.0f;       // Speed más rápido
+            } else {
+                // Luces normales
+                lightData[idx + 5] = 1.0f;
+                lightData[idx + 6] = POINT_SIZE;
+                lightData[idx + 7] = (float)(i * Math.PI * 2.0 / NUM_LIGHTS);
+                lightData[idx + 8] = 2.0f + (i % 3) * 0.5f;
+            }
         }
     }
 
-    private boolean createShaderProgram() {
-        int vertexShader = compileShader(GLES30.GL_VERTEX_SHADER, VERTEX_SHADER);
-        int fragmentShader = compileShader(GLES30.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
+    // ═══════════════════════════════════════════════════════════════
+    // 🎯 SETTERS - USA ESTOS PARA EDITAR EN RUNTIME
+    // ═══════════════════════════════════════════════════════════════
 
-        if (vertexShader == 0 || fragmentShader == 0) {
-            return false;
+    /**
+     * Cambia la posición de una luz
+     * @param index 0-10
+     * @param x -1 (izq) a 1 (der)
+     * @param y -1 (abajo) a 1 (arriba)
+     */
+    public void setLightPosition(int index, float x, float y) {
+        if (index < 0 || index >= NUM_LIGHTS) return;
+        positions[index][0] = x;
+        positions[index][1] = y;
+        if (lightData != null) {
+            int idx = index * FLOATS_PER_LIGHT;
+            lightData[idx + 0] = x;
+            lightData[idx + 1] = y;
+            needsUpdate = true;
         }
+        Log.d(TAG, "📍 Luz " + index + " pos → (" + x + ", " + y + ")");
+    }
+
+    /**
+     * Cambia el color de una luz
+     * @param index 0-10
+     * @param r Rojo 0.0-1.0
+     * @param g Verde 0.0-1.0
+     * @param b Azul 0.0-1.0
+     */
+    public void setLightColor(int index, float r, float g, float b) {
+        if (index < 0 || index >= NUM_LIGHTS) return;
+        colors[index][0] = r;
+        colors[index][1] = g;
+        colors[index][2] = b;
+        if (lightData != null) {
+            int idx = index * FLOATS_PER_LIGHT;
+            lightData[idx + 2] = r;
+            lightData[idx + 3] = g;
+            lightData[idx + 4] = b;
+            needsUpdate = true;
+        }
+        Log.d(TAG, "🎨 Luz " + index + " color → (" + r + ", " + g + ", " + b + ")");
+    }
+
+    /**
+     * Imprime todas las posiciones y colores
+     */
+    public void logAll() {
+        Log.d(TAG, "════════════════════════════════════════════════");
+        Log.d(TAG, "📋 CONFIGURACIÓN DE LAS " + NUM_LIGHTS + " LUCES:");
+        Log.d(TAG, "════════════════════════════════════════════════");
+        for (int i = 0; i < NUM_LIGHTS; i++) {
+            Log.d(TAG, String.format("  Luz %2d: pos(%5.2f, %5.2f)  color(%4.2f, %4.2f, %4.2f)",
+                i, positions[i][0], positions[i][1],
+                colors[i][0], colors[i][1], colors[i][2]));
+        }
+        Log.d(TAG, "════════════════════════════════════════════════");
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // OPENGL
+    // ═══════════════════════════════════════════════════════════════
+
+    private void initOpenGL() {
+        if (initialized) return;
+        int vs = compileShader(GLES30.GL_VERTEX_SHADER, VERTEX_SHADER);
+        int fs = compileShader(GLES30.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
+        if (vs == 0 || fs == 0) return;
 
         shaderProgram = GLES30.glCreateProgram();
-        GLES30.glAttachShader(shaderProgram, vertexShader);
-        GLES30.glAttachShader(shaderProgram, fragmentShader);
+        GLES30.glAttachShader(shaderProgram, vs);
+        GLES30.glAttachShader(shaderProgram, fs);
         GLES30.glLinkProgram(shaderProgram);
 
-        int[] linkStatus = new int[1];
-        GLES30.glGetProgramiv(shaderProgram, GLES30.GL_LINK_STATUS, linkStatus, 0);
-        if (linkStatus[0] == 0) {
-            Log.e(TAG, "Error linkeando: " + GLES30.glGetProgramInfoLog(shaderProgram));
-            GLES30.glDeleteProgram(shaderProgram);
-            return false;
-        }
+        int[] status = new int[1];
+        GLES30.glGetProgramiv(shaderProgram, GLES30.GL_LINK_STATUS, status, 0);
+        if (status[0] == 0) return;
 
-        // Obtener locations
         aPositionLoc = GLES30.glGetAttribLocation(shaderProgram, "a_Position");
         aColorLoc = GLES30.glGetAttribLocation(shaderProgram, "a_Color");
         aSizeLoc = GLES30.glGetAttribLocation(shaderProgram, "a_Size");
         aPhaseLoc = GLES30.glGetAttribLocation(shaderProgram, "a_Phase");
         aSpeedLoc = GLES30.glGetAttribLocation(shaderProgram, "a_Speed");
-
         uTimeLoc = GLES30.glGetUniformLocation(shaderProgram, "u_Time");
         uAspectLoc = GLES30.glGetUniformLocation(shaderProgram, "u_Aspect");
 
-        // Eliminar shaders individuales
-        GLES30.glDeleteShader(vertexShader);
-        GLES30.glDeleteShader(fragmentShader);
+        GLES30.glDeleteShader(vs);
+        GLES30.glDeleteShader(fs);
 
-        return true;
+        createVBO();
+        initialized = true;
+        Log.d(TAG, "✅ OpenGL listo");
     }
 
     private int compileShader(int type, String source) {
         int shader = GLES30.glCreateShader(type);
         GLES30.glShaderSource(shader, source);
         GLES30.glCompileShader(shader);
-
         int[] compiled = new int[1];
         GLES30.glGetShaderiv(shader, GLES30.GL_COMPILE_STATUS, compiled, 0);
         if (compiled[0] == 0) {
-            Log.e(TAG, "Shader error: " + GLES30.glGetShaderInfoLog(shader));
             GLES30.glDeleteShader(shader);
             return 0;
         }
@@ -332,130 +339,82 @@ public class ChristmasTreeLights {
     }
 
     private void createVBO() {
-        // Crear buffer
         ByteBuffer bb = ByteBuffer.allocateDirect(lightData.length * 4);
         bb.order(ByteOrder.nativeOrder());
         vertexBuffer = bb.asFloatBuffer();
         vertexBuffer.put(lightData);
         vertexBuffer.position(0);
 
-        // Crear VBO
         int[] vbos = new int[1];
         GLES30.glGenBuffers(1, vbos, 0);
         vboId = vbos[0];
 
         GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, vboId);
-        GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, lightData.length * 4, vertexBuffer, GLES30.GL_STATIC_DRAW);
+        GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, lightData.length * 4, vertexBuffer, GLES30.GL_DYNAMIC_DRAW);
         GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, 0);
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // UPDATE Y DRAW
-    // ═══════════════════════════════════════════════════════════════
+    private void updateVBO() {
+        if (vertexBuffer == null || vboId == 0) return;
+        vertexBuffer.position(0);
+        vertexBuffer.put(lightData);
+        vertexBuffer.position(0);
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, vboId);
+        GLES30.glBufferSubData(GLES30.GL_ARRAY_BUFFER, 0, lightData.length * 4, vertexBuffer);
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, 0);
+        needsUpdate = false;
+    }
 
-    public void update(float deltaTime) {
-        // Actualizar tiempo para animación
-        time += deltaTime;
-
-        // Resetear para evitar overflow después de ~1 hora
-        if (time > 3600f) {
-            time = 0f;
-        }
+    public void update(float dt) {
+        time += dt;
+        if (time > 3600f) time = 0f;
     }
 
     public void draw() {
         if (!visible || !dataGenerated) return;
+        if (!initialized) { initOpenGL(); if (!initialized) return; }
+        if (needsUpdate) updateVBO();
 
-        // Lazy init de OpenGL cuando el contexto está listo
-        if (!initialized) {
-            initOpenGL();
-            if (!initialized) return;  // Aún no listo
-        }
-
-        // Habilitar blending para el glow
         GLES30.glEnable(GLES30.GL_BLEND);
         GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
-        // Usar programa
         GLES30.glUseProgram(shaderProgram);
-
-        // Uniforms
         GLES30.glUniform1f(uTimeLoc, time);
         GLES30.glUniform1f(uAspectLoc, aspectRatio);
 
-        // Bind VBO
         GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, vboId);
+        int stride = FLOATS_PER_LIGHT * 4;
 
-        int stride = FLOATS_PER_LIGHT * 4;  // 9 floats * 4 bytes
-
-        // Position (2 floats)
         GLES30.glEnableVertexAttribArray(aPositionLoc);
         GLES30.glVertexAttribPointer(aPositionLoc, 2, GLES30.GL_FLOAT, false, stride, 0);
-
-        // Color (4 floats)
         GLES30.glEnableVertexAttribArray(aColorLoc);
-        GLES30.glVertexAttribPointer(aColorLoc, 4, GLES30.GL_FLOAT, false, stride, 2 * 4);
-
-        // Size (1 float)
+        GLES30.glVertexAttribPointer(aColorLoc, 4, GLES30.GL_FLOAT, false, stride, 2*4);
         GLES30.glEnableVertexAttribArray(aSizeLoc);
-        GLES30.glVertexAttribPointer(aSizeLoc, 1, GLES30.GL_FLOAT, false, stride, 6 * 4);
-
-        // Phase (1 float)
+        GLES30.glVertexAttribPointer(aSizeLoc, 1, GLES30.GL_FLOAT, false, stride, 6*4);
         GLES30.glEnableVertexAttribArray(aPhaseLoc);
-        GLES30.glVertexAttribPointer(aPhaseLoc, 1, GLES30.GL_FLOAT, false, stride, 7 * 4);
-
-        // Speed (1 float)
+        GLES30.glVertexAttribPointer(aPhaseLoc, 1, GLES30.GL_FLOAT, false, stride, 7*4);
         GLES30.glEnableVertexAttribArray(aSpeedLoc);
-        GLES30.glVertexAttribPointer(aSpeedLoc, 1, GLES30.GL_FLOAT, false, stride, 8 * 4);
+        GLES30.glVertexAttribPointer(aSpeedLoc, 1, GLES30.GL_FLOAT, false, stride, 8*4);
 
-        // Dibujar puntos
         GLES30.glDrawArrays(GLES30.GL_POINTS, 0, NUM_LIGHTS);
 
-        // Cleanup
         GLES30.glDisableVertexAttribArray(aPositionLoc);
         GLES30.glDisableVertexAttribArray(aColorLoc);
         GLES30.glDisableVertexAttribArray(aSizeLoc);
         GLES30.glDisableVertexAttribArray(aPhaseLoc);
         GLES30.glDisableVertexAttribArray(aSpeedLoc);
-
         GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, 0);
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // SETTERS Y CONTROL
-    // ═══════════════════════════════════════════════════════════════
-
-    public void setScreenSize(int width, int height) {
-        aspectRatio = (float) width / height;
-    }
-
-    public void show() {
-        visible = true;
-    }
-
-    public void hide() {
-        visible = false;
-    }
-
-    public boolean isVisible() {
-        return visible;
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // CLEANUP
-    // ═══════════════════════════════════════════════════════════════
+    public void setScreenSize(int w, int h) { aspectRatio = (float)w/h; }
+    public void show() { visible = true; }
+    public void hide() { visible = false; }
+    public boolean isVisible() { return visible; }
 
     public void dispose() {
-        if (shaderProgram != 0) {
-            GLES30.glDeleteProgram(shaderProgram);
-            shaderProgram = 0;
-        }
-        if (vboId != 0) {
-            int[] vbos = {vboId};
-            GLES30.glDeleteBuffers(1, vbos, 0);
-            vboId = 0;
-        }
+        if (shaderProgram != 0) { GLES30.glDeleteProgram(shaderProgram); shaderProgram = 0; }
+        if (vboId != 0) { GLES30.glDeleteBuffers(1, new int[]{vboId}, 0); vboId = 0; }
         initialized = false;
-        Log.d(TAG, "🗑️ ChristmasTreeLights liberado");
+        dataGenerated = false;
     }
 }

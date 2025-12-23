@@ -45,6 +45,21 @@
 
     <!--
       ╔═══════════════════════════════════════════════╗
+      ║    🎁 PERMISOS PARA GALERÍA DE FOTOS 🎁       ║
+      ╚═══════════════════════════════════════════════╝
+      📷 READ_MEDIA_IMAGES: Android 13+ (API 33+)
+      📂 READ_EXTERNAL_STORAGE: Android 12 y anteriores
+
+      🎄 Usado para mostrar fotos aleatorias de la galería
+      al presionar la cajita de regalo en modo navideño.
+    -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32"/>
+
+    <!--
+      ╔═══════════════════════════════════════════════╗
       ║    👏 PERMISOS PARA ENCONTRAR CON APLAUSO 👏  ║
       ╚═══════════════════════════════════════════════╝
       DESHABILITADO - Funcionalidad removida para release
