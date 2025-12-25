@@ -19,7 +19,7 @@ import com.secret.blackholeglow.christmas.MiniStopButton;
 import com.secret.blackholeglow.EqualizerBarsDJ;
 import com.secret.blackholeglow.LoadingBar;
 import com.secret.blackholeglow.OrbixGreeting;
-import com.secret.blackholeglow.PlayPauseButton;
+import com.secret.blackholeglow.OrbixMascotButton;
 import com.secret.blackholeglow.R;
 
 /**
@@ -43,7 +43,7 @@ public class PanelModeRenderer {
     private static final String TAG = "PanelModeRenderer";
 
     // Componentes UI estándar
-    private PlayPauseButton playPauseButton;
+    private OrbixMascotButton playPauseButton;
     private OrbixGreeting orbixGreeting;
     private LoadingBar loadingBar;
     private MiniStopButton miniStopButton;
@@ -90,7 +90,7 @@ public class PanelModeRenderer {
         Log.d(TAG, "🎛️ Inicializando Panel de Control...");
 
         // PlayPauseButton
-        playPauseButton = new PlayPauseButton();
+        playPauseButton = new OrbixMascotButton(context); playPauseButton.initialize();
         playPauseButton.setPlaying(false);
         Log.d(TAG, "▶️ PlayPauseButton inicializado");
 
@@ -571,6 +571,21 @@ public class PanelModeRenderer {
         return inside;
     }
 
+    /**
+     * 🌊 Controla visibilidad del MiniStopButton
+     * Para escenas de video que no necesitan botón de stop
+     */
+    public void setStopButtonVisible(boolean visible) {
+        if (miniStopButton != null) {
+            if (visible) {
+                miniStopButton.show();
+            } else {
+                miniStopButton.hide();
+            }
+            Log.d(TAG, "⏹️ MiniStopButton visible=" + visible);
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // 📐 SCREEN SIZE
     // ═══════════════════════════════════════════════════════════════
@@ -691,7 +706,7 @@ public class PanelModeRenderer {
     }
 
     // Getters para acceso directo si es necesario
-    public PlayPauseButton getPlayPauseButton() { return playPauseButton; }
+    public OrbixMascotButton getPlayPauseButton() { return playPauseButton; }
     public OrbixGreeting getOrbixGreeting() { return orbixGreeting; }
     public LoadingBar getLoadingBar() { return loadingBar; }
     public MiniStopButton getMiniStopButton() { return miniStopButton; }

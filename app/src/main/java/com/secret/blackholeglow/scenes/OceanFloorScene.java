@@ -4,20 +4,25 @@ import android.opengl.GLES20;
 import android.util.Log;
 
 import com.secret.blackholeglow.R;
-import com.secret.blackholeglow.video.VideoWallpaperRenderer;
+import com.secret.blackholeglow.video.MediaCodecVideoRenderer;
 import com.secret.blackholeglow.video.AlienFishSprite;
 import com.secret.blackholeglow.video.ForegroundMask;
 
 /**
  * OceanFloorScene - Fondo del Mar Alienígena
  *
- * Video + Pez + Máscara de profundidad
+ * Video (MediaCodec directo) + Pez + Máscara de profundidad
  * El video NUNCA se pausa - loop infinito.
+ *
+ * MediaCodec nos da control TOTAL del lifecycle:
+ * - Decoder en thread separado
+ * - Re-inicialización automática si falla
+ * - No dependemos de ExoPlayer/MediaPlayer
  */
 public class OceanFloorScene extends WallpaperScene {
     private static final String TAG = "OceanScene";
 
-    private VideoWallpaperRenderer videoRenderer;
+    private MediaCodecVideoRenderer videoRenderer;
     private AlienFishSprite alienFish;
     private ForegroundMask foregroundMask;
 
@@ -36,9 +41,9 @@ public class OceanFloorScene extends WallpaperScene {
 
     @Override
     protected void setupScene() {
-        Log.d(TAG, "Configurando escena");
+        Log.d(TAG, "Configurando escena con MediaCodec directo");
 
-        videoRenderer = new VideoWallpaperRenderer(context, VIDEO_FILE);
+        videoRenderer = new MediaCodecVideoRenderer(context, VIDEO_FILE);
         videoRenderer.initialize();
 
         alienFish = new AlienFishSprite();

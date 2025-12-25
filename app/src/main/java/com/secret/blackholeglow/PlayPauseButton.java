@@ -30,7 +30,7 @@ public class PlayPauseButton implements SceneObject {
     // Posición y tamaño
     private float centerX = 0.0f;
     private float centerY = 0.0f;
-    private float size = 0.18f;
+    private float size = 0.12f;  // Reducido
     private float hitAreaMultiplier = 1.5f;
 
     // Animación

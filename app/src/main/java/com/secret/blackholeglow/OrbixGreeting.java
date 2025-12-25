@@ -777,13 +777,13 @@ public class OrbixGreeting implements SceneObject {
 
         // ⚡ OPTIMIZACIÓN: Solo actualizar texturas si es necesario
         updateTitleTexture();
-        updateGreetingTexture();
-        updateClockTexture();
+        // updateGreetingTexture(); // DESHABILITADO
+        // updateClockTexture(); // DESHABILITADO
         if (hasBirthDate) {
-            updateLifeClockTexture();
-            updateBirthdayTexture();
+            // updateLifeClockTexture(); // DESHABILITADO
+            // updateBirthdayTexture(); // DESHABILITADO
         }
-        updateHeartTexture();
+        // updateHeartTexture(); // DESHABILITADO
 
         // ⚡ OPTIMIZACIÓN: Configurar estado GL una sola vez
         GLES30.glUseProgram(shaderProgram);
@@ -807,18 +807,18 @@ public class OrbixGreeting implements SceneObject {
         // drawTextQuad(greetingTextureId, greetingY, 0.6f, 0.045f, 1.0f);
 
         // Reloj actual
-        drawTextQuad(clockTextureId, clockY, 0.42f, 0.04f, 2.0f);
+        // drawTextQuad(clockTextureId, clockY, 0.42f, 0.04f, 2.0f);
 
         // Si tiene fecha de nacimiento, mostrar reloj de vida
         if (hasBirthDate) {
             // Corazón palpitante
-            drawHeartQuad(heartTextureId, heartY, heartX, 0.06f * heartScale, 5.0f);
+            // drawHeartQuad(heartTextureId, heartY, heartX, 0.06f * heartScale, 5.0f);
 
             // Reloj de vida
-            drawTextQuad(lifeClockTextureId, lifeClockY, 0.55f, 0.038f, 3.0f);
+            // drawTextQuad(lifeClockTextureId, lifeClockY, 0.55f, 0.038f, 3.0f);
 
             // Countdown al cumpleaños
-            drawTextQuad(birthdayTextureId, birthdayY, 0.45f, 0.032f, 4.0f);
+            // drawTextQuad(birthdayTextureId, birthdayY, 0.45f, 0.032f, 4.0f);
         }
 
         // ⚡ OPTIMIZACIÓN: Deshabilitar vertex attribs UNA vez al final

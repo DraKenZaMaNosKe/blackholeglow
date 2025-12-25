@@ -540,7 +540,7 @@ public class LoadingBar implements SceneObject {
         if (backgroundResourceId != 0 && !backgroundLoaded) {
             initBackgroundOpenGL();
         }
-        drawBackground();
+        // drawBackground(); // DESHABILITADO - fondo negro
 
         GLES30.glUseProgram(shaderProgram);
 

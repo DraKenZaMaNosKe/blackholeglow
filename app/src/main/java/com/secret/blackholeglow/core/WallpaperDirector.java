@@ -285,6 +285,14 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         modeController.activateWallpaper();
         panelRenderer.onWallpaperActivated();
 
+        // 🌊 VIDEO SCENES: Ocultar MiniStopButton (no necesitan botón de stop)
+        boolean isVideoScene = pendingSceneName.contains("Fondo del Mar") ||
+                               pendingSceneName.contains("Ocean");
+        if (isVideoScene) {
+            panelRenderer.setStopButtonVisible(false);
+            Log.d(TAG, "🌊 Escena de video - MiniStopButton OCULTO");
+        }
+
         // Deshabilitar saludos Gemini para Batalla Cósmica (se usará en otros wallpapers)
         if (pendingSceneName.contains("Batalla") || pendingSceneName.contains("Universo")) {
             panelRenderer.setGreetingEnabled(false);
@@ -292,14 +300,14 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             panelRenderer.setGreetingEnabled(true);
         }
 
-        // 🎵 CRÍTICO: Forzar reconexión del MusicVisualizer al entrar en WALLPAPER_MODE
-        // Esto es necesario porque el visualizador puede haber perdido la conexión
-        // durante las transiciones de preview a wallpaper real
-        if (musicVisualizer != null) {
+        // 🎵 Reconexión del MusicVisualizer (solo para escenas que lo necesitan)
+        // Las escenas de video NO necesitan música
+        if (musicVisualizer != null && !isVideoScene) {
             Log.d(TAG, "🎵 Forzando reconexión de MusicVisualizer para WALLPAPER_MODE...");
-            // Siempre reconectar para asegurar que funcione
             musicVisualizer.reconnect();
-            Log.d(TAG, "🎵 MusicVisualizer reconectado para WALLPAPER_MODE (enabled=" + musicVisualizer.isEnabled() + ")");
+            Log.d(TAG, "🎵 MusicVisualizer reconectado para WALLPAPER_MODE");
+        } else if (isVideoScene) {
+            Log.d(TAG, "🌊 Escena de video - MusicVisualizer NO conectado");
         }
     }
 
@@ -439,19 +447,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
                 SceneConstants.StopButton.DEFAULT_Y
             );
             Log.d(TAG, "📱 Modo ESTÁNDAR aplicado: " + sceneName);
-
-            // 🌊 AUTO-START: "Fondo del Mar" inicia automáticamente sin panel
-            boolean isOceanWallpaper = sceneName.contains("Fondo del Mar") || sceneName.contains("Ocean");
-            if (isOceanWallpaper && !modeController.isWallpaperMode()) {
-                Log.d(TAG, "🌊 AUTO-START: Iniciando Fondo del Mar directamente (sin loading)...");
-                // Pequeño delay para que GL context esté listo, luego activar directo
-                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                    if (!modeController.isWallpaperMode()) {
-                        // Saltar loading animation - ir directo a wallpaper
-                        onLoadingComplete();
-                    }
-                }, 300);
-            }
+            // 🌊 Ocean usa flujo normal: PANEL → PLAY → VIDEO (sin AUTO-START)
         }
     }
 
