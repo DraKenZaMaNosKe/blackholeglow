@@ -15,7 +15,6 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
-import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -31,15 +30,12 @@ import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.cardview.widget.CardView;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.secret.blackholeglow.LiveWallpaperService;
 import com.secret.blackholeglow.R;
-import com.secret.blackholeglow.core.WallpaperDirector;
 import com.secret.blackholeglow.WallpaperPreferences;
 import com.secret.blackholeglow.systems.AdsManager;
 import com.secret.blackholeglow.systems.EventBus;
@@ -70,12 +66,10 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
     // ════════════════════════════════════════
     // 🎮 Vistas y Variables
     // ════════════════════════════════════════
-    private GLSurfaceView glSurfaceView;
     private String nombre_wallpaper = "";
-    private WallpaperDirector wallpaperDirector;
+    private int previewResourceId = 0;
     private boolean waitingForWallpaperResult = false;
     private FrameLayout rootContainer;
-    private LinearLayout instructionsPanel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,74 +80,121 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         // 1️⃣ Recuperar parámetros
         nombre_wallpaper = getIntent().getStringExtra("WALLPAPER_ID");
         if (nombre_wallpaper == null) nombre_wallpaper = "Batalla Cósmica";
-        Log.d(TAG, "🌀 Wallpaper elegido: " + nombre_wallpaper);
+        previewResourceId = getIntent().getIntExtra("WALLPAPER_PREVIEW_ID", R.drawable.preview_space);
+        Log.d(TAG, "🌀 Wallpaper elegido: " + nombre_wallpaper + ", preview: " + previewResourceId);
 
-        // 2️⃣ Verificar si ya está activo
-
-        // 3️⃣ Construir layout
-        // 2️⃣ Construir layout (preferencia ya guardada en WallpaperAdapter)
+        // 2️⃣ Construir layout
         buildLayout();
     }
 
     /**
-     * Construye el layout completo de la Activity
+     * Construye el layout - Imagen de fondo + botones flotantes
      */
     private void buildLayout() {
         rootContainer = new FrameLayout(this);
         rootContainer.setBackgroundColor(COLOR_DARK_BG);
 
-        LinearLayout mainLayout = new LinearLayout(this);
-        mainLayout.setOrientation(LinearLayout.VERTICAL);
-
-        // ════════════════════════════════════════
-        // 🎬 GLSurfaceView (Preview)
-        // ════════════════════════════════════════
-        wallpaperDirector = new WallpaperDirector(this);
-        wallpaperDirector.changeScene(nombre_wallpaper);
-        wallpaperDirector.setPreviewMode(true);
-
-        glSurfaceView = new GLSurfaceView(this);
-        glSurfaceView.setEGLContextClientVersion(3); // OpenGL ES 3.0
-        glSurfaceView.setPreserveEGLContextOnPause(true);
-        glSurfaceView.setEGLConfigChooser(8, 8, 8, 8, 24, 0);
-        glSurfaceView.setRenderer(wallpaperDirector);
-
-        // ════════════════════════════════════════
-        // 📋 Panel de Instrucciones
-        // ════════════════════════════════════════
-        instructionsPanel = createInstructionsPanel();
-
-        // ════════════════════════════════════════
-        // 🔘 Botón Principal
-        // ════════════════════════════════════════
-        View buttonSection = createButtonSection();
-
-        // ════════════════════════════════════════
-        // 📐 Agregar vistas al layout
-        // ════════════════════════════════════════
-        // GLSurfaceView (peso 1 = ocupa espacio disponible)
-        LinearLayout.LayoutParams glParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f);
-        mainLayout.addView(glSurfaceView, glParams);
-
-        // Instrucciones
-        mainLayout.addView(instructionsPanel);
-
-        // Botón
-        mainLayout.addView(buttonSection);
-
-        rootContainer.addView(mainLayout, new FrameLayout.LayoutParams(
+        // Imagen de fondo (del wallpaper seleccionado)
+        ImageView backgroundImage = new ImageView(this);
+        backgroundImage.setImageResource(previewResourceId);
+        backgroundImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        rootContainer.addView(backgroundImage, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT));
+
+        // Gradiente inferior para los botones
+        View gradientOverlay = new View(this);
+        GradientDrawable gradient = new GradientDrawable(
+                GradientDrawable.Orientation.BOTTOM_TOP,
+                new int[]{Color.parseColor("#DD000000"), Color.TRANSPARENT});
+        gradientOverlay.setBackground(gradient);
+        FrameLayout.LayoutParams gradientParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, dpToPx(250));
+        gradientParams.gravity = Gravity.BOTTOM;
+        rootContainer.addView(gradientOverlay, gradientParams);
+
+        // Contenedor de botones (abajo)
+        LinearLayout buttonContainer = new LinearLayout(this);
+        buttonContainer.setOrientation(LinearLayout.VERTICAL);
+        buttonContainer.setPadding(dpToPx(30), dpToPx(20), dpToPx(30), dpToPx(40));
+        buttonContainer.setGravity(Gravity.CENTER);
+
+        // Boton principal
+        View mainButton = createMainButton();
+        buttonContainer.addView(mainButton);
+
+        // Boton desinstalar
+        View uninstallButton = createUninstallButton();
+        LinearLayout.LayoutParams uninstallParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        uninstallParams.setMargins(0, dpToPx(15), 0, 0);
+        buttonContainer.addView(uninstallButton, uninstallParams);
+
+        FrameLayout.LayoutParams buttonContainerParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT);
+        buttonContainerParams.gravity = Gravity.BOTTOM;
+        rootContainer.addView(buttonContainer, buttonContainerParams);
 
         setContentView(rootContainer);
 
         // Aplicar insets
-        ViewCompat.setOnApplyWindowInsetsListener(mainLayout, (v, insets) -> {
+        final LinearLayout finalButtonContainer = buttonContainer;
+        ViewCompat.setOnApplyWindowInsetsListener(rootContainer, (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(0, systemBars.top, 0, systemBars.bottom);
+            finalButtonContainer.setPadding(dpToPx(30), dpToPx(20), dpToPx(30), dpToPx(40) + systemBars.bottom);
             return insets;
         });
+    }
+
+    /**
+     * Crea el boton principal de definir fondo
+     */
+    private View createMainButton() {
+        LinearLayout button = new LinearLayout(this);
+        button.setOrientation(LinearLayout.HORIZONTAL);
+        button.setGravity(Gravity.CENTER);
+        button.setPadding(dpToPx(28), dpToPx(12), dpToPx(28), dpToPx(12));
+        button.setElevation(dpToPx(4));
+
+        GradientDrawable buttonBg = new GradientDrawable();
+        buttonBg.setShape(GradientDrawable.RECTANGLE);
+        buttonBg.setCornerRadius(dpToPx(25));
+        buttonBg.setColor(Color.parseColor("#00D9FF"));
+        button.setBackground(buttonBg);
+
+        TextView iconBtn = new TextView(this);
+        iconBtn.setText("\uD83C\uDF84");
+        iconBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        iconBtn.setPadding(0, 0, dpToPx(8), 0);
+        button.addView(iconBtn);
+
+        TextView textBtn = new TextView(this);
+        textBtn.setText("Instalar");
+        textBtn.setTextColor(Color.WHITE);
+        textBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        textBtn.setTypeface(null, Typeface.BOLD);
+        button.addView(textBtn);
+
+        button.setOnClickListener(v -> onSetWallpaperClicked());
+
+        button.setOnTouchListener((v, event) -> {
+            switch (event.getAction()) {
+                case android.view.MotionEvent.ACTION_DOWN:
+                    v.setScaleX(0.95f);
+                    v.setScaleY(0.95f);
+                    break;
+                case android.view.MotionEvent.ACTION_UP:
+                case android.view.MotionEvent.ACTION_CANCEL:
+                    v.setScaleX(1.0f);
+                    v.setScaleY(1.0f);
+                    break;
+            }
+            return false;
+        });
+
+        return button;
     }
 
     /**
@@ -380,80 +421,29 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
      * Crea el botón de desinstalar wallpaper
      */
     private View createUninstallButton() {
-        FrameLayout buttonFrame = new FrameLayout(this);
-
-        // Glow exterior rojo
-        View glowView = new View(this);
-        GradientDrawable glowBg = new GradientDrawable();
-        glowBg.setShape(GradientDrawable.RECTANGLE);
-        glowBg.setCornerRadius(dpToPx(30));
-        glowBg.setColor(Color.TRANSPARENT);
-        glowBg.setStroke(dpToPx(2), COLOR_RED);
-        glowView.setBackground(glowBg);
-        glowView.setAlpha(0.4f);
-
-        FrameLayout.LayoutParams glowParams = new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                dpToPx(50));
-        glowParams.setMargins(dpToPx(-3), dpToPx(-3), dpToPx(-3), dpToPx(-3));
-        buttonFrame.addView(glowView, glowParams);
-
-        // Botón principal
-        LinearLayout button = new LinearLayout(this);
-        button.setOrientation(LinearLayout.HORIZONTAL);
+        TextView button = new TextView(this);
+        button.setText("Desinstalar");
+        button.setTextColor(Color.parseColor("#AAAAAA"));
+        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         button.setGravity(Gravity.CENTER);
-        button.setPadding(dpToPx(20), dpToPx(12), dpToPx(20), dpToPx(12));
+        button.setPadding(dpToPx(20), dpToPx(8), dpToPx(20), dpToPx(8));
 
-        // Fondo del botón (outline style)
-        GradientDrawable buttonBg = new GradientDrawable();
-        buttonBg.setShape(GradientDrawable.RECTANGLE);
-        buttonBg.setCornerRadius(dpToPx(25));
-        buttonBg.setColor(Color.TRANSPARENT);
-        buttonBg.setStroke(dpToPx(2), COLOR_RED);
-        button.setBackground(buttonBg);
-
-        // Icono del botón
-        TextView iconBtn = new TextView(this);
-        iconBtn.setText("🗑️");
-        iconBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
-        iconBtn.setPadding(0, 0, dpToPx(10), 0);
-        button.addView(iconBtn);
-
-        // Texto del botón
-        TextView textBtn = new TextView(this);
-        textBtn.setText("Desinstalar wallpaper");
-        textBtn.setTextColor(COLOR_RED);
-        textBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        textBtn.setTypeface(null, Typeface.BOLD);
-        button.addView(textBtn);
-
-        FrameLayout.LayoutParams btnParams = new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                dpToPx(46));
-        buttonFrame.addView(button, btnParams);
-
-        // Click listener
         button.setOnClickListener(v -> showUninstallConfirmation());
 
-        // Efecto de presión
         button.setOnTouchListener((v, event) -> {
             switch (event.getAction()) {
                 case android.view.MotionEvent.ACTION_DOWN:
-                    v.setScaleX(0.97f);
-                    v.setScaleY(0.97f);
-                    v.setAlpha(0.8f);
+                    ((TextView) v).setTextColor(COLOR_RED);
                     break;
                 case android.view.MotionEvent.ACTION_UP:
                 case android.view.MotionEvent.ACTION_CANCEL:
-                    v.setScaleX(1.0f);
-                    v.setScaleY(1.0f);
-                    v.setAlpha(1.0f);
+                    ((TextView) v).setTextColor(Color.parseColor("#AAAAAA"));
                     break;
             }
             return false;
         });
 
-        return buttonFrame;
+        return button;
     }
 
     /**
@@ -817,23 +807,33 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
      * Procede a establecer el wallpaper después del anuncio
      */
     private void proceedToSetWallpaper() {
-        WallpaperPreferences prefs = WallpaperPreferences.getInstance(this);
+        // Guardar directamente en SharedPreferences (sincrono)
+        getSharedPreferences("blackholeglow_prefs", MODE_PRIVATE)
+            .edit()
+            .putString("selected_wallpaper", nombre_wallpaper)
+            .commit();
 
-        prefs.setSelectedWallpaper(nombre_wallpaper, (success, message) -> {
-            Log.d(TAG, "Wallpaper guardado: " + message);
+        Log.d(TAG, "✅ Wallpaper guardado directamente: " + nombre_wallpaper);
 
-            waitingForWallpaperResult = true;
+        // Verificar que se guardo
+        String saved = getSharedPreferences("blackholeglow_prefs", MODE_PRIVATE)
+            .getString("selected_wallpaper", "NONE");
+        Log.d(TAG, "✅ Verificacion - valor guardado: " + saved);
 
-            EventBus.get().publish("wallpaper_set",
-                    new EventBus.EventData().put("wallpaper_id", nombre_wallpaper));
+        waitingForWallpaperResult = true;
 
-            Intent intent = new Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER);
-            intent.putExtra(
-                    WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
-                    new android.content.ComponentName(this, LiveWallpaperService.class));
+        EventBus.get().publish("wallpaper_set",
+                new EventBus.EventData().put("wallpaper_id", nombre_wallpaper));
 
-            startActivity(intent);
-        });
+        Intent intent = new Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER);
+        intent.putExtra(
+                WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
+                new android.content.ComponentName(this, LiveWallpaperService.class));
+
+        startActivity(intent);
+
+        // Guardar tambien via WallpaperPreferences (para Firebase)
+        WallpaperPreferences.getInstance(this).setSelectedWallpaper(nombre_wallpaper, null);
     }
 
     // ════════════════════════════════════════
@@ -841,38 +841,13 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
     // ════════════════════════════════════════
 
     @Override
-    protected void onPause() {
-        super.onPause();
-        glSurfaceView.onPause();
-        if (wallpaperDirector != null) {
-            wallpaperDirector.pause();
-        }
-    }
-
-    @Override
     protected void onResume() {
         super.onResume();
-        glSurfaceView.onResume();
-
-        if (wallpaperDirector != null) {
-            wallpaperDirector.resume();
-        }
-
         if (waitingForWallpaperResult) {
             waitingForWallpaperResult = false;
-
             if (isOurWallpaperActive()) {
                 showSuccessMessage();
             }
-        }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (wallpaperDirector != null) {
-            wallpaperDirector.release();
-            wallpaperDirector = null;
         }
     }
 

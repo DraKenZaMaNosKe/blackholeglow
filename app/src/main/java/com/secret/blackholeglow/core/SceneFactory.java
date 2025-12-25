@@ -6,7 +6,7 @@ import android.util.Log;
 import com.secret.blackholeglow.CameraController;
 import com.secret.blackholeglow.TextureManager;
 import com.secret.blackholeglow.scenes.BatallaCosmicaScene;
-import com.secret.blackholeglow.scenes.ChristmasScene;
+import com.secret.blackholeglow.scenes.OceanFloorScene;
 import com.secret.blackholeglow.scenes.OceanPearlScene;
 import com.secret.blackholeglow.scenes.WallpaperScene;
 import com.secret.blackholeglow.systems.EventBus;
@@ -103,7 +103,10 @@ public class SceneFactory {
         registerScene("Batalla Cósmica", BatallaCosmicaScene.class);
         // Alias para compatibilidad con usuarios que tenían "Universo" guardado
         registerScene("Universo", BatallaCosmicaScene.class);
-        registerScene("Bosque Navideño", ChristmasScene.class);
+        // 🎄 Bosque Navideño: usa panel mode con imagen de fondo, no necesita árbol 3D Meshy
+        registerScene("Bosque Navideño", BatallaCosmicaScene.class);
+        // 🌊 Fondo del Mar: Video wallpaper alienígena con efectos shader
+        registerScene("Fondo del Mar", OceanFloorScene.class);
         Log.d(TAG, "🎭 " + registeredScenes.size() + " escenas registradas");
     }
 
@@ -271,3 +274,4 @@ public class SceneFactory {
         return defaultSceneName;
     }
 }
+

@@ -65,6 +65,7 @@ public class WallpaperPreferences {
         "Universo",           // Alias de Batalla Cósmica (compatibilidad SceneFactory)
         "Bosque Navideño",    // Escena navideña con arbol y nieve
         "Ocean Pearl",        // Fondo del mar con ostra y perla (modular)
+        "Fondo del Mar",      // Video wallpaper océano alienígena
 
         // ═══════════════════════════════════════════
         // 📦 WALLPAPERS LEGADOS (compatibilidad)
@@ -145,11 +146,10 @@ public class WallpaperPreferences {
 
                     if (isValidWallpaper(firebaseWallpaper)) {
                         Log.d(TAG, "☁️ Wallpaper desde Firebase: " + firebaseWallpaper);
-
-                        // Sincronizar a local (cache)
-                        saveLocalWallpaper(firebaseWallpaper);
-
-                        callback.onWallpaperReceived(firebaseWallpaper);
+                        // NO sincronizar a local - usar valor local que es mas reciente
+                        String local = getLocalWallpaper();
+                        Log.d(TAG, "📱 Usando valor local (prioridad): " + local);
+                        callback.onWallpaperReceived(local);
                     } else {
                         Log.w(TAG, "⚠️ Wallpaper inválido en Firebase: " + firebaseWallpaper);
                         String local = getLocalWallpaper();

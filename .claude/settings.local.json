@@ -60,7 +60,10 @@
       "Bash(git rm:*)",
       "Bash(git restore:*)",
       "WebSearch",
-      "WebFetch(domain:www.vulkan.org)"
+      "WebFetch(domain:www.vulkan.org)",
+      "Bash(for f in santa.glb santa_look.glb santa_wave.glb santa_walk.glb terrain.glb christmas_background.glb liveEarth.obj christmas_tree.glb christmas_pine.obj Solrealista.obj christmas_tree.obj ufo_attacker.obj ufo_scout.obj human_interceptor.obj SpaceStation.obj SaturnoMeshy.obj defender_ship.obj TierraMeshy.obj SolMeshy.obj)",
+      "Bash(do echo -n \"$f: \")",
+      "Bash(for f in christmas_background01 christmas_background preview_universo matasteroide agujero_negro tierra_meshy ufo_attacker_texture human_interceptor_texture projectile_player christmas_tree_texture sol_meshy saturno_meshy projectile_enemy texturaplanetatierra christmas_pine_texture roughness displacement diffuse explosion_sheet textura_roninplaneta christmas_bg universo001 forerunnercentralplates space_battle_bg normal textura_sol fondo_arbol00 universo03 spaceship_player)"
     ],
     "deny": [],
     "ask": []

@@ -248,7 +248,7 @@ public class WallpaperCatalog {
         catalog.add(new WallpaperItem.Builder("Batalla Cósmica")
                 .descripcion("Defiende la Tierra de meteoritos mientras el OVNI patrulla el cosmos. " +
                         "Sistema de combate espacial con escudos, armas láser y efectos visuales épicos.")
-                .preview(R.drawable.preview_universo)
+                .preview(R.drawable.preview_batalla_cosmica)
                 .sceneName("Batalla Cósmica")  // Nombre directo, sin alias confusos
                 .tier(WallpaperTier.FREE)
                 .badge("🔥 POPULAR")
@@ -256,13 +256,12 @@ public class WallpaperCatalog {
                 .featured()
                 .build());
 
-        catalog.add(new WallpaperItem.Builder("Bosque Navideño")
-                .descripcion("Un mágico bosque nevado con nieve cayendo y aurora boreal. "
-                        + "Toca la pantalla para crear ráfagas de nieve.")
-                .preview(R.drawable.christmas_background)
+        catalog.add(new WallpaperItem.Builder("Navidad")
+                .descripcion("Disfruta de la magia de la navidad en tu celular")
+                .preview(R.drawable.preview_navidad)
                 .sceneName("Bosque Navideño")
                 .tier(WallpaperTier.FREE)
-                .badge("🎄 NAVIDAD")
+                .badge("🎄")
                 .glow(0xFF00FF7F)  // Spring Green
                 .featured()
                 .build());
@@ -272,13 +271,14 @@ public class WallpaperCatalog {
         // ─────────────────────────────────────────────────────────────
 
         catalog.add(new WallpaperItem.Builder("Fondo del Mar")
-                .descripcion("Sumérgete en las profundidades del océano. " +
-                        "Peces tropicales, corales brillantes y una perla mágica te esperan en este paraíso submarino.")
-                .preview(R.drawable.preview_beach)
+                .descripcion("Sumérgete en las profundidades de un océano alienígena. " +
+                        "Plantas bioluminescentes y rayos de luz extraterrestre te esperan.")
+                .preview(R.drawable.preview_oceano_sc)
                 .sceneName("Fondo del Mar")
-                .tier(WallpaperTier.COMING_SOON)
-                .badge("🌊 PRÓXIMAMENTE")
-                .glow(0xFF00CED1)  // Dark Turquoise
+                .tier(WallpaperTier.FREE)
+                .badge("🌊 NUEVO")
+                .glow(0xFF9932CC)  // Purple para look alien
+                .featured()
                 .build());
 
         catalog.add(new WallpaperItem.Builder("La Mansión")
@@ -296,3 +296,7 @@ public class WallpaperCatalog {
                 getCountByTier(WallpaperTier.COMING_SOON) + " PRÓXIMAMENTE");
     }
 }
+
+
+
+

@@ -107,11 +107,20 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         wireActors();
 
         if (modeController.isPreviewMode()) {
-            // 🎄 Navideño ahora usa OpenGL - carga directa como todos los demás
-            Log.d(TAG, "PREVIEW MODE - cargando escena directamente: " + pendingSceneName);
-            modeController.goDirectToWallpaper();
-            sceneFactory.createScene(pendingSceneName);
+            boolean isChristmas = pendingSceneName != null &&
+                (pendingSceneName.contains("Bosque") || pendingSceneName.contains("Navide"));
+
+            if (isChristmas) {
+                // 🎄 Christmas usa PANEL_MODE, no escena 3D
+                Log.d(TAG, "PREVIEW MODE - Christmas usa PANEL_MODE: " + pendingSceneName);
+                // Panel mode ya esta configurado via changeScene()
+            } else {
+                Log.d(TAG, "PREVIEW MODE - cargando escena directamente: " + pendingSceneName);
+                modeController.goDirectToWallpaper();
+                sceneFactory.createScene(pendingSceneName);
+            }
         }
+        // Modo normal: PANEL_MODE → usuario presiona botón → WALLPAPER_MODE
 
         initialized = true;
         Log.d(TAG, "onSurfaceCreated END");
@@ -430,6 +439,19 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
                 SceneConstants.StopButton.DEFAULT_Y
             );
             Log.d(TAG, "📱 Modo ESTÁNDAR aplicado: " + sceneName);
+
+            // 🌊 AUTO-START: "Fondo del Mar" inicia automáticamente sin panel
+            boolean isOceanWallpaper = sceneName.contains("Fondo del Mar") || sceneName.contains("Ocean");
+            if (isOceanWallpaper && !modeController.isWallpaperMode()) {
+                Log.d(TAG, "🌊 AUTO-START: Iniciando Fondo del Mar directamente (sin loading)...");
+                // Pequeño delay para que GL context esté listo, luego activar directo
+                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                    if (!modeController.isWallpaperMode()) {
+                        // Saltar loading animation - ir directo a wallpaper
+                        onLoadingComplete();
+                    }
+                }, 300);
+            }
         }
     }
 
@@ -448,7 +470,10 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
     public void pause() {
         paused = true;
-        if (modeController != null && !modeController.isPreviewMode()) {
+        // Solo volver a panel mode si NO hay escena activa
+        // (escenas como Ocean deben mantenerse vivas, solo pausarse)
+        boolean hasActiveScene = sceneFactory != null && sceneFactory.hasCurrentScene();
+        if (modeController != null && !modeController.isPreviewMode() && !hasActiveScene) {
             switchToPanelMode();
         }
         if (sceneFactory != null) {
@@ -471,11 +496,13 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
     public void resume() {
         paused = false;
-        // GLStateManager maneja el timing automáticamente en beginFrame()
-        if (modeController != null && sceneFactory != null &&
-            modeController.isPreviewMode() && sceneFactory.hasCurrentScene()) {
+        // Reanudar escena si existe (preview mode o wallpaper con escena activa)
+        if (sceneFactory != null && sceneFactory.hasCurrentScene()) {
             sceneFactory.resumeCurrentScene();
-            modeController.goDirectToWallpaper();
+            // En preview mode, asegurar que estamos en WALLPAPER_MODE
+            if (modeController != null && modeController.isPreviewMode()) {
+                modeController.goDirectToWallpaper();
+            }
         }
 
         // 🎵 Reanudar MusicVisualizer - Reconectar en WALLPAPER_MODE o PANEL_MODE con Christmas
@@ -611,9 +638,8 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     }
 
     public void setPlaying(boolean playing) {
-        if (modeController == null) return;
-        if (playing && !modeController.isWallpaperMode()) startLoading();
-        else if (!playing && !modeController.isPanelMode()) switchToPanelMode();
+        // DESHABILITADO: El wallpaper NO debe reaccionar a play/pause de música
+        // Los wallpapers de video deben correr independiente de la música
     }
 
     // ═══════════════════════════════════════════════════════════════
