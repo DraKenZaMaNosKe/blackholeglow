@@ -12,6 +12,7 @@ import com.secret.blackholeglow.MusicVisualizer;
 import com.secret.blackholeglow.ResourceLoader;
 import com.secret.blackholeglow.TextureManager;
 import com.secret.blackholeglow.scenes.BatallaCosmicaScene;
+import com.secret.blackholeglow.scenes.OceanFloorScene;
 import com.secret.blackholeglow.scenes.SceneConstants;
 import com.secret.blackholeglow.scenes.WallpaperScene;
 import com.secret.blackholeglow.systems.AspectRatioManager;
@@ -218,6 +219,13 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
     private void updateWallpaperMode(float deltaTime) {
         if (musicVisualizer != null) {
+            // 🔧 AUTO-RECOVERY: Si estamos renderizando pero el visualizer está pausado,
+            // reanudarlo automáticamente (fix para callbacks desordenados de Android)
+            if (!musicVisualizer.isEnabled()) {
+                Log.d(TAG, "🔧 Auto-recovery: MusicVisualizer pausado durante render, reanudando...");
+                musicVisualizer.resume();
+            }
+
             WallpaperScene scene = sceneFactory.getCurrentScene();
             if (scene instanceof BatallaCosmicaScene) {
                 // Usar las 32 bandas de frecuencia para mejor visualización
@@ -229,6 +237,11 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
                     musicVisualizer.getBassLevel(),
                     musicVisualizer.getMidLevel(),
                     musicVisualizer.getTrebleLevel()
+                );
+            } else if (scene instanceof OceanFloorScene) {
+                // 🌊 Fondo del Mar también tiene ecualizador
+                ((OceanFloorScene) scene).updateMusicBands(
+                    musicVisualizer.getFrequencyBands()
                 );
             }
         }
@@ -300,14 +313,11 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             panelRenderer.setGreetingEnabled(true);
         }
 
-        // 🎵 Reconexión del MusicVisualizer (solo para escenas que lo necesitan)
-        // Las escenas de video NO necesitan música
-        if (musicVisualizer != null && !isVideoScene) {
+        // 🎵 Reconexión del MusicVisualizer (todas las escenas tienen ecualizador)
+        if (musicVisualizer != null) {
             Log.d(TAG, "🎵 Forzando reconexión de MusicVisualizer para WALLPAPER_MODE...");
             musicVisualizer.reconnect();
             Log.d(TAG, "🎵 MusicVisualizer reconectado para WALLPAPER_MODE");
-        } else if (isVideoScene) {
-            Log.d(TAG, "🌊 Escena de video - MusicVisualizer NO conectado");
         }
     }
 
@@ -501,26 +511,11 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             }
         }
 
-        // 🎵 Reanudar MusicVisualizer - Reconectar en WALLPAPER_MODE o PANEL_MODE con Christmas
-        // para evitar problemas de conexión perdida
+        // 🎵 Reanudar MusicVisualizer - SIEMPRE reconectar para evitar estados inválidos
+        // después de ciclos rápidos de pause/resume del sistema Android
         if (musicVisualizer != null) {
-            boolean needsReconnect = false;
-
-            if (modeController != null && modeController.isWallpaperMode()) {
-                // En WALLPAPER_MODE siempre reconectar
-                needsReconnect = true;
-                Log.d(TAG, "🎵 Resume en WALLPAPER_MODE: Reconectando MusicVisualizer...");
-            } else if (panelRenderer != null && panelRenderer.isChristmasModeEnabled()) {
-                // 🎄 En PANEL_MODE con Christmas, también reconectar para el ecualizador
-                needsReconnect = true;
-                Log.d(TAG, "🎵 Resume en PANEL_MODE (Christmas): Reconectando MusicVisualizer...");
-            }
-
-            if (needsReconnect) {
-                musicVisualizer.reconnect();
-            } else {
-                musicVisualizer.resume();
-            }
+            // SIMPLIFICADO: siempre llamar resume() que maneja reconexión automática si falla
+            musicVisualizer.resume();
             Log.d(TAG, "🎵 MusicVisualizer estado después de resume: enabled=" + musicVisualizer.isEnabled());
         }
         Log.d(TAG, "WallpaperDirector reanudado");

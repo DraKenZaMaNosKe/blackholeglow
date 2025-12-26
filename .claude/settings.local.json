@@ -65,7 +65,10 @@
       "Bash(do echo -n \"$f: \")",
       "Bash(for f in christmas_background01 christmas_background preview_universo matasteroide agujero_negro tierra_meshy ufo_attacker_texture human_interceptor_texture projectile_player christmas_tree_texture sol_meshy saturno_meshy projectile_enemy texturaplanetatierra christmas_pine_texture roughness displacement diffuse explosion_sheet textura_roninplaneta christmas_bg universo001 forerunnercentralplates space_battle_bg normal textura_sol fondo_arbol00 universo03 spaceship_player)",
       "Bash(timeout 3 D:/adb/platform-tools/adb.exe logcat -d -s \"VideoRenderer\" \"OceanScene\" \"WallpaperDirector\")",
-      "Bash(timeout 3 D:/adb/platform-tools/adb.exe logcat:*)"
+      "Bash(timeout 3 D:/adb/platform-tools/adb.exe logcat:*)",
+      "Bash(sort:*)",
+      "Bash(echo:*)",
+      "Bash(javac:*)"
     ],
     "deny": [],
     "ask": []

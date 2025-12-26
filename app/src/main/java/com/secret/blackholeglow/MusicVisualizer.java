@@ -156,15 +156,15 @@ public class MusicVisualizer {
             // 🎵 AUTO-RESUME: Si había música, enviar comandos PLAY con reintentos
             // Samsung puede tardar en responder, así que intentamos varias veces
             // ════════════════════════════════════════════════════════════════════════
-            if (wasMusicPlaying && context != null) {
-                Log.d(TAG, "[MusicVisualizer] 🎵 Programando auto-resume de música (3 intentos)...");
+            // 🚫 DISABLED: if (wasMusicPlaying && context != null) {
+                // Log.d(TAG, "[MusicVisualizer] 🎵 Programando auto-resume de música (3 intentos)...");
                 // Intento 1: después de 800ms
-                handler.postDelayed(this::sendMediaPlayCommand, 800);
+                // handler.postDelayed(this::sendMediaPlayCommand, 800);
                 // Intento 2: después de 1500ms (por si el primero no funcionó)
-                handler.postDelayed(this::sendMediaPlayCommand, 1500);
+                // handler.postDelayed(this::sendMediaPlayCommand, 1500);
                 // Intento 3: después de 2500ms (último intento)
-                handler.postDelayed(this::sendMediaPlayCommand, 2500);
-            }
+                // handler.postDelayed(this::sendMediaPlayCommand, 2500);
+            // }
 
             return true;
 
@@ -605,12 +605,12 @@ public class MusicVisualizer {
             Log.d(TAG, "[MusicVisualizer] ✓ Inicializado correctamente (internal)");
 
             // 🎵 AUTO-RESUME con reintentos
-            if (wasMusicPlaying && context != null) {
-                Log.d(TAG, "[MusicVisualizer] 🎵 Programando auto-resume de música (3 intentos)...");
-                handler.postDelayed(this::sendMediaPlayCommand, 800);
-                handler.postDelayed(this::sendMediaPlayCommand, 1500);
-                handler.postDelayed(this::sendMediaPlayCommand, 2500);
-            }
+            // 🚫 DISABLED: if (wasMusicPlaying && context != null) {
+                // Log.d(TAG, "[MusicVisualizer] 🎵 Programando auto-resume de música (3 intentos)...");
+                // handler.postDelayed(this::sendMediaPlayCommand, 800);
+                // handler.postDelayed(this::sendMediaPlayCommand, 1500);
+                // handler.postDelayed(this::sendMediaPlayCommand, 2500);
+            // }
 
             return true;
 
@@ -665,33 +665,35 @@ public class MusicVisualizer {
      * Optimizado para reanudaciones frecuentes con reconexión automática si falla
      */
     public void resume() {
+        // 🔧 SIMPLIFICADO: Siempre intentar habilitar, sin importar el estado previo
+        // Esto evita problemas con estados inconsistentes después de ciclos rápidos pause/resume
+
         if (visualizer == null) {
-            // Visualizer fue liberado, reinicializar
+            // Visualizer fue liberado, reinicializar completamente
             Log.d(TAG, "[MusicVisualizer] Reinicializando visualizer (era null)...");
             initialize();
             return;
         }
 
-        if (!isEnabled) {
-            try {
+        try {
+            // Siempre intentar habilitar (es idempotente si ya está habilitado)
+            if (!visualizer.getEnabled()) {
                 visualizer.setEnabled(true);
-                isEnabled = true;
-                // Reset timestamps para evitar falsos positivos de "sin audio"
-                lastAudioDataTime = System.currentTimeMillis();
                 Log.d(TAG, "[MusicVisualizer] Reanudado correctamente");
-            } catch (IllegalStateException e) {
-                Log.w(TAG, "[MusicVisualizer] Error al reanudar: " + e.getMessage());
-                // El visualizer puede estar en estado inválido, reconectar
-                Log.d(TAG, "[MusicVisualizer] Intentando reconectar...");
-                reconnect();
-            } catch (Exception e) {
-                Log.e(TAG, "[MusicVisualizer] Error inesperado al reanudar: " + e.getMessage());
-                // Forzar reinicialización completa
-                visualizer = null;
-                initialize();
             }
-        } else {
-            Log.d(TAG, "[MusicVisualizer] Ya estaba habilitado, no hace falta reanudar");
+            isEnabled = true;
+            // Reset timestamps para evitar falsos positivos de "sin audio"
+            lastAudioDataTime = System.currentTimeMillis();
+        } catch (IllegalStateException e) {
+            Log.w(TAG, "[MusicVisualizer] Error al reanudar: " + e.getMessage());
+            // El visualizer puede estar en estado inválido, reconectar
+            Log.d(TAG, "[MusicVisualizer] Reconectando por estado inválido...");
+            reconnect();
+        } catch (Exception e) {
+            Log.e(TAG, "[MusicVisualizer] Error inesperado al reanudar: " + e.getMessage());
+            // Forzar reinicialización completa
+            visualizer = null;
+            initialize();
         }
     }
 
