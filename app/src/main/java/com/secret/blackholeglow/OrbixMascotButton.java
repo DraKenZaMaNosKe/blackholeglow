@@ -15,7 +15,7 @@ public class OrbixMascotButton implements SceneObject {
     private Context context;
     private int textureId = 0;
     private int shaderProgram = 0;
-    private int aPositionLoc, aTexCoordLoc, uTextureLoc, uTimeLoc, uAlphaLoc, uScaleLoc;
+    private int aPositionLoc, aTexCoordLoc, uTextureLoc, uTimeLoc, uAlphaLoc, uScaleLoc, uCenterLoc;
     private FloatBuffer vertexBuffer;
     private float time = 0f;
     private float size = 0.12f;
@@ -36,9 +36,10 @@ public class OrbixMascotButton implements SceneObject {
             "in vec2 aTexCoord;\n" +
             "out vec2 vTexCoord;\n" +
             "uniform float uScale;\n" +
+            "uniform vec2 uCenter;\n" +
             "void main() {\n" +
             "    vTexCoord = aTexCoord;\n" +
-            "    gl_Position = vec4(aPosition * uScale, 0.0, 1.0);\n" +
+            "    gl_Position = vec4(aPosition * uScale + uCenter, 0.0, 1.0);\n" +
             "}\n";
 
         String fs =
@@ -97,6 +98,7 @@ public class OrbixMascotButton implements SceneObject {
         uTimeLoc = GLES30.glGetUniformLocation(shaderProgram, "uTime");
         uAlphaLoc = GLES30.glGetUniformLocation(shaderProgram, "uAlpha");
         uScaleLoc = GLES30.glGetUniformLocation(shaderProgram, "uScale");
+        uCenterLoc = GLES30.glGetUniformLocation(shaderProgram, "uCenter");
         float[] verts = { -1f, -1f, 0f, 1f, 1f, -1f, 1f, 1f, -1f, 1f, 0f, 0f, 1f, 1f, 1f, 0f };
         ByteBuffer bb = ByteBuffer.allocateDirect(verts.length * 4);
         bb.order(ByteOrder.nativeOrder());
@@ -158,6 +160,7 @@ public class OrbixMascotButton implements SceneObject {
         GLES30.glUniform1f(uTimeLoc, time);
         GLES30.glUniform1f(uAlphaLoc, alpha);
         GLES30.glUniform1f(uScaleLoc, finalScale);
+        GLES30.glUniform2f(uCenterLoc, centerX, centerY);
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
         GLES30.glUniform1i(uTextureLoc, 0);

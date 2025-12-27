@@ -313,11 +313,14 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             panelRenderer.setGreetingEnabled(true);
         }
 
-        // 🎵 Reconexión del MusicVisualizer (todas las escenas tienen ecualizador)
-        if (musicVisualizer != null) {
+        // 🎵 Reconexión del MusicVisualizer (SOLO para escenas que lo necesitan)
+        // Video scenes (Fondo del Mar) NO reconectan para no interrumpir Spotify
+        if (musicVisualizer != null && !isVideoScene) {
             Log.d(TAG, "🎵 Forzando reconexión de MusicVisualizer para WALLPAPER_MODE...");
             musicVisualizer.reconnect();
             Log.d(TAG, "🎵 MusicVisualizer reconectado para WALLPAPER_MODE");
+        } else if (isVideoScene) {
+            Log.d(TAG, "🌊 Video scene - NO reconectar MusicVisualizer (preservar Spotify)");
         }
     }
 
@@ -476,12 +479,18 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
     public void pause() {
         paused = true;
-        // Solo volver a panel mode si NO hay escena activa
-        // (escenas como Ocean deben mantenerse vivas, solo pausarse)
         boolean hasActiveScene = sceneFactory != null && sceneFactory.hasCurrentScene();
-        if (modeController != null && !modeController.isPreviewMode() && !hasActiveScene) {
-            switchToPanelMode();
+
+        // 🎮 BATALLA CÓSMICA: Siempre volver a Arcade Mode al pausar
+        // (es muy pesado, solo debe renderizar cuando el usuario está mirando)
+        // Otros wallpapers: NUNCA vuelven a panel, solo se pausan
+        if (hasActiveScene && sceneFactory.getCurrentScene() instanceof BatallaCosmicaScene) {
+            if (modeController != null && !modeController.isPreviewMode()) {
+                Log.d(TAG, "🎮 Batalla Cósmica pausada → Volviendo a Arcade Mode");
+                switchToPanelMode();
+            }
         }
+
         if (sceneFactory != null) {
             sceneFactory.pauseCurrentScene();
         }
