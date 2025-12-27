@@ -44,27 +44,39 @@ public class AbyssalLurker3D {
     // ═══════════════════════════════════════════════════════════════════════════
     // ESTADO DEL PEZ
     // ═══════════════════════════════════════════════════════════════════════════
-    private float posX = -1.0f;      // Empieza a la izquierda
-    private float posY = 0.0f;       // Centro
-    private float speedX = 0.25f;    // Velocidad de nado
-    private float scale = 0.25f;     // Escala más pequeña
+    private float posX = -1.0f;
+    private float posY = 0.0f;
+    private float scale = 0.25f;
     private float time = 0f;
     private boolean movingRight = true;   // Mirando a la derecha
     private float rotationY = 90f;   // Mirando a la derecha (90°)
+    private float rotationX = 0f;    // Inclinación arriba/abajo
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // PROFUNDIDAD (Z simulado)
+    // 👆 SISTEMA DE TOUCH - Nada hacia donde toques
     // ═══════════════════════════════════════════════════════════════════════════
-    private float depth = 0.5f;
-    private float targetDepth = 0.5f;
-    private float depthSpeed = 0.2f;
-    private float depthTimer = 0f;
-    private float nextDepthChange = 4f;
+    private boolean hasTarget = false;
+    private float targetX = 0f;
+    private float targetY = 0f;
+    private static final float SWIM_SPEED = 0.3f;         // Velocidad de nado
+    private static final float TURN_SPEED = 2.5f;         // Velocidad de giro
+    private static final float ARRIVAL_DISTANCE = 0.1f;   // Distancia para "llegar"
 
-    private static final float SCALE_CLOSE = 0.28f;   // Cerca = un poco más grande
-    private static final float SCALE_FAR = 0.15f;     // Lejos = más pequeño
-    private static final float Y_CLOSE = -0.1f;       // Centro-abajo
-    private static final float Y_FAR = 0.15f;         // Centro-arriba
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🐟 DIRECCIÓN DE NADO LIBRE (después del touch)
+    // ═══════════════════════════════════════════════════════════════════════════
+    private float swimDirX = 1f;          // Dirección actual X (-1 a 1)
+    private float swimDirY = 0f;          // Dirección actual Y (-1 a 1)
+    private float dirChangeTimer = 0f;    // Timer para cambiar dirección
+    private float nextDirChange = 3f;     // Segundos hasta próximo cambio
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ESCALA (basada en posición Y - arriba=lejos, abajo=cerca)
+    // ═══════════════════════════════════════════════════════════════════════════
+    private static final float SCALE_CLOSE = 0.28f;   // Abajo = grande
+    private static final float SCALE_FAR = 0.15f;     // Arriba = pequeño
+    private static final float Y_MIN = -0.6f;         // Límite inferior
+    private static final float Y_MAX = 0.5f;          // Límite superior
 
     // ═══════════════════════════════════════════════════════════════════════════
     // OPENGL
@@ -139,63 +151,45 @@ public class AbyssalLurker3D {
     // INICIALIZACIÓN
     // ═══════════════════════════════════════════════════════════════════════════
     public void initialize() {
-        Log.d(TAG, "═══════════════════════════════════════════════");
-        Log.d(TAG, "🐟 Inicializando Abyssal Lurker 3D");
-        Log.d(TAG, "═══════════════════════════════════════════════");
-
         // Compilar shaders
         int vs = compileShader(GLES20.GL_VERTEX_SHADER, VERTEX_SHADER);
         int fs = compileShader(GLES20.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
-        Log.d(TAG, "Compiled: vs=" + vs + " fs=" + fs);
 
         shaderProgram = GLES20.glCreateProgram();
         GLES20.glAttachShader(shaderProgram, vs);
         GLES20.glAttachShader(shaderProgram, fs);
         GLES20.glLinkProgram(shaderProgram);
 
-        // Verificar link
         int[] linked = new int[1];
         GLES20.glGetProgramiv(shaderProgram, GLES20.GL_LINK_STATUS, linked, 0);
         if (linked[0] == 0) {
             Log.e(TAG, "Link error: " + GLES20.glGetProgramInfoLog(shaderProgram));
         }
 
-        // Obtener locations
         aPosLoc = GLES20.glGetAttribLocation(shaderProgram, "a_Position");
         aTexLoc = GLES20.glGetAttribLocation(shaderProgram, "a_TexCoord");
         uMVPLoc = GLES20.glGetUniformLocation(shaderProgram, "u_MVP");
         uTextureLoc = GLES20.glGetUniformLocation(shaderProgram, "u_Texture");
         uTimeLoc = GLES20.glGetUniformLocation(shaderProgram, "u_Time");
 
-        Log.d(TAG, "🔧 Locations: pos=" + aPosLoc + " tex=" + aTexLoc + " mvp=" + uMVPLoc);
-
-        // Cargar modelo OBJ
         loadModel();
-
-        // Cargar textura
         loadTexture();
 
-        // Configurar matrices de vista/proyección fijas (ortográfica)
+        // Matrices fijas (calculadas una sola vez)
         Matrix.setIdentityM(viewMatrix, 0);
-        Matrix.setLookAtM(viewMatrix, 0,
-            0f, 0f, 3f,   // Cámara
-            0f, 0f, 0f,   // Target
-            0f, 1f, 0f);  // Up
+        Matrix.setLookAtM(viewMatrix, 0, 0f, 0f, 3f, 0f, 0f, 0f, 0f, 1f, 0f);
+        Matrix.orthoM(projMatrix, 0, -1f, 1f, -16f/9f, 16f/9f, 0.1f, 100f);
 
         initialized = true;
-        Log.d(TAG, "✅ Abyssal Lurker 3D listo");
     }
 
     private void loadModel() {
         try {
-            // flipV=true para modelos Meshy AI (texturas invertidas)
             ObjLoader.Mesh mesh = ObjLoader.loadObj(context, OBJ_FILE, true);
-            Log.d(TAG, "📦 Modelo: " + mesh.vertexCount + " vértices, " + mesh.faces.size() + " caras");
-
             this.vertexBuffer = mesh.vertexBuffer;
             this.uvBuffer = mesh.uvBuffer;
 
-            // Construir índices
+            // Construir índices (triangular fan)
             int totalIndices = 0;
             for (int[] face : mesh.faces) {
                 totalIndices += (face.length - 2) * 3;
@@ -211,7 +205,6 @@ public class AbyssalLurker3D {
                     indices[idx++] = face[i + 1];
                 }
             }
-
             this.indexCount = totalIndices;
 
             ByteBuffer ibb = ByteBuffer.allocateDirect(indices.length * 4);
@@ -219,12 +212,10 @@ public class AbyssalLurker3D {
             indexBuffer = ibb.asIntBuffer();
             indexBuffer.put(indices);
             indexBuffer.position(0);
-
             modelLoaded = true;
-            Log.d(TAG, "✅ Modelo cargado: " + indexCount + " índices");
 
         } catch (IOException e) {
-            Log.e(TAG, "❌ Error cargando modelo: " + e.getMessage());
+            Log.e(TAG, "Error modelo: " + e.getMessage());
             modelLoaded = false;
         }
     }
@@ -240,7 +231,6 @@ public class AbyssalLurker3D {
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
 
-        // Cargar desde drawable
         BitmapFactory.Options opts = new BitmapFactory.Options();
         opts.inScaled = false;
         Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(),
@@ -248,108 +238,171 @@ public class AbyssalLurker3D {
 
         if (bitmap != null) {
             GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
-            Log.d(TAG, "🎨 Textura: " + bitmap.getWidth() + "x" + bitmap.getHeight());
             bitmap.recycle();
-        } else {
-            Log.e(TAG, "❌ No se pudo cargar textura");
         }
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // UPDATE - Movimiento con profundidad
+    // 👆 SETTER PARA TOUCH TARGET
     // ═══════════════════════════════════════════════════════════════════════════
+    public void setTargetPosition(float x, float y) {
+        this.targetX = x;
+        this.targetY = y;
+        this.hasTarget = true;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // UPDATE - Nadar hacia touch o libremente
+    // ═══════════════════════════════════════════════════════════════════════════
+
     public void update(float deltaTime) {
         time += deltaTime;
         if (time > 62.83f) time -= 62.83f;
-        depthTimer += deltaTime;
 
-        // Cambio de profundidad cada cierto tiempo
-        if (depthTimer > nextDepthChange) {
-            depthTimer = 0f;
-            nextDepthChange = 3f + (float)(Math.random() * 5f);
+        if (hasTarget) {
+            // ════════════════════════════════════════════════════════════════════
+            // 👆 NADAR HACIA DONDE TOCÓ EL USUARIO
+            // ════════════════════════════════════════════════════════════════════
+            float dx = targetX - posX;
+            float dy = targetY - posY;
+            float dist = (float)Math.sqrt(dx * dx + dy * dy);
 
-            if (depth < 0.3f) {
-                targetDepth = (float)(Math.random() * 0.5f + 0.4f);
-            } else if (depth > 0.7f) {
-                targetDepth = (float)(Math.random() * 0.5f);
+            if (dist < ARRIVAL_DISTANCE) {
+                // Llegó → elegir dirección aleatoria y seguir nadando
+                hasTarget = false;
+                pickRandomDirection();
             } else {
-                targetDepth = (float)(Math.random());
+                // Nadar hacia el target
+                float dirX = dx / dist;
+                float dirY = dy / dist;
+
+                posX += dirX * SWIM_SPEED * deltaTime;
+                posY += dirY * SWIM_SPEED * deltaTime;
+
+                // Girar hacia el target (Y = izquierda/derecha)
+                movingRight = dx > 0;
+                float targetRotY = movingRight ? 90f : -90f;
+                rotationY += (targetRotY - rotationY) * TURN_SPEED * deltaTime;
+
+                // Inclinar hacia arriba/abajo (X = pitch)
+                // arriba (dirY > 0) = muestra espalda (+), abajo (dirY < 0) = muestra frente (-)
+                float targetRotX = -dirY * 35f;  // Max 35 grados
+                rotationX += (targetRotX - rotationX) * TURN_SPEED * deltaTime;
             }
-        }
 
-        // Interpolar profundidad suavemente
-        float depthDiff = targetDepth - depth;
-        depth += depthDiff * depthSpeed * deltaTime;
-        depth = Math.max(0f, Math.min(1f, depth));
-
-        // Escala según profundidad (lejos = pequeño)
-        scale = SCALE_CLOSE + (SCALE_FAR - SCALE_CLOSE) * depth;
-
-        // Posición Y según profundidad (lejos = arriba)
-        float baseY = Y_CLOSE + (Y_FAR - Y_CLOSE) * depth;
-
-        // Velocidad según profundidad (lejos = más lento)
-        float currentSpeed = speedX * (1.0f - depth * 0.5f);
-
-        // Movimiento horizontal
-        if (movingRight) {
-            posX += currentSpeed * deltaTime;
-            if (posX > 1.4f) {
-                movingRight = false;
-            }
         } else {
-            posX -= currentSpeed * deltaTime;
-            if (posX < -1.4f) {
-                movingRight = true;
+            // ════════════════════════════════════════════════════════════════════
+            // 🐟 NADAR LIBREMENTE EN LA DIRECCIÓN ACTUAL
+            // ════════════════════════════════════════════════════════════════════
+
+            // Mover en la dirección actual (mismo speed que hacia el touch)
+            posX += swimDirX * SWIM_SPEED * deltaTime;
+            posY += swimDirY * SWIM_SPEED * deltaTime;
+
+            // Girar hacia la dirección de nado (Y = izquierda/derecha)
+            movingRight = swimDirX > 0;
+            float targetRotY = movingRight ? 90f : -90f;
+            rotationY += (targetRotY - rotationY) * TURN_SPEED * deltaTime;
+
+            // Inclinar hacia arriba/abajo (X = pitch)
+            float targetRotX = -swimDirY * 35f;  // Max 35 grados
+            rotationX += (targetRotX - rotationX) * TURN_SPEED * deltaTime;
+
+            // Cambiar dirección gradualmente cada cierto tiempo
+            dirChangeTimer += deltaTime;
+            if (dirChangeTimer > nextDirChange) {
+                dirChangeTimer = 0f;
+                nextDirChange = 2f + (float)(Math.random() * 4f);
+
+                // Ajustar dirección ligeramente (no cambio brusco)
+                swimDirX += ((float)Math.random() - 0.5f) * 0.5f;
+                swimDirY += ((float)Math.random() - 0.5f) * 0.3f;
+                normalizeDirection();
+            }
+
+            // Rebotar en los bordes suavemente
+            if (posX > 1.3f) {
+                swimDirX = -Math.abs(swimDirX);  // Ir hacia la izquierda
+            } else if (posX < -1.3f) {
+                swimDirX = Math.abs(swimDirX);   // Ir hacia la derecha
+            }
+
+            if (posY > Y_MAX) {
+                swimDirY = -Math.abs(swimDirY);  // Ir hacia abajo
+            } else if (posY < Y_MIN) {
+                swimDirY = Math.abs(swimDirY);   // Ir hacia arriba
             }
         }
 
-        // Rotación suave para voltear
-        float targetRotY = movingRight ? 90f : -90f;
-        rotationY += (targetRotY - rotationY) * 3f * deltaTime;
+        // Limitar posición
+        posX = Math.max(-1.5f, Math.min(1.5f, posX));
+        posY = Math.max(Y_MIN - 0.1f, Math.min(Y_MAX + 0.1f, posY));
 
-        // Ondulación Y
-        float waveY = (float)Math.sin(time * 1.2) * 0.015f * (1f - depth * 0.5f);
-        posY = baseY + waveY;
+        // Escala basada en Y (arriba=lejos/pequeño, abajo=cerca/grande)
+        float t = (posY - Y_MIN) / (Y_MAX - Y_MIN);  // 0=abajo, 1=arriba
+        scale = SCALE_CLOSE + (SCALE_FAR - SCALE_CLOSE) * t;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🎲 ELEGIR DIRECCIÓN ALEATORIA
+    // ═══════════════════════════════════════════════════════════════════════════
+    private void pickRandomDirection() {
+        // Ángulo aleatorio entre -60° y 60° (no ir directo arriba/abajo)
+        float angle = (float)((Math.random() - 0.5) * Math.PI * 0.6);
+
+        // Si estaba yendo a la derecha, continuar mayormente a la derecha (o viceversa)
+        if (Math.random() > 0.3) {
+            // 70% probabilidad de mantener dirección general
+            swimDirX = movingRight ? (float)Math.cos(angle) : -(float)Math.cos(angle);
+        } else {
+            // 30% probabilidad de cambiar dirección
+            swimDirX = movingRight ? -(float)Math.cos(angle) : (float)Math.cos(angle);
+        }
+        swimDirY = (float)Math.sin(angle);
+
+        normalizeDirection();
+    }
+
+    private void normalizeDirection() {
+        float len = (float)Math.sqrt(swimDirX * swimDirX + swimDirY * swimDirY);
+        if (len > 0.01f) {
+            swimDirX /= len;
+            swimDirY /= len;
+        } else {
+            swimDirX = 1f;
+            swimDirY = 0f;
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // DRAW
     // ═══════════════════════════════════════════════════════════════════════════
     public void draw() {
-        if (!initialized || !modelLoaded || textureId == -1) return;
+        if (!initialized || !modelLoaded) return;
 
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
         GLES20.glEnable(GLES20.GL_BLEND);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
-
         GLES20.glUseProgram(shaderProgram);
 
-        // Proyección ortográfica
-        float aspect = 9f / 16f;  // Portrait
-        Matrix.orthoM(projMatrix, 0, -1f, 1f, -1f/aspect, 1f/aspect, 0.1f, 100f);
-
-        // Matriz de modelo
+        // Matriz de modelo (posición, rotación, escala)
         Matrix.setIdentityM(modelMatrix, 0);
         Matrix.translateM(modelMatrix, 0, posX, posY, 0f);
-        Matrix.rotateM(modelMatrix, 0, rotationY, 0f, 1f, 0f);  // Flip horizontal
-        Matrix.rotateM(modelMatrix, 0, -15f, 1f, 0f, 0f);       // Inclinación
+        Matrix.rotateM(modelMatrix, 0, rotationY, 0f, 1f, 0f);
+        Matrix.rotateM(modelMatrix, 0, rotationX, 1f, 0f, 0f);
         Matrix.scaleM(modelMatrix, 0, scale, scale, scale);
 
         // MVP = Proj * View * Model
         Matrix.multiplyMM(tempMatrix, 0, viewMatrix, 0, modelMatrix, 0);
         Matrix.multiplyMM(mvpMatrix, 0, projMatrix, 0, tempMatrix, 0);
 
-        // Uniforms
         GLES20.glUniformMatrix4fv(uMVPLoc, 1, false, mvpMatrix, 0);
         GLES20.glUniform1f(uTimeLoc, time);
 
-        // Textura
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
         GLES20.glUniform1i(uTextureLoc, 0);
 
-        // Atributos
         vertexBuffer.position(0);
         GLES20.glEnableVertexAttribArray(aPosLoc);
         GLES20.glVertexAttribPointer(aPosLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
@@ -358,19 +411,14 @@ public class AbyssalLurker3D {
         GLES20.glEnableVertexAttribArray(aTexLoc);
         GLES20.glVertexAttribPointer(aTexLoc, 2, GLES20.GL_FLOAT, false, 0, uvBuffer);
 
-        // Dibujar
         indexBuffer.position(0);
         GLES20.glDrawElements(GLES20.GL_TRIANGLES, indexCount, GLES20.GL_UNSIGNED_INT, indexBuffer);
 
-        // Limpiar
         GLES20.glDisableVertexAttribArray(aPosLoc);
         GLES20.glDisableVertexAttribArray(aTexLoc);
         GLES20.glDisable(GLES20.GL_DEPTH_TEST);
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // UTILIDADES
-    // ═══════════════════════════════════════════════════════════════════════════
     private int compileShader(int type, String source) {
         int shader = GLES20.glCreateShader(type);
         GLES20.glShaderSource(shader, source);
@@ -379,7 +427,7 @@ public class AbyssalLurker3D {
         int[] compiled = new int[1];
         GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0);
         if (compiled[0] == 0) {
-            Log.e(TAG, "❌ Shader error: " + GLES20.glGetShaderInfoLog(shader));
+            Log.e(TAG, "Shader error: " + GLES20.glGetShaderInfoLog(shader));
             GLES20.glDeleteShader(shader);
             return 0;
         }
@@ -396,8 +444,5 @@ public class AbyssalLurker3D {
             shaderProgram = 0;
         }
         initialized = false;
-        Log.d(TAG, "🗑️ AbyssalLurker3D liberado");
     }
-
-    public boolean isModelLoaded() { return modelLoaded; }
 }

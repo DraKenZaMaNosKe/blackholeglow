@@ -8,22 +8,31 @@ import com.secret.blackholeglow.EqualizerBarsDJ;
 import com.secret.blackholeglow.video.MediaCodecVideoRenderer;
 import com.secret.blackholeglow.video.AbyssalLurker3D;
 import com.secret.blackholeglow.video.ForegroundMask;
+import com.secret.blackholeglow.video.DecorationSprite;
 
 /**
- * OceanFloorScene - Fondo del Mar Alienígena
- *
- * Video (MediaCodec directo) + Pez 3D + Máscara de profundidad + Ecualizador
- * El video NUNCA se pausa - loop infinito.
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║              OceanFloorScene - Fondo del Mar Alienígena                  ║
+ * ╠══════════════════════════════════════════════════════════════════════════╣
+ * ║  Video (MediaCodec) + Pez 3D + Máscara + Ecualizador                     ║
+ * ║                                                                          ║
+ * ║  INTERACTIVIDAD:                                                         ║
+ * ║  • Toca la pantalla → El pez nada hacia donde tocaste                    ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 public class OceanFloorScene extends WallpaperScene {
     private static final String TAG = "OceanScene";
 
     private MediaCodecVideoRenderer videoRenderer;
-    private AbyssalLurker3D abyssalLurker;  // 🐟 Pez 3D Meshy
+    private AbyssalLurker3D abyssalLurker;
     private ForegroundMask foregroundMask;
-    private EqualizerBarsDJ equalizerDJ;    // 🎵 Ecualizador
+    private EqualizerBarsDJ equalizerDJ;
+    private DecorationSprite crystals;
 
     private static final String VIDEO_FILE = "escena_fondoSC.mp4";
+
+    private int screenWidth = 1080;
+    private int screenHeight = 1920;
 
     @Override
     public String getName() { return "Fondo del Mar"; }
@@ -49,16 +58,18 @@ public class OceanFloorScene extends WallpaperScene {
         foregroundMask = new ForegroundMask(context, "foreground_plants.png");
         foregroundMask.initialize();
 
+        // 💎 Cristales bioluminiscentes (derecha-centro)
+        crystals = new DecorationSprite(context, R.drawable.cristalesbio, 0.72f, -0.32f, 0.5f, 0.4f);
+        crystals.initialize();
+
         // 🎵 Ecualizador
         try {
             equalizerDJ = new EqualizerBarsDJ();
             equalizerDJ.initialize();
-            Log.d(TAG, "✓ 🎵 EqualizerBarsDJ agregado");
+            equalizerDJ.setScreenSize(screenWidth, screenHeight);
         } catch (Exception e) {
-            Log.e(TAG, "✗ Error creando EqualizerBarsDJ: " + e.getMessage());
+            Log.e(TAG, "Error EqualizerBarsDJ: " + e.getMessage());
         }
-
-        Log.d(TAG, "Escena lista (3D Abyssal Lurker + Ecualizador)");
     }
 
     @Override
@@ -76,6 +87,10 @@ public class OceanFloorScene extends WallpaperScene {
         if (foregroundMask != null) {
             foregroundMask.release();
             foregroundMask = null;
+        }
+        if (crystals != null) {
+            crystals.release();
+            crystals = null;
         }
         if (equalizerDJ != null) {
             equalizerDJ = null;
@@ -96,10 +111,15 @@ public class OceanFloorScene extends WallpaperScene {
         GLES20.glClearColor(0.02f, 0.0f, 0.05f, 1.0f);
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
 
-        // Orden de profundidad: Video → Pez3D → Máscara → Ecualizador
+        // Orden: Video → Pez3D → [2D overlays sin depth test] → Ecualizador
         videoRenderer.draw();
         if (abyssalLurker != null) abyssalLurker.draw();
-        if (foregroundMask != null) foregroundMask.draw();
+
+        // 🎨 Deshabilitar depth test para sprites 2D (todos en Z=0)
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+
+        if (foregroundMask != null) foregroundMask.draw();  // Plantas
+        if (crystals != null) crystals.draw();              // Cristales (frente)
         if (equalizerDJ != null) equalizerDJ.draw();
 
         super.draw();
@@ -120,10 +140,37 @@ public class OceanFloorScene extends WallpaperScene {
     @Override
     public void setScreenSize(int width, int height) {
         super.setScreenSize(width, height);
+        this.screenWidth = width;
+        this.screenHeight = height;
+
         if (equalizerDJ != null) equalizerDJ.setScreenSize(width, height);
     }
 
-    // 🎵 Recibe datos de música desde WallpaperDirector
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 👆 TOUCH - El pez nada hacia donde toques
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    @Override
+    public boolean onTouchEvent(float normalizedX, float normalizedY, int action) {
+        if (action == android.view.MotionEvent.ACTION_DOWN) {
+            // 📍 LOG PARA CALIBRAR POSICIÓN DE DECORACIONES
+            Log.d(TAG, "📍 TOUCH: X=" + String.format("%.2f", normalizedX) + " Y=" + String.format("%.2f", normalizedY));
+        }
+
+        if (action == android.view.MotionEvent.ACTION_DOWN ||
+            action == android.view.MotionEvent.ACTION_MOVE) {
+            if (abyssalLurker != null) {
+                abyssalLurker.setTargetPosition(normalizedX, normalizedY);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🎵 MÚSICA
+    // ═══════════════════════════════════════════════════════════════════════════
+
     public void updateMusicBands(float[] bands) {
         if (equalizerDJ != null) {
             equalizerDJ.updateFromBands(bands);
