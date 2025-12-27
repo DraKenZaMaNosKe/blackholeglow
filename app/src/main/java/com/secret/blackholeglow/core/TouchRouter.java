@@ -99,6 +99,12 @@ public class TouchRouter {
         float ny = normalizeY(event.getY());
         int action = event.getAction();
 
+        // 📍 LOG DE TOUCH PARA DEBUG
+        if (action == MotionEvent.ACTION_DOWN) {
+            Log.d(TAG, "📍 TOUCH: nx=" + String.format("%.2f", nx) + " ny=" + String.format("%.2f", ny) +
+                       " (raw: " + (int)event.getX() + "," + (int)event.getY() + ")");
+        }
+
         // Distribuir según el modo actual
         RenderModeController.RenderMode mode = modeController.getCurrentMode();
 

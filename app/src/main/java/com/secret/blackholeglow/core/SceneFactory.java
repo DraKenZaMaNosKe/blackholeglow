@@ -6,6 +6,7 @@ import android.util.Log;
 import com.secret.blackholeglow.CameraController;
 import com.secret.blackholeglow.TextureManager;
 import com.secret.blackholeglow.scenes.BatallaCosmicaScene;
+import com.secret.blackholeglow.scenes.LabScene;
 import com.secret.blackholeglow.scenes.OceanFloorScene;
 import com.secret.blackholeglow.scenes.OceanPearlScene;
 import com.secret.blackholeglow.scenes.WallpaperScene;
@@ -107,6 +108,8 @@ public class SceneFactory {
         registerScene("Bosque Navideño", BatallaCosmicaScene.class);
         // 🌊 Fondo del Mar: Video wallpaper alienígena con efectos shader
         registerScene("Fondo del Mar", OceanFloorScene.class);
+        // 🧪 Laboratorio: Escena experimental para probar nuevos efectos
+        registerScene("Laboratorio", LabScene.class);
         Log.d(TAG, "🎭 " + registeredScenes.size() + " escenas registradas");
     }
 

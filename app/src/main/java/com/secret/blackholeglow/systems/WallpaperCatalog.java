@@ -281,6 +281,17 @@ public class WallpaperCatalog {
                 .featured()
                 .build());
 
+        // 🧪 LABORATORIO - Escena de pruebas experimentales
+        catalog.add(new WallpaperItem.Builder("Laboratorio")
+                .descripcion("Escena experimental para probar nuevos efectos. " +
+                        "SpeedLines, ParallaxStars, y más experimentos en desarrollo.")
+                .preview(R.drawable.preview_space)
+                .sceneName("Laboratorio")
+                .tier(WallpaperTier.FREE)
+                .badge("🧪 LAB")
+                .glow(0xFF00FF00)  // Green para lab
+                .build());
+
         catalog.add(new WallpaperItem.Builder("La Mansión")
                 .descripcion("Explora los misterios de una mansión encantada. " +
                         "Fantasmas, velas flotantes y secretos oscuros aguardan en cada rincón de esta morada tenebrosa.")
