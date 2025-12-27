@@ -313,14 +313,12 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             panelRenderer.setGreetingEnabled(true);
         }
 
-        // 🎵 Reconexión del MusicVisualizer (SOLO para escenas que lo necesitan)
-        // Video scenes (Fondo del Mar) NO reconectan para no interrumpir Spotify
-        if (musicVisualizer != null && !isVideoScene) {
+        // 🎵 Reconexión del MusicVisualizer para TODAS las escenas
+        // (MusicVisualizer solo ESCUCHA el audio, NO interrumpe Spotify/YouTube Music)
+        if (musicVisualizer != null) {
             Log.d(TAG, "🎵 Forzando reconexión de MusicVisualizer para WALLPAPER_MODE...");
             musicVisualizer.reconnect();
             Log.d(TAG, "🎵 MusicVisualizer reconectado para WALLPAPER_MODE");
-        } else if (isVideoScene) {
-            Log.d(TAG, "🌊 Video scene - NO reconectar MusicVisualizer (preservar Spotify)");
         }
     }
 
