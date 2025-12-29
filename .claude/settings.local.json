@@ -68,7 +68,8 @@
       "Bash(timeout 3 D:/adb/platform-tools/adb.exe logcat:*)",
       "Bash(sort:*)",
       "Bash(echo:*)",
-      "Bash(javac:*)"
+      "Bash(javac:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []
