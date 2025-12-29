@@ -51,15 +51,15 @@ public class TravelingShip implements SceneObject, CameraAware {
 
     // Transformación - POSICIÓN FIJA (donde tocó el usuario)
     // 📍 RAW: (530, 1795) en pantalla 1080x2340
-    private float x = -0.6f;         // Centro horizontal
-    private float y = -2.6f;     // Más abajo
+    private float x = -2.5f;         // Centro horizontal
+    private float y = -4.9f;  // Valor calibrado por touch     // Más abajo
     private float z = -2.5f;      // Profundidad
     private float scale = 0.8f;   // Tamaño
 
     // Rotación - ajustable para apuntar hacia el sol
     private float rotationX = 0f;
     private float rotationY = 0f;
-    private float rotationZ = 0f;
+    private float rotationZ = 4.0f;  // Valor encontrado por touch
 
     // Tiempo para efectos
     private float time = 0f;
@@ -234,11 +234,10 @@ public class TravelingShip implements SceneObject, CameraAware {
     public void update(float deltaTime) {
         time += deltaTime;
 
-        // 🛑 NAVE FIJA - sin movimiento
-        // x, y, z no cambian
+        // 🔄 ROTACIÓN EN EJE X
+        // Rotación controlada por touch
 
-        // Rotación fija (ajustar después)
-        // rotationX, rotationY, rotationZ se mantienen en 0
+
 
         // Engine glow pulsante (único efecto activo)
         engineGlow = 1.0f + 0.2f * (float) Math.sin(time * 5.0);
@@ -312,6 +311,16 @@ public class TravelingShip implements SceneObject, CameraAware {
         this.rotationX = pitch;
         this.rotationY = yaw;
         this.rotationZ = roll;
+    }
+
+
+    // 🎮 CONTROL POR TOUCH
+    public void onTouchMove(float normalizedX) {
+        // Y ya fijo en -4.9f  // Control Y por touch
+    }
+
+    public void onTouchRelease() {
+        Log.d(TAG, "📍 VALOR FINAL y = " + y);
     }
 
     public void release() {
