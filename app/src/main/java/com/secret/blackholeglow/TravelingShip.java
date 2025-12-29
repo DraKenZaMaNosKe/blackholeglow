@@ -45,6 +45,8 @@ public class TravelingShip implements SceneObject, CameraAware {
     private int aPositionHandle;
     private int aTexCoordHandle;
     private int uMVPMatrixHandle;
+    private int uModelMatrixHandle;
+    private int uCameraPosHandle;
     private int uTextureHandle;
     private int uTimeHandle;
     private int uEngineGlowHandle;
@@ -93,91 +95,72 @@ public class TravelingShip implements SceneObject, CameraAware {
         "in vec3 aPosition;\n" +
         "in vec2 aTexCoord;\n" +
         "uniform mat4 uMVPMatrix;\n" +
-        "uniform float uTime;\n" +
+        "uniform mat4 uModelMatrix;\n" +
         "out vec2 vTexCoord;\n" +
         "out vec3 vPosition;\n" +
+        "out vec3 vWorldPos;\n" +
         "void main() {\n" +
         "    gl_Position = uMVPMatrix * vec4(aPosition, 1.0);\n" +
         "    vTexCoord = aTexCoord;\n" +
         "    vPosition = aPosition;\n" +
+        "    vWorldPos = (uModelMatrix * vec4(aPosition, 1.0)).xyz;\n" +
         "}\n";
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔥 FRAGMENT SHADER CON FRESNEL RIM LIGHT
+    // ═══════════════════════════════════════════════════════════════════════
     private static final String FRAGMENT_SHADER =
         "#version 300 es\n" +
         "precision mediump float;\n" +
         "uniform sampler2D uTexture;\n" +
         "uniform float uTime;\n" +
         "uniform float uEngineGlow;\n" +
+        "uniform vec3 uCameraPos;\n" +
         "in vec2 vTexCoord;\n" +
         "in vec3 vPosition;\n" +
+        "in vec3 vWorldPos;\n" +
         "out vec4 fragColor;\n" +
         "\n" +
-        "// Ruido simple para ondulación\n" +
-        "float noise(float x) {\n" +
-        "    return fract(sin(x * 12.9898) * 43758.5453);\n" +
-        "}\n" +
-        "\n" +
         "void main() {\n" +
+        "    // Detección de llamas (conos X > 0.65)\n" +
+        "    float flameArea = smoothstep(0.65, 0.75, vPosition.x);\n" +
+        "    \n" +
+        "    // Textura base\n" +
         "    vec4 texColor = texture(uTexture, vTexCoord);\n" +
         "    \n" +
         "    // ═══════════════════════════════════════════════════════════\n" +
-        "    // 🔥 DETECCIÓN DE LLAMAS (conos, X > 0.65)\n" +
+        "    // 🔆 FRESNEL RIM LIGHT (solo en nave, no en llamas)\n" +
         "    // ═══════════════════════════════════════════════════════════\n" +
-        "    float flameArea = smoothstep(0.65, 0.75, vPosition.x);\n" +
+        "    vec3 normal = normalize(cross(dFdx(vWorldPos), dFdy(vWorldPos)));\n" +
+        "    vec3 viewDir = normalize(uCameraPos - vWorldPos);\n" +
+        "    float fresnel = pow(1.0 - abs(dot(normal, viewDir)), 3.0);\n" +
         "    \n" +
-        "    if (flameArea > 0.01) {\n" +
-        "        // ═══════════════════════════════════════════════════════\n" +
-        "        // 🔥 EFECTO PLASMA PARA LAS LLAMAS\n" +
-        "        // ═══════════════════════════════════════════════════════\n" +
-        "        \n" +
-        "        // Distancia desde la base (0) hasta la punta (1)\n" +
-        "        float distFromBase = (vPosition.x - 0.65) / 0.5;\n" +
-        "        distFromBase = clamp(distFromBase, 0.0, 1.0);\n" +
-        "        \n" +
-        "        // Ondulación animada\n" +
-        "        float wave1 = sin(vPosition.y * 20.0 + uTime * 10.0) * 0.5 + 0.5;\n" +
-        "        float wave2 = sin(vPosition.z * 15.0 + uTime * 8.0) * 0.5 + 0.5;\n" +
-        "        float wave3 = sin(distFromBase * 10.0 - uTime * 12.0) * 0.5 + 0.5;\n" +
-        "        float flicker = (wave1 + wave2 + wave3) / 3.0;\n" +
-        "        \n" +
-        "        // Gradiente de colores: cyan (base) → naranja → amarillo (punta)\n" +
-        "        vec3 cyanColor = vec3(0.2, 0.8, 1.0);\n" +
-        "        vec3 orangeColor = vec3(1.0, 0.5, 0.1);\n" +
-        "        vec3 yellowColor = vec3(1.0, 0.9, 0.3);\n" +
-        "        \n" +
-        "        vec3 flameColor;\n" +
-        "        if (distFromBase < 0.5) {\n" +
-        "            flameColor = mix(cyanColor, orangeColor, distFromBase * 2.0);\n" +
-        "        } else {\n" +
-        "            flameColor = mix(orangeColor, yellowColor, (distFromBase - 0.5) * 2.0);\n" +
-        "        }\n" +
-        "        \n" +
-        "        // Añadir variación con ondulación\n" +
-        "        flameColor = mix(flameColor, vec3(1.0, 1.0, 0.8), flicker * 0.3);\n" +
-        "        \n" +
-        "        // Brillo pulsante global\n" +
-        "        float pulse = 0.8 + 0.2 * sin(uTime * 6.0);\n" +
-        "        \n" +
-        "        // Intensidad: más brillante en la base, se desvanece en la punta\n" +
-        "        float intensity = (1.0 - distFromBase * 0.6) * pulse * uEngineGlow;\n" +
-        "        \n" +
-        "        // Transparencia: sólido en base, transparente en punta\n" +
-        "        float alpha = 1.0 - distFromBase * 0.5;\n" +
-        "        alpha *= (0.7 + flicker * 0.3);\n" +
-        "        \n" +
-        "        // Efecto de brillo (additive)\n" +
-        "        flameColor *= intensity * 1.5;\n" +
-        "        \n" +
-        "        fragColor = vec4(flameColor, alpha);\n" +
-        "    } else {\n" +
-        "        // ═══════════════════════════════════════════════════════\n" +
-        "        // 🚀 NAVE NORMAL (con glow sutil)\n" +
-        "        // ═══════════════════════════════════════════════════════\n" +
-        "        float engineArea = smoothstep(0.0, -0.5, vPosition.y);\n" +
-        "        float pulse = 0.5 + 0.5 * sin(uTime * 8.0);\n" +
-        "        vec3 glowColor = vec3(0.4, 0.7, 1.0) * engineArea * uEngineGlow * pulse * 0.3;\n" +
-        "        fragColor = vec4(texColor.rgb + glowColor, texColor.a);\n" +
-        "    }\n" +
+        "    // Color del rim: naranja/dorado del ambiente de fuego\n" +
+        "    vec3 rimColor = vec3(1.0, 0.6, 0.2) * fresnel * 1.2;\n" +
+        "    \n" +
+        "    // Aplicar rim solo a la nave (no a las llamas)\n" +
+        "    vec3 shipColor = texColor.rgb + rimColor * (1.0 - flameArea);\n" +
+        "    \n" +
+        "    // ═══════════════════════════════════════════════════════════\n" +
+        "    // 🔥 LLAMAS (igual que antes)\n" +
+        "    // ═══════════════════════════════════════════════════════════\n" +
+        "    float dist = clamp((vPosition.x - 0.65) * 2.0, 0.0, 1.0);\n" +
+        "    float wave = sin(vPosition.y * 15.0 + vPosition.z * 10.0 + uTime * 8.0) * 0.5 + 0.5;\n" +
+        "    \n" +
+        "    vec3 flameColor = mix(\n" +
+        "        mix(vec3(0.2, 0.8, 1.0), vec3(1.0, 0.5, 0.1), dist * 2.0),\n" +
+        "        mix(vec3(1.0, 0.5, 0.1), vec3(1.0, 0.9, 0.3), dist * 2.0 - 1.0),\n" +
+        "        step(0.5, dist)\n" +
+        "    );\n" +
+        "    \n" +
+        "    float intensity = (1.0 - dist * 0.5) * uEngineGlow * (0.85 + wave * 0.15);\n" +
+        "    float flameAlpha = (1.0 - dist * 0.4) * (0.8 + wave * 0.2);\n" +
+        "    \n" +
+        "    // Mezclar nave (con rim) y llamas\n" +
+        "    vec3 finalColor = mix(shipColor, flameColor * intensity * 1.3, flameArea);\n" +
+        "    float finalAlpha = mix(texColor.a, flameAlpha, flameArea);\n" +
+        "    \n" +
+        "    fragColor = vec4(finalColor, finalAlpha);\n" +
         "}\n";
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -256,6 +239,8 @@ public class TravelingShip implements SceneObject, CameraAware {
         aPositionHandle = GLES30.glGetAttribLocation(shaderProgram, "aPosition");
         aTexCoordHandle = GLES30.glGetAttribLocation(shaderProgram, "aTexCoord");
         uMVPMatrixHandle = GLES30.glGetUniformLocation(shaderProgram, "uMVPMatrix");
+        uModelMatrixHandle = GLES30.glGetUniformLocation(shaderProgram, "uModelMatrix");
+        uCameraPosHandle = GLES30.glGetUniformLocation(shaderProgram, "uCameraPos");
         uTextureHandle = GLES30.glGetUniformLocation(shaderProgram, "uTexture");
         uTimeHandle = GLES30.glGetUniformLocation(shaderProgram, "uTime");
         uEngineGlowHandle = GLES30.glGetUniformLocation(shaderProgram, "uEngineGlow");
@@ -319,17 +304,14 @@ public class TravelingShip implements SceneObject, CameraAware {
     private float targetRotationY = BASE_ROTATION_Y;
 
     // Parámetros de vuelo orgánico
-    private static final float DRIFT_AMPLITUDE_X = 0.15f;
-    private static final float DRIFT_SPEED_X = 0.6f;
     private static final float ROLL_FACTOR = 10f;
-    private static final float PITCH_AMPLITUDE = 2.5f;
 
-    // Parámetros de planeo en hover (MÁS DINÁMICO)
-    private static final float HOVER_DRIFT_AMPLITUDE = 0.75f;  // Más desplazamiento lateral
-    private static final float HOVER_DRIFT_SPEED = 0.5f;       // Un poco más rápido
+    // Parámetros de planeo en hover
+    private static final float HOVER_DRIFT_AMPLITUDE = 0.75f;
+    private static final float HOVER_DRIFT_SPEED = 0.5f;
 
-    // Random para destinos
-    private java.util.Random random = new java.util.Random();
+    // Random para duraciones
+    private final java.util.Random random = new java.util.Random();
 
     @Override
     public void update(float deltaTime) {
@@ -417,7 +399,7 @@ public class TravelingShip implements SceneObject, CameraAware {
 
     /**
      * Actualiza el movimiento cuando está planeando en el origen
-     * Con banking realista - las alas se inclinan al moverse lateralmente
+     * OPTIMIZADO: Cálculos de sin/cos reducidos usando cache
      */
     private void updateHovering(float deltaTime) {
         // Posición fija en origen
@@ -428,154 +410,82 @@ public class TravelingShip implements SceneObject, CameraAware {
         rotationY = lerpAngle(rotationY, BASE_ROTATION_Y, deltaTime * 3f);
 
         // ═══════════════════════════════════════════════════════════════
-        // 🛫 PLANEO CON ESTABILIZACIÓN REALISTA
+        // 🛫 CÁLCULOS CACHEADOS (evita múltiples Math.sin/cos)
         // ═══════════════════════════════════════════════════════════════
+        float t1 = time * HOVER_DRIFT_SPEED;
+        float sinT1 = (float) Math.sin(t1);
+        float cosT1 = (float) Math.cos(t1);
+        float sinT2 = (float) Math.sin(time * 1.2f);  // Para bob
+        float sinT3 = (float) Math.sin(time * 4.0f);  // Para estabilización y glow
 
-        // Drift lateral - movimiento principal
-        float drift = (float)(
-            Math.sin(time * HOVER_DRIFT_SPEED) * 0.7f +
-            Math.sin(time * HOVER_DRIFT_SPEED * 1.5f) * 0.2f +
-            Math.sin(time * HOVER_DRIFT_SPEED * 0.6f) * 0.1f
-        );
+        // Drift lateral simplificado (1 sin principal + 1 armónico)
+        float drift = sinT1 * 0.8f + (float) Math.sin(t1 * 1.5f) * 0.2f;
         x = ORIGIN_X + drift * HOVER_DRIFT_AMPLITUDE;
 
-        // Bobbing vertical + pequeñas turbulencias
-        float bob = (float)(Math.sin(time * 1.2f) * 0.05f);
-        float turbulenceY = (float)(Math.sin(time * 3.5f) * 0.015f);  // Micro-turbulencia
-        y = ORIGIN_Y + bob + turbulenceY;
+        // Bobbing vertical
+        y = ORIGIN_Y + sinT2 * 0.05f;
 
-        // ═══════════════════════════════════════════════════════════════
-        // ✈️ BANKING REALISTA - Alas se inclinan según dirección
-        // ═══════════════════════════════════════════════════════════════
-
-        // Velocidad del drift (derivada = coseno)
-        float driftVelocity = (float)(
-            Math.cos(time * HOVER_DRIFT_SPEED) * HOVER_DRIFT_SPEED * 0.7f +
-            Math.cos(time * HOVER_DRIFT_SPEED * 1.5f) * HOVER_DRIFT_SPEED * 1.5f * 0.2f
-        );
-
-        // Roll principal - MUCHO más pronunciado (factor 2.5x)
+        // Roll basado en velocidad del drift
+        float driftVelocity = cosT1 * HOVER_DRIFT_SPEED * 0.9f;
         float mainRoll = driftVelocity * ROLL_FACTOR * 2.5f;
-
-        // Micro-correcciones de estabilización (como si luchara contra el viento)
-        float stabilization = (float)(
-            Math.sin(time * 4.0f) * 3.0f +   // Corrección rápida
-            Math.sin(time * 6.5f) * 1.5f     // Micro-ajuste
-        );
-
+        float stabilization = sinT3 * 3.5f;
         rotationZ = 4.0f + mainRoll + stabilization;
 
-        // ═══════════════════════════════════════════════════════════════
-        // 📐 PITCH - Nariz sube/baja con el planeo
-        // ═══════════════════════════════════════════════════════════════
+        // Pitch simplificado
+        rotationX = (float) Math.sin(time * 0.7f) * 4.0f;
 
-        // Pitch principal
-        float mainPitch = (float)(Math.sin(time * 0.7f) * 3.5f);
-
-        // Corrección de pitch (como si ajustara altitud)
-        float pitchCorrection = (float)(Math.sin(time * 2.8f) * 2.0f);
-
-        rotationX = mainPitch + pitchCorrection;
-
-        // Engine glow suave (idle)
-        engineGlow = 1.0f + 0.15f * (float) Math.sin(time * 4.0);
+        // Engine glow
+        engineGlow = 1.0f + sinT3 * 0.15f;
     }
 
     /**
      * Actualiza el movimiento en figura de 8
-     * La nave traza un 8 vertical: sube hacia horizonte, hace loops, regresa
+     * OPTIMIZADO: Cálculos de sin/cos cacheados
      */
     private void updateFigure8(float deltaTime) {
         float t = figure8Phase;
-        float PI = (float) Math.PI;
 
         // ═══════════════════════════════════════════════════════════════
-        // 🎱 TRAYECTORIA EN FIGURA DE 8
+        // 🎱 CÁLCULOS CACHEADOS
         // ═══════════════════════════════════════════════════════════════
-        // X: oscila lateralmente 2 veces (crea los loops del 8)
-        // Y: sube hacia horizonte y baja una vez
-        // Z: hacia horizonte y regresa
+        float sinT = (float) Math.sin(t);
+        float cosT = (float) Math.cos(t);
+        float sinHalfT = (float) Math.sin(t * 0.5f);
+        float cosHalfT = (float) Math.cos(t * 0.5f);
 
-        // Progreso vertical: sin(t/2) va de 0 → 1 → 0 cuando t va de 0 → 2π
-        float verticalProgress = (float) Math.sin(t / 2.0f);
+        // Posición del 8
+        x = ORIGIN_X + FIGURE_8_WIDTH * sinT;
+        y = ORIGIN_Y + FIGURE_8_HEIGHT * sinHalfT;
+        z = ORIGIN_Z - FIGURE_8_DEPTH * sinHalfT;
 
-        // Loops laterales: sin(t) oscila completo, crea el cruce del 8
-        float lateralLoop = (float) Math.sin(t);
+        // Escala según distancia
+        scale = ORIGIN_SCALE - (ORIGIN_SCALE - 0.15f) * sinHalfT;
 
-        // Posición base con el 8
-        x = ORIGIN_X + FIGURE_8_WIDTH * lateralLoop;
-        y = ORIGIN_Y + FIGURE_8_HEIGHT * verticalProgress;
-        z = ORIGIN_Z - FIGURE_8_DEPTH * verticalProgress;
+        // Derivadas para dirección
+        float dx = FIGURE_8_WIDTH * cosT;
+        float dy = (FIGURE_8_HEIGHT * 0.5f) * cosHalfT;
 
-        // Escala: más pequeña cuando está lejos (horizonte)
-        float minScale = 0.15f;
-        scale = ORIGIN_SCALE - (ORIGIN_SCALE - minScale) * verticalProgress;
-
-        // ═══════════════════════════════════════════════════════════════
-        // 🔄 ROTACIÓN - Siempre mirando hacia donde va
-        // ═══════════════════════════════════════════════════════════════
-        // Calcular dirección del movimiento (derivada de la posición)
-        float dx = FIGURE_8_WIDTH * (float) Math.cos(t);         // derivada de sin(t)
-        float dy = (FIGURE_8_HEIGHT / 2.0f) * (float) Math.cos(t / 2.0f);  // derivada de sin(t/2)
-
-        // Ángulo basado en si sube o baja + dirección lateral
-        // Cuando sube (dy > 0): mira al horizonte
-        // Cuando baja (dy < 0): mira hacia cámara
-        if (dy >= 0) {
-            // Subiendo - mira al horizonte (rotación base)
-            targetRotationY = BASE_ROTATION_Y;
-        } else {
-            // Bajando - mira hacia cámara (180° rotado)
-            targetRotationY = BASE_ROTATION_Y + 180f;
-        }
+        // Rotación Y según dirección vertical
+        targetRotationY = (dy >= 0) ? BASE_ROTATION_Y : BASE_ROTATION_Y + 180f;
         rotationY = lerpAngle(rotationY, targetRotationY, deltaTime * 4f);
 
-        // ═══════════════════════════════════════════════════════════════
-        // ✈️ BANKING - Inclinación realista en las curvas
-        // ═══════════════════════════════════════════════════════════════
-        // Roll basado en movimiento lateral (dx)
-        // Positivo = va a la derecha = inclinar derecha
-        float rollIntensity = dx * 30f;  // Hasta 30° de inclinación
+        // Banking simplificado
+        float sinStab = (float) Math.sin(time * 4.0f);
+        rotationZ = 4.0f + dx * 30f + sinStab * 2.5f;
 
-        // Añadir estabilización sutil
-        float stabilization = (float)(
-            Math.sin(time * 4.0f) * 2.0f +
-            Math.sin(time * 7.0f) * 1.0f
-        );
-        rotationZ = 4.0f + rollIntensity + stabilization;
+        // Pitch
+        rotationX = dy * 8f + sinStab * 0.5f;
 
-        // Pitch basado en si sube o baja
-        float pitchFromClimb = dy * 8f;  // Nariz arriba al subir
-        float pitchOsc = (float)(Math.sin(time * 2.0f) * 2.0f);
-        rotationX = pitchFromClimb + pitchOsc;
-
-        // ═══════════════════════════════════════════════════════════════
-        // 🔥 ENGINE GLOW - Más intenso en las curvas
-        // ═══════════════════════════════════════════════════════════════
-        float curveIntensity = Math.abs(dx);  // Más intenso en los extremos del 8
-        engineGlow = 1.3f + curveIntensity * 0.5f + 0.2f * (float) Math.sin(time * 5.0);
+        // Engine glow
+        engineGlow = 1.3f + Math.abs(dx) * 0.5f + sinStab * 0.1f;
     }
 
-    /**
-     * Interpola ángulos correctamente (maneja el wrap de 360°)
-     */
+    /** Interpola ángulos correctamente (maneja el wrap de 360°) */
     private float lerpAngle(float from, float to, float t) {
         float diff = to - from;
         while (diff > 180f) diff -= 360f;
         while (diff < -180f) diff += 360f;
         return from + diff * Math.min(1f, t);
-    }
-
-    // Interpolación lineal
-    private float lerp(float start, float end, float t) {
-        return start + (end - start) * t;
-    }
-
-    // Curva ease-in-out para movimiento suave
-    private float easeInOutCubic(float t) {
-        return t < 0.5f
-            ? 4f * t * t * t
-            : 1f - (float)Math.pow(-2f * t + 2f, 3) / 2f;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -599,7 +509,13 @@ public class TravelingShip implements SceneObject, CameraAware {
         // Usar computeMvp del CameraController
         camera.computeMvp(modelMatrix, mvpMatrix);
 
+        // Uniforms de matrices y cámara
         GLES30.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, mvpMatrix, 0);
+        GLES30.glUniformMatrix4fv(uModelMatrixHandle, 1, false, modelMatrix, 0);
+
+        // Posición de cámara para Fresnel (aproximada desde la posición conocida)
+        GLES30.glUniform3f(uCameraPosHandle, 4f, 3f, 6f);
+
         GLES30.glUniform1f(uTimeHandle, time);
         GLES30.glUniform1f(uEngineGlowHandle, engineGlow);
 

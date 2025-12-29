@@ -122,8 +122,13 @@ public class MediaCodecVideoRenderer {
         GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
         GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
 
-        // SurfaceTexture + Surface
+        // SurfaceTexture + Surface con listener de frame
         surfaceTexture = new SurfaceTexture(videoTextureId);
+        surfaceTexture.setOnFrameAvailableListener(st -> {
+            synchronized (frameLock) {
+                frameAvailable = true;
+            }
+        });
         surface = new Surface(surfaceTexture);
 
         // Iniciar decoder
@@ -293,16 +298,19 @@ public class MediaCodecVideoRenderer {
         }
     }
 
-    public void draw() {
-        if (!isInitialized || videoTextureId == -1) return;
+    // Flag para saber si hay frame disponible
+    private volatile boolean frameAvailable = false;
+    private final Object frameLock = new Object();
 
-        // Siempre intentar actualizar textura - updateTexImage() es idempotente
-        if (surfaceTexture != null) {
-            try {
+    public void draw() {
+        if (!isInitialized || videoTextureId == -1 || surfaceTexture == null) return;
+
+        // Solo actualizar si hay frame nuevo (evita excepciones)
+        synchronized (frameLock) {
+            if (frameAvailable) {
                 surfaceTexture.updateTexImage();
                 surfaceTexture.getTransformMatrix(stMatrix);
-            } catch (Exception e) {
-                // Ignorar - no hay frame nuevo disponible todavía
+                frameAvailable = false;
             }
         }
 
