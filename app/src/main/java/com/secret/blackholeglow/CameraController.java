@@ -302,6 +302,10 @@ public class CameraController {
         return target.clone();
     }
 
+    public float[] getViewMatrix() {
+        return viewMatrix;
+    }
+
     public float getFOV() {
         return fov;
     }

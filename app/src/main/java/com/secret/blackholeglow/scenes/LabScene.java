@@ -99,4 +99,32 @@ public class LabScene extends WallpaperScene {
 
         super.draw();
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // TOUCH PARA AJUSTAR LLAMAS (EJE X)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    @Override
+    public boolean onTouchEvent(float normalizedX, float normalizedY, int action) {
+        if (travelingShip == null) return false;
+
+        // Convertir NDC (-1,1) a coordenadas de pantalla para sensibilidad
+        float screenX = (normalizedX + 1f) * 500f;  // Rango aproximado 0-1000
+        float screenY = (normalizedY + 1f) * 500f;
+
+        switch (action) {
+            case android.view.MotionEvent.ACTION_DOWN:
+                travelingShip.onTouchDown(screenX, screenY);
+                return true;
+            case android.view.MotionEvent.ACTION_MOVE:
+                travelingShip.onTouchMove(screenX, screenY);
+                return true;
+            case android.view.MotionEvent.ACTION_UP:
+            case android.view.MotionEvent.ACTION_CANCEL:
+                travelingShip.onTouchUp(screenX, screenY);
+                return true;
+        }
+        return false;
+    }
+
 }
