@@ -12,12 +12,12 @@ import java.nio.FloatBuffer;
 
 /**
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║   🎵 EqualizerBarsDJ v2.0 - Ecualizador Estilo DJ Premium               ║
+ * ║   🎵 EqualizerBarsDJ v3.0 - Ecualizador Temático Premium                ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
  * ║  CARACTERÍSTICAS:                                                        ║
  * ║  • 32 barras delgadas en la parte inferior                              ║
  * ║  • Diseño simétrico: centro más alto, lados más bajos                   ║
- * ║  • Gradiente de colores: Rosa (bass) → Cyan (treble)                    ║
+ * ║  • 🎨 TEMAS: ABYSSIA (océano) / PYRALIS (fuego)                         ║
  * ║  • Efecto GLOW neón con resplandor                                      ║
  * ║  • Peak markers que caen suavemente                                     ║
  * ║  • Integración con AspectRatioManager                                   ║
@@ -25,6 +25,17 @@ import java.nio.FloatBuffer;
  */
 public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRatioAware {
     private static final String TAG = "EqualizerBarsDJ";
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 🎨 SISTEMA DE TEMAS
+    // ════════════════════════════════════════════════════════════════════════
+    public enum Theme {
+        DEFAULT,   // Rosa → Cyan (original)
+        ABYSSIA,   // Púrpura bioluminiscente → Turquesa (océano profundo)
+        PYRALIS    // Rojo → Naranja → Amarillo (fuego)
+    }
+
+    private Theme currentTheme = Theme.DEFAULT;
 
     // ════════════════════════════════════════════════════════════════════════
     // CONFIGURACIÓN DE BARRAS
@@ -36,14 +47,44 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     private static final float BASE_Y = -0.95f;
 
     // ════════════════════════════════════════════════════════════════════════
-    // COLORES - Gradiente Rosa → Cyan
+    // 🎨 COLORES POR TEMA - Arrays dinámicos
     // ════════════════════════════════════════════════════════════════════════
-    // Rosa/Magenta para bajos (centro)
-    private static final float[] COLOR_BASS = {1.0f, 0.2f, 0.6f};      // Rosa neón
-    // Cyan para agudos (lados)
-    private static final float[] COLOR_TREBLE = {0.2f, 0.9f, 1.0f};    // Cyan neón
-    // Blanco para picos muy altos
-    private static final float[] COLOR_PEAK = {1.0f, 1.0f, 1.0f};
+
+    // === DEFAULT (Rosa → Cyan) ===
+    private static final float[] DEFAULT_BASS = {1.0f, 0.2f, 0.6f};      // Rosa neón
+    private static final float[] DEFAULT_TREBLE = {0.2f, 0.9f, 1.0f};    // Cyan neón
+    private static final float[] DEFAULT_PEAK = {1.0f, 1.0f, 1.0f};      // Blanco
+    private static final float[] DEFAULT_WAVE_STRONG = {0.3f, 1.0f, 1.0f};   // Cyan
+    private static final float[] DEFAULT_WAVE_NORMAL = {1.0f, 0.3f, 0.9f};   // Rosa
+    private static final float[] DEFAULT_LIGHTNING_1 = {0.3f, 0.9f, 1.0f};   // Cyan eléctrico
+    private static final float[] DEFAULT_LIGHTNING_2 = {1.0f, 0.4f, 0.9f};   // Rosa eléctrico
+
+    // === ABYSSIA (Océano Profundo - Púrpura → Turquesa) ===
+    private static final float[] ABYSSIA_BASS = {0.6f, 0.2f, 1.0f};      // Púrpura bioluminiscente
+    private static final float[] ABYSSIA_TREBLE = {0.25f, 0.88f, 0.82f}; // Turquesa
+    private static final float[] ABYSSIA_PEAK = {0.5f, 1.0f, 1.0f};      // Cyan brillante (no blanco)
+    private static final float[] ABYSSIA_WAVE_STRONG = {0.0f, 0.9f, 0.9f};   // Cyan profundo
+    private static final float[] ABYSSIA_WAVE_NORMAL = {0.5f, 0.3f, 1.0f};   // Púrpura
+    private static final float[] ABYSSIA_LIGHTNING_1 = {0.3f, 0.8f, 1.0f};   // Tentáculo cyan
+    private static final float[] ABYSSIA_LIGHTNING_2 = {0.6f, 0.3f, 1.0f};   // Tentáculo púrpura
+
+    // === PYRALIS (Fuego - Rojo → Amarillo) ===
+    private static final float[] PYRALIS_BASS = {1.0f, 0.15f, 0.0f};     // Rojo intenso
+    private static final float[] PYRALIS_TREBLE = {1.0f, 0.85f, 0.0f};   // Amarillo/Dorado
+    private static final float[] PYRALIS_PEAK = {1.0f, 1.0f, 0.6f};      // Amarillo claro
+    private static final float[] PYRALIS_WAVE_STRONG = {1.0f, 0.6f, 0.0f};   // Naranja brillante
+    private static final float[] PYRALIS_WAVE_NORMAL = {1.0f, 0.2f, 0.0f};   // Rojo fuego
+    private static final float[] PYRALIS_LIGHTNING_1 = {1.0f, 0.5f, 0.0f};   // Arco naranja
+    private static final float[] PYRALIS_LIGHTNING_2 = {1.0f, 0.9f, 0.3f};   // Arco dorado
+
+    // Colores activos (se actualizan con setTheme)
+    private float[] colorBass = DEFAULT_BASS;
+    private float[] colorTreble = DEFAULT_TREBLE;
+    private float[] colorPeak = DEFAULT_PEAK;
+    private float[] colorWaveStrong = DEFAULT_WAVE_STRONG;
+    private float[] colorWaveNormal = DEFAULT_WAVE_NORMAL;
+    private float[] colorLightning1 = DEFAULT_LIGHTNING_1;
+    private float[] colorLightning2 = DEFAULT_LIGHTNING_2;
 
     // ════════════════════════════════════════════════════════════════════════
     // GLOW - Configuración del resplandor
@@ -233,7 +274,57 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         // Registrarse en AspectRatioManager
         AspectRatioManager.get().register(this);
 
-        Log.d(TAG, "🎵 EqualizerBarsDJ v2.0 creado con " + NUM_BARS + " barras");
+        Log.d(TAG, "🎵 EqualizerBarsDJ v3.0 creado con " + NUM_BARS + " barras");
+    }
+
+    /**
+     * 🎨 Establece el tema de colores del ecualizador
+     * @param theme Theme.ABYSSIA, Theme.PYRALIS, o Theme.DEFAULT
+     */
+    public void setTheme(Theme theme) {
+        this.currentTheme = theme;
+
+        switch (theme) {
+            case ABYSSIA:
+                colorBass = ABYSSIA_BASS;
+                colorTreble = ABYSSIA_TREBLE;
+                colorPeak = ABYSSIA_PEAK;
+                colorWaveStrong = ABYSSIA_WAVE_STRONG;
+                colorWaveNormal = ABYSSIA_WAVE_NORMAL;
+                colorLightning1 = ABYSSIA_LIGHTNING_1;
+                colorLightning2 = ABYSSIA_LIGHTNING_2;
+                Log.d(TAG, "🌊 Tema ABYSSIA activado - Océano profundo");
+                break;
+
+            case PYRALIS:
+                colorBass = PYRALIS_BASS;
+                colorTreble = PYRALIS_TREBLE;
+                colorPeak = PYRALIS_PEAK;
+                colorWaveStrong = PYRALIS_WAVE_STRONG;
+                colorWaveNormal = PYRALIS_WAVE_NORMAL;
+                colorLightning1 = PYRALIS_LIGHTNING_1;
+                colorLightning2 = PYRALIS_LIGHTNING_2;
+                Log.d(TAG, "🔥 Tema PYRALIS activado - Fuego");
+                break;
+
+            default:
+                colorBass = DEFAULT_BASS;
+                colorTreble = DEFAULT_TREBLE;
+                colorPeak = DEFAULT_PEAK;
+                colorWaveStrong = DEFAULT_WAVE_STRONG;
+                colorWaveNormal = DEFAULT_WAVE_NORMAL;
+                colorLightning1 = DEFAULT_LIGHTNING_1;
+                colorLightning2 = DEFAULT_LIGHTNING_2;
+                Log.d(TAG, "✨ Tema DEFAULT activado - Rosa/Cyan");
+                break;
+        }
+    }
+
+    /**
+     * @return El tema actual del ecualizador
+     */
+    public Theme getTheme() {
+        return currentTheme;
     }
 
     /**
@@ -531,17 +622,18 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
             lightningLife[idx] = 0.15f + random.nextFloat() * 0.2f;  // 0.15-0.35 segundos
             lightningIntensity[idx] = intensity;
 
-            // Color: cyan/blanco eléctrico o rosa/magenta
+            // Color según tema (con variación aleatoria)
+            float variation = random.nextFloat() * 0.2f;
             if (random.nextFloat() > 0.3f) {
-                // Cyan eléctrico (70% de probabilidad)
-                lightningR[idx] = 0.3f + random.nextFloat() * 0.3f;
-                lightningG[idx] = 0.8f + random.nextFloat() * 0.2f;
-                lightningB[idx] = 1.0f;
+                // Color primario del tema (70% de probabilidad)
+                lightningR[idx] = colorLightning1[0] + variation;
+                lightningG[idx] = colorLightning1[1] + variation;
+                lightningB[idx] = colorLightning1[2];
             } else {
-                // Rosa/magenta eléctrico (30%)
-                lightningR[idx] = 1.0f;
-                lightningG[idx] = 0.3f + random.nextFloat() * 0.3f;
-                lightningB[idx] = 0.8f + random.nextFloat() * 0.2f;
+                // Color secundario del tema (30%)
+                lightningR[idx] = colorLightning2[0];
+                lightningG[idx] = colorLightning2[1] + variation;
+                lightningB[idx] = colorLightning2[2] + variation;
             }
 
             // Generar puntos del zigzag
@@ -661,17 +753,17 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         waveRadius[waveIndex] = 0.05f;  // Empezar más grande
         waveAlpha[waveIndex] = 1.0f;  // Alpha máximo
 
-        // Color de la onda basado en intensidad - siempre brillante
+        // Color de la onda según tema e intensidad
         if (intensity > 0.6f) {
-            // Beat fuerte: cyan brillante
-            waveR[waveIndex] = 0.3f;
-            waveG[waveIndex] = 1.0f;
-            waveB[waveIndex] = 1.0f;
+            // Beat fuerte: color wave strong del tema
+            waveR[waveIndex] = colorWaveStrong[0];
+            waveG[waveIndex] = colorWaveStrong[1];
+            waveB[waveIndex] = colorWaveStrong[2];
         } else {
-            // Beat normal: rosa/magenta brillante
-            waveR[waveIndex] = 1.0f;
-            waveG[waveIndex] = 0.3f;
-            waveB[waveIndex] = 0.9f;
+            // Beat normal: color wave normal del tema
+            waveR[waveIndex] = colorWaveNormal[0];
+            waveG[waveIndex] = colorWaveNormal[1];
+            waveB[waveIndex] = colorWaveNormal[2];
         }
 
         waveIndex = (waveIndex + 1) % MAX_WAVES;
@@ -876,16 +968,16 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         float distFromCenter = Math.abs(t - 0.5f) * 2f;
 
         // Interpolar entre rosa (centro) y cyan (lados)
-        float r = COLOR_BASS[0] + (COLOR_TREBLE[0] - COLOR_BASS[0]) * distFromCenter;
-        float g = COLOR_BASS[1] + (COLOR_TREBLE[1] - COLOR_BASS[1]) * distFromCenter;
-        float b = COLOR_BASS[2] + (COLOR_TREBLE[2] - COLOR_BASS[2]) * distFromCenter;
+        float r = colorBass[0] + (colorTreble[0] - colorBass[0]) * distFromCenter;
+        float g = colorBass[1] + (colorTreble[1] - colorBass[1]) * distFromCenter;
+        float b = colorBass[2] + (colorTreble[2] - colorBass[2]) * distFromCenter;
 
-        // Si el nivel es muy alto, mezclar con blanco
+        // Si el nivel es muy alto, mezclar con color peak del tema
         if (intensity > 0.8f) {
-            float whiteMix = (intensity - 0.8f) * 2.5f;  // 0 a 0.5
-            r = r + (COLOR_PEAK[0] - r) * whiteMix;
-            g = g + (COLOR_PEAK[1] - g) * whiteMix;
-            b = b + (COLOR_PEAK[2] - b) * whiteMix;
+            float peakMix = (intensity - 0.8f) * 2.5f;  // 0 a 0.5
+            r = r + (colorPeak[0] - r) * peakMix;
+            g = g + (colorPeak[1] - g) * peakMix;
+            b = b + (colorPeak[2] - b) * peakMix;
         }
 
         outColor[0] = r * intensity;
@@ -1090,15 +1182,15 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
             vertices[vi + 11] = 0f;
 
             // ═══════════════════════════════════════════════════════════════
-            // COLOR DEL PEAK - Mismo gradiente que las barras (rosa→cyan)
+            // COLOR DEL PEAK - Mismo gradiente que las barras (según tema)
             // ═══════════════════════════════════════════════════════════════
             float t = (float) i / (NUM_BARS - 1);  // 0 a 1
             float distFromCenter = Math.abs(t - 0.5f) * 2f;  // 0 = centro, 1 = lados
 
-            // Interpolar entre rosa (centro) y cyan (lados) - SIN BLANCO
-            float r = COLOR_BASS[0] + (COLOR_TREBLE[0] - COLOR_BASS[0]) * distFromCenter;
-            float g = COLOR_BASS[1] + (COLOR_TREBLE[1] - COLOR_BASS[1]) * distFromCenter;
-            float b = COLOR_BASS[2] + (COLOR_TREBLE[2] - COLOR_BASS[2]) * distFromCenter;
+            // Interpolar entre bass (centro) y treble (lados) según tema
+            float r = colorBass[0] + (colorTreble[0] - colorBass[0]) * distFromCenter;
+            float g = colorBass[1] + (colorTreble[1] - colorBass[1]) * distFromCenter;
+            float b = colorBass[2] + (colorTreble[2] - colorBass[2]) * distFromCenter;
 
             // Aplicar pulso y brillo
             r = r * pulse * 1.2f;

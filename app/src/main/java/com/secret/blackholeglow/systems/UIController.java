@@ -4,8 +4,6 @@ import android.content.Context;
 import android.util.Log;
 import android.view.MotionEvent;
 
-import com.secret.blackholeglow.FireButton;
-import com.secret.blackholeglow.christmas.MiniStopButton;
 import com.secret.blackholeglow.PlayPauseButton;
 import com.secret.blackholeglow.sharing.HeartParticleSystem;
 import com.secret.blackholeglow.sharing.LikeButton;
@@ -48,9 +46,7 @@ public class UIController {
     // ═══════════════════════════════════════════════════════════════
 
     private LikeButton likeButton;
-    private FireButton fireButton;
     private PlayPauseButton playPauseButton;
-    private MiniStopButton miniStopButton;
     private HeartParticleSystem heartParticles;
     private UserAvatar userAvatar;
     private SongSharingManager songSharingManager;
@@ -86,16 +82,8 @@ public class UIController {
         this.likeButton = button;
     }
 
-    public void setFireButton(FireButton button) {
-        this.fireButton = button;
-    }
-
     public void setPlayPauseButton(PlayPauseButton button) {
         this.playPauseButton = button;
-    }
-
-    public void setMiniStopButton(MiniStopButton button) {
-        this.miniStopButton = button;
     }
 
     public void setHeartParticles(HeartParticleSystem particles) {
@@ -163,24 +151,6 @@ public class UIController {
             }
         }
 
-        // Verificar FireButton
-        if (fireButton != null && fireButton.isTouchInside(normalizedX, normalizedY)) {
-            if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_UP) {
-                if (fireButton.isReady()) {
-                    fireButton.startCooldown();
-
-                    // Publicar evento
-                    EventBus.get().publish(EventBus.FIRE_PRESSED,
-                        new EventBus.EventData()
-                            .put("x", normalizedX)
-                            .put("y", normalizedY));
-
-                    Log.d(TAG, "🎯 Fire button pressed!");
-                    return true;
-                }
-            }
-        }
-
         return false;
     }
 
@@ -215,16 +185,8 @@ public class UIController {
         return likeButton;
     }
 
-    public FireButton getFireButton() {
-        return fireButton;
-    }
-
     public PlayPauseButton getPlayPauseButton() {
         return playPauseButton;
-    }
-
-    public MiniStopButton getMiniStopButton() {
-        return miniStopButton;
     }
 
     public HeartParticleSystem getHeartParticles() {
@@ -266,9 +228,7 @@ public class UIController {
      */
     public void clear() {
         likeButton = null;
-        fireButton = null;
         playPauseButton = null;
-        miniStopButton = null;
         heartParticles = null;
         userAvatar = null;
         songSharingManager = null;

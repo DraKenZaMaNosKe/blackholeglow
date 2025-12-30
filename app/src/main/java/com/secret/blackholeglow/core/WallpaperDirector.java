@@ -11,9 +11,10 @@ import com.secret.blackholeglow.CameraController;
 import com.secret.blackholeglow.MusicVisualizer;
 import com.secret.blackholeglow.ResourceLoader;
 import com.secret.blackholeglow.TextureManager;
-import com.secret.blackholeglow.scenes.BatallaCosmicaScene;
 import com.secret.blackholeglow.scenes.OceanFloorScene;
+import com.secret.blackholeglow.scenes.LabScene;
 import com.secret.blackholeglow.scenes.SceneConstants;
+import com.secret.blackholeglow.sharing.LikeButton;
 import com.secret.blackholeglow.scenes.WallpaperScene;
 import com.secret.blackholeglow.systems.AspectRatioManager;
 import com.secret.blackholeglow.systems.EventBus;
@@ -70,24 +71,12 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     private boolean pendingPreviewMode = false; // Para guardar preview mode antes de inicializar
     private boolean pendingArcadeMode = false;  // 🎮 Para guardar arcade mode antes de inicializar
 
-    // 🎄 FILAMENT CALLBACK - Para escenas que usan Filament (Christmas)
-    public interface OnFilamentSceneListener {
-        void onFilamentSceneRequested(String sceneName);
-    }
-    private OnFilamentSceneListener filamentListener;
-
-    public void setOnFilamentSceneListener(OnFilamentSceneListener listener) {
-        this.filamentListener = listener;
-    }
 
     // TIMING (deltaTime y FPS manejados por GLStateManager)
     private static final float TIME_WRAP = 3600f;  // Reset cada hora para evitar overflow
     private float totalTime = 0f;
     private final float[] identityMatrix = new float[16];
 
-    // 🎵 Auto-reconexión del MusicVisualizer
-    private float musicVisualizerCheckTimer = 0f;
-    private static final float MUSIC_VISUALIZER_CHECK_INTERVAL = 2.0f;  // Verificar cada 2 segundos
 
     public WallpaperDirector(Context context) {
         this.context = context.getApplicationContext();
@@ -108,18 +97,9 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         wireActors();
 
         if (modeController.isPreviewMode()) {
-            boolean isChristmas = pendingSceneName != null &&
-                (pendingSceneName.contains("Bosque") || pendingSceneName.contains("Navide"));
-
-            if (isChristmas) {
-                // 🎄 Christmas usa PANEL_MODE, no escena 3D
-                Log.d(TAG, "PREVIEW MODE - Christmas usa PANEL_MODE: " + pendingSceneName);
-                // Panel mode ya esta configurado via changeScene()
-            } else {
-                Log.d(TAG, "PREVIEW MODE - cargando escena directamente: " + pendingSceneName);
-                modeController.goDirectToWallpaper();
-                sceneFactory.createScene(pendingSceneName);
-            }
+            Log.d(TAG, "PREVIEW MODE - cargando escena directamente: " + pendingSceneName);
+            modeController.goDirectToWallpaper();
+            sceneFactory.createScene(pendingSceneName);
         }
         // Modo normal: PANEL_MODE → usuario presiona botón → WALLPAPER_MODE
 
@@ -169,24 +149,6 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         RenderModeController.RenderMode mode = modeController.getCurrentMode();
         switch (mode) {
             case PANEL_MODE:
-                // 🎵 Pasar bandas de audio al panel (para ecualizador navideño)
-                if (musicVisualizer != null && panelRenderer != null) {
-                    panelRenderer.updateMusicBands(musicVisualizer.getFrequencyBands());
-
-                    // 🎵 Auto-reconexión periódica para modo Christmas
-                    if (panelRenderer.isChristmasModeEnabled()) {
-                        musicVisualizerCheckTimer += deltaTime;
-                        if (musicVisualizerCheckTimer >= MUSIC_VISUALIZER_CHECK_INTERVAL) {
-                            musicVisualizerCheckTimer = 0f;
-                            // Solo reconectar si el visualizador está deshabilitado
-                            // (no si simplemente no hay música sonando)
-                            if (!musicVisualizer.isEnabled()) {
-                                Log.d(TAG, "🎵 Auto-reconexión: MusicVisualizer deshabilitado, reconectando...");
-                                musicVisualizer.reconnect();
-                            }
-                        }
-                    }
-                }
                 panelRenderer.updatePanelMode(deltaTime);
                 panelRenderer.drawPanelMode();
                 break;
@@ -209,11 +171,6 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
             GLES30.glViewport(0, 0, screenWidth, screenHeight);
 
-            // Dibujar MiniStopButton directamente
-            if (panelRenderer != null && panelRenderer.getMiniStopButton() != null) {
-                panelRenderer.getMiniStopButton().update(deltaTime);
-                panelRenderer.getMiniStopButton().draw();
-            }
         }
     }
 
@@ -227,22 +184,21 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             }
 
             WallpaperScene scene = sceneFactory.getCurrentScene();
-            if (scene instanceof BatallaCosmicaScene) {
-                // Usar las 32 bandas de frecuencia para mejor visualización
-                ((BatallaCosmicaScene) scene).updateMusicBands(
-                    musicVisualizer.getFrequencyBands()
-                );
-                // También actualizar los valores legacy (bass/mid/treble)
-                ((BatallaCosmicaScene) scene).updateMusicLevels(
-                    musicVisualizer.getBassLevel(),
-                    musicVisualizer.getMidLevel(),
-                    musicVisualizer.getTrebleLevel()
-                );
-            } else if (scene instanceof OceanFloorScene) {
-                // 🌊 Fondo del Mar también tiene ecualizador
-                ((OceanFloorScene) scene).updateMusicBands(
-                    musicVisualizer.getFrequencyBands()
-                );
+            float[] bands = musicVisualizer.getFrequencyBands();
+
+            // Debug: verificar flujo de datos
+            float sum = 0;
+            if (bands != null) for (float b : bands) sum += b;
+            if (sum > 0.5f) {
+                Log.d(TAG, "🎶 Bands OK sum=" + String.format("%.2f", sum) + " scene=" + (scene != null ? scene.getClass().getSimpleName() : "null"));
+            }
+
+            if (scene instanceof OceanFloorScene) {
+                // 🌊 Abyssia tiene ecualizador
+                ((OceanFloorScene) scene).updateMusicBands(bands);
+            } else if (scene instanceof LabScene) {
+                // 🔥 Pyralis tiene ecualizador
+                ((LabScene) scene).updateMusicBands(bands);
             }
         }
         sceneFactory.updateCurrentScene(deltaTime);
@@ -270,14 +226,10 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         GLES30.glDisable(GLES30.GL_DEPTH_TEST);
         songSharing.draw(identityMatrix, totalTime);
 
-        // 🔴 STOP BUTTON: Asegurar que esté ENCIMA de todo
-        // Resetear completamente el estado OpenGL
-        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+        // UI overlay
         GLES30.glDisable(GLES30.GL_CULL_FACE);
         GLES30.glEnable(GLES30.GL_BLEND);
         GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
-
-        // Asegurar viewport correcto
         GLES30.glViewport(0, 0, screenWidth, screenHeight);
 
         panelRenderer.drawWallpaperOverlay();
@@ -298,20 +250,8 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         modeController.activateWallpaper();
         panelRenderer.onWallpaperActivated();
 
-        // 🌊 VIDEO SCENES: Ocultar MiniStopButton (no necesitan botón de stop)
-        boolean isVideoScene = pendingSceneName.contains("Fondo del Mar") ||
-                               pendingSceneName.contains("Ocean");
-        if (isVideoScene) {
-            panelRenderer.setStopButtonVisible(false);
-            Log.d(TAG, "🌊 Escena de video - MiniStopButton OCULTO");
-        }
-
-        // Deshabilitar saludos Gemini para Batalla Cósmica (se usará en otros wallpapers)
-        if (pendingSceneName.contains("Batalla") || pendingSceneName.contains("Universo")) {
-            panelRenderer.setGreetingEnabled(false);
-        } else {
-            panelRenderer.setGreetingEnabled(true);
-        }
+        // Habilitar saludos Gemini para todos los wallpapers
+        panelRenderer.setGreetingEnabled(true);
 
         // 🎵 Reconexión del MusicVisualizer para TODAS las escenas
         // (MusicVisualizer solo ESCUCHA el audio, NO interrumpe Spotify/YouTube Music)
@@ -403,7 +343,6 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         touchRouter.setModeController(modeController);
         touchRouter.setListener(new TouchRouter.TouchListener() {
             @Override public void onPlayButtonTapped() { startLoading(); }
-            @Override public void onStopButtonTapped() { switchToPanelMode(); }
             @Override public void onLikeButtonPressed() {}
             @Override public void onLikeButtonReleased() {}
             @Override public void onLikeButtonTapped() { songSharing.shareSongWithAI(); }
@@ -421,44 +360,21 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     }
 
     /**
-     * 🎄 Aplica el modo correcto al panel según el nombre de la escena
+     * Aplica el modo correcto al panel según el nombre de la escena
      */
     private void applySceneModeToPanel(String sceneName) {
         if (panelRenderer == null || sceneName == null) return;
+        Log.d(TAG, "📱 Modo ESTÁNDAR aplicado: " + sceneName);
 
-        boolean shouldUseArcade = sceneName.contains("Batalla") || sceneName.contains("Universo");
-        boolean shouldUseChristmas = sceneName.contains("Bosque") || sceneName.contains("Navide");
-
-        if (shouldUseArcade) {
-            panelRenderer.setChristmasModeEnabled(false);
-            panelRenderer.setArcadeModeEnabled(true);
-            panelRenderer.setStopButtonPosition(
-                SceneConstants.StopButton.BATALLA_X,
-                SceneConstants.StopButton.BATALLA_Y
-            );
-            Log.d(TAG, "🎮 Modo ARCADE APLICADO en panel: " + sceneName);
-        } else if (shouldUseChristmas) {
-            panelRenderer.setArcadeModeEnabled(false);
-            panelRenderer.setChristmasModeEnabled(true);
-            panelRenderer.setStopButtonPosition(
-                SceneConstants.StopButton.CHRISTMAS_X,
-                SceneConstants.StopButton.CHRISTMAS_Y
-            );
-            // 🎵 Reconectar MusicVisualizer para el ecualizador navideño
-            if (musicVisualizer != null) {
-                Log.d(TAG, "🎵 Reconectando MusicVisualizer para modo Christmas...");
-                musicVisualizer.reconnect();
+        // Establecer tema del botón Like según la escena
+        if (songSharing != null) {
+            if (sceneName.equals("Fondo del Mar") || sceneName.toLowerCase().contains("abyssia")) {
+                songSharing.setLikeButtonTheme(LikeButton.Theme.ABYSSIA);
+            } else if (sceneName.equals("Laboratorio") || sceneName.toLowerCase().contains("pyralis")) {
+                songSharing.setLikeButtonTheme(LikeButton.Theme.PYRALIS);
+            } else {
+                songSharing.setLikeButtonTheme(LikeButton.Theme.DEFAULT);
             }
-            Log.d(TAG, "🎄 Modo CHRISTMAS APLICADO en panel: " + sceneName);
-        } else {
-            panelRenderer.setArcadeModeEnabled(false);
-            panelRenderer.setChristmasModeEnabled(false);
-            panelRenderer.setStopButtonPosition(
-                SceneConstants.StopButton.DEFAULT_X,
-                SceneConstants.StopButton.DEFAULT_Y
-            );
-            Log.d(TAG, "📱 Modo ESTÁNDAR aplicado: " + sceneName);
-            // 🌊 Ocean usa flujo normal: PANEL → PLAY → VIDEO (sin AUTO-START)
         }
     }
 
@@ -477,17 +393,6 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
     public void pause() {
         paused = true;
-        boolean hasActiveScene = sceneFactory != null && sceneFactory.hasCurrentScene();
-
-        // 🎮 BATALLA CÓSMICA: Siempre volver a Arcade Mode al pausar
-        // (es muy pesado, solo debe renderizar cuando el usuario está mirando)
-        // Otros wallpapers: NUNCA vuelven a panel, solo se pausan
-        if (hasActiveScene && sceneFactory.getCurrentScene() instanceof BatallaCosmicaScene) {
-            if (modeController != null && !modeController.isPreviewMode()) {
-                Log.d(TAG, "🎮 Batalla Cósmica pausada → Volviendo a Arcade Mode");
-                switchToPanelMode();
-            }
-        }
 
         if (sceneFactory != null) {
             sceneFactory.pauseCurrentScene();
@@ -495,7 +400,6 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         if (musicVisualizer != null) musicVisualizer.pause();
 
         // Flush Firebase queue al pausar para guardar datos pendientes
-        // NOTA: Envuelto en try-catch para evitar crash si el handler está muerto
         try {
             if (firebaseQueue != null) {
                 firebaseQueue.forceFlush();
@@ -538,48 +442,11 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     public void changeScene(String sceneName) {
         Log.d(TAG, "Escena pendiente: " + sceneName);
         pendingSceneName = sceneName;
+        pendingArcadeMode = false;
 
-        // 🎮 Determinar si debe usar modo ARCADE (para Batalla Cósmica)
-        boolean shouldUseArcade = sceneName.contains("Batalla") || sceneName.contains("Universo");
-        pendingArcadeMode = shouldUseArcade;
-
-        // 🎄 Determinar si debe usar modo CHRISTMAS (para Bosque Navideño)
-        boolean shouldUseChristmas = sceneName.contains("Bosque") || sceneName.contains("Navide");
-
-        // Activar el modo correcto en el panel
+        // Activar modo estándar en el panel
         if (panelRenderer != null) {
-            if (shouldUseArcade) {
-                panelRenderer.setArcadeModeEnabled(true);
-                // 🔴 Posición del botón stop para Batalla Cósmica
-                panelRenderer.setStopButtonPosition(
-                    SceneConstants.StopButton.BATALLA_X,
-                    SceneConstants.StopButton.BATALLA_Y
-                );
-                Log.d(TAG, "🎮 Modo ARCADE ACTIVADO para: " + sceneName);
-            } else if (shouldUseChristmas) {
-                panelRenderer.setChristmasModeEnabled(true);
-                // 🔴 Posición del botón stop para Christmas
-                panelRenderer.setStopButtonPosition(
-                    SceneConstants.StopButton.CHRISTMAS_X,
-                    SceneConstants.StopButton.CHRISTMAS_Y
-                );
-                // 🎵 Reconectar MusicVisualizer para el ecualizador navideño
-                if (musicVisualizer != null) {
-                    Log.d(TAG, "🎵 Reconectando MusicVisualizer para ecualizador navideño...");
-                    musicVisualizer.reconnect();
-                }
-                Log.d(TAG, "🎄 Modo CHRISTMAS ACTIVADO para: " + sceneName);
-            } else {
-                // Desactivar todos los modos especiales
-                panelRenderer.setArcadeModeEnabled(false);
-                panelRenderer.setChristmasModeEnabled(false);
-                // 🔴 Posición por defecto del botón stop
-                panelRenderer.setStopButtonPosition(
-                    SceneConstants.StopButton.DEFAULT_X,
-                    SceneConstants.StopButton.DEFAULT_Y
-                );
-                Log.d(TAG, "📱 Modo ESTÁNDAR para: " + sceneName);
-            }
+            Log.d(TAG, "📱 Modo ESTÁNDAR para: " + sceneName);
         } else {
             Log.d(TAG, "Panel mode pendiente - panelRenderer aún no inicializado");
         }

@@ -321,16 +321,17 @@ public class LoadingBar implements SceneObject {
         this.context = ctx;
 
         // Mapeo de escenas a fondos
+        // Nota: christmas_background ahora se descarga de Supabase, usar placeholder
         if (sceneName == null) {
-            this.backgroundResourceId = R.drawable.universo03;  // Default
+            this.backgroundResourceId = R.drawable.preview_oceano_sc;  // Default
         } else if (sceneName.contains("Navide") || sceneName.contains("Christmas")) {
-            this.backgroundResourceId = R.drawable.christmas_background;
+            this.backgroundResourceId = R.drawable.preview_oceano_sc;  // Placeholder (imagen real se descarga)
         } else if (sceneName.contains("Batalla") || sceneName.contains("Universo") || sceneName.contains("Cósmica")) {
-            this.backgroundResourceId = R.drawable.universo03;
+            this.backgroundResourceId = R.drawable.preview_oceano_sc;
         } else if (sceneName.contains("Ocean") || sceneName.contains("Pearl")) {
-            this.backgroundResourceId = R.drawable.universo03;  // TODO: agregar fondo de océano
+            this.backgroundResourceId = R.drawable.preview_oceano_sc;  // TODO: agregar fondo de océano
         } else {
-            this.backgroundResourceId = R.drawable.universo03;  // Default
+            this.backgroundResourceId = R.drawable.preview_oceano_sc;  // Default
         }
 
         this.backgroundLoaded = false;

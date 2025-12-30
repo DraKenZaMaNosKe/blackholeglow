@@ -12,6 +12,7 @@ import android.opengl.Matrix;
 import android.util.Log;
 import android.view.Surface;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -33,6 +34,7 @@ public class MediaCodecVideoRenderer {
 
     private final Context context;
     private final String videoFileName;
+    private String localFilePath = null;  // Path a archivo local (cache)
 
     // MediaCodec components
     private MediaExtractor extractor;
@@ -84,6 +86,24 @@ public class MediaCodecVideoRenderer {
         this.videoFileName = videoFileName;
         Matrix.setIdentityM(mvpMatrix, 0);
         Matrix.setIdentityM(stMatrix, 0);
+    }
+
+    /**
+     * Constructor con path a archivo local (para videos descargados de Supabase)
+     */
+    public MediaCodecVideoRenderer(Context context, String videoFileName, String localFilePath) {
+        this.context = context;
+        this.videoFileName = videoFileName;
+        this.localFilePath = localFilePath;
+        Matrix.setIdentityM(mvpMatrix, 0);
+        Matrix.setIdentityM(stMatrix, 0);
+    }
+
+    /**
+     * Establece el path del archivo local (para usar despues de descargar)
+     */
+    public void setLocalFilePath(String path) {
+        this.localFilePath = path;
     }
 
     public void initialize() {
@@ -183,12 +203,19 @@ public class MediaCodecVideoRenderer {
 
     private boolean initializeMediaCodec() {
         try {
-            // Abrir video desde assets
-            AssetFileDescriptor afd = context.getAssets().openFd(videoFileName);
-
             extractor = new MediaExtractor();
-            extractor.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
-            afd.close();
+
+            // Intentar archivo local primero (cache de Supabase)
+            if (localFilePath != null && new File(localFilePath).exists()) {
+                Log.d(TAG, "Abriendo video desde cache: " + localFilePath);
+                extractor.setDataSource(localFilePath);
+            } else {
+                // Fallback a assets
+                Log.d(TAG, "Abriendo video desde assets: " + videoFileName);
+                AssetFileDescriptor afd = context.getAssets().openFd(videoFileName);
+                extractor.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
+                afd.close();
+            }
 
             // Buscar track de video
             videoTrackIndex = -1;

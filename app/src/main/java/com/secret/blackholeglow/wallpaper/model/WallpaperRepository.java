@@ -60,7 +60,7 @@ public class WallpaperRepository {
                 "DiscoBall",
                 "🪩 Disco Ball",
                 "Bola disco con cuadritos espejo que gira hipnóticamente. Reacciona a tu música con efectos pulsantes y colores rainbow. ¡La fiesta nunca termina! 🎵✨",
-                R.drawable.agujero_negro,
+                R.drawable.preview_oceano_sc,
                 "#000000"  // Negro
         ));
 
@@ -70,7 +70,7 @@ public class WallpaperRepository {
                 "Universo",
                 "🌌 Universo Infinito",
                 "Flota entre planetas orbitantes y estrellas danzantes en un universo infinito. Tu avatar explora el cosmos en tiempo real con efectos de brillo pulsante.",
-                R.drawable.universo03,
+                R.drawable.preview_oceano_sc,
                 "#050520"  // Azul oscuro espacial
         ));
 
@@ -80,7 +80,7 @@ public class WallpaperRepository {
                 "Bosque Encantado",
                 "🌲 Bosque Encantado",
                 "Árboles místicos brillan con luciérnagas danzantes. Neblina mágica flota entre las ramas mientras la luna ilumina el camino. Efecto: partículas de luz flotando.",
-                R.drawable.textura_roninplaneta,
+                R.drawable.preview_oceano_sc,
                 "#0A2F1F"  // Verde bosque oscuro
         ));
 
@@ -90,7 +90,7 @@ public class WallpaperRepository {
                 "Neo Tokyo 2099",
                 "🏙️ Neo Tokyo 2099",
                 "Rascacielos neón se elevan al cielo nocturno. Luces holográficas parpadean y vehículos vuelan entre edificios. Atmósfera: lluvia cyberpunk con reflejos.",
-                R.drawable.agujero_negro,
+                R.drawable.preview_oceano_sc,
                 "#FF0080"  // Rosa neón cyberpunk
         ));
 
@@ -100,7 +100,7 @@ public class WallpaperRepository {
                 "Paraíso Dorado",
                 "🏖️ Paraíso Dorado",
                 "El sol se funde con el océano en un atardecer de ensueño. Olas brillantes acarician la arena mientras palmeras se mecen. Colores cálidos que hipnotizan.",
-                R.drawable.textura_sol,
+                R.drawable.preview_portal_cosmico,
                 "#FF8C00"  // Naranja dorado
         ));
 
@@ -110,7 +110,7 @@ public class WallpaperRepository {
                 "Safari Salvaje",
                 "🦁 Safari Salvaje",
                 "Leones, elefantes y jirafas deambulan bajo el sol africano. Siluetas de animales se mueven grácilmente en la sabana dorada. Vida en cada píxel.",
-                R.drawable.textura_asteroide,
+                R.drawable.preview_oceano_sc,
                 "#DAA520"  // Amarillo tierra/savanna
         ));
 
@@ -120,7 +120,7 @@ public class WallpaperRepository {
                 "Lluvia Mística",
                 "🌧️ Lluvia Mística",
                 "Gotas de lluvia caen entre árboles oscuros. Relámpagos iluminan el cielo mientras truenos resuenan. Ambiente: tormentoso y relajante a la vez.",
-                R.drawable.universo03,
+                R.drawable.preview_oceano_sc,
                 "#2F4F4F"  // Gris pizarra tormentoso
         ));
 
@@ -130,7 +130,7 @@ public class WallpaperRepository {
                 "Pixel Quest",
                 "🎮 Pixel Quest",
                 "Personajes de 8-bit saltan y corren en un mundo retro. Monedas giran, bloques parpadean y enemigos patrullan. Nostalgia gaming en movimiento.",
-                R.drawable.fondo_transparente,
+                R.drawable.preview_oceano_sc,
                 "#FF00FF"  // Magenta retro gaming
         ));
 
@@ -140,7 +140,7 @@ public class WallpaperRepository {
                 "Agujero Negro",
                 "🕳️ Portal Infinito",
                 "Un agujero negro devora la luz con su disco de acreción brillante. El espacio-tiempo se curva ante tus ojos. Efecto: distorsión gravitacional hipnótica.",
-                R.drawable.agujero_negro,
+                R.drawable.preview_oceano_sc,
                 "#4B0082"  // Índigo/morado profundo
         ));
 
@@ -150,7 +150,7 @@ public class WallpaperRepository {
                 "Jardín Zen",
                 "🌸 Jardín Zen",
                 "Pétalos de sakura flotan sobre un estanque tranquilo. Koi nadan en círculos mientras bambú se mece. Paz absoluta en cada fotograma.",
-                R.drawable.textura_roninplaneta,
+                R.drawable.preview_oceano_sc,
                 "#FFB7C5"  // Rosa sakura suave
         ));
 
@@ -160,7 +160,7 @@ public class WallpaperRepository {
                 "Furia Celestial",
                 "⚡ Furia Celestial",
                 "Rayos fractales iluminan nubes tormentosas. Energía pura danza en el cielo mientras relámpagos explotan. El poder elemental al máximo.",
-                R.drawable.textura_sol,
+                R.drawable.preview_portal_cosmico,
                 "#FFFF00"  // Amarillo eléctrico brillante
         ));
     }

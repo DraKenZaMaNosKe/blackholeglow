@@ -239,72 +239,38 @@ public class WallpaperCatalog {
     private void initializeCatalog() {
         // ╔════════════════════════════════════════════════════════════╗
         // ║  🌌 CATÁLOGO DE WALLPAPERS - BLACK HOLE GLOW               ║
+        // ║  Solo wallpapers funcionales y probados                    ║
         // ╚════════════════════════════════════════════════════════════╝
 
         // ─────────────────────────────────────────────────────────────
         // 🆓 WALLPAPERS DISPONIBLES
         // ─────────────────────────────────────────────────────────────
 
-        catalog.add(new WallpaperItem.Builder("Batalla Cósmica")
-                .descripcion("Defiende la Tierra de meteoritos mientras el OVNI patrulla el cosmos. " +
-                        "Sistema de combate espacial con escudos, armas láser y efectos visuales épicos.")
-                .preview(R.drawable.preview_batalla_cosmica)
-                .sceneName("Batalla Cósmica")  // Nombre directo, sin alias confusos
+        // 🌊 ABYSSIA - Océano alienígena con video de fondo
+        catalog.add(new WallpaperItem.Builder("✧ ABYSSIA ✧")
+                .descripcion("Desciende a las profundidades de un océano alienígena. " +
+                        "Bioluminiscencia ancestral y criaturas de otro mundo.")
+                .preview(R.drawable.preview_oceano_sc)
+                .sceneName("Fondo del Mar")
+                .tier(WallpaperTier.FREE)
+                .badge("🌊 NUEVO")
+                .glow(0xFF00CED1)  // Dark Turquoise
+                .featured()
+                .build());
+
+        // 🔥 PYRALIS - Portal de fuego cósmico
+        catalog.add(new WallpaperItem.Builder("✦ PYRALIS ✦")
+                .descripcion("Atraviesa el portal de fuego eterno. " +
+                        "Nubes cósmicas ardientes y dimensiones desconocidas.")
+                .preview(R.drawable.preview_portal_cosmico)
+                .sceneName("Laboratorio")
                 .tier(WallpaperTier.FREE)
                 .badge("🔥 POPULAR")
                 .glow(0xFFFF4500)  // Orange Red
                 .featured()
                 .build());
 
-        catalog.add(new WallpaperItem.Builder("Navidad")
-                .descripcion("Disfruta de la magia de la navidad en tu celular")
-                .preview(R.drawable.preview_navidad)
-                .sceneName("Bosque Navideño")
-                .tier(WallpaperTier.FREE)
-                .badge("🎄")
-                .glow(0xFF00FF7F)  // Spring Green
-                .featured()
-                .build());
-
-        // ─────────────────────────────────────────────────────────────
-        // 🔮 WALLPAPERS EN DESARROLLO (COMING_SOON)
-        // ─────────────────────────────────────────────────────────────
-
-        catalog.add(new WallpaperItem.Builder("Fondo del Mar")
-                .descripcion("Sumérgete en las profundidades de un océano alienígena. " +
-                        "Plantas bioluminescentes y rayos de luz extraterrestre te esperan.")
-                .preview(R.drawable.preview_oceano_sc)
-                .sceneName("Fondo del Mar")
-                .tier(WallpaperTier.FREE)
-                .badge("🌊 NUEVO")
-                .glow(0xFF9932CC)  // Purple para look alien
-                .featured()
-                .build());
-
-        // 🧪 LABORATORIO - Escena de pruebas experimentales
-        catalog.add(new WallpaperItem.Builder("Laboratorio")
-                .descripcion("Escena experimental para probar nuevos efectos. " +
-                        "SpeedLines, ParallaxStars, y más experimentos en desarrollo.")
-                .preview(R.drawable.preview_space)
-                .sceneName("Laboratorio")
-                .tier(WallpaperTier.FREE)
-                .badge("🧪 LAB")
-                .glow(0xFF00FF00)  // Green para lab
-                .build());
-
-        catalog.add(new WallpaperItem.Builder("La Mansión")
-                .descripcion("Explora los misterios de una mansión encantada. " +
-                        "Fantasmas, velas flotantes y secretos oscuros aguardan en cada rincón de esta morada tenebrosa.")
-                .preview(R.drawable.preview_storm)
-                .sceneName("La Mansión")
-                .tier(WallpaperTier.COMING_SOON)
-                .badge("👻 PRÓXIMAMENTE")
-                .glow(0xFF4B0082)  // Indigo
-                .build());
-
-        Log.d(TAG, "📚 Catálogo inicializado: " +
-                getCountByTier(WallpaperTier.FREE) + " FREE, " +
-                getCountByTier(WallpaperTier.COMING_SOON) + " PRÓXIMAMENTE");
+        Log.d(TAG, "📚 Catálogo inicializado: " + catalog.size() + " wallpapers");
     }
 }
 

@@ -23,9 +23,9 @@ import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.fragments.WallpaperInfoDialogFragment;
 import com.secret.blackholeglow.models.WallpaperItem;
 import com.secret.blackholeglow.models.WallpaperTier;
-import com.secret.blackholeglow.opengl.AnimatedBorderTextureView;
 import com.secret.blackholeglow.activities.WallpaperPreviewActivity;
 import com.secret.blackholeglow.WallpaperPreferences;
+import com.secret.blackholeglow.ui.GradientTextView;
 
 import java.util.List;
 
@@ -95,8 +95,14 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
     public void onBindViewHolder(@NonNull WallpaperViewHolder holder, int position) {
         WallpaperItem item = wallpapers.get(position);
 
-        // ✨ Asignar título y descripción
+        // ✨ Asignar título con gradiente épico
         holder.textTitle.setText(item.getNombre());
+
+        // Crear gradiente basado en el color glow del wallpaper
+        int glowColor = item.getGlowColor();
+        int lighterColor = lightenColor(glowColor, 0.4f);
+        holder.textTitle.setGradientColors(Color.WHITE, lighterColor, glowColor, lighterColor, Color.WHITE);
+
         holder.textDescription.setText(item.getDescripcion());
 
         // ╔═════════════════════════════════════════════════════════╗
@@ -231,7 +237,7 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
      */
     public static class WallpaperViewHolder extends RecyclerView.ViewHolder {
         ImageView imagePreview;
-        TextView textTitle;
+        GradientTextView textTitle;
         TextView textDescription;
         TextView textBadge;
         View overlayComingSoon;
@@ -248,6 +254,28 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
             buttonPreview = itemView.findViewById(R.id.button_preview);
             animatedBorder = itemView.findViewById(R.id.animated_border);
         }
+    }
+
+    // ╔═════════════════════════════════════════════════════════════════╗
+    // ║  🎨 UTILIDADES DE COLOR                                         ║
+    // ╚═════════════════════════════════════════════════════════════════╝
+
+    /**
+     * Aclara un color mezclándolo con blanco
+     * @param color Color original
+     * @param factor Factor de aclarado (0-1, mayor = más claro)
+     * @return Color aclarado
+     */
+    private int lightenColor(int color, float factor) {
+        int r = Color.red(color);
+        int g = Color.green(color);
+        int b = Color.blue(color);
+
+        r = (int) (r + (255 - r) * factor);
+        g = (int) (g + (255 - g) * factor);
+        b = (int) (b + (255 - b) * factor);
+
+        return Color.rgb(r, g, b);
     }
 
     // ╔═════════════════════════════════════════════════════════════════╗

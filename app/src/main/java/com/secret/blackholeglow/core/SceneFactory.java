@@ -5,10 +5,8 @@ import android.util.Log;
 
 import com.secret.blackholeglow.CameraController;
 import com.secret.blackholeglow.TextureManager;
-import com.secret.blackholeglow.scenes.BatallaCosmicaScene;
 import com.secret.blackholeglow.scenes.LabScene;
 import com.secret.blackholeglow.scenes.OceanFloorScene;
-import com.secret.blackholeglow.scenes.OceanPearlScene;
 import com.secret.blackholeglow.scenes.WallpaperScene;
 import com.secret.blackholeglow.systems.EventBus;
 import com.secret.blackholeglow.systems.ResourceManager;
@@ -38,7 +36,7 @@ public class SceneFactory {
     // ═══════════════════════════════════════════════════════════════
 
     private final Map<String, Class<? extends WallpaperScene>> registeredScenes = new HashMap<>();
-    private final String defaultSceneName = "Batalla Cósmica";
+    private final String defaultSceneName = "Laboratorio";
 
     // Dependencias para inyectar
     private Context context;
@@ -98,17 +96,12 @@ public class SceneFactory {
 
     /**
      * Registra las escenas por defecto
+     * Solo Lab y Ocean están disponibles
      */
     public void registerDefaultScenes() {
-        registerScene("Ocean Pearl", OceanPearlScene.class);
-        registerScene("Batalla Cósmica", BatallaCosmicaScene.class);
-        // Alias para compatibilidad con usuarios que tenían "Universo" guardado
-        registerScene("Universo", BatallaCosmicaScene.class);
-        // 🎄 Bosque Navideño: usa panel mode con imagen de fondo, no necesita árbol 3D Meshy
-        registerScene("Bosque Navideño", BatallaCosmicaScene.class);
         // 🌊 Fondo del Mar: Video wallpaper alienígena con efectos shader
         registerScene("Fondo del Mar", OceanFloorScene.class);
-        // 🧪 Laboratorio: Escena experimental para probar nuevos efectos
+        // 🧪 Laboratorio: Portal cósmico con nubes de fuego
         registerScene("Laboratorio", LabScene.class);
         Log.d(TAG, "🎭 " + registeredScenes.size() + " escenas registradas");
     }

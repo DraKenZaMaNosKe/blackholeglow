@@ -8,9 +8,8 @@ import android.os.HandlerThread;
 import android.util.Log;
 
 import com.secret.blackholeglow.R;
+import com.secret.blackholeglow.video.VideoDownloadManager;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -75,50 +74,78 @@ public class ResourcePreloader {
     }
 
     /**
-     * Prepara las tareas de precarga para "Batalla Cosmica"
+     * Prepara tareas segun el nombre del wallpaper
      */
-    public void prepareBatallaCosmicaTasks() {
+    public void prepareTasksForScene(String sceneName) {
         tasks.clear();
 
-        // ═══════════════════════════════════════════════════════════════
-        // TEXTURAS - Las mas pesadas
-        // ═══════════════════════════════════════════════════════════════
-        addTextureTask("Fondo Universo", R.drawable.universo001, 3);
-        addTextureTask("Textura Tierra", R.drawable.texturaplanetatierra, 3);
-        addTextureTask("Textura Sol", R.drawable.textura_sol, 2);
+        // Determinar que escena es y preparar tareas apropiadas
+        if (sceneName == null) {
+            prepareLabSceneTasks();
+            return;
+        }
 
-        // ═══════════════════════════════════════════════════════════════
-        // SHADERS - Validar que existen
-        // ═══════════════════════════════════════════════════════════════
-        addShaderTask("Shader Tierra", "shaders/tierra_vertex.glsl", "shaders/tierra_fragment.glsl", 1);
-        addShaderTask("Shader Planeta", "shaders/planeta_vertex.glsl", "shaders/planeta_fragment.glsl", 1);
-        addShaderTask("Shader Sol", "shaders/sol_procedural_vertex.glsl", "shaders/sol_procedural_fragment.glsl", 1);
-        addShaderTask("Shader Background", "shaders/starry_vertex.glsl", "shaders/starry_fragment.glsl", 1);
-        addShaderTask("Shader Meteoritos", "shaders/meteoro_vertex.glsl", "shaders/meteoro_fragment.glsl", 1);
-        addShaderTask("Shader OVNI", "shaders/ovni_vertex.glsl", "shaders/ovni_fragment.glsl", 1);
+        switch (sceneName) {
+            case "Portal Cosmico":
+            case "Laboratorio":
+            case "LabScene":
+                prepareLabSceneTasks();
+                break;
 
-        // ═══════════════════════════════════════════════════════════════
-        // MODELOS 3D - Verificar existencia
-        // ═══════════════════════════════════════════════════════════════
-        addModelTask("Modelo Planeta", "planeta.obj", 2);
-        addModelTask("Modelo OVNI", "ovni.obj", 2);
-        addModelTask("Modelo Meteoro", "meteoro.obj", 1);
+            case "Fondo del Mar":
+            case "Oceano":
+            case "OceanFloorScene":
+                prepareOceanSceneTasks();
+                break;
 
-        // ═══════════════════════════════════════════════════════════════
-        // SISTEMAS - Inicializacion ligera
-        // ═══════════════════════════════════════════════════════════════
-        addSystemTask("Sistema de Audio", this::preloadAudioSystem, 1);
-        addSystemTask("Sistema de Particulas", this::preloadParticleSystem, 1);
-        addSystemTask("UI Components", this::preloadUIComponents, 1);
-        addSystemTask("Leaderboard Cache", this::preloadLeaderboardCache, 1);
+            default:
+                // Default: usar Lab
+                prepareLabSceneTasks();
+                break;
+        }
+    }
+
+    /**
+     * Prepara tareas para LabScene (Portal Cosmico)
+     * Incluye descarga del video de nubes de fuego
+     */
+    public void prepareLabSceneTasks() {
+        tasks.clear();
+
+        // 1. VIDEO - Lo mas importante y pesado
+        addVideoDownloadTask("Video Portal Cosmico", "cielovolando.mp4", 10);
+
+        // 2. Texturas (placeholder - la escena carga sus propias texturas)
+        addTextureTask("Preparando escena", R.drawable.preview_oceano_sc, 2);
 
         // Calcular total
+        calculateTotalWeight();
+        Log.d(TAG, "LabScene: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    /**
+     * Prepara tareas para OceanFloorScene (Fondo del Mar)
+     * Incluye descarga del video del oceano
+     */
+    public void prepareOceanSceneTasks() {
+        tasks.clear();
+
+        // 1. VIDEO - Lo mas importante
+        addVideoDownloadTask("Video Abyssia", "marZerg.mp4", 10);
+
+        // 2. Texturas
+        addTextureTask("Textura Pez", R.drawable.abyssal_lurker_texture, 2);
+
+        // Calcular total
+        calculateTotalWeight();
+        Log.d(TAG, "OceanScene: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    private void calculateTotalWeight() {
         totalTasks = 0;
         for (PreloadTask task : tasks) {
             totalTasks += task.weight;
         }
-
-        Log.d(TAG, "Preparadas " + tasks.size() + " tareas (peso total: " + totalTasks + ")");
     }
 
     /**
@@ -236,68 +263,34 @@ public class ResourcePreloader {
         }, weight));
     }
 
-    private void addShaderTask(String name, String vertexPath, String fragmentPath, int weight) {
+    /**
+     * Agrega tarea de descarga de video desde Supabase
+     * Si el video ya existe, la tarea completa inmediatamente
+     */
+    private void addVideoDownloadTask(String name, String videoFileName, int weight) {
         tasks.add(new PreloadTask(name, () -> {
-            try {
-                // Verificar que los shaders existen
-                InputStream vertexStream = context.getAssets().open(vertexPath);
-                vertexStream.close();
+            VideoDownloadManager downloader = VideoDownloadManager.getInstance(context);
 
-                InputStream fragmentStream = context.getAssets().open(fragmentPath);
-                fragmentStream.close();
-            } catch (IOException e) {
-                Log.w(TAG, "Shader no encontrado: " + e.getMessage());
+            if (downloader.isVideoAvailable(videoFileName)) {
+                Log.d(TAG, "Video ya descargado: " + videoFileName);
+                return;
+            }
+
+            // Video no disponible - descargar
+            Log.d(TAG, "Descargando video: " + videoFileName);
+            boolean success = downloader.downloadVideoSync(videoFileName, percent -> {
+                // Actualizar progreso de descarga
+                String progressText = name + " (" + percent + "%)";
+                mainHandler.post(() -> {
+                    if (listener != null) {
+                        listener.onProgressUpdate(completedTasks, totalTasks, progressText);
+                    }
+                });
+            });
+
+            if (!success) {
+                Log.e(TAG, "Error descargando video: " + videoFileName);
             }
         }, weight));
-    }
-
-    private void addModelTask(String name, String modelPath, int weight) {
-        tasks.add(new PreloadTask(name, () -> {
-            try {
-                InputStream stream = context.getAssets().open(modelPath);
-                // Leer primeros bytes para verificar
-                byte[] buffer = new byte[1024];
-                stream.read(buffer);
-                stream.close();
-            } catch (IOException e) {
-                Log.w(TAG, "Modelo no encontrado: " + e.getMessage());
-            }
-        }, weight));
-    }
-
-    private void addSystemTask(String name, Runnable task, int weight) {
-        tasks.add(new PreloadTask(name, task, weight));
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // TAREAS DE SISTEMAS
-    // ═══════════════════════════════════════════════════════════════════════
-
-    private void preloadAudioSystem() {
-        // Simular inicializacion del sistema de audio
-        try {
-            Thread.sleep(100);
-        } catch (InterruptedException ignored) {}
-    }
-
-    private void preloadParticleSystem() {
-        // Simular precarga de sistema de particulas
-        try {
-            Thread.sleep(80);
-        } catch (InterruptedException ignored) {}
-    }
-
-    private void preloadUIComponents() {
-        // Simular precarga de componentes UI
-        try {
-            Thread.sleep(60);
-        } catch (InterruptedException ignored) {}
-    }
-
-    private void preloadLeaderboardCache() {
-        // Simular precarga del cache de leaderboard
-        try {
-            Thread.sleep(50);
-        } catch (InterruptedException ignored) {}
     }
 }

@@ -457,40 +457,4 @@ public final class SceneConstants {
         /** Alpha cuando está en respawn (semi-transparente) */
         public static final float RESPAWN_ALPHA = 0.3f;
     }
-
-    // ═══════════════════════════════════════════════════════════════════
-    // 🔴 STOP BUTTON - Posiciones por Escena
-    // ═══════════════════════════════════════════════════════════════════
-    //
-    // Cada escena puede tener su propia posición del botón stop
-    // para evitar que tape elementos importantes (barras de vida, etc.)
-    //
-    // Coordenadas: X (-1 a 1), Y (-1 a 1)
-    //   X: -1 = izquierda, 0 = centro, 1 = derecha
-    //   Y: -1 = abajo, 0 = centro, 1 = arriba
-
-    public static final class StopButton {
-
-        // ═══ BATALLA CÓSMICA / UNIVERSO ═══
-        /** Posición X para Batalla Cósmica (izquierda, debajo de barras) */
-        public static final float BATALLA_X = -0.35f;
-        /** Posición Y para Batalla Cósmica (debajo de barra de vida) */
-        public static final float BATALLA_Y = 0.65f;
-
-        // ═══ BOSQUE NAVIDEÑO ═══
-        /** Posición X para Christmas (esquina superior izquierda) */
-        public static final float CHRISTMAS_X = -0.38f;
-        /** Posición Y para Christmas (arriba, sin barras de vida) */
-        public static final float CHRISTMAS_Y = 0.85f;
-
-        // ═══ DEFAULT (para nuevas escenas) ═══
-        /** Posición X por defecto */
-        public static final float DEFAULT_X = -0.35f;
-        /** Posición Y por defecto */
-        public static final float DEFAULT_Y = 0.55f;
-
-        // ═══ TAMAÑO ═══
-        /** Tamaño del botón */
-        public static final float SIZE = 0.04f;
-    }
 }

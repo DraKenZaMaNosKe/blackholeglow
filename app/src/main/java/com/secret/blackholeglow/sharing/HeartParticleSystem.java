@@ -205,7 +205,8 @@ public class HeartParticleSystem {
         GLES30.glEnableVertexAttribArray(positionHandle);
         GLES30.glVertexAttribPointer(positionHandle, 2, GLES30.GL_FLOAT, false, 0, heartBuffer);
 
-        for (HeartParticle p : particles) {
+        HeartParticle[] particlesCopy = particles.toArray(new HeartParticle[0]);
+        for (HeartParticle p : particlesCopy) {
             // ⚡ OPTIMIZADO: Usar matrices reutilizables
             android.opengl.Matrix.setIdentityM(reusableModelMatrix, 0);
             android.opengl.Matrix.translateM(reusableModelMatrix, 0, p.x, p.y, 0);

@@ -99,19 +99,20 @@
             android:orientation="vertical"
             android:padding="24dp">
 
-            <!-- Título con emoji -->
-            <TextView
+            <!-- Título con gradiente épico -->
+            <com.secret.blackholeglow.ui.GradientTextView
                 android:id="@+id/text_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/wallpaper_title"
                 android:textColor="@android:color/white"
-                android:textSize="28sp"
+                android:textSize="32sp"
                 android:textStyle="bold"
+                android:letterSpacing="0.15"
                 android:shadowColor="#000000"
                 android:shadowDx="0"
-                android:shadowDy="2"
-                android:shadowRadius="8"/>
+                android:shadowDy="3"
+                android:shadowRadius="10"/>
 
             <!-- Descripción -->
             <TextView

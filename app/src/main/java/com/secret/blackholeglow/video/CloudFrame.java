@@ -146,13 +146,13 @@ public class CloudFrame {
         GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
         GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
 
-        Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.marcofijo);
+        Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.preview_oceano_sc);
         if (bitmap != null) {
             GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0);
             bitmap.recycle();
-            Log.d(TAG, "✅ Textura marcofijo.png cargada");
+            Log.d(TAG, "✅ Textura frame cargada");
         } else {
-            Log.e(TAG, "❌ No se pudo cargar marcofijo.png");
+            Log.e(TAG, "❌ No se pudo cargar textura frame");
         }
     }
 

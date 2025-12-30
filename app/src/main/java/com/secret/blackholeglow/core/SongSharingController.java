@@ -48,7 +48,7 @@ public class SongSharingController {
 
         try {
             // Botón de Like (corazón neón - micro)
-            likeButton = new LikeButton();
+            likeButton = new LikeButton(context);
             likeButton.init();
             likeButton.setPosition(0.85f, -0.50f);
             likeButton.setSize(0.04f);  // Tamaño mini
@@ -124,6 +124,15 @@ public class SongSharingController {
      */
     public boolean isTouchOnLikeButton(float nx, float ny) {
         return likeButton != null && likeButton.isTouched(nx, ny);
+    }
+
+    /**
+     * Cambia el tema visual del boton de like
+     */
+    public void setLikeButtonTheme(LikeButton.Theme theme) {
+        if (likeButton != null) {
+            likeButton.setTheme(theme);
+        }
     }
 
     /**

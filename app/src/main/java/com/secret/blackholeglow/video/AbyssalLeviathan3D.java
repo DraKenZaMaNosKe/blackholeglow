@@ -19,17 +19,17 @@ import java.nio.IntBuffer;
 
 /**
  * ╔════════════════════════════════════════════════════════════════════════════╗
- * ║              AbyssalLurker3D - Pez Alienígena 3D (Meshy AI)                ║
+ * ║            AbyssalLeviathan3D - Bestia Marina Colosal (Meshy AI)           ║
  * ╠════════════════════════════════════════════════════════════════════════════╣
- * ║  Modelo 3D del Abyssal Lurker con 5,327 triángulos.                        ║
- * ║  Usa proyección ortográfica para integrarse al video 2D.                   ║
- * ║  Animación de nado con profundidad simulada.                               ║
- * ║  Estética Zerg: espinas, ojos cyan, cuerpo biomecánico.                    ║
+ * ║  Modelo 3D del Abyssal Leviathan con 7,067 triángulos.                     ║
+ * ║  Criatura cristalina gigante que patrulla lento el fondo del abismo.       ║
+ * ║  No responde a touch - movimiento autónomo majestuoso.                     ║
+ * ║  Estética: Espinas de hielo, cristales cyan, presencia imponente.          ║
  * ╚════════════════════════════════════════════════════════════════════════════╝
  */
-public class AbyssalLurker3D {
-    private static final String TAG = "AbyssalLurker3D";
-    private static final String OBJ_FILE = "abyssal_lurker.obj";
+public class AbyssalLeviathan3D {
+    private static final String TAG = "AbyssalLeviathan3D";
+    private static final String OBJ_FILE = "abyssal_leviathan.obj";
 
     private Context context;
 
@@ -42,77 +42,75 @@ public class AbyssalLurker3D {
     private int indexCount;
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // ESTADO DEL PEZ - Calibrado mirando hacia la cámara (horizonte atrás)
+    // ESTADO DE LA BESTIA - Calibrado mirando hacia cámara (horizonte atrás)
     // ═══════════════════════════════════════════════════════════════════════════
-    private float posX = -0.06f;
-    private float posY = -0.76f;
-    private float posZ = -0.21f;
-    private float scale = 0.379f;
+    private float posX = 0.02f;
+    private float posY = 0.76f;
+    private float posZ = -0.18f;
+    private float scale = 0.442f;
     private float time = 0f;
-    private float rotationY = 361.9f;  // Mirando hacia cámara
-    private float rotationX = 1.4f;
-    private float rotationZ = -0.8f;
+    private float rotationY = 2.0f;      // Mirando hacia cámara
+    private float rotationX = 6.8f;
+    private float rotationZ = -3.7f;
 
-    // ═══════════════════════════════════════════════════════════════════════════
     // 🎛️ MODO CALIBRACIÓN
-    // ═══════════════════════════════════════════════════════════════════════════
     private boolean calibrationMode = false;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // 🧠 SISTEMA DE IA - Estados de comportamiento
     // ═══════════════════════════════════════════════════════════════════════════
-    private static final int STATE_EXPLORE = 0;       // Explora hacia horizonte y regresa
-    private static final int STATE_PATROL_H = 1;      // Patrulla horizontal
-    private static final int STATE_FOLLOW_TOUCH = 2;  // 👆 Sigue el dedo del usuario
+    private static final int STATE_PATROL = 0;    // Viaje completo horizonte↔cerca
+    private static final int STATE_EXPLORE = 1;   // Viaje corto, cambia a mitad
+    private static final int STATE_HOVER = 2;     // Flota en lugar, mira alrededor
+    private static final int STATE_CURIOUS = 3;   // Se acerca mucho a cámara
+    private static final int STATE_SPIRAL = 4;    // Nada en espiral
 
-    private int currentState = STATE_PATROL_H;
-    private int previousState = STATE_PATROL_H;       // Para volver después de touch
+    private int currentState = STATE_PATROL;
     private float stateTimer = 0f;
-    private float stateDuration = 12f;
-    private String[] STATE_NAMES = {"EXPLORE", "PATROL_H", "FOLLOW_TOUCH"};
+    private float stateDuration = 10f;
+    private String[] STATE_NAMES = {"PATROL", "EXPLORE", "HOVER", "CURIOUS", "SPIRAL"};
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 👆 SISTEMA DE TOUCH - Nadar hacia donde el usuario toca
+    // PARÁMETROS DE MOVIMIENTO (varían según estado)
     // ═══════════════════════════════════════════════════════════════════════════
-    private float touchTargetX = 0f;
-    private float touchTargetY = 0f;
-    private float touchTimeout = 0f;
-    private static final float TOUCH_FOLLOW_DURATION = 3.0f;  // Sigue el touch por 3 segundos
-    private static final float TOUCH_ARRIVE_THRESHOLD = 0.1f; // Distancia para "llegar"
+    private static final float Y_CLOSE = -0.6f;           // Cerca de cámara (abajo)
+    private static final float Y_FAR = 1.3f;              // Lejos en horizonte (arriba)
+    private static final float Y_VERY_CLOSE = -0.9f;      // MUY cerca (estado CURIOUS)
+    private static final float SCALE_CLOSE = 0.55f;       // Grande cuando cerca
+    private static final float SCALE_FAR = 0.12f;         // Pequeño cuando lejos
+    private static final float Z_POSITION = -0.3f;
+
+    // Variables dinámicas del estado actual
+    private float targetY = Y_FAR;            // Destino Y actual
+    private float speedMultiplier = 1.0f;     // 0.7x a 1.2x (rango reducido)
+    private float xDirection = 1f;            // 1 o -1 (izq/der)
+    private float xAmplitude = 0.4f;          // Amplitud ondulación X
+    private float spiralPhase = 0f;           // Fase para espiral
+
+    // Estado de la trayectoria - MOVIMIENTO CONTINUO
+    private float baseSpeed = 0.15f;          // Velocidad base MÁS LENTA
+    private float currentVelX = 0f;           // Velocidad actual X
+    private float currentVelY = 0f;           // Velocidad actual Y
+    private float targetPosX = 0f;            // Posición objetivo X
+    private float targetPosY = 0f;            // Posición objetivo Y
+    private boolean goingToHorizon = true;    // true=subiendo, false=bajando
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // PARÁMETROS DE MOVIMIENTO
+    // HOVER - Flotación en lugar
     // ═══════════════════════════════════════════════════════════════════════════
-    // Zona del Lurker (parte baja de la escena)
-    private static final float Y_CLOSE = -0.85f;      // Muy abajo (cerca cámara)
-    private static final float Y_FAR = 0.3f;          // Hasta medio (horizonte parcial)
-    private static final float X_MIN = -0.7f;         // Límite izquierdo
-    private static final float X_MAX = 0.7f;          // Límite derecho
-
-    // Escala dinámica
-    private static final float SCALE_CLOSE = 0.35f;   // Grande cuando cerca
-    private static final float SCALE_FAR = 0.18f;     // Pequeño cuando lejos
-    private static final float Z_POSITION = -0.21f;
-
-    // Velocidades
-    private static final float BASE_SPEED = 0.12f;    // Más lento que Leviathan
-    private float speedMultiplier = 1.0f;
-    private float xDirection = 1f;
-
-    // Estado de movimiento
-    private boolean goingToHorizon = false;
-    private boolean movingRight = true;
-    private float targetPosX = 0f;
-    private float targetPosY = 0f;
+    private float hoverY = 0f;                // Posición Y durante hover
+    private float hoverLookAngle = 0f;        // Ángulo de "mirar alrededor"
+    private float hoverLookSpeed = 0f;
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 😰 SISTEMA DE HUIDA - Evita al Leviathan
+    // BARREL ROLL (GIRO COCODRILO)
     // ═══════════════════════════════════════════════════════════════════════════
-    private static final float FLEE_DISTANCE = 0.6f;      // Distancia para empezar a huir
-    private static final float FLEE_SPEED = 0.25f;        // Velocidad de huida
-    private boolean isFleeing = false;
-    private float leviathanX = 0f;
-    private float leviathanY = 0f;
+    private static final float ROLL_DURATION = 1.2f;
+    private boolean isBarrelRolling = false;
+    private float barrelRollProgress = 0f;
+    private float barrelRollAngle = 0f;
+    private float rollTimer = 0f;
+    private float nextRollTime = 8f;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // OPENGL
@@ -132,7 +130,7 @@ public class AbyssalLurker3D {
     private final float[] tempMatrix = new float[16];
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // SHADERS - Con animación de cola y aletas
+    // SHADERS - Animación de criatura cristalina masiva
     // ═══════════════════════════════════════════════════════════════════════════
     private static final String VERTEX_SHADER =
         "precision mediump float;\n" +
@@ -143,25 +141,24 @@ public class AbyssalLurker3D {
         "varying vec2 vUV;\n" +
         "void main() {\n" +
         "    vec3 p = a_Position;\n" +
-        "    // ALETAS - Ambos lados, movimiento opuesto\n" +
-        "    float finDist = abs(p.x);\n" +
-        "    float finWave = finDist * finDist * 0.4;\n" +
-        "    float finDir = sign(p.x);\n" +
-        "    float finMove = sin(u_Time * 3.0) * finWave * finDir;\n" +
-        "    // COLA - Oscilacion trasera\n" +
+        "    // ALAS/ALETAS - Ambos lados, movimiento majestuoso\n" +
+        "    float wingDist = abs(p.x);\n" +
+        "    float wingWave = wingDist * wingDist * 0.3;\n" +
+        "    float wingDir = sign(p.x);\n" +
+        "    float wingMove = sin(u_Time * 2.0) * wingWave * wingDir;\n" +
+        "    // ESPINAS/CRISTALES - Vibracion sutil\n" +
+        "    float spineMove = sin(u_Time * 2.5 + p.x * 3.0) * 0.015;\n" +
+        "    float spineY = spineMove * max(0.0, p.y);\n" +
+        "    // COLA MASIVA - Oscilacion lenta\n" +
         "    float tailDist = max(0.0, -p.z - 0.3);\n" +
-        "    float tailWave = tailDist * tailDist * 1.0;\n" +
-        "    float tailMove = sin(u_Time * 4.0 + p.z * 2.0) * tailWave;\n" +
-        "    // MANDIBULA - Respiracion\n" +
-        "    float isHead = max(0.0, p.z - 0.4);\n" +
-        "    float isJaw = max(0.0, -p.y);\n" +
-        "    float jawMove = isHead * isJaw * 0.3;\n" +
-        "    float breathe = sin(u_Time * 2.0) * 0.5 + 0.5;\n" +
-        "    // FLOTACION - Cuerpo sube/baja\n" +
-        "    float floatY = sin(u_Time * 1.5) * 0.02;\n" +
+        "    float tailWave = tailDist * tailDist * 0.8;\n" +
+        "    float tailMove = sin(u_Time * 1.5) * tailWave;\n" +
+        "    // FLOTACION - Movimiento corporal\n" +
+        "    float floatY = sin(u_Time * 1.0) * 0.025;\n" +
+        "    float bodyWave = sin(u_Time * 1.2 - p.z * 1.5) * 0.02;\n" +
         "    // Aplicar\n" +
-        "    p.y += finMove + tailMove - jawMove * breathe + floatY;\n" +
-        "    p.x += tailMove * 0.3;\n" +
+        "    p.y += wingMove + spineY + floatY + bodyWave;\n" +
+        "    p.x += tailMove * 0.4;\n" +
         "    gl_Position = u_MVP * vec4(p, 1.0);\n" +
         "    vUV = a_TexCoord;\n" +
         "}\n";
@@ -173,48 +170,67 @@ public class AbyssalLurker3D {
         "varying vec2 vUV;\n" +
         "void main() {\n" +
         "    vec4 tex = texture2D(u_Texture, vUV);\n" +
-        "    \n" +
-        "    // ════════════════════════════════════════════════════════\n" +
-        "    // 👁️ OJOS BIOLUMINISCENTES\n" +
-        "    // Detecta pixeles brillantes (ojos) y agrega glow pulsante\n" +
-        "    // ════════════════════════════════════════════════════════\n" +
         "    float brightness = dot(tex.rgb, vec3(0.299, 0.587, 0.114));\n" +
-        "    // Ojos = pixeles muy brillantes (blancos/claros)\n" +
-        "    float isEye = smoothstep(0.7, 0.9, brightness);\n" +
-        "    // Pulso lento y suave para los ojos\n" +
-        "    float eyePulse = sin(u_Time * 1.8) * 0.5 + 0.5;\n" +
-        "    // Glow cyan intenso en los ojos\n" +
-        "    vec3 eyeGlow = vec3(0.3, 0.9, 1.0) * eyePulse * 0.8;\n" +
-        "    tex.rgb += eyeGlow * isEye;\n" +
-        "    // Segundo pulso más rápido para efecto de \"latido\"\n" +
-        "    float eyeFlicker = sin(u_Time * 4.5) * 0.15 + 0.15;\n" +
-        "    tex.rgb += vec3(0.5, 1.0, 1.0) * eyeFlicker * isEye;\n" +
         "    \n" +
-        "    // CAUSTICAS VISIBLES - Reflejos ondulantes del agua\n" +
-        "    float c1 = sin(vUV.x * 8.0 + u_Time * 1.5);\n" +
-        "    float c2 = sin(vUV.y * 6.0 + u_Time * 1.2);\n" +
-        "    float caustic = c1 * c2 * 0.18;\n" +
-        "    tex.rgb += vec3(caustic * 0.3, caustic * 0.6, caustic);\n" +
-        "    // TINTE SUBMARINO PROFUNDO\n" +
-        "    tex.rgb *= vec3(0.6, 0.8, 1.0);\n" +
-        "    // DESATURACION SUBMARINA (menos en ojos)\n" +
+        "    // ════════════════════════════════════════════════════════\n" +
+        "    // 💎 CRISTALES PÚRPURA PULSANTES\n" +
+        "    // Detecta partes brillantes (cristales) y agrega glow púrpura\n" +
+        "    // ════════════════════════════════════════════════════════\n" +
+        "    float isCrystal = smoothstep(0.5, 0.8, brightness);\n" +
+        "    float crystalPulse = sin(u_Time * 2.0) * 0.5 + 0.5;\n" +
+        "    vec3 crystalGlow = vec3(0.6, 0.2, 1.0) * crystalPulse * 0.7;\n" +
+        "    tex.rgb += crystalGlow * isCrystal;\n" +
+        "    \n" +
+        "    // ════════════════════════════════════════════════════════\n" +
+        "    // ⚡ BIO-ELECTRICIDAD - Ondas suaves que recorren el cuerpo\n" +
+        "    // ════════════════════════════════════════════════════════\n" +
+        "    float wave = sin(vUV.y * 8.0 - u_Time * 1.5) * 0.5 + 0.5;\n" +
+        "    wave *= sin(vUV.x * 6.0 + u_Time * 1.0) * 0.5 + 0.5;\n" +
+        "    float electricPulse = pow(wave, 4.0) * 0.25;\n" +
+        "    vec3 electricColor = vec3(0.4, 0.85, 1.0);\n" +
+        "    tex.rgb += electricColor * electricPulse * smoothstep(0.35, 0.6, brightness);\n" +
+        "    \n" +
+        "    // ════════════════════════════════════════════════════════\n" +
+        "    // 💚 PUNTAS VENENOSAS - Sutil brillo verde en bordes\n" +
+        "    // ════════════════════════════════════════════════════════\n" +
+        "    float isDark = smoothstep(0.25, 0.1, brightness);\n" +
+        "    float venomPulse = sin(u_Time * 1.8) * 0.3 + 0.4;\n" +
+        "    vec3 venomGlow = vec3(0.15, 0.8, 0.3) * venomPulse * 0.25;\n" +
+        "    tex.rgb += venomGlow * isDark;\n" +
+        "    \n" +
+        "    // ════════════════════════════════════════════════════════\n" +
+        "    // 👁️ OJOS AMENAZANTES - Glow intenso\n" +
+        "    // ════════════════════════════════════════════════════════\n" +
+        "    float isEye = smoothstep(0.85, 0.95, brightness);\n" +
+        "    float eyePulse = sin(u_Time * 2.5) * 0.3 + 0.7;\n" +
+        "    vec3 eyeGlow = vec3(1.0, 0.5, 0.8) * eyePulse;\n" +
+        "    tex.rgb += eyeGlow * isEye;\n" +
+        "    \n" +
+        "    // CAUSTICAS - Luz ondulante del agua\n" +
+        "    float c1 = sin(vUV.x * 6.0 + u_Time * 1.2);\n" +
+        "    float c2 = sin(vUV.y * 5.0 + u_Time * 1.0);\n" +
+        "    float caustic = c1 * c2 * 0.12;\n" +
+        "    tex.rgb += vec3(caustic * 0.2, caustic * 0.4, caustic * 0.7);\n" +
+        "    \n" +
+        "    // TINTE AGUA PROFUNDA\n" +
+        "    tex.rgb *= vec3(0.7, 0.85, 1.0);\n" +
+        "    \n" +
+        "    // DESATURACION SUBMARINA (menos en partes brillantes)\n" +
         "    float lum = dot(tex.rgb, vec3(0.3, 0.6, 0.1));\n" +
-        "    float desatAmount = mix(0.25, 0.0, isEye);\n" +
+        "    float desatAmount = mix(0.15, 0.0, max(isCrystal, isEye));\n" +
         "    tex.rgb = mix(tex.rgb, vec3(lum), desatAmount);\n" +
-        "    // BIOLUMINISCENCIA GENERAL - Pulso cyan en partes cyan\n" +
-        "    float isCyan = step(0.35, tex.b) * step(tex.r, 0.4);\n" +
-        "    float pulse = sin(u_Time * 2.5) * 0.3 + 0.3;\n" +
-        "    tex.rgb += vec3(0.0, 0.2, 0.35) * pulse * isCyan * (1.0 - isEye);\n" +
-        "    // NIEBLA ABISMAL - Mas azul en bordes (menos en ojos)\n" +
+        "    \n" +
+        "    // NIEBLA OCEANICA suave\n" +
         "    float edge = abs(vUV.x - 0.5) + abs(vUV.y - 0.5);\n" +
-        "    tex.rgb = mix(tex.rgb, vec3(0.1, 0.2, 0.35), edge * 0.3 * (1.0 - isEye));\n" +
+        "    tex.rgb = mix(tex.rgb, vec3(0.1, 0.18, 0.3), edge * 0.15);\n" +
+        "    \n" +
         "    gl_FragColor = tex;\n" +
         "}\n";
 
     // ═══════════════════════════════════════════════════════════════════════════
     // CONSTRUCTOR
     // ═══════════════════════════════════════════════════════════════════════════
-    public AbyssalLurker3D(Context context) {
+    public AbyssalLeviathan3D(Context context) {
         this.context = context;
     }
 
@@ -222,7 +238,6 @@ public class AbyssalLurker3D {
     // INICIALIZACIÓN
     // ═══════════════════════════════════════════════════════════════════════════
     public void initialize() {
-        // Compilar shaders
         int vs = compileShader(GLES20.GL_VERTEX_SHADER, VERTEX_SHADER);
         int fs = compileShader(GLES20.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
 
@@ -246,12 +261,13 @@ public class AbyssalLurker3D {
         loadModel();
         loadTexture();
 
-        // Matrices fijas (calculadas una sola vez)
+        // Matrices fijas
         Matrix.setIdentityM(viewMatrix, 0);
         Matrix.setLookAtM(viewMatrix, 0, 0f, 0f, 3f, 0f, 0f, 0f, 0f, 1f, 0f);
         Matrix.orthoM(projMatrix, 0, -1f, 1f, -16f/9f, 16f/9f, 0.1f, 100f);
 
         initialized = true;
+        Log.d(TAG, "Leviathan initialized - " + indexCount/3 + " triangles");
     }
 
     private void loadModel() {
@@ -260,7 +276,6 @@ public class AbyssalLurker3D {
             this.vertexBuffer = mesh.vertexBuffer;
             this.uvBuffer = mesh.uvBuffer;
 
-            // Construir índices (triangular fan)
             int totalIndices = 0;
             for (int[] face : mesh.faces) {
                 totalIndices += (face.length - 2) * 3;
@@ -285,6 +300,8 @@ public class AbyssalLurker3D {
             indexBuffer.position(0);
             modelLoaded = true;
 
+            Log.d(TAG, "Model loaded: " + indexCount/3 + " triangles");
+
         } catch (IOException e) {
             Log.e(TAG, "Error modelo: " + e.getMessage());
             modelLoaded = false;
@@ -305,24 +322,17 @@ public class AbyssalLurker3D {
         BitmapFactory.Options opts = new BitmapFactory.Options();
         opts.inScaled = false;
         Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(),
-            R.drawable.abyssal_lurker_texture, opts);
+            R.drawable.abyssal_leviathan_texture, opts);
 
         if (bitmap != null) {
             GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
             bitmap.recycle();
+            Log.d(TAG, "Texture loaded");
         }
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // SETTER - Posición del Leviathan (para huir)
-    // ═══════════════════════════════════════════════════════════════════════════
-    public void setLeviathanPosition(float x, float y) {
-        this.leviathanX = x;
-        this.leviathanY = y;
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // UPDATE - Sistema de IA con huida del Leviathan
+    // UPDATE - Sistema de IA con múltiples comportamientos
     // ═══════════════════════════════════════════════════════════════════════════
     public void update(float deltaTime) {
         time += deltaTime;
@@ -331,227 +341,103 @@ public class AbyssalLurker3D {
         if (calibrationMode) return;
 
         // ─────────────────────────────────────────────────────────────────────────
-        // DETECCIÓN DE PELIGRO - ¿El Leviathan está cerca?
-        // ─────────────────────────────────────────────────────────────────────────
-        float distToLeviathan = (float)Math.sqrt(
-            (posX - leviathanX) * (posX - leviathanX) +
-            (posY - leviathanY) * (posY - leviathanY)
-        );
-
-        if (distToLeviathan < FLEE_DISTANCE) {
-            // ¡HUIR!
-            if (!isFleeing) {
-                isFleeing = true;
-                Log.d(TAG, "🐟 ¡HUYENDO del Leviathan!");
-            }
-            updateFlee(deltaTime, distToLeviathan);
-            return;  // No ejecutar comportamiento normal
-        } else {
-            isFleeing = false;
-        }
-
-        // ─────────────────────────────────────────────────────────────────────────
-        // 👆 SEGUIR TOUCH (prioridad media - después de FLEE, antes de IA normal)
-        // ─────────────────────────────────────────────────────────────────────────
-        if (currentState == STATE_FOLLOW_TOUCH) {
-            touchTimeout -= deltaTime;
-
-            // ¿Llegó al destino o timeout?
-            float distToTarget = (float)Math.sqrt(
-                (posX - touchTargetX) * (posX - touchTargetX) +
-                (posY - touchTargetY) * (posY - touchTargetY)
-            );
-
-            if (touchTimeout <= 0 || distToTarget < TOUCH_ARRIVE_THRESHOLD) {
-                // Volver al estado anterior
-                currentState = previousState;
-                stateTimer = 0f;
-                Log.d(TAG, "🐟 Volviendo a " + STATE_NAMES[currentState]);
-            } else {
-                updateFollowTouch(deltaTime);
-                return;  // No ejecutar IA normal mientras sigue touch
-            }
-        }
-
-        // ─────────────────────────────────────────────────────────────────────────
-        // MÁQUINA DE ESTADOS (comportamiento normal)
+        // MÁQUINA DE ESTADOS - Cambiar comportamiento
         // ─────────────────────────────────────────────────────────────────────────
         stateTimer += deltaTime;
         if (stateTimer >= stateDuration) {
             changeToNewState();
         }
 
+        // ─────────────────────────────────────────────────────────────────────────
+        // EJECUTAR COMPORTAMIENTO ACTUAL
+        // ─────────────────────────────────────────────────────────────────────────
         switch (currentState) {
+            case STATE_PATROL:
+                updatePatrol(deltaTime);
+                break;
             case STATE_EXPLORE:
                 updateExplore(deltaTime);
                 break;
-            case STATE_PATROL_H:
-                updatePatrolH(deltaTime);
+            case STATE_HOVER:
+                updateHover(deltaTime);
+                break;
+            case STATE_CURIOUS:
+                updateCurious(deltaTime);
+                break;
+            case STATE_SPIRAL:
+                updateSpiral(deltaTime);
                 break;
         }
+
+        // ─────────────────────────────────────────────────────────────────────────
+        // BARREL ROLL (solo en ciertos estados)
+        // ─────────────────────────────────────────────────────────────────────────
+        if (currentState != STATE_HOVER) {
+            updateBarrelRoll(deltaTime);
+        }
+        rotationZ = barrelRollAngle;
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // FLEE - Huir del Leviathan (movimiento SUTIL y suave)
-    // ═══════════════════════════════════════════════════════════════════════════
-    private void updateFlee(float deltaTime, float distance) {
-        // Dirección opuesta al Leviathan
-        float dx = posX - leviathanX;
-        float dy = posY - leviathanY;
-
-        // Normalizar
-        float len = (float)Math.sqrt(dx * dx + dy * dy);
-        if (len > 0.01f) {
-            dx /= len;
-            dy /= len;
-        }
-
-        // Velocidad de huida MÁS LENTA y suave
-        float speed = BASE_SPEED * 1.5f;  // Solo 1.5x velocidad normal
-
-        // Calcular destino (no muy lejos)
-        targetPosX = posX + dx * 0.2f;
-        targetPosY = posY + dy * 0.2f;
-
-        // Limitar a zona válida
-        targetPosX = Math.max(X_MIN, Math.min(X_MAX, targetPosX));
-        targetPosY = Math.max(Y_CLOSE, Math.min(Y_FAR, targetPosY));
-
-        // Interpolar MUY suavemente (sin saltos)
-        posX += (targetPosX - posX) * speed * deltaTime;
-        posY += (targetPosY - posY) * speed * deltaTime;
-
-        posZ = Z_POSITION;
-
-        updateScaleByY();
-
-        // Orientación SUAVE: mira hacia donde huye
-        float targetRotY;
-        if (Math.abs(dx) > Math.abs(dy)) {
-            targetRotY = dx > 0 ? 90f : -90f;
-        } else {
-            targetRotY = dy > 0 ? 180f : 0f;
-        }
-
-        float rotYDiff = targetRotY - rotationY;
-        if (rotYDiff > 180f) rotYDiff -= 360f;
-        if (rotYDiff < -180f) rotYDiff += 360f;
-        rotationY += rotYDiff * 1.5f * deltaTime;  // Giro más lento
-
-        // Inclinación y balanceo SUTILES
-        float targetRotX = dy * 15f;
-        rotationX += (targetRotX - rotationX) * 2f * deltaTime;
-
-        rotationZ = 4f * (float)Math.sin(time * 2f);  // Balanceo suave, no nervioso
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 👆 FOLLOW TOUCH - Nadar hacia donde el usuario tocó
-    // ═══════════════════════════════════════════════════════════════════════════
-    private void updateFollowTouch(float deltaTime) {
-        // Dirección hacia el target
-        float dx = touchTargetX - posX;
-        float dy = touchTargetY - posY;
-
-        // Normalizar
-        float len = (float)Math.sqrt(dx * dx + dy * dy);
-        if (len > 0.01f) {
-            dx /= len;
-            dy /= len;
-        }
-
-        // Velocidad de seguimiento (un poco más rápida que patrulla normal)
-        float speed = BASE_SPEED * 1.8f;
-
-        // Mover suavemente hacia el target
-        targetPosX = posX + dx * 0.3f;
-        targetPosY = posY + dy * 0.3f;
-
-        // Limitar a zona válida
-        targetPosX = Math.max(X_MIN, Math.min(X_MAX, targetPosX));
-        targetPosY = Math.max(Y_CLOSE, Math.min(Y_FAR, targetPosY));
-
-        // Interpolar suavemente
-        posX += (targetPosX - posX) * speed * deltaTime;
-        posY += (targetPosY - posY) * speed * deltaTime;
-
-        posZ = Z_POSITION;
-        updateScaleByY();
-
-        // Orientación: mira hacia donde nada
-        float targetRotY;
-        if (Math.abs(dx) > Math.abs(dy)) {
-            targetRotY = dx > 0 ? 90f : -90f;  // Lateral
-        } else {
-            targetRotY = dy > 0 ? 180f : 0f;   // Vertical
-        }
-
-        float rotYDiff = targetRotY - rotationY;
-        if (rotYDiff > 180f) rotYDiff -= 360f;
-        if (rotYDiff < -180f) rotYDiff += 360f;
-        rotationY += rotYDiff * 2.5f * deltaTime;
-
-        // Inclinación basada en dirección
-        float targetRotX = dy * 20f;
-        rotationX += (targetRotX - rotationX) * 3f * deltaTime;
-
-        // Balanceo alegre (más animado que en patrulla)
-        rotationZ = 5f * (float)Math.sin(time * 2.5f);
-    }
-
-    /**
-     * 👆 Establece un nuevo target de touch para que el Lurker nade hacia él
-     * @param worldX Coordenada X en espacio mundo (-1 a 1 aprox)
-     * @param worldY Coordenada Y en espacio mundo (-1 a 1 aprox)
-     */
-    public void setTouchTarget(float worldX, float worldY) {
-        // Guardar estado actual para volver después
-        if (currentState != STATE_FOLLOW_TOUCH) {
-            previousState = currentState;
-        }
-
-        // Limitar target a zona válida del Lurker
-        touchTargetX = Math.max(X_MIN, Math.min(X_MAX, worldX));
-        touchTargetY = Math.max(Y_CLOSE, Math.min(Y_FAR, worldY));
-
-        // Activar estado de seguimiento
-        currentState = STATE_FOLLOW_TOUCH;
-        touchTimeout = TOUCH_FOLLOW_DURATION;
-
-        Log.d(TAG, String.format("🐟👆 Touch target: (%.2f, %.2f) - Nadando hacia el dedo!", touchTargetX, touchTargetY));
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // CAMBIO DE ESTADO
+    // CAMBIO DE ESTADO - Transición suave, sin saltos
     // ═══════════════════════════════════════════════════════════════════════════
     private void changeToNewState() {
-        // Alternar entre estados (70% PATROL_H, 30% EXPLORE)
-        if (currentState == STATE_PATROL_H) {
-            currentState = STATE_EXPLORE;
-            stateDuration = 12f + (float)(Math.random() * 8f);  // 12-20 seg
-            goingToHorizon = true;
-        } else {
-            currentState = STATE_PATROL_H;
-            stateDuration = 10f + (float)(Math.random() * 10f);  // 10-20 seg
-            movingRight = Math.random() > 0.5;
+        int previousState = currentState;
+
+        // Elegir nuevo estado (evitar repetir)
+        do {
+            currentState = (int)(Math.random() * 5);
+        } while (currentState == previousState && Math.random() > 0.3);
+
+        // Parámetros más conservadores - SIN CAMBIAR POSICIÓN
+        stateTimer = 0f;
+        speedMultiplier = 0.7f + (float)(Math.random() * 0.5f);  // 0.7x a 1.2x (más lento)
+        xDirection = Math.random() > 0.5 ? 1f : -1f;
+        xAmplitude = 0.25f + (float)(Math.random() * 0.25f);  // Menos amplitud
+
+        switch (currentState) {
+            case STATE_PATROL:
+                stateDuration = 15f + (float)(Math.random() * 10f);  // 15-25 seg
+                goingToHorizon = posY < 0.3f;  // Decide según posición actual
+                break;
+
+            case STATE_EXPLORE:
+                stateDuration = 10f + (float)(Math.random() * 8f);  // 10-18 seg
+                goingToHorizon = posY < 0.3f;
+                break;
+
+            case STATE_HOVER:
+                stateDuration = 6f + (float)(Math.random() * 6f);  // 6-12 seg
+                hoverY = posY;
+                hoverLookSpeed = 0.3f + (float)(Math.random() * 0.5f);
+                hoverLookAngle = rotationY;
+                break;
+
+            case STATE_CURIOUS:
+                stateDuration = 8f + (float)(Math.random() * 5f);  // 8-13 seg
+                goingToHorizon = false;
+                break;
+
+            case STATE_SPIRAL:
+                stateDuration = 12f + (float)(Math.random() * 8f);  // 12-20 seg
+                spiralPhase = (float)(Math.random() * Math.PI * 2);
+                goingToHorizon = posY < 0.3f;
+                break;
         }
 
-        stateTimer = 0f;
-        speedMultiplier = 0.8f + (float)(Math.random() * 0.4f);  // 0.8x a 1.2x
-
-        Log.d(TAG, "🐟 " + STATE_NAMES[currentState] + " (" +
+        Log.d(TAG, "🐉 " + STATE_NAMES[currentState] + " (" +
                    String.format("%.0f", stateDuration) + "s)");
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // EXPLORE - Nada hacia horizonte y regresa (zona baja)
+    // PATROL - Viaje suave horizonte↔cerca
     // ═══════════════════════════════════════════════════════════════════════════
-    private void updateExplore(float deltaTime) {
-        // Regreso más lento para disfrutar
+    private void updatePatrol(float deltaTime) {
+        // Regreso más lento (0.4x) para disfrutar el viaje
         float returnMultiplier = goingToHorizon ? 1.0f : 0.4f;
-        float speed = BASE_SPEED * speedMultiplier * returnMultiplier;
+        float speed = baseSpeed * speedMultiplier * returnMultiplier;
 
-        // Destino vertical
+        // Calcular destino Y
         if (goingToHorizon) {
             targetPosY = Y_FAR;
             if (posY >= Y_FAR - 0.1f) goingToHorizon = false;
@@ -560,108 +446,198 @@ public class AbyssalLurker3D {
             if (posY <= Y_CLOSE + 0.1f) goingToHorizon = true;
         }
 
-        // Mover suavemente
+        // Mover suavemente hacia destino
         float dy = targetPosY - posY;
         posY += dy * speed * deltaTime * 2f;
 
-        // Ondulación horizontal mientras explora
-        float waveX = 0.3f * (float)Math.sin(time * 0.4f);
-        posX += (waveX - posX) * speed * deltaTime * 2f;
+        // Ondulación X suave
+        targetPosX = xAmplitude * xDirection * (float)Math.sin(time * 0.5f);
+        posX += (targetPosX - posX) * speed * deltaTime * 3f;
 
         posZ = Z_POSITION;
 
         updateScaleByY();
-        updateOrientationExplore(dy, deltaTime);
+        updateOrientationSmooth(dy, deltaTime);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // PATROL_H - Patrulla horizontal cerca del fondo
+    // EXPLORE - Viaje corto con ondulación
     // ═══════════════════════════════════════════════════════════════════════════
-    private void updatePatrolH(float deltaTime) {
-        float speed = BASE_SPEED * speedMultiplier;
+    private void updateExplore(float deltaTime) {
+        // Regreso más lento (0.35x)
+        float returnMultiplier = goingToHorizon ? 1.0f : 0.35f;
+        float speed = baseSpeed * speedMultiplier * returnMultiplier;
 
-        // Mantener Y cerca del fondo con pequeña flotación
-        float baseY = Y_CLOSE + 0.15f;  // Un poco arriba del fondo
-        float floatY = 0.05f * (float)Math.sin(time * 1.2f);
-        targetPosY = baseY + floatY;
-        posY += (targetPosY - posY) * 2f * deltaTime;
+        // Viaje más corto - solo hasta la mitad
+        float midPoint = Y_CLOSE + (Y_FAR - Y_CLOSE) * 0.5f;
 
-        // Movimiento horizontal de lado a lado
-        if (movingRight) {
-            targetPosX = X_MAX;
-            if (posX >= X_MAX - 0.1f) movingRight = false;
+        if (goingToHorizon) {
+            targetPosY = midPoint;
+            if (posY >= midPoint - 0.1f) goingToHorizon = false;
         } else {
-            targetPosX = X_MIN;
-            if (posX <= X_MIN + 0.1f) movingRight = true;
+            targetPosY = Y_CLOSE;
+            if (posY <= Y_CLOSE + 0.1f) goingToHorizon = true;
         }
 
-        float dx = targetPosX - posX;
-        posX += dx * speed * deltaTime * 2.5f;
+        float dy = targetPosY - posY;
+        posY += dy * speed * deltaTime * 2.5f;
+
+        // Más ondulación lateral
+        targetPosX = xAmplitude * 1.3f * xDirection * (float)Math.sin(time * 0.7f);
+        posX += (targetPosX - posX) * speed * deltaTime * 3f;
+
+        posZ = Z_POSITION + 0.05f * (float)Math.sin(time * 0.4f);
+
+        updateScaleByY();
+        updateOrientationSmooth(dy, deltaTime);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // HOVER - Flota suavemente en lugar
+    // ═══════════════════════════════════════════════════════════════════════════
+    private void updateHover(float deltaTime) {
+        // Flotación muy suave
+        float floatOffset = 0.03f * (float)Math.sin(time * 1.0f);
+        targetPosY = hoverY + floatOffset;
+        posY += (targetPosY - posY) * 0.5f * deltaTime;
+
+        // Deriva lateral mínima
+        targetPosX = posX + 0.01f * (float)Math.sin(time * 0.5f);
+        targetPosX = Math.max(-0.6f, Math.min(0.6f, targetPosX));
+        posX += (targetPosX - posX) * 0.3f * deltaTime;
 
         posZ = Z_POSITION;
 
         updateScaleByY();
-        updateOrientationPatrol(dx, deltaTime);
+
+        // Mira alrededor muy lentamente
+        hoverLookAngle += (float)Math.sin(time * hoverLookSpeed) * 15f * deltaTime;
+        float rotYDiff = hoverLookAngle - rotationY;
+        if (rotYDiff > 180f) rotYDiff -= 360f;
+        if (rotYDiff < -180f) rotYDiff += 360f;
+        rotationY += rotYDiff * 0.5f * deltaTime;
+
+        rotationX = 3f * (float)Math.sin(time * 0.8f);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // ORIENTACIÓN - Explore (mira arriba/abajo)
+    // CURIOUS - Se acerca lentamente a la cámara
     // ═══════════════════════════════════════════════════════════════════════════
-    private void updateOrientationExplore(float dy, float deltaTime) {
+    private void updateCurious(float deltaTime) {
+        float speed = baseSpeed * speedMultiplier * 0.5f;  // MUY lento
+
+        // Se acerca gradualmente
+        targetPosY = Y_VERY_CLOSE;
+        float dy = targetPosY - posY;
+        posY += dy * speed * deltaTime * 1.5f;
+
+        // Se centra lentamente
+        posX += (0f - posX) * 0.3f * deltaTime;
+
+        posZ = Z_POSITION + 0.1f * (1f - (posY - Y_VERY_CLOSE) / (Y_FAR - Y_VERY_CLOSE));
+
+        updateScaleByY();
+
+        // Siempre nos mira
+        float targetRotY = 0f;
+        float rotYDiff = targetRotY - rotationY;
+        if (rotYDiff > 180f) rotYDiff -= 360f;
+        if (rotYDiff < -180f) rotYDiff += 360f;
+        rotationY += rotYDiff * 1.0f * deltaTime;
+
+        // Cabeceo curioso muy sutil
+        rotationX = -5f + 4f * (float)Math.sin(time * 1.2f);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SPIRAL - Espiral suave mientras sube/baja
+    // ═══════════════════════════════════════════════════════════════════════════
+    private void updateSpiral(float deltaTime) {
+        // Regreso más lento (0.4x)
+        float returnMultiplier = goingToHorizon ? 1.0f : 0.4f;
+        float speed = baseSpeed * speedMultiplier * returnMultiplier;
+        spiralPhase += deltaTime * 1.2f * (goingToHorizon ? 1.0f : 0.6f);
+
+        // Movimiento vertical
+        if (goingToHorizon) {
+            targetPosY = Y_FAR;
+            if (posY >= Y_FAR - 0.1f) goingToHorizon = false;
+        } else {
+            targetPosY = Y_CLOSE;
+            if (posY <= Y_CLOSE + 0.1f) goingToHorizon = true;
+        }
+
+        float dy = targetPosY - posY;
+        posY += dy * speed * deltaTime * 2f;
+
+        // Espiral más suave
+        float normalizedY = (posY - Y_CLOSE) / (Y_FAR - Y_CLOSE);
+        float spiralRadius = 0.2f + 0.25f * (1f - normalizedY);
+        targetPosX = spiralRadius * (float)Math.cos(spiralPhase) * xDirection;
+        posX += (targetPosX - posX) * 2f * deltaTime;
+
+        posZ = Z_POSITION + spiralRadius * 0.2f * (float)Math.sin(spiralPhase);
+
+        updateScaleByY();
+        updateOrientationSmooth(dy, deltaTime);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // HELPERS - Funciones auxiliares
+    // ═══════════════════════════════════════════════════════════════════════════
+    private void updateScaleByY() {
+        float normalizedY = (posY - Y_CLOSE) / (Y_FAR - Y_CLOSE);
+        normalizedY = Math.max(0f, Math.min(1f, normalizedY));
+        scale = SCALE_CLOSE + (SCALE_FAR - SCALE_CLOSE) * normalizedY;
+    }
+
+    private void updateOrientationSmooth(float dy, float deltaTime) {
+        // Determinar hacia dónde debe mirar según movimiento
         float targetRotY;
         if (dy > 0.02f) {
             targetRotY = 180f;  // Subiendo - da la espalda
         } else if (dy < -0.02f) {
             targetRotY = 0f;    // Bajando - nos mira
         } else {
-            targetRotY = rotationY;
+            targetRotY = rotationY;  // Sin cambio
         }
 
+        // Interpolar suavemente
         float rotYDiff = targetRotY - rotationY;
         if (rotYDiff > 180f) rotYDiff -= 360f;
         if (rotYDiff < -180f) rotYDiff += 360f;
-        rotationY += rotYDiff * 1.5f * deltaTime;
+        rotationY += rotYDiff * 1.2f * deltaTime;  // Más lento
 
+        // Mantener en rango
         if (rotationY < 0f) rotationY += 360f;
         if (rotationY > 360f) rotationY -= 360f;
 
-        float targetRotX = Math.max(-25f, Math.min(25f, dy * 20f));
+        // Inclinación suave según velocidad vertical
+        float targetRotX = Math.max(-20f, Math.min(20f, dy * 15f));
         rotationX += (targetRotX - rotationX) * 2f * deltaTime;
-
-        rotationZ = 3f * (float)Math.sin(time * 0.8f);  // Ligero balanceo
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // ORIENTACIÓN - Patrol (mira izq/der)
-    // ═══════════════════════════════════════════════════════════════════════════
-    private void updateOrientationPatrol(float dx, float deltaTime) {
-        // Girar hacia la dirección de movimiento
-        float targetRotY;
-        if (dx > 0.02f) {
-            targetRotY = 90f;   // Mirando a la derecha
-        } else if (dx < -0.02f) {
-            targetRotY = -90f;  // Mirando a la izquierda
+    private void updateBarrelRoll(float deltaTime) {
+        if (isBarrelRolling) {
+            barrelRollProgress += deltaTime / ROLL_DURATION;
+            if (barrelRollProgress >= 1f) {
+                barrelRollProgress = 0f;
+                barrelRollAngle = 0f;
+                isBarrelRolling = false;
+                nextRollTime = 8f + (float)(Math.random() * 10f);
+                rollTimer = 0f;
+            } else {
+                float ease = (float)(1 - Math.cos(barrelRollProgress * Math.PI)) / 2f;
+                barrelRollAngle = ease * 360f;
+            }
         } else {
-            targetRotY = rotationY;
+            rollTimer += deltaTime;
+            if (rollTimer >= nextRollTime) {
+                isBarrelRolling = true;
+                barrelRollProgress = 0f;
+                Log.d(TAG, "🐉 BARREL ROLL!");
+            }
         }
-
-        float rotYDiff = targetRotY - rotationY;
-        if (rotYDiff > 180f) rotYDiff -= 360f;
-        if (rotYDiff < -180f) rotYDiff += 360f;
-        rotationY += rotYDiff * 2f * deltaTime;
-
-        // Ligera inclinación al nadar
-        rotationX = 5f * (float)Math.sin(time * 1.5f);
-        rotationZ = 8f * (float)Math.sin(time * 0.6f);  // Balanceo lateral
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // ESCALA DINÁMICA
-    // ═══════════════════════════════════════════════════════════════════════════
-    private void updateScaleByY() {
-        float normalizedY = (posY - Y_CLOSE) / (Y_FAR - Y_CLOSE);
-        normalizedY = Math.max(0f, Math.min(1f, normalizedY));
-        scale = SCALE_CLOSE + (SCALE_FAR - SCALE_CLOSE) * normalizedY;
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -675,7 +651,7 @@ public class AbyssalLurker3D {
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
         GLES20.glUseProgram(shaderProgram);
 
-        // Matriz de modelo (posición, rotación, escala)
+        // Matriz de modelo
         Matrix.setIdentityM(modelMatrix, 0);
         Matrix.translateM(modelMatrix, 0, posX, posY, posZ);
         Matrix.rotateM(modelMatrix, 0, rotationY, 0f, 1f, 0f);
@@ -731,9 +707,7 @@ public class AbyssalLurker3D {
 
     public void setCalibrationMode(boolean enabled) {
         this.calibrationMode = enabled;
-        if (enabled) {
-            logCalibration("MODE ON");
-        }
+        if (enabled) logCalibration("MODE ON");
     }
 
     public boolean isCalibrationMode() { return calibrationMode; }
@@ -771,7 +745,7 @@ public class AbyssalLurker3D {
 
     /** Filtro logcat: "CALIBRATE" */
     public void logCalibration(String event) {
-        Log.d("CALIBRATE", "🐟 LURKER [" + event + "] " +
+        Log.d("CALIBRATE", "🐉 LEVIATHAN [" + event + "] " +
             String.format("POS(%.2f,%.2f,%.2f) ROT(%.1f,%.1f,%.1f) SCALE:%.3f",
             posX, posY, posZ, rotationX, rotationY, rotationZ, scale));
     }
@@ -785,22 +759,19 @@ public class AbyssalLurker3D {
     public float getScale() { return scale; }
 
     /**
-     * 🫧 Posición de la boca del pez (para burbujas)
-     * Calcula offset basado en rotación y escala
+     * 🫧 Posición de la boca del Leviathan (para burbujas)
+     * El Leviathan es más grande, offset mayor
      */
     public float getMouthX() {
-        // Offset de la boca desde el centro (en modelo, boca está al frente +X)
-        float mouthOffset = scale * 0.25f;
+        float mouthOffset = scale * 0.3f;
         float radY = (float)Math.toRadians(rotationY);
         return posX + mouthOffset * (float)Math.cos(radY);
     }
 
     public float getMouthY() {
-        // La boca está ligeramente arriba del centro
-        float mouthOffset = scale * 0.25f;
+        float mouthOffset = scale * 0.3f;
         float radY = (float)Math.toRadians(rotationY);
-        // Componente Y del offset + pequeño offset vertical
-        return posY + mouthOffset * (float)Math.sin(radY) * 0.3f + scale * 0.1f;
+        return posY + mouthOffset * (float)Math.sin(radY) * 0.3f + scale * 0.12f;
     }
 
     public void release() {

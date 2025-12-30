@@ -5,7 +5,10 @@ import android.opengl.GLES30;
 import android.util.Log;
 
 import com.secret.blackholeglow.R;
+import com.secret.blackholeglow.EqualizerBarsDJ;
 import com.secret.blackholeglow.video.MediaCodecVideoRenderer;
+import com.secret.blackholeglow.video.VideoDownloadManager;
+import com.secret.blackholeglow.video.VideoConfig;
 import com.secret.blackholeglow.TravelingShip;
 
 /**
@@ -18,9 +21,12 @@ import com.secret.blackholeglow.TravelingShip;
  */
 public class LabScene extends WallpaperScene {
     private static final String TAG = "LabScene";
+    private static final String VIDEO_FILE = "cielovolando.mp4";
 
     private MediaCodecVideoRenderer videoBackground;
     private TravelingShip travelingShip;
+    private VideoDownloadManager downloadManager;
+    private EqualizerBarsDJ equalizerDJ;
 
     @Override
     public String getName() {
@@ -39,11 +45,24 @@ public class LabScene extends WallpaperScene {
 
     @Override
     protected void setupScene() {
-        Log.d(TAG, "🌌 Configurando Portal Cósmico...");
+        Log.d(TAG, "🌌 Configurando Portal Cosmico...");
 
-        // Video de fondo (editado en CapCut con transiciones seamless)
+        downloadManager = VideoDownloadManager.getInstance(context);
+
+        // Video de fondo - El preloader ya lo descargo de Supabase
         try {
-            videoBackground = new MediaCodecVideoRenderer(context, "cielovolando.mp4");
+            String localPath = downloadManager.getVideoPath(VIDEO_FILE);
+
+            if (localPath != null) {
+                // Video descargado de Supabase
+                Log.d(TAG, "📦 Usando video: " + localPath);
+                videoBackground = new MediaCodecVideoRenderer(context, VIDEO_FILE, localPath);
+            } else {
+                // Video no disponible - esto no deberia pasar si el preloader funciono
+                Log.e(TAG, "❌ Video no disponible: " + VIDEO_FILE);
+                return;
+            }
+
             videoBackground.initialize();
             Log.d(TAG, "✅ Video de fondo activado");
         } catch (Exception e) {
@@ -59,6 +78,17 @@ public class LabScene extends WallpaperScene {
             Log.e(TAG, "❌ Error Nave: " + e.getMessage());
         }
 
+        // 🎵 Ecualizador con tema PYRALIS (fuego)
+        try {
+            equalizerDJ = new EqualizerBarsDJ();
+            equalizerDJ.initialize();
+            equalizerDJ.setTheme(EqualizerBarsDJ.Theme.PYRALIS);  // 🔥 Tema fuego
+            equalizerDJ.setScreenSize(screenWidth, screenHeight);
+            Log.d(TAG, "✅ Ecualizador PYRALIS activado");
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error EqualizerBarsDJ: " + e.getMessage());
+        }
+
         Log.d(TAG, "🌌 Portal Cósmico listo!");
     }
 
@@ -72,11 +102,15 @@ public class LabScene extends WallpaperScene {
             travelingShip.release();
             travelingShip = null;
         }
+        if (equalizerDJ != null) {
+            equalizerDJ = null;
+        }
     }
 
     @Override
     public void update(float deltaTime) {
         if (travelingShip != null) travelingShip.update(deltaTime);
+        if (equalizerDJ != null) equalizerDJ.update(deltaTime);
         super.update(deltaTime);
     }
 
@@ -97,7 +131,28 @@ public class LabScene extends WallpaperScene {
         GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
         if (travelingShip != null) travelingShip.draw();
 
+        // 3. 🎵 Ecualizador PYRALIS
+        if (equalizerDJ != null) equalizerDJ.draw();
+
         super.draw();
+    }
+
+    @Override
+    public void setScreenSize(int width, int height) {
+        super.setScreenSize(width, height);
+        if (equalizerDJ != null) equalizerDJ.setScreenSize(width, height);
+    }
+
+    public void updateMusicBands(float[] bands) {
+        if (equalizerDJ != null && bands != null && bands.length > 0) {
+            // Debug: verificar si hay datos
+            float sum = 0;
+            for (float b : bands) sum += b;
+            if (sum > 0.1f) {
+                Log.d(TAG, "🎵 Datos música: sum=" + sum);
+            }
+            equalizerDJ.updateFromBands(bands);
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════

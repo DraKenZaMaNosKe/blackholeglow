@@ -26,7 +26,6 @@ public class TouchRouter {
 
     public interface TouchListener {
         void onPlayButtonTapped();
-        void onStopButtonTapped();
         void onLikeButtonPressed();
         void onLikeButtonReleased();
         void onLikeButtonTapped();
@@ -163,18 +162,7 @@ public class TouchRouter {
      * Maneja toques en WALLPAPER_MODE
      */
     private boolean handleWallpaperModeTouch(float nx, float ny, int action) {
-        // Prioridad 1: MiniStopButton
-        if (panelRenderer != null && panelRenderer.isStopButtonTouched(nx, ny)) {
-            if (action == MotionEvent.ACTION_UP) {
-                Log.d(TAG, "⏹️ Stop button tapped");
-                if (listener != null) {
-                    listener.onStopButtonTapped();
-                }
-            }
-            return true;
-        }
-
-        // Prioridad 2: LikeButton
+        // LikeButton
         if (songSharing != null && songSharing.isTouchOnLikeButton(nx, ny)) {
             if (action == MotionEvent.ACTION_DOWN) {
                 likeButtonPressed = true;

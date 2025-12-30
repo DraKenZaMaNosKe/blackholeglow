@@ -23,6 +23,10 @@ import java.util.List;
  * IMPORTANTE: NO GRABA AUDIO, solo lee datos para visualización
  */
 public class MusicVisualizer {
+    // 🔒 Lock para evitar condiciones de carrera
+    private final Object initLock = new Object();
+    private volatile boolean isInitializing = false;
+
     private static final String TAG = "depurar";
 
     // Visualizer de Android
@@ -107,6 +111,19 @@ public class MusicVisualizer {
      * intentará reanudarla automáticamente después de 500ms
      */
     public boolean initialize() {
+        // 🔒 Evitar inicialización concurrente
+        synchronized (initLock) {
+            if (isInitializing) {
+                Log.w(TAG, "[MusicVisualizer] ⚠️ Inicialización ya en progreso, ignorando...");
+                return false;
+            }
+            if (visualizer != null && isEnabled) {
+                Log.d(TAG, "[MusicVisualizer] ✓ Ya inicializado y habilitado");
+                return true;
+            }
+            isInitializing = true;
+        }
+
         try {
             // ════════════════════════════════════════════════════════════════════════
             // 🎵 DETECTAR SI HAY MÚSICA SONANDO ANTES DE CREAR VISUALIZER
@@ -166,11 +183,13 @@ public class MusicVisualizer {
                 // handler.postDelayed(this::sendMediaPlayCommand, 2500);
             // }
 
+            isInitializing = false;  // 🔒 Reset flag
             return true;
 
         } catch (Exception e) {
             Log.e(TAG, "[MusicVisualizer] ✗ Error inicializando: " + e.getMessage());
             Log.e(TAG, "[MusicVisualizer] Es posible que falten permisos de audio");
+            isInitializing = false;  // 🔒 Reset flag
             return false;
         }
     }
@@ -571,6 +590,15 @@ public class MusicVisualizer {
      * Versión interna de initialize que recibe el estado de música previo
      */
     private boolean initializeInternal(boolean wasMusicPlayingBefore) {
+        // 🔒 Evitar inicialización concurrente
+        synchronized (initLock) {
+            if (isInitializing) {
+                Log.w(TAG, "[MusicVisualizer] ⚠️ Inicialización (internal) ya en progreso...");
+                return false;
+            }
+            isInitializing = true;
+        }
+
         try {
             // Si no teníamos el estado previo, detectar ahora
             boolean wasMusicPlaying = wasMusicPlayingBefore;
@@ -612,10 +640,12 @@ public class MusicVisualizer {
                 // handler.postDelayed(this::sendMediaPlayCommand, 2500);
             // }
 
+            isInitializing = false;  // 🔒 Reset flag
             return true;
 
         } catch (Exception e) {
             Log.e(TAG, "[MusicVisualizer] ✗ Error inicializando (internal): " + e.getMessage());
+            isInitializing = false;  // 🔒 Reset flag
             return false;
         }
     }

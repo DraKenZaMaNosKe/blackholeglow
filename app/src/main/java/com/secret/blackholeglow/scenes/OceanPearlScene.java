@@ -55,7 +55,7 @@ public class OceanPearlScene extends WallpaperScene {
 
     @Override
     public int getPreviewResourceId() {
-        return R.drawable.agujero_negro;  // TODO: Crear preview del oceano
+        return R.drawable.preview_oceano_sc;  // Preview del oceano
     }
 
     @Override

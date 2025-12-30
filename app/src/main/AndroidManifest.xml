@@ -259,23 +259,6 @@
                 android:resource="@xml/dream_glow" />
         </service>
 
-        <!--
-          ╔═════════════════════════════════════════════════════════╗
-          ║   👏 SERVICIO: ENCONTRAR CON APLAUSO 👏                 ║
-          ╚═════════════════════════════════════════════════════════╝
-          DESHABILITADO PARA RELEASE - Funcionalidad removida
-
-          COMENTADO: Servicio de detección de aplausos deshabilitado
-        -->
-        <!--
-        <service
-            android:name=".ClapDetectorService"
-            android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="microphone">
-        </service>
-        -->
-
         <!-- 🎵 LISTENER DE MÚSICA - Captura canciones en reproducción -->
         <service
             android:name=".sharing.MusicNotificationListener"

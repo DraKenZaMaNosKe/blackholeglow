@@ -300,12 +300,9 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         preloader = new ResourcePreloader(this);
         preloader.setListener(this);
 
-        // Preparar tareas segun el wallpaper
-        if (wallpaperName.contains("Batalla") || wallpaperName.contains("Universo")) {
-            preloader.prepareBatallaCosmicaTasks();
-        } else {
-            preloader.prepareBatallaCosmicaTasks();  // Default por ahora
-        }
+        // Preparar tareas segun el wallpaper seleccionado
+        // Esto incluye descarga de videos de Supabase si es necesario
+        preloader.prepareTasksForScene(wallpaperName);
 
         // Iniciar precarga
         preloader.startPreloading();
