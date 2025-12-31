@@ -23,6 +23,8 @@ import com.secret.blackholeglow.systems.GLStateManager;
 import com.secret.blackholeglow.systems.ResourceManager;
 import com.secret.blackholeglow.systems.ScreenEffectsManager;
 import com.secret.blackholeglow.systems.ScreenManager;
+import com.secret.blackholeglow.systems.WallpaperCatalog;
+import com.secret.blackholeglow.models.WallpaperItem;
 import com.secret.blackholeglow.systems.UIController;
 import com.secret.blackholeglow.gl3.MatrixPool;
 import com.secret.blackholeglow.effects.BloomEffect;
@@ -368,9 +370,9 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
         // Establecer tema del botón Like según la escena
         if (songSharing != null) {
-            if (sceneName.equals("Fondo del Mar") || sceneName.toLowerCase().contains("abyssia")) {
+            if (sceneName.equals("ABYSSIA") || sceneName.toLowerCase().contains("abyssia")) {
                 songSharing.setLikeButtonTheme(LikeButton.Theme.ABYSSIA);
-            } else if (sceneName.equals("Laboratorio") || sceneName.toLowerCase().contains("pyralis")) {
+            } else if (sceneName.equals("PYRALIS") || sceneName.toLowerCase().contains("pyralis")) {
                 songSharing.setLikeButtonTheme(LikeButton.Theme.PYRALIS);
             } else {
                 songSharing.setLikeButtonTheme(LikeButton.Theme.DEFAULT);

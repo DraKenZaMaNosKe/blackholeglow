@@ -20,8 +20,8 @@ android {
         applicationId = "com.secret.blackholeglow"
         minSdk = 24
         targetSdk = 35
-        versionCode = 12
-        versionName = "4.2.0"
+        versionCode = 13
+        versionName = "4.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -94,6 +94,10 @@ dependencies {
 
     // Glide para cargar imágenes (avatar del usuario)
     implementation(libs.glide)
+
+    // Media3 (ExoPlayer) para video de fondo en panel de control
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
     implementation(libs.credentials)
     implementation(libs.credentials.play.services.auth)
     implementation(libs.googleid)

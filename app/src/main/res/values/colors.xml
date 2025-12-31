@@ -1,42 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
-    <resources>
-        <!-- ──────────────────────────── -->
-        <!--  Colores para tu tema (día & noche)  -->
-        <!-- ──────────────────────────── -->
+<resources>
+    <!-- ══════════════════════════════════════════════════════════════════
+         🎨 PALETA ORBIX - Colores unificados para toda la app
+         Tema: Espacio profundo + Cyan eléctrico + Dorado cósmico
+         ══════════════════════════════════════════════════════════════════ -->
 
-        <!-- Purple (material) -->
-        <color name="purple_200">#BB86FC</color>
-        <color name="purple_500">#6200EE</color>
-        <color name="purple_700">#3700B3</color>
+    <!-- 🌌 FONDOS PRINCIPALES -->
+    <color name="orbix_background_dark">#0A0E1A</color>
+    <color name="orbix_background_medium">#121829</color>
+    <color name="orbix_background_light">#1A2238</color>
 
-        <!-- Teal (material) -->
-        <color name="teal_200">#03DAC5</color>
-        <color name="teal_700">#018786</color>
+    <!-- ✨ COLORES DE ACENTO -->
+    <color name="orbix_primary">#00D4FF</color>
+    <color name="orbix_primary_dark">#00A8CC</color>
+    <color name="orbix_primary_light">#66E5FF</color>
+    <color name="orbix_secondary">#FFD700</color>
+    <color name="orbix_secondary_dark">#E6C200</color>
 
-        <!-- Blanco y Negro básicos -->
-        <color name="white">#FFFFFF</color>
-        <color name="black">#000000</color>
+    <!-- 🔮 COLORES GRADIENTE -->
+    <color name="orbix_gradient_start">#0A0E1A</color>
+    <color name="orbix_gradient_end">#1A1040</color>
 
+    <!-- 📝 TEXTOS -->
+    <color name="orbix_text_primary">#FFFFFF</color>
+    <color name="orbix_text_secondary">#B8C5D6</color>
+    <color name="orbix_text_hint">#6B7A8F</color>
 
-        <!-- ──────────────────────────────────── -->
-        <!--  Colores para el Navigation Drawer  -->
-        <!--  (estilo “Saint Seiya” / cosmos + dorado)  -->
-        <!-- ──────────────────────────────────── -->
+    <!-- 🎯 BOTONES -->
+    <color name="orbix_button_enabled">#00D4FF</color>
+    <color name="orbix_button_disabled">#2A3A4A</color>
 
-        <!-- Fondo oscuro tipo “espacio profundo” en el Drawer -->
-        <color name="nav_background_dark">#0D1B2A</color>
+    <!-- ⚠️ ESTADOS -->
+    <color name="orbix_success">#00E676</color>
+    <color name="orbix_error">#FF5252</color>
 
-        <!-- Texto de ítem (gris clarito) cuando NO está seleccionado -->
-        <color name="nav_item_text_default">#E0E1DD</color>
-        <!-- Ícono de ítem (gris clarito) cuando NO está seleccionado -->
-        <color name="nav_item_icon_default">#E0E1DD</color>
+    <!-- Legacy -->
+    <color name="purple_200">#BB86FC</color>
+    <color name="purple_500">#6200EE</color>
+    <color name="purple_700">#3700B3</color>
+    <color name="teal_200">#03DAC5</color>
+    <color name="teal_700">#018786</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
 
-        <!-- Texto de ítem (dorado) cuando SÍ está seleccionado -->
-        <color name="nav_item_text_selected">#FFD700</color>
-        <!-- Ícono de ítem (dorado) cuando SÍ está seleccionado -->
-        <color name="nav_item_icon_selected">#FFD700</color>
-
-        <!-- Fondo del ítem seleccionado en el Drawer (azul ligeramente más claro) -->
-        <color name="nav_item_background_selected">#1B263B</color>
-    </resources>
-
+    <!-- Navigation Drawer -->
+    <color name="nav_background_dark">#0A0E1A</color>
+    <color name="nav_item_text_default">#B8C5D6</color>
+    <color name="nav_item_icon_default">#B8C5D6</color>
+    <color name="nav_item_text_selected">#FFD700</color>
+    <color name="nav_item_icon_selected">#FFD700</color>
+    <color name="nav_item_background_selected">#121829</color>
+</resources>

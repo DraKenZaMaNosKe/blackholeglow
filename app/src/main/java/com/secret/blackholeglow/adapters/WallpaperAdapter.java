@@ -47,6 +47,17 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
     private final Context context;                    // contexto para inflar y lanzar intents
     private final OnWallpaperClickListener listener; // callback al aplicar fondo
 
+    // ╔═════════════════════════════════════════════════════════════════╗
+    // ║  📹 Estado del video del panel de control                       ║
+    // ║  Los botones están DESHABILITADOS hasta que el video esté listo ║
+    // ╚═════════════════════════════════════════════════════════════════╝
+    private boolean isPanelVideoReady = false;
+    private int downloadProgress = 0;
+    
+    // ⚡ DEBOUNCE: Prevenir doble-click en botones
+    private long lastClickTime = 0;
+    private static final long CLICK_DEBOUNCE_MS = 800; // 800ms entre clicks
+
     /**
      * Interface para notificar evento "aplicar wallpaper".
      */
@@ -64,9 +75,44 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
      */
     public WallpaperAdapter(Context context, List<WallpaperItem> wallpapers,
                             OnWallpaperClickListener listener) {
+        this(context, wallpapers, listener, true); // Por defecto, video listo (compatibilidad)
+    }
+
+    /**
+     * Constructor con estado del video del panel.
+     * @param isPanelVideoReady true si el video del panel ya está descargado
+     */
+    public WallpaperAdapter(Context context, List<WallpaperItem> wallpapers,
+                            OnWallpaperClickListener listener, boolean isPanelVideoReady) {
         this.context = context;
         this.wallpapers = wallpapers;
         this.listener = listener;
+        this.isPanelVideoReady = isPanelVideoReady;
+    }
+
+    /**
+     * Actualiza el estado del video del panel y refresca la lista.
+     */
+    public void setPanelVideoReady(boolean ready) {
+        this.isPanelVideoReady = ready;
+        this.downloadProgress = ready ? 100 : 0;
+        // ⚡ OPTIMIZACIÓN: Solo actualizar los botones, no reconstruir todo
+        notifyItemRangeChanged(0, getItemCount(), "BUTTON_UPDATE");
+        Log.d("WallpaperAdapter", "📹 Panel video ready: " + ready);
+    }
+
+    /**
+     * Actualiza el progreso de descarga del video.
+     * ⚡ OPTIMIZACIÓN: Solo actualiza cada 5% para evitar lag
+     */
+    private int lastNotifiedProgress = -1;
+    public void setDownloadProgress(int progress) {
+        this.downloadProgress = progress;
+        // Solo notificar si cambió al menos 5% (evita lag por updates frecuentes)
+        if (Math.abs(progress - lastNotifiedProgress) >= 5 || progress == 100) {
+            lastNotifiedProgress = progress;
+            notifyItemRangeChanged(0, getItemCount(), "BUTTON_UPDATE");
+        }
     }
 
     /**
@@ -130,11 +176,25 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
 
         // ╔═════════════════════════════════════════════════════════╗
         // ║  🎯 BOTÓN "VER WALLPAPER" - Va a preview              ║
+        // ║  IMPORTANTE: Deshabilitado si el video del panel no   ║
+        // ║  está descargado (thehouse.mp4)                       ║
         // ╚═════════════════════════════════════════════════════════╝
 
-        // Verificar si el wallpaper está disponible
-        if (item.isAvailable()) {
-            // Wallpaper disponible - botón habilitado
+        // PRIMERO: Verificar si el video del panel está listo
+        if (!isPanelVideoReady) {
+            // Video del panel NO disponible - botón deshabilitado con progreso
+            holder.buttonPreview.setEnabled(false);
+            holder.buttonPreview.setAlpha(0.6f);
+            if (downloadProgress > 0 && downloadProgress < 100) {
+                holder.buttonPreview.setText("📥 Preparando " + downloadProgress + "%");
+            } else {
+                holder.buttonPreview.setText("📥 Preparando...");
+            }
+            holder.buttonPreview.setOnClickListener(null);
+        }
+        // SEGUNDO: Verificar si el wallpaper está disponible
+        else if (item.isAvailable()) {
+            // Wallpaper disponible Y video del panel listo - botón habilitado
             holder.buttonPreview.setEnabled(true);
             holder.buttonPreview.setAlpha(1.0f);
             holder.buttonPreview.setText("✨ VER WALLPAPER");
@@ -152,6 +212,7 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
                     // Pasar datos del wallpaper (sceneName para SceneFactory)
                     intent.putExtra("WALLPAPER_PREVIEW_ID", item.getResourceIdPreview());
                     intent.putExtra("WALLPAPER_ID", item.getSceneName());  // Nombre interno para SceneFactory
+                    intent.putExtra("WALLPAPER_DISPLAY_NAME", item.getNombre());  // Nombre bonito para UI
                     context.startActivity(intent);
                 });
             });
@@ -161,6 +222,61 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
             holder.buttonPreview.setAlpha(0.6f);
             holder.buttonPreview.setText("🔒 PRÓXIMAMENTE");
             holder.buttonPreview.setOnClickListener(null);
+        }
+    }
+
+    /**
+     * ╔═════════════════════════════════════════════════════════════════════╗
+     * ║  ⚡ OPTIMIZACIÓN: Actualización parcial con payloads              ║
+     * ║  Solo actualiza el botón sin reconstruir toda la vista           ║
+     * ╚═════════════════════════════════════════════════════════════════════╝
+     */
+    @Override
+    public void onBindViewHolder(@NonNull WallpaperViewHolder holder, int position, @NonNull java.util.List<Object> payloads) {
+        if (payloads.isEmpty()) {
+            // Sin payload = actualización completa
+            onBindViewHolder(holder, position);
+        } else {
+            // Con payload = actualización parcial (solo botón)
+            WallpaperItem item = wallpapers.get(position);
+            updateButtonState(holder, item);
+        }
+    }
+
+    /**
+     * Actualiza solo el estado del botón (para actualizaciones parciales).
+     */
+    private void updateButtonState(WallpaperViewHolder holder, WallpaperItem item) {
+        if (!isPanelVideoReady) {
+            holder.buttonPreview.setEnabled(false);
+            holder.buttonPreview.setAlpha(0.6f);
+            holder.buttonPreview.setOnClickListener(null);
+            if (downloadProgress > 0 && downloadProgress < 100) {
+                holder.buttonPreview.setText("📥 Preparando " + downloadProgress + "%");
+            } else {
+                holder.buttonPreview.setText("📥 Preparando...");
+            }
+        } else if (item.isAvailable()) {
+            holder.buttonPreview.setEnabled(true);
+            holder.buttonPreview.setAlpha(1.0f);
+            holder.buttonPreview.setText("✨ VER WALLPAPER");
+            // ⚡ FIX: Asignar click listener en actualización parcial
+            holder.buttonPreview.setOnClickListener(v -> {
+                clearCurrentWallpaperAsync(() -> {
+                    WallpaperPreferences.getInstance(context).setSelectedWallpaper(item.getSceneName());
+                    Log.d("WallpaperAdapter", "💾 Wallpaper seleccionado: " + item.getSceneName());
+                    Intent intent = new Intent(context, com.secret.blackholeglow.activities.WallpaperLoadingActivity.class);
+                    intent.putExtra("WALLPAPER_PREVIEW_ID", item.getResourceIdPreview());
+                    intent.putExtra("WALLPAPER_ID", item.getSceneName());
+                    intent.putExtra("WALLPAPER_DISPLAY_NAME", item.getNombre());
+                    context.startActivity(intent);
+                });
+            });
+        } else {
+            holder.buttonPreview.setEnabled(false);
+            holder.buttonPreview.setAlpha(0.6f);
+            holder.buttonPreview.setOnClickListener(null);
+            holder.buttonPreview.setText("🔒 PRÓXIMAMENTE");
         }
     }
 

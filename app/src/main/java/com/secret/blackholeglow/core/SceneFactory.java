@@ -36,7 +36,7 @@ public class SceneFactory {
     // ═══════════════════════════════════════════════════════════════
 
     private final Map<String, Class<? extends WallpaperScene>> registeredScenes = new HashMap<>();
-    private final String defaultSceneName = "Laboratorio";
+    private final String defaultSceneName = "PYRALIS";
 
     // Dependencias para inyectar
     private Context context;
@@ -100,9 +100,9 @@ public class SceneFactory {
      */
     public void registerDefaultScenes() {
         // 🌊 Fondo del Mar: Video wallpaper alienígena con efectos shader
-        registerScene("Fondo del Mar", OceanFloorScene.class);
+        registerScene("ABYSSIA", OceanFloorScene.class);
         // 🧪 Laboratorio: Portal cósmico con nubes de fuego
-        registerScene("Laboratorio", LabScene.class);
+        registerScene("PYRALIS", LabScene.class);
         Log.d(TAG, "🎭 " + registeredScenes.size() + " escenas registradas");
     }
 

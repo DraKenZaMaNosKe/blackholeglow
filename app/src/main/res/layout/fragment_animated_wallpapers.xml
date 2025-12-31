@@ -1,49 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-╔════════════════════════════════════════════════════════════════╗
-║  📱 fragment_animated_wallpapers.xml                           ║
-║                                                                ║
-║  Fragment principal con galería de wallpapers                  ║
-║  • Layout vertical (1 wallpaper a la vez)                      ║
-║  • Fondo con mesh gradient animado tipo iOS                    ║
-╚════════════════════════════════════════════════════════════════╝
--->
+<!-- ══════════════════════════════════════════════════════════════════
+     📱 fragment_animated_wallpapers.xml - Orbix Redesign
+     
+     ⚡ OPTIMIZADO: Fondo estático en lugar de animación pesada
+     🎨 Coherente con la nueva paleta Orbix
+     ══════════════════════════════════════════════════════════════════ -->
 <FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_orbix_gradient">
 
-    <!-- ══════════════════════════════════════════════════════════════
-         ✨ FONDO ANIMADO - Mesh Gradient iOS Style
-         ══════════════════════════════════════════════════════════════ -->
-    <com.secret.blackholeglow.ui.AnimatedMeshGradientView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
-
-    <!-- ══════════════════════════════════════════════════════════════
-         📱 CONTENEDOR - Card de Aplauso + RecyclerView
-         ══════════════════════════════════════════════════════════════ -->
-    <LinearLayout
+    <!-- 📱 RECYCLERVIEW - Lista de wallpapers -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/wallpaper_recycler_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical">
-
-        <!-- 👏 CARD DETECTOR DE APLAUSOS - DESHABILITADO -->
-        <!-- COMENTADO: Funcionalidad de "Encontrar con Aplauso" deshabilitada para release
-        <include
-            android:id="@+id/card_clap_detector"
-            layout="@layout/card_clap_detector"/>
-        -->
-
-        <!-- 📱 RECYCLERVIEW - Lista de wallpapers -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/wallpaper_recycler_view"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:padding="4dp"
-            android:clipToPadding="false"/>
-
-    </LinearLayout>
+        android:padding="8dp"
+        android:clipToPadding="false"
+        android:scrollbars="none"
+        android:overScrollMode="never"/>
 
 </FrameLayout>

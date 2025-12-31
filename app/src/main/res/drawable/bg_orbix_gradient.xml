@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ══════════════════════════════════════════════════════════════════
+     🌌 Fondo gradiente Orbix - Estático pero elegante
+     Reemplaza la animación pesada por un gradiente optimizado
+     ══════════════════════════════════════════════════════════════════ -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Base: Gradiente vertical principal -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="180"
+                android:startColor="#0A0E1A"
+                android:centerColor="#0F1628"
+                android:endColor="#1A1040"/>
+        </shape>
+    </item>
+    <!-- Overlay: Toque radial en el centro-superior -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="600dp"
+                android:centerX="50%"
+                android:centerY="20%"
+                android:startColor="#1500D4FF"
+                android:endColor="#00000000"/>
+        </shape>
+    </item>
+    <!-- Overlay: Toque radial en esquina inferior -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="400dp"
+                android:centerX="80%"
+                android:centerY="90%"
+                android:startColor="#10FFD700"
+                android:endColor="#00000000"/>
+        </shape>
+    </item>
+</layer-list>

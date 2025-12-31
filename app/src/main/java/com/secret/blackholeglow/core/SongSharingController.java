@@ -67,6 +67,17 @@ public class SongSharingController {
             songMessageRenderer = new SongMessageRenderer(context);
             Log.d(TAG, "✨ SongMessageRenderer inicializado");
 
+            // INICIAR LISTENER para recibir canciones de otros usuarios
+            songSharingManager.startListening(song -> {
+                Log.d(TAG, "CANCION RECIBIDA: " + song.getUserName() + " - " + song.getSongTitle());
+                if (songMessageRenderer != null) {
+                    String msg = "A " + song.getUserName() + " le encanta: " + song.getSongTitle();
+                    songMessageRenderer.showMessage(msg);
+                }
+                emitHeartParticles();
+            });
+            Log.d(TAG, "Listener de canciones ACTIVADO");
+
             initialized = true;
             Log.d(TAG, "✅ SongSharingController completamente inicializado");
 
@@ -163,21 +174,27 @@ public class SongSharingController {
         }
 
         if (!songSharingManager.canShare()) {
-            Log.d(TAG, "⏳ En cooldown, no se puede compartir");
+            Log.d(TAG, "⏳ En cooldown (5 min), no se puede compartir");
             return;
         }
 
-        // Obtener canción actual
+        // ANTI-SPAM: Verificar que hay musica reproduciendose
+        if (!MusicNotificationListener.isMusicPlaying()) {
+            Log.d(TAG, "🔇 No hay musica reproduciendose - no se comparte nada");
+            return;
+        }
+
+        // Obtener cancion actual
         String songTitle = MusicNotificationListener.getCurrentSongTitle();
         String artist = MusicNotificationListener.getCurrentArtist();
         String fullSong = MusicNotificationListener.getFormattedSong();
 
         if (songTitle == null || songTitle.isEmpty()) {
-            songTitle = "esta canción";
-            fullSong = "música increíble";
+            Log.d(TAG, "🔇 Titulo vacio - no se comparte");
+            return;
         }
 
-        Log.d(TAG, "♥ Canción detectada: " + fullSong);
+        Log.d(TAG, "♥ Cancion detectada: " + fullSong);
 
         // Obtener nombre del usuario
         String userName = songSharingManager.getCurrentUserName();

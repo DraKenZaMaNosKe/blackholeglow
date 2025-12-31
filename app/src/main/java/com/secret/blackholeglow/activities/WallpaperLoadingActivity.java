@@ -54,7 +54,8 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
     private ImageView iconPlanet;
 
     // Data
-    private String wallpaperName = "";
+    private String wallpaperName = "";      // Nombre bonito para UI
+    private String sceneId = "";            // ID interno para SceneFactory
     private int wallpaperPreviewId = 0;
     private ResourcePreloader preloader;
     private Handler handler;
@@ -71,10 +72,14 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         super.onCreate(savedInstanceState);
 
         // Obtener datos del intent
-        wallpaperName = getIntent().getStringExtra("WALLPAPER_ID");
+        // sceneId = ID interno para SceneFactory (ej: "ABYSSIA")
+        // wallpaperName = Nombre bonito para UI (ej: "✧ ABYSSIA ✧")
+        sceneId = getIntent().getStringExtra("WALLPAPER_ID");
+        wallpaperName = getIntent().getStringExtra("WALLPAPER_DISPLAY_NAME");
         wallpaperPreviewId = getIntent().getIntExtra("WALLPAPER_PREVIEW_ID", R.drawable.ic_launcher_background);
 
-        if (wallpaperName == null) wallpaperName = "Wallpaper";
+        if (sceneId == null) sceneId = "Universo";
+        if (wallpaperName == null) wallpaperName = sceneId;
 
         handler = new Handler(Looper.getMainLooper());
 
@@ -97,10 +102,10 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         background.setGradientType(GradientDrawable.RADIAL_GRADIENT);
         background.setGradientRadius(800f);
         background.setColors(new int[]{
-                Color.parseColor("#0D1B2A"),  // Centro - azul oscuro
-                Color.parseColor("#1B263B"),  // Medio
-                Color.parseColor("#0D1B2A"),  // Borde
-                Color.parseColor("#000814")   // Muy oscuro
+                Color.parseColor("#0A0E1A"),  // Centro - Orbix dark
+                Color.parseColor("#121829"),  // Medio
+                Color.parseColor("#0A0E1A"),  // Borde
+                Color.parseColor("#050810")   // Muy oscuro
         });
         root.setBackground(background);
 
@@ -144,7 +149,7 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         TextView subtitle = new TextView(this);
         subtitle.setText("Preparando experiencia...");
         subtitle.setTextSize(14);
-        subtitle.setTextColor(Color.parseColor("#8892B0"));
+        subtitle.setTextColor(Color.parseColor("#B8C5D6"));  // Orbix secondary text
         subtitle.setGravity(Gravity.CENTER);
 
         LinearLayout.LayoutParams subtitleParams = new LinearLayout.LayoutParams(
@@ -163,7 +168,7 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         GradientDrawable bgDrawable = new GradientDrawable();
         bgDrawable.setCornerRadius(20f);
         bgDrawable.setColor(Color.parseColor("#1B263B"));
-        bgDrawable.setStroke(2, Color.parseColor("#415A77"));
+        bgDrawable.setStroke(2, Color.parseColor("#00D4FF"));  // Orbix cyan border
         progressBg.setBackground(bgDrawable);
 
         FrameLayout.LayoutParams bgParams = new FrameLayout.LayoutParams(
@@ -176,9 +181,9 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         fillDrawable.setCornerRadius(20f);
         fillDrawable.setOrientation(GradientDrawable.Orientation.LEFT_RIGHT);
         fillDrawable.setColors(new int[]{
-                Color.parseColor("#FFFFFF"),  // Blanco hielo
-                Color.parseColor("#B8E4F0"),  // Azul hielo claro
-                Color.parseColor("#7DD3E8")   // Cyan helado
+                Color.parseColor("#00D4FF"),  // Orbix cyan primary
+                Color.parseColor("#00A8CC"),  // Orbix cyan dark
+                Color.parseColor("#FFD700")   // Orbix gold accent
         });
         progressBarFill.setBackground(fillDrawable);
 
@@ -190,7 +195,7 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         glowEffect = new View(this);
         GradientDrawable glowDrawable = new GradientDrawable();
         glowDrawable.setCornerRadius(20f);
-        glowDrawable.setColor(Color.parseColor("#60FFFFFF"));  // Brillo blanco
+        glowDrawable.setColor(Color.parseColor("#80FFD700"));  // Brillo dorado Orbix
         glowEffect.setBackground(glowDrawable);
         glowEffect.setAlpha(0.6f);
 
@@ -210,7 +215,7 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         textProgress = new TextView(this);
         textProgress.setText("0%");
         textProgress.setTextSize(24);
-        textProgress.setTextColor(Color.parseColor("#E0F7FA"));  // ❄️ Cyan helado claro
+        textProgress.setTextColor(Color.parseColor("#00D4FF"));  // Orbix cyan
         textProgress.setGravity(Gravity.CENTER);
         textProgress.setTypeface(null, android.graphics.Typeface.BOLD);
 
@@ -226,7 +231,7 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         textCurrentTask = new TextView(this);
         textCurrentTask.setText("Iniciando...");
         textCurrentTask.setTextSize(12);
-        textCurrentTask.setTextColor(Color.parseColor("#64748B"));
+        textCurrentTask.setTextColor(Color.parseColor("#6B7A8F"));  // Orbix hint text
         textCurrentTask.setGravity(Gravity.CENTER);
 
         LinearLayout.LayoutParams taskParams = new LinearLayout.LayoutParams(
@@ -241,7 +246,7 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         TextView reassuringText = new TextView(this);
         reassuringText.setText("✨ Preparando tu wallpaper...");
         reassuringText.setTextSize(14);
-        reassuringText.setTextColor(Color.parseColor("#B2EBF2"));
+        reassuringText.setTextColor(Color.parseColor("#66E5FF"));  // Orbix cyan light
         reassuringText.setGravity(Gravity.CENTER);
         reassuringText.setAlpha(0.9f);
 
@@ -302,7 +307,7 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
 
         // Preparar tareas segun el wallpaper seleccionado
         // Esto incluye descarga de videos de Supabase si es necesario
-        preloader.prepareTasksForScene(wallpaperName);
+        preloader.prepareTasksForScene(sceneId);
 
         // Iniciar precarga
         preloader.startPreloading();
@@ -389,7 +394,7 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         // Ir a WallpaperPreviewActivity
         Intent intent = new Intent(this, WallpaperPreviewActivity.class);
         intent.putExtra("WALLPAPER_PREVIEW_ID", wallpaperPreviewId);
-        intent.putExtra("WALLPAPER_ID", wallpaperName);
+        intent.putExtra("WALLPAPER_ID", sceneId);  // ID interno para SceneFactory
         startActivity(intent);
 
         // Cerrar esta activity con transicion

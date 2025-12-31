@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Botón primario Orbix - Cyan con bordes redondeados -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#4000D4FF">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/orbix_primary"/>
+            <corners android:radius="16dp"/>
+        </shape>
+    </item>
+</ripple>

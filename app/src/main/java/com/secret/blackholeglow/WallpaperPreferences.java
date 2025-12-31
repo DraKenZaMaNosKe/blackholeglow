@@ -65,8 +65,8 @@ public class WallpaperPreferences {
         "Universo",           // Alias de Batalla Cósmica (compatibilidad SceneFactory)
         "Bosque Navideño",    // Escena navideña con arbol y nieve
         "Ocean Pearl",        // Fondo del mar con ostra y perla (modular)
-        "Fondo del Mar",      // Video wallpaper océano alienígena
-        "Laboratorio",        // 🧪 Escena experimental para probar efectos
+        "ABYSSIA",      // Video wallpaper océano alienígena
+        "PYRALIS",        // 🧪 Escena experimental para probar efectos
 
         // ═══════════════════════════════════════════
         // 📦 WALLPAPERS LEGADOS (compatibilidad)

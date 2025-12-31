@@ -78,7 +78,7 @@ public class LoginActivity extends AppCompatActivity {
         // ║  🎨 CAMBIAR DE SPLASH THEME A TEMA NORMAL                 ║
         // ║  Esto permite que el contenido de la Activity se vea bien ║
         // ╚════════════════════════════════════════════════════════════╝
-        // El splash con fondo negro y gatito ya se mostró (instantáneamente)
+        // El splash con fondo negro y logo ya se mostró (instantáneamente)
         // Ahora cambiamos al tema normal para el contenido de la Activity
         setTheme(R.style.Theme_Blackholeglow);
 

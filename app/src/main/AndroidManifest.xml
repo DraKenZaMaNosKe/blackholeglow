@@ -131,9 +131,8 @@
           Punto de entrada principal de la aplicación
 
           🎨 USA SPLASH THEME PARA INICIO PROFESIONAL:
-          - Fondo negro con logo del gatito se ve INMEDIATAMENTE
+          - Fondo oscuro con logo se ve INMEDIATAMENTE
           - NO más fondo blanco feo al inicio
-          - 😺 Tu gatita estará orgullosa 😺
         -->
         <activity
             android:name=".LoginActivity"

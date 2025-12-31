@@ -36,7 +36,7 @@ import java.util.Map;
 public class SongSharingManager {
     private static final String TAG = "SongSharing";
     private static final String COLLECTION_SHARED_SONGS = "shared_songs";
-    private static final long RATE_LIMIT_MS = 10 * 1000;  // 10 segundos (TESTING)
+    private static final long RATE_LIMIT_MS = 5 * 60 * 1000;  // 5 minutos anti-spam
 
     private final Context context;
     private final FirebaseFirestore db;

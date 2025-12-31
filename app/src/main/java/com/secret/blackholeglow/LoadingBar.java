@@ -61,12 +61,15 @@ public class LoadingBar implements SceneObject {
     private int uIsGlowLoc = -1;
     private FloatBuffer vertexBuffer;
 
-    // Colores
-    private static final float[] COLOR_CYAN = {0.0f, 0.9f, 1.0f};
-    private static final float[] COLOR_MAGENTA = {1.0f, 0.2f, 0.8f};
-    private static final float[] COLOR_BG = {0.1f, 0.1f, 0.15f};
-    // ⚡ OPTIMIZACIÓN: Color blanco cacheado para evitar allocation en draw
+    // Colores dinamicos (se actualizan segun el wallpaper)
+    private float[] themeColorPrimary = {0.0f, 0.83f, 1.0f};   // Cyan Orbix
+    private float[] themeColorSecondary = {1.0f, 0.84f, 0.0f}; // Dorado Orbix
+    private static final float[] COLOR_BG = {0.04f, 0.055f, 0.10f};  // Fondo oscuro
     private static final float[] COLOR_WHITE = {1f, 1f, 1f};
+
+    // Datos del wallpaper seleccionado
+    private String wallpaperDisplayName = "";
+    private int wallpaperGlowColor = 0xFF00D4FF;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // TEXTO "Loading..." animado
@@ -75,17 +78,19 @@ public class LoadingBar implements SceneObject {
     private int textTextureId = 0;
     private Bitmap textBitmap;
     private Canvas textCanvas;
-    private Paint textPaint;
+    private Paint titlePaint;       // Nombre del wallpaper (grande)
+    private Paint titleGlowPaint;    // Glow del titulo
+    private Paint textPaint;         // "Cargando..." (mediano)
     private Paint textGlowPaint;
-    private Paint reassuringPaint;
+    private Paint reassuringPaint;   // Texto motivacional (pequeno)
     private int textAPositionLoc = -1;
     private int textATexCoordLoc = -1;
     private int textUTextureLoc = -1;
     private int textUAlphaLoc = -1;
     private FloatBuffer textVertexBuffer;
 
-    private static final int TEXT_TEX_WIDTH = 256;
-    private static final int TEXT_TEX_HEIGHT = 96;  // Aumentado para 2 líneas
+    private static final int TEXT_TEX_WIDTH = 512;   // Mas ancho para nombres largos
+    private static final int TEXT_TEX_HEIGHT = 140;  // 3 lineas: nombre + cargando + motivacional
     private int currentDots = 0;           // 0, 1, 2, 3 para "Loading", "Loading.", "Loading..", "Loading..."
     private float dotAnimTimer = 0f;
     private static final float DOT_ANIM_SPEED = 0.4f;  // segundos por punto
@@ -236,24 +241,33 @@ public class LoadingBar implements SceneObject {
         textBitmap = Bitmap.createBitmap(TEXT_TEX_WIDTH, TEXT_TEX_HEIGHT, Bitmap.Config.ARGB_8888);
         textCanvas = new Canvas(textBitmap);
 
-        // Paint principal para el texto
+        // === TITULO: Nombre del wallpaper (grande, bold) ===
+        titlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        titlePaint.setTextSize(42);
+        titlePaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        titlePaint.setTextAlign(Paint.Align.CENTER);
+        titlePaint.setColor(0xFFFFFFFF);  // Blanco brillante
+
+        titleGlowPaint = new Paint(titlePaint);
+        titleGlowPaint.setColor(wallpaperGlowColor);
+        titleGlowPaint.setMaskFilter(new android.graphics.BlurMaskFilter(12, android.graphics.BlurMaskFilter.Blur.NORMAL));
+
+        // === "Cargando..." (mediano) ===
         textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        textPaint.setTextSize(36);
+        textPaint.setTextSize(28);
         textPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
         textPaint.setTextAlign(Paint.Align.CENTER);
-        textPaint.setColor(0xFF00FFFF);  // Cyan
+        textPaint.setColor(wallpaperGlowColor);
 
-        // Paint para el glow
         textGlowPaint = new Paint(textPaint);
-        textGlowPaint.setColor(0xFF00AAFF);
-        textGlowPaint.setMaskFilter(new android.graphics.BlurMaskFilter(8, android.graphics.BlurMaskFilter.Blur.NORMAL));
+        textGlowPaint.setMaskFilter(new android.graphics.BlurMaskFilter(6, android.graphics.BlurMaskFilter.Blur.NORMAL));
 
-        // Paint para el texto tranquilizador (más pequeño, verde suave)
+        // === Texto motivacional (pequeno, italic) ===
         reassuringPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        reassuringPaint.setTextSize(20);
+        reassuringPaint.setTextSize(18);
         reassuringPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.ITALIC));
         reassuringPaint.setTextAlign(Paint.Align.CENTER);
-        reassuringPaint.setColor(0xFF88FF88);  // Verde suave
+        reassuringPaint.setColor(0xAAB8C5D6);  // Gris claro semi-transparente
 
         // Crear shader program para texto
         int vs = compileShader(GLES30.GL_VERTEX_SHADER, TEXT_VERTEX_SHADER);
@@ -443,38 +457,52 @@ public class LoadingBar implements SceneObject {
     }
 
     /**
-     * Actualiza la textura del texto "Loading..." con los puntos animados
-     * y el mensaje tranquilizador "sí cargará :)"
+     * Actualiza la textura del texto con nombre del wallpaper y "Cargando..."
      */
     private void updateTextTexture() {
         if (textBitmap == null || textCanvas == null) return;
 
         textBitmap.eraseColor(Color.TRANSPARENT);
 
-        // Construir el texto con puntos animados
-        String dots = "";
+        // Construir puntos animados
+        StringBuilder dots = new StringBuilder();
         for (int i = 0; i < currentDots; i++) {
-            dots += ".";
-        }
-        String loadingText = "Loading" + dots;
-
-        // Añadir nombre del recurso si existe
-        if (currentResourceName != null && !currentResourceName.isEmpty()) {
-            loadingText = currentResourceName + dots;
+            dots.append(".");
         }
 
         float centerX = TEXT_TEX_WIDTH / 2f;
-        float line1Y = TEXT_TEX_HEIGHT / 2f - 5f;   // Línea 1: "Loading..."
-        float line2Y = TEXT_TEX_HEIGHT / 2f + 30f;  // Línea 2: "sí cargará :)"
+        float line1Y = 45f;   // Titulo: nombre del wallpaper
+        float line2Y = 85f;   // "Cargando..."
+        float line3Y = 120f;  // Texto motivacional
 
-        // Dibujar glow primero (línea 1)
-        textCanvas.drawText(loadingText, centerX, line1Y, textGlowPaint);
-        // Dibujar texto principal (línea 1)
-        textCanvas.drawText(loadingText, centerX, line1Y, textPaint);
+        // === LINEA 1: Nombre del wallpaper ===
+        String title = wallpaperDisplayName;
+        if (title == null || title.isEmpty()) {
+            title = "Orbix";
+        }
+        // Glow del titulo
+        if (titleGlowPaint != null) {
+            textCanvas.drawText(title, centerX, line1Y, titleGlowPaint);
+        }
+        // Titulo principal
+        if (titlePaint != null) {
+            textCanvas.drawText(title, centerX, line1Y, titlePaint);
+        }
 
-        // 😊 Dibujar texto tranquilizador (línea 2)
-        String reassuringText = "sí cargará :)";
-        textCanvas.drawText(reassuringText, centerX, line2Y, reassuringPaint);
+        // === LINEA 2: "Cargando..." con puntos animados ===
+        String loadingText = "Cargando" + dots.toString();
+        if (textGlowPaint != null) {
+            textCanvas.drawText(loadingText, centerX, line2Y, textGlowPaint);
+        }
+        if (textPaint != null) {
+            textCanvas.drawText(loadingText, centerX, line2Y, textPaint);
+        }
+
+        // === LINEA 3: Texto motivacional ===
+        String motivational = "Preparando tu experiencia...";
+        if (reassuringPaint != null) {
+            textCanvas.drawText(motivational, centerX, line3Y, reassuringPaint);
+        }
 
         // Subir textura a GPU
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textTextureId);
@@ -559,7 +587,7 @@ public class LoadingBar implements SceneObject {
         }
 
         // ═══════════════════════════════════════════════════════════
-        // 1. GLOW EXTERIOR (más grande, transparente)
+        // 1. GLOW EXTERIOR (color del tema del wallpaper)
         // ═══════════════════════════════════════════════════════════
         float glowPadding = 0.015f;
         drawQuad(
@@ -567,7 +595,7 @@ public class LoadingBar implements SceneObject {
             barY - adjustedHeight - glowPadding,
             adjustedWidth + glowPadding*2,
             adjustedHeight*2 + glowPadding*2,
-            COLOR_CYAN,
+            themeColorPrimary,
             alpha * 0.3f,
             true
         );
@@ -591,10 +619,10 @@ public class LoadingBar implements SceneObject {
         if (displayProgress > 0.01f) {
             float progressWidth = adjustedWidth * displayProgress;
 
-            // Interpolar color según progreso
+            // Interpolar color segun progreso (primario -> secundario)
             float[] progressColor = new float[3];
             for (int i = 0; i < 3; i++) {
-                progressColor[i] = COLOR_CYAN[i] + (COLOR_MAGENTA[i] - COLOR_CYAN[i]) * displayProgress;
+                progressColor[i] = themeColorPrimary[i] + (themeColorSecondary[i] - themeColorPrimary[i]) * displayProgress;
             }
 
             drawQuad(
@@ -625,16 +653,16 @@ public class LoadingBar implements SceneObject {
         }
 
         // ═══════════════════════════════════════════════════════════
-        // 5. BORDE EXTERIOR (línea fina)
+        // 5. BORDE EXTERIOR (color del tema)
         // ═══════════════════════════════════════════════════════════
         // Top
-        drawQuad(-adjustedWidth/2, barY + adjustedHeight, adjustedWidth, 0.003f, COLOR_CYAN, alpha * 0.5f, false);
+        drawQuad(-adjustedWidth/2, barY + adjustedHeight, adjustedWidth, 0.003f, themeColorPrimary, alpha * 0.5f, false);
         // Bottom
-        drawQuad(-adjustedWidth/2, barY - adjustedHeight - 0.003f, adjustedWidth, 0.003f, COLOR_CYAN, alpha * 0.5f, false);
+        drawQuad(-adjustedWidth/2, barY - adjustedHeight - 0.003f, adjustedWidth, 0.003f, themeColorPrimary, alpha * 0.5f, false);
         // Left
-        drawQuad(-adjustedWidth/2 - 0.003f, barY - adjustedHeight, 0.003f, adjustedHeight*2, COLOR_CYAN, alpha * 0.5f, false);
+        drawQuad(-adjustedWidth/2 - 0.003f, barY - adjustedHeight, 0.003f, adjustedHeight*2, themeColorPrimary, alpha * 0.5f, false);
         // Right
-        drawQuad(adjustedWidth/2, barY - adjustedHeight, 0.003f, adjustedHeight*2, COLOR_CYAN, alpha * 0.5f, false);
+        drawQuad(adjustedWidth/2, barY - adjustedHeight, 0.003f, adjustedHeight*2, themeColorPrimary, alpha * 0.5f, false);
 
         // ═══════════════════════════════════════════════════════════
         // 6. TEXTO "Loading..." ARRIBA DE LA BARRA
@@ -828,6 +856,41 @@ public class LoadingBar implements SceneObject {
     public void setResourceName(String name) {
         this.currentResourceName = name;
         updateTextTexture();
+    }
+
+    /**
+     * Configura el tema segun el wallpaper seleccionado
+     * @param displayName Nombre bonito del wallpaper (ej: "ABYSSIA")
+     * @param glowColor Color glow del wallpaper (ej: 0xFF00CED1)
+     */
+    public void setWallpaperTheme(String displayName, int glowColor) {
+        this.wallpaperDisplayName = displayName != null ? displayName : "";
+        this.wallpaperGlowColor = glowColor;
+
+        // Extraer RGB del color glow y normalizar a 0-1
+        float r = ((glowColor >> 16) & 0xFF) / 255f;
+        float g = ((glowColor >> 8) & 0xFF) / 255f;
+        float b = (glowColor & 0xFF) / 255f;
+
+        themeColorPrimary = new float[]{r, g, b};
+
+        // Color secundario: version mas clara/dorada
+        themeColorSecondary = new float[]{
+            Math.min(1f, r + 0.3f),
+            Math.min(1f, g + 0.2f),
+            Math.min(1f, b * 0.5f)
+        };
+
+        // Actualizar colores de paint si existen
+        if (textPaint != null) {
+            textPaint.setColor(glowColor);
+        }
+        if (titleGlowPaint != null) {
+            titleGlowPaint.setColor(glowColor);
+        }
+
+        updateTextTexture();
+        Log.d(TAG, "Tema configurado: " + displayName + " color=#" + Integer.toHexString(glowColor));
     }
 
     /**

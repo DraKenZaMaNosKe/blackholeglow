@@ -17,12 +17,10 @@
     <!--
       ╔════════════════════════════════════════════════════════════╗
       ║  🎨 SPLASH THEME - Tema profesional para pantalla inicial ║
-      ║  Fondo negro con logo del gatito - SE VE INMEDIATAMENTE   ║
+      ║  Fondo oscuro con logo - SE VE INMEDIATAMENTE             ║
       ╚════════════════════════════════════════════════════════════╝
       Este tema se aplica ANTES de que la Activity cargue,
       eliminando el fondo blanco feo que Android muestra por defecto.
-
-      🐱 Tu gatita estará orgullosa de este splash profesional 😺
     -->
     <style name="Theme.Blackholeglow.Splash" parent="Theme.AppCompat.NoActionBar">
         <!-- Fondo negro con logo centrado (se ve INMEDIATAMENTE) -->

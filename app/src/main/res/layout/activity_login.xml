@@ -1,116 +1,155 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- ══════════════════════════════════════════════════════════════════
+     🚀 Login Screen - Orbix Redesign
+     Layout adaptativo con ConstraintLayout
+     ══════════════════════════════════════════════════════════════════ -->
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/black"
-    android:padding="32dp"
+    android:background="@drawable/bg_orbix_gradient"
     tools:context=".LoginActivity">
 
-    <!-- Logo de la app (gatito) -->
+    <!-- ══════════════════════════════════════════════════════════════
+         🌟 LOGO - Centrado en la parte superior
+         ══════════════════════════════════════════════════════════════ -->
     <ImageView
         android:id="@+id/iv_logo"
-        android:layout_width="180dp"
-        android:layout_height="180dp"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="80dp"
-        android:contentDescription="Logo del gatito"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:src="@mipmap/ic_launcher"
-        android:scaleType="fitCenter" />
+        android:scaleType="fitCenter"
+        android:contentDescription="@string/app_name"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/tv_title"
+        app:layout_constraintWidth_percent="0.4"
+        app:layout_constraintHeight_percent="0.2"
+        app:layout_constraintVertical_chainStyle="packed"
+        app:layout_constraintVertical_bias="0.15"/>
 
-    <!-- Título -->
+    <!-- ══════════════════════════════════════════════════════════════
+         📝 TÍTULO - Nombre de la app
+         ══════════════════════════════════════════════════════════════ -->
     <TextView
         android:id="@+id/tv_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/iv_logo"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="24dp"
-        android:text="Black Hole Glow"
-        android:textColor="@android:color/white"
-        android:textSize="28sp"
-        android:textStyle="bold" />
+        android:text="@string/app_name"
+        android:textColor="@color/orbix_text_primary"
+        android:textSize="32sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.05"
+        android:layout_marginTop="16dp"
+        app:layout_constraintTop_toBottomOf="@id/iv_logo"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
 
-    <!-- Subtítulo -->
+    <!-- ══════════════════════════════════════════════════════════════
+         📝 SUBTÍTULO - Descripción corta
+         ══════════════════════════════════════════════════════════════ -->
     <TextView
         android:id="@+id/tv_subtitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/tv_title"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="8dp"
-        android:text="Wallpaper espacial interactivo"
-        android:textColor="@android:color/white"
+        android:text="Wallpapers animados para tu pantalla"
+        android:textColor="@color/orbix_text_secondary"
         android:textSize="16sp"
-        android:alpha="0.7" />
+        android:layout_marginTop="8dp"
+        app:layout_constraintTop_toBottomOf="@id/tv_title"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
 
-    <!-- Contenedor central -->
-    <LinearLayout
-        android:id="@+id/login_container"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/tv_subtitle"
-        android:layout_marginTop="48dp"
-        android:gravity="center"
-        android:orientation="vertical">
+    <!-- ══════════════════════════════════════════════════════════════
+         🔘 BOTÓN GOOGLE SIGN IN
+         ══════════════════════════════════════════════════════════════ -->
+    <Button
+        android:id="@+id/btn_sign_in"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:text="Continuar con Google"
+        android:textColor="#1F1F1F"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textAllCaps="false"
+        android:background="@drawable/btn_google_signin"
+        android:drawablePadding="12dp"
+        android:paddingHorizontal="24dp"
+        android:elevation="4dp"
+        android:layout_marginHorizontal="32dp"
+        app:layout_constraintTop_toBottomOf="@id/tv_subtitle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/btn_skip"
+        app:layout_constraintVertical_bias="0.5"
+        app:layout_constraintWidth_max="400dp"/>
 
-        <!-- Botón de Google Sign-In -->
-        <Button
-            android:id="@+id/btn_sign_in"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:text="Iniciar sesión con Google"
-            android:textColor="@android:color/black"
-            android:backgroundTint="@android:color/white"
-            android:drawableLeft="@android:drawable/ic_menu_info_details"
-            android:drawablePadding="12dp"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+    <!-- ══════════════════════════════════════════════════════════════
+         🔘 BOTÓN SKIP - Continuar sin login
+         ══════════════════════════════════════════════════════════════ -->
+    <Button
+        android:id="@+id/btn_skip"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:text="Continuar sin cuenta"
+        android:textColor="@color/orbix_text_secondary"
+        android:textSize="14sp"
+        android:textAllCaps="false"
+        android:background="@drawable/btn_orbix_secondary"
+        android:layout_marginTop="16dp"
+        android:layout_marginHorizontal="32dp"
+        app:layout_constraintTop_toBottomOf="@id/btn_sign_in"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintWidth_max="400dp"/>
 
-        <!-- Botón Skip (continuar sin login) -->
-        <Button
-            android:id="@+id/btn_skip"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginTop="16dp"
-            android:text="Continuar sin login"
-            android:textColor="@android:color/white"
-            android:background="@android:color/transparent"
-            android:textSize="14sp"
-            android:alpha="0.7" />
+    <!-- ══════════════════════════════════════════════════════════════
+         ⏳ PROGRESS BAR - Indicador de carga
+         ══════════════════════════════════════════════════════════════ -->
+    <ProgressBar
+        android:id="@+id/progress_bar"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:visibility="gone"
+        android:indeterminateTint="@color/orbix_primary"
+        app:layout_constraintTop_toBottomOf="@id/btn_skip"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="24dp"/>
 
-        <!-- Indicador de carga -->
-        <ProgressBar
-            android:id="@+id/progress_bar"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginTop="24dp"
-            android:visibility="gone"
-            android:indeterminateTint="@android:color/white" />
-
-        <!-- Estado -->
-        <TextView
-            android:id="@+id/tv_status"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:textColor="@android:color/white"
-            android:textSize="14sp"
-            android:alpha="0.8" />
-
-    </LinearLayout>
-
-    <!-- Información adicional -->
+    <!-- ══════════════════════════════════════════════════════════════
+         📝 ESTADO - Mensajes de estado
+         ══════════════════════════════════════════════════════════════ -->
     <TextView
-        android:id="@+id/tv_info"
+        android:id="@+id/tv_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true"
-        android:layout_marginBottom="32dp"
-        android:text="Tu avatar aparecerá en el wallpaper"
-        android:textColor="@android:color/white"
-        android:textSize="12sp"
-        android:alpha="0.5" />
+        android:textColor="@color/orbix_text_secondary"
+        android:textSize="14sp"
+        android:gravity="center"
+        android:layout_marginTop="16dp"
+        app:layout_constraintTop_toBottomOf="@id/progress_bar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
 
-</RelativeLayout>
+    <!-- ══════════════════════════════════════════════════════════════
+         ℹ️ INFO - Texto informativo inferior
+         ══════════════════════════════════════════════════════════════ -->
+    <TextView
+        android:id="@+id/tv_info"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Tu avatar aparecerá en el wallpaper"
+        android:textColor="@color/orbix_text_hint"
+        android:textSize="12sp"
+        android:gravity="center"
+        android:layout_marginHorizontal="32dp"
+        android:layout_marginBottom="24dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

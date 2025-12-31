@@ -30,7 +30,7 @@ public class LabScene extends WallpaperScene {
 
     @Override
     public String getName() {
-        return "Laboratorio";
+        return "PYRALIS";
     }
 
     @Override

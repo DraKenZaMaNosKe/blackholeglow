@@ -41,6 +41,13 @@ public class VideoConfig {
             "Abyssia"
         ));
 
+        // Panel de Control - The House (cabaña acogedora con chimenea)
+        VIDEOS.put("thehouse.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "thehouse.mp4",
+            10_235_904L,  // 9.76 MB
+            "The House"
+        ));
+
         // ═══════════════════════════════════════════════════════════════
         // IMAGENES - Escena Navidad
         // ═══════════════════════════════════════════════════════════════

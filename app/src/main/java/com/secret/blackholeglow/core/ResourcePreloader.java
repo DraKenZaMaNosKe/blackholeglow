@@ -87,12 +87,12 @@ public class ResourcePreloader {
 
         switch (sceneName) {
             case "Portal Cosmico":
-            case "Laboratorio":
+            case "PYRALIS":
             case "LabScene":
                 prepareLabSceneTasks();
                 break;
 
-            case "Fondo del Mar":
+            case "ABYSSIA":
             case "Oceano":
             case "OceanFloorScene":
                 prepareOceanSceneTasks();

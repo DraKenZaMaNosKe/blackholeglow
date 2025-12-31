@@ -54,7 +54,7 @@ public class OceanFloorScene extends WallpaperScene {
     private long lastTapTime = 0;
 
     @Override
-    public String getName() { return "Fondo del Mar"; }
+    public String getName() { return "ABYSSIA"; }
 
     @Override
     public String getDescription() {

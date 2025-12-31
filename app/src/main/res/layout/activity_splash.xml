@@ -1,60 +1,119 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
 ╔══════════════════════════════════════════════════════════════════╗
-║  🌌 SPLASH SCREEN - Pantalla de inicio con logo del gatito      ║
+║  🌌 SPLASH SCREEN - Pantalla de inicio con descarga de recursos ║
 ╚══════════════════════════════════════════════════════════════════╝
 -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/black"
-    android:gravity="center"
-    android:orientation="vertical"
-    android:padding="32dp">
+    android:background="#0D0D1A">
 
-    <!-- ============== LOGO DEL GATITO ============== -->
-    <ImageView
-        android:id="@+id/logo"
-        android:layout_width="200dp"
-        android:layout_height="200dp"
-        android:src="@mipmap/ic_launcher"
-        android:scaleType="fitCenter"
-        android:contentDescription="App logo" />
-
-    <!-- ============== NOMBRE DE LA APP ============== -->
-    <TextView
-        android:id="@+id/app_name"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="@string/app_name"
-        android:textColor="@android:color/white"
-        android:textSize="28sp"
-        android:textStyle="bold"
-        android:fontFamily="sans-serif-medium" />
-
-    <!-- ============== TAGLINE ============== -->
-    <TextView
-        android:id="@+id/tagline"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="🌌 Explora el Cosmos Infinito"
-        android:textColor="#AAAAAA"
-        android:textSize="16sp"
-        android:fontFamily="sans-serif-light" />
-
-    <!-- ============== ESPACIADOR ============== -->
+    <!-- ============== FONDO DEGRADADO ============== -->
     <View
-        android:layout_width="1dp"
-        android:layout_height="40dp" />
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/splash_gradient_bg" />
 
-    <!-- ============== INDICADOR DE CARGA ============== -->
-    <ProgressBar
-        android:id="@+id/loading_progress"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:indeterminateTint="#FFFFFF"
-        style="?android:attr/progressBarStyle" />
+    <!-- ============== CONTENIDO PRINCIPAL ============== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="32dp">
 
-</LinearLayout>
+        <!-- ============== LOGO ============== -->
+        <ImageView
+            android:id="@+id/logo"
+            android:layout_width="180dp"
+            android:layout_height="180dp"
+            android:src="@mipmap/ic_launcher"
+            android:scaleType="fitCenter"
+            android:contentDescription="App logo" />
+
+        <!-- ============== TAGLINE ============== -->
+        <TextView
+            android:id="@+id/tagline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Explora el Cosmos Infinito"
+            android:textColor="#8B9DC3"
+            android:textSize="14sp"
+            android:fontFamily="sans-serif-light" />
+
+        <!-- ============== ESPACIADOR ============== -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="60dp" />
+
+        <!-- ============== CONTENEDOR DE PROGRESO ============== -->
+        <LinearLayout
+            android:id="@+id/download_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:visibility="gone">
+
+            <!-- Status text -->
+            <TextView
+                android:id="@+id/status_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Descargando recursos..."
+                android:textColor="#6B7AA1"
+                android:textSize="13sp"
+                android:fontFamily="sans-serif-light" />
+
+            <!-- Barra de progreso -->
+            <FrameLayout
+                android:layout_width="280dp"
+                android:layout_height="6dp"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/progress_bar_bg">
+
+                <View
+                    android:id="@+id/progress_fill"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/progress_bar_fill" />
+
+            </FrameLayout>
+
+            <!-- Porcentaje -->
+            <TextView
+                android:id="@+id/progress_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="0%"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif-medium" />
+
+        </LinearLayout>
+
+        <!-- ============== INDICADOR DE CARGA (cuando no hay descarga) ============== -->
+        <ProgressBar
+            android:id="@+id/loading_spinner"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:indeterminateTint="#6366F1"
+            style="?android:attr/progressBarStyle" />
+
+    </LinearLayout>
+
+    <!-- ============== VERSIÓN EN LA ESQUINA ============== -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="24dp"
+        android:text="v4.2.0"
+        android:textColor="#4A5568"
+        android:textSize="12sp" />
+
+</FrameLayout>

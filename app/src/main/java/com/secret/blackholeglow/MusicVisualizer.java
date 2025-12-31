@@ -126,6 +126,22 @@ public class MusicVisualizer {
 
         try {
             // ════════════════════════════════════════════════════════════════════════
+            // 🧹 LIBERAR VISUALIZER EXISTENTE SI HAY UNO EN MAL ESTADO
+            // ════════════════════════════════════════════════════════════════════════
+            if (visualizer != null) {
+                Log.d(TAG, "[MusicVisualizer] 🧹 Liberando visualizer anterior en mal estado...");
+                try {
+                    visualizer.setDataCaptureListener(null, 0, false, false);
+                    visualizer.setEnabled(false);
+                    visualizer.release();
+                } catch (Exception e) {
+                    Log.w(TAG, "[MusicVisualizer] Error liberando visualizer anterior: " + e.getMessage());
+                }
+                visualizer = null;
+                isEnabled = false;
+            }
+
+            // ════════════════════════════════════════════════════════════════════════
             // 🎵 DETECTAR SI HAY MÚSICA SONANDO ANTES DE CREAR VISUALIZER
             // ════════════════════════════════════════════════════════════════════════
             boolean wasMusicPlaying = false;
@@ -138,7 +154,7 @@ public class MusicVisualizer {
             // ⚠️ ESTO PUEDE PAUSAR/CERRAR OTRAS APPS DE AUDIO EN ALGUNOS DISPOSITIVOS
             visualizer = new Visualizer(0);
 
-            // Configurar tamaño de captura
+            // Configurar tamaño de captura (debe estar deshabilitado)
             visualizer.setCaptureSize(CAPTURE_SIZE);
 
             // Establecer listener para captura de datos

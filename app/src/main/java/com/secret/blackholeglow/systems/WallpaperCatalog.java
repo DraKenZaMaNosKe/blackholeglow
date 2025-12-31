@@ -251,7 +251,7 @@ public class WallpaperCatalog {
                 .descripcion("Desciende a las profundidades de un océano alienígena. " +
                         "Bioluminiscencia ancestral y criaturas de otro mundo.")
                 .preview(R.drawable.preview_oceano_sc)
-                .sceneName("Fondo del Mar")
+                .sceneName("ABYSSIA")
                 .tier(WallpaperTier.FREE)
                 .badge("🌊 NUEVO")
                 .glow(0xFF00CED1)  // Dark Turquoise
@@ -263,7 +263,7 @@ public class WallpaperCatalog {
                 .descripcion("Atraviesa el portal de fuego eterno. " +
                         "Nubes cósmicas ardientes y dimensiones desconocidas.")
                 .preview(R.drawable.preview_portal_cosmico)
-                .sceneName("Laboratorio")
+                .sceneName("PYRALIS")
                 .tier(WallpaperTier.FREE)
                 .badge("🔥 POPULAR")
                 .glow(0xFFFF4500)  // Orange Red
