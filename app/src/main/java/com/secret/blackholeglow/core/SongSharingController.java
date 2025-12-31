@@ -8,7 +8,12 @@ import com.secret.blackholeglow.SongMessageRenderer;
 import com.secret.blackholeglow.sharing.HeartParticleSystem;
 import com.secret.blackholeglow.sharing.LikeButton;
 import com.secret.blackholeglow.sharing.MusicNotificationListener;
+import com.secret.blackholeglow.sharing.SharedSong;
 import com.secret.blackholeglow.sharing.SongSharingManager;
+
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.Random;
 
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
@@ -35,6 +40,14 @@ public class SongSharingController {
     // Estado
     private boolean initialized = false;
     private final Context context;
+
+    // Cola de canciones recibidas (anti-spam visual)
+    private final Queue<SharedSong> songQueue = new LinkedList<>();
+    private float nextShowTime = 0f;
+    private float elapsedTime = 0f;
+    private final Random random = new Random();
+    private static final float MIN_DELAY = 30f;  // 30 seg minimo
+    private static final float MAX_DELAY = 60f;  // 60 seg maximo
 
     public SongSharingController(Context context) {
         this.context = context.getApplicationContext();
@@ -68,15 +81,16 @@ public class SongSharingController {
             Log.d(TAG, "✨ SongMessageRenderer inicializado");
 
             // INICIAR LISTENER para recibir canciones de otros usuarios
+            // Las canciones se encolan y muestran con delay aleatorio (30-60 seg)
             songSharingManager.startListening(song -> {
-                Log.d(TAG, "CANCION RECIBIDA: " + song.getUserName() + " - " + song.getSongTitle());
-                if (songMessageRenderer != null) {
-                    String msg = "A " + song.getUserName() + " le encanta: " + song.getSongTitle();
-                    songMessageRenderer.showMessage(msg);
+                Log.d(TAG, "CANCION ENCOLADA: " + song.getUserName() + " - " + song.getSongTitle());
+                synchronized (songQueue) {
+                    songQueue.offer(song);  // Agregar a la cola
                 }
-                emitHeartParticles();
             });
-            Log.d(TAG, "Listener de canciones ACTIVADO");
+            // Iniciar timer aleatorio para primera cancion
+            nextShowTime = MIN_DELAY + random.nextFloat() * (MAX_DELAY - MIN_DELAY);
+            Log.d(TAG, "Listener de canciones ACTIVADO (delay: " + nextShowTime + "s)");
 
             initialized = true;
             Log.d(TAG, "✅ SongSharingController completamente inicializado");
@@ -105,6 +119,27 @@ public class SongSharingController {
         // Actualizar estado de cooldown del botón
         if (likeButton != null && songSharingManager != null) {
             likeButton.setCooldown(!songSharingManager.canShare());
+        }
+
+        // Procesar cola de canciones con delay aleatorio (30-60 seg)
+        elapsedTime += deltaTime;
+        if (elapsedTime >= nextShowTime) {
+            SharedSong song = null;
+            synchronized (songQueue) {
+                song = songQueue.poll();  // Sacar siguiente cancion
+            }
+            if (song != null) {
+                // Mostrar cancion
+                String msg = "A " + song.getUserName() + " le encanta: " + song.getSongTitle();
+                if (songMessageRenderer != null) {
+                    songMessageRenderer.showMessage(msg);
+                }
+                emitHeartParticles();
+                Log.d(TAG, "MOSTRANDO CANCION: " + msg);
+            }
+            // Resetear timer con nuevo delay aleatorio
+            elapsedTime = 0f;
+            nextShowTime = MIN_DELAY + random.nextFloat() * (MAX_DELAY - MIN_DELAY);
         }
     }
 
