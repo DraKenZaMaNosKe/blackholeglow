@@ -192,6 +192,30 @@ public class LabScene extends WallpaperScene {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
+    // ⏸️▶️ PAUSE/RESUME - Libera recursos cuando no es visible
+    // ═══════════════════════════════════════════════════════════════════════
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        // ⏸️ CRÍTICO: Pausar video para liberar CPU/batería
+        if (videoBackground != null) {
+            videoBackground.pause();
+            Log.d(TAG, "⏸️ Video de fondo PAUSADO");
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // ▶️ Reanudar video
+        if (videoBackground != null) {
+            videoBackground.resume();
+            Log.d(TAG, "▶️ Video de fondo REANUDADO");
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // TOUCH PARA AJUSTAR LLAMAS (EJE X)
     // ═══════════════════════════════════════════════════════════════════════
 

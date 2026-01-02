@@ -359,12 +359,49 @@ public class MediaCodecVideoRenderer {
         GLES20.glDisableVertexAttribArray(aTexCoordLoc);
     }
 
+    /**
+     * ⏸️ PAUSA REAL - Detiene el thread de decodificación
+     * Esto libera CPU/batería cuando el wallpaper no es visible
+     */
     public void pause() {
-        Log.d(TAG, "⏸️ Pause (no hace nada - video sigue corriendo)");
+        if (!isRunning) {
+            Log.d(TAG, "⏸️ Ya estaba pausado");
+            return;
+        }
+
+        Log.d(TAG, "⏸️ PAUSANDO decodificación de video...");
+        isRunning = false;
+
+        // Esperar a que el thread termine limpiamente
+        if (decoderThread != null && decoderThread.isAlive()) {
+            decoderThread.interrupt();
+            try {
+                decoderThread.join(500); // Máximo 500ms
+            } catch (InterruptedException ignored) {}
+        }
+
+        // Liberar decoder pero mantener textura/surface
+        releaseDecoder();
+        Log.d(TAG, "⏸️ Video PAUSADO - recursos liberados");
     }
 
+    /**
+     * ▶️ RESUME REAL - Reinicia el thread de decodificación
+     */
     public void resume() {
-        Log.d(TAG, "▶️ Resume");
+        if (isRunning) {
+            Log.d(TAG, "▶️ Ya estaba corriendo");
+            return;
+        }
+
+        if (!isInitialized) {
+            Log.w(TAG, "▶️ No inicializado, no se puede reanudar");
+            return;
+        }
+
+        Log.d(TAG, "▶️ REANUDANDO decodificación de video...");
+        startDecoder();
+        Log.d(TAG, "▶️ Video REANUDADO");
     }
 
     public void release() {
