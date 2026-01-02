@@ -129,13 +129,13 @@ public class SongSharingController {
                 song = songQueue.poll();  // Sacar siguiente cancion
             }
             if (song != null) {
-                // Mostrar cancion
-                String msg = "A " + song.getUserName() + " le encanta: " + song.getSongTitle();
+                // Mostrar cancion - songTitle YA incluye el nombre desde Gemini
+                String msg = song.getSongTitle();
                 if (songMessageRenderer != null) {
                     songMessageRenderer.showMessage(msg);
                 }
                 emitHeartParticles();
-                Log.d(TAG, "MOSTRANDO CANCION: " + msg);
+                Log.d(TAG, "🎵 MOSTRANDO: " + msg);
             }
             // Resetear timer con nuevo delay aleatorio
             elapsedTime = 0f;

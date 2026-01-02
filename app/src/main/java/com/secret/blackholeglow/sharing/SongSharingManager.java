@@ -146,11 +146,14 @@ public class SongSharingManager {
             songData.put("timestamp", com.google.firebase.firestore.FieldValue.serverTimestamp());
             songData.put("likes", 0);
 
+            // Usar userId como ID del documento - así solo hay UNA canción por usuario
+            // Si el usuario comparte otra, REEMPLAZA la anterior
             db.collection(COLLECTION_SHARED_SONGS)
-                    .add(songData)
-                    .addOnSuccessListener(documentReference -> {
+                    .document(user.getUid())  // ID fijo = reemplaza
+                    .set(songData)
+                    .addOnSuccessListener(aVoid -> {
                         lastShareTime = System.currentTimeMillis();
-                        Log.d(TAG, "✅ Canción compartida (directo): " + songTitle);
+                        Log.d(TAG, "✅ Canción compartida (reemplaza anterior): " + songTitle);
                         if (callback != null) callback.onSuccess();
                     })
                     .addOnFailureListener(ex -> {
@@ -179,39 +182,53 @@ public class SongSharingManager {
 
         Log.d(TAG, "🔔🔔🔔 INICIANDO LISTENER FIREBASE 🔔🔔🔔");
 
+        // Guardar tiempo de inicio para filtrar canciones viejas
+        final long listenerStartTime = System.currentTimeMillis();
+
         songsListener = db.collection(COLLECTION_SHARED_SONGS)
                 .orderBy("timestamp", Query.Direction.DESCENDING)
                 .limit(1)  // Solo la más reciente
                 .addSnapshotListener(new EventListener<QuerySnapshot>() {
                     private String lastSongId = null;
+                    private boolean isFirstCallback = true;
 
                     @Override
                     public void onEvent(@Nullable QuerySnapshot snapshots,
                                         @Nullable FirebaseFirestoreException e) {
-                        Log.d(TAG, "📡 onEvent DISPARADO - snapshots=" + (snapshots != null ? snapshots.size() : "null") + ", error=" + (e != null ? e.getMessage() : "ninguno"));
-
                         if (e != null) {
                             Log.e(TAG, "❌ Error escuchando canciones: " + e.getMessage());
                             return;
                         }
 
                         if (snapshots == null || snapshots.isEmpty()) {
-                            Log.d(TAG, "📭 Snapshots vacío o null");
                             return;
                         }
 
-                        Log.d(TAG, "📋 DocumentChanges: " + snapshots.getDocumentChanges().size());
                         for (DocumentChange dc : snapshots.getDocumentChanges()) {
-                            Log.d(TAG, "📄 Change type: " + dc.getType().name());
                             if (dc.getType() == DocumentChange.Type.ADDED) {
                                 SharedSong song = dc.getDocument().toObject(SharedSong.class);
                                 song.setId(dc.getDocument().getId());
 
-                                Log.d(TAG, "🎶 Canción recibida: " + song.getUserName() + " - " + song.getSongTitle() + " (ID:" + song.getId() + ")");
+                                // IMPORTANTE: Ignorar la primera canción (es histórica)
+                                if (isFirstCallback) {
+                                    isFirstCallback = false;
+                                    lastSongId = song.getId();
+                                    Log.d(TAG, "⏭️ Ignorando canción histórica: " + song.getSongTitle());
+                                    continue;
+                                }
 
-                                // Evitar duplicados y propias canciones
+                                // Verificar que es reciente (últimos 2 minutos)
+                                if (song.getTimestamp() != null) {
+                                    long songTime = song.getTimestamp().getTime();
+                                    long twoMinutesAgo = System.currentTimeMillis() - 120000;
+                                    if (songTime < twoMinutesAgo) {
+                                        Log.d(TAG, "⏭️ Canción muy vieja, ignorando");
+                                        continue;
+                                    }
+                                }
+
+                                // Evitar duplicados
                                 if (song.getId().equals(lastSongId)) {
-                                    Log.d(TAG, "⏭️ Saltando duplicado");
                                     continue;
                                 }
 
@@ -219,18 +236,14 @@ public class SongSharingManager {
                                 FirebaseUser currentUser = auth.getCurrentUser();
                                 if (currentUser != null && song.getUserId() != null
                                         && song.getUserId().equals(currentUser.getUid())) {
-                                    Log.d(TAG, "⏭️ Saltando propia canción");
                                     continue;
                                 }
 
                                 lastSongId = song.getId();
-
-                                Log.d(TAG, "🎵✅ MOSTRANDO canción: " + song.getUserName() + " - " + song.getSongTitle());
+                                Log.d(TAG, "🎵✅ Nueva canción: " + song.getSongTitle());
 
                                 if (newSongListener != null) {
                                     newSongListener.onNewSong(song);
-                                } else {
-                                    Log.e(TAG, "❌ newSongListener es NULL!");
                                 }
                             }
                         }
@@ -285,17 +298,25 @@ public class SongSharingManager {
                         return;  // Ya la vimos
                     }
 
+                    // Filtrar canciones viejas (más de 2 minutos)
+                    if (song.getTimestamp() != null) {
+                        long twoMinutesAgo = System.currentTimeMillis() - 120000;
+                        if (song.getTimestamp().getTime() < twoMinutesAgo) {
+                            lastPolledSongId = song.getId();
+                            return;  // Muy vieja
+                        }
+                    }
+
                     // No mostrar propias canciones
                     FirebaseUser currentUser = auth.getCurrentUser();
                     if (currentUser != null && song.getUserId() != null
                             && song.getUserId().equals(currentUser.getUid())) {
-                        lastPolledSongId = song.getId();  // Marcar como vista
+                        lastPolledSongId = song.getId();
                         return;
                     }
 
                     lastPolledSongId = song.getId();
-
-                    Log.d(TAG, "🔄 POLLING encontró nueva canción: " + song.getUserName() + " - " + song.getSongTitle());
+                    Log.d(TAG, "🔄 Nueva canción: " + song.getSongTitle());
 
                     if (newSongListener != null) {
                         newSongListener.onNewSong(song);

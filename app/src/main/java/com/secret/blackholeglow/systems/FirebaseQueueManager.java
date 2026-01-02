@@ -609,7 +609,7 @@ public class FirebaseQueueManager {
             .setType(OperationType.SONG_SHARE)
             .setPriority(Priority.HIGH)
             .setCollection("shared_songs")
-            .setDocumentId(null)  // Auto-ID
+            .setDocumentId(userId)  // userId = solo UNA cancion por usuario
             .setUserId(userId)
             .setMerge(false)
             .putData("userId", userId)
