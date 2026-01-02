@@ -67,6 +67,7 @@ public class WallpaperPreferences {
         "Ocean Pearl",        // Fondo del mar con ostra y perla (modular)
         "ABYSSIA",      // Video wallpaper océano alienígena
         "PYRALIS",        // 🧪 Escena experimental para probar efectos
+        "RUBIK",          // 🧊 Cubo Rubik interactivo
 
         // ═══════════════════════════════════════════
         // 📦 WALLPAPERS LEGADOS (compatibilidad)
