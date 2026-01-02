@@ -112,11 +112,8 @@ public class SongSharingManager {
             return;
         }
 
-        // Crear objeto SharedSong
-        String userName = user.getDisplayName();
-        if (userName == null || userName.isEmpty()) {
-            userName = "Usuario";
-        }
+        // Crear objeto SharedSong - usar NICKNAME para privacidad
+        String userName = getCurrentUserName();
 
         String userPhotoUrl = null;
         if (user.getPhotoUrl() != null) {
@@ -356,13 +353,30 @@ public class SongSharingManager {
     }
 
     /**
-     * 👤 Obtiene el nombre del usuario actual
+     * 👤 Obtiene el NICKNAME del usuario (parte antes del @ del email)
+     * Esto protege la privacidad - no muestra el nombre real
      */
     public String getCurrentUserName() {
         FirebaseUser user = auth.getCurrentUser();
-        if (user != null && user.getDisplayName() != null) {
-            return user.getDisplayName();
+        if (user == null) return "Usuario";
+
+        // Prioridad: email prefix (nickname) > displayName > fallback
+        String email = user.getEmail();
+        if (email != null && email.contains("@")) {
+            String nickname = email.substring(0, email.indexOf("@"));
+            // Capitalizar primera letra para verse mejor
+            if (!nickname.isEmpty()) {
+                return nickname.substring(0, 1).toUpperCase() + nickname.substring(1).toLowerCase();
+            }
         }
+
+        // Fallback a displayName si no hay email
+        if (user.getDisplayName() != null && !user.getDisplayName().isEmpty()) {
+            // Solo usar primer nombre para privacidad
+            String[] parts = user.getDisplayName().split(" ");
+            return parts[0];
+        }
+
         return "Usuario";
     }
 

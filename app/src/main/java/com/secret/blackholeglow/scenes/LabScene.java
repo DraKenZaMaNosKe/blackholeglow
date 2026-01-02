@@ -5,6 +5,8 @@ import android.opengl.GLES30;
 import android.util.Log;
 
 import com.secret.blackholeglow.R;
+import com.secret.blackholeglow.Battery3D;
+import com.secret.blackholeglow.Clock3D;
 import com.secret.blackholeglow.EqualizerBarsDJ;
 import com.secret.blackholeglow.video.MediaCodecVideoRenderer;
 import com.secret.blackholeglow.video.VideoDownloadManager;
@@ -27,6 +29,8 @@ public class LabScene extends WallpaperScene {
     private TravelingShip travelingShip;
     private VideoDownloadManager downloadManager;
     private EqualizerBarsDJ equalizerDJ;
+    private Clock3D clock;
+    private Battery3D battery;
 
     @Override
     public String getName() {
@@ -89,6 +93,22 @@ public class LabScene extends WallpaperScene {
             Log.e(TAG, "❌ Error EqualizerBarsDJ: " + e.getMessage());
         }
 
+        // ⏰ Reloj con tema PYRALIS (dorado celestial)
+        try {
+            clock = new Clock3D(context, Clock3D.THEME_PYRALIS, 0f, 0.75f);
+            Log.d(TAG, "✅ Reloj PYRALIS activado");
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error Clock3D: " + e.getMessage());
+        }
+
+        // 🔋 Batería con tema PYRALIS (reactor de plasma)
+        try {
+            battery = new Battery3D(context, Battery3D.THEME_PYRALIS, 0.81f, -0.34f);
+            Log.d(TAG, "✅ Batería PYRALIS activada");
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error Battery3D: " + e.getMessage());
+        }
+
         Log.d(TAG, "🌌 Portal Cósmico listo!");
     }
 
@@ -102,6 +122,14 @@ public class LabScene extends WallpaperScene {
             travelingShip.release();
             travelingShip = null;
         }
+        if (clock != null) {
+            clock.dispose();
+            clock = null;
+        }
+        if (battery != null) {
+            battery.dispose();
+            battery = null;
+        }
         if (equalizerDJ != null) {
             equalizerDJ = null;
         }
@@ -111,6 +139,8 @@ public class LabScene extends WallpaperScene {
     public void update(float deltaTime) {
         if (travelingShip != null) travelingShip.update(deltaTime);
         if (equalizerDJ != null) equalizerDJ.update(deltaTime);
+        if (clock != null) clock.update(deltaTime);
+        if (battery != null) battery.update(deltaTime);
         super.update(deltaTime);
     }
 
@@ -133,6 +163,12 @@ public class LabScene extends WallpaperScene {
 
         // 3. 🎵 Ecualizador PYRALIS
         if (equalizerDJ != null) equalizerDJ.draw();
+
+        // 4. ⏰ Reloj PYRALIS
+        if (clock != null) clock.draw();
+
+        // 5. 🔋 Batería PYRALIS
+        if (battery != null) battery.draw();
 
         super.draw();
     }

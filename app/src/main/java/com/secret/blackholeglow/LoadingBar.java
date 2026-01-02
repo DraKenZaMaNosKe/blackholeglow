@@ -89,6 +89,9 @@ public class LoadingBar implements SceneObject {
     private int textUAlphaLoc = -1;
     private FloatBuffer textVertexBuffer;
 
+    // ⚡ OPTIMIZACIÓN: Cache de vértices para evitar crear arrays cada frame
+    private final float[] quadVertexCache = new float[8];
+
     private static final int TEXT_TEX_WIDTH = 512;   // Mas ancho para nombres largos
     private static final int TEXT_TEX_HEIGHT = 140;  // 3 lineas: nombre + cargando + motivacional
     private int currentDots = 0;           // 0, 1, 2, 3 para "Loading", "Loading.", "Loading..", "Loading..."
@@ -573,6 +576,9 @@ public class LoadingBar implements SceneObject {
 
         GLES30.glUseProgram(shaderProgram);
 
+        // ⚡ OPTIMIZADO: Habilitar vertex attrib UNA vez para todos los quads
+        GLES30.glEnableVertexAttribArray(aPositionLoc);
+
         // Uniforms comunes
         GLES30.glUniform1f(uTimeLoc, time);
         GLES30.glUniform1f(uProgressLoc, displayProgress);
@@ -664,6 +670,9 @@ public class LoadingBar implements SceneObject {
         // Right
         drawQuad(adjustedWidth/2, barY - adjustedHeight, 0.003f, adjustedHeight*2, themeColorPrimary, alpha * 0.5f, false);
 
+        // ⚡ OPTIMIZADO: Deshabilitar vertex attrib UNA vez después de todos los quads
+        GLES30.glDisableVertexAttribArray(aPositionLoc);
+
         // ═══════════════════════════════════════════════════════════
         // 6. TEXTO "Loading..." ARRIBA DE LA BARRA
         // ═══════════════════════════════════════════════════════════
@@ -671,16 +680,18 @@ public class LoadingBar implements SceneObject {
     }
 
     private void drawQuad(float x, float y, float w, float h, float[] color, float quadAlpha, boolean isGlow) {
-        // Definir vertices del quad
-        float[] vertices = {
-            x,     y,      // Bottom-left
-            x + w, y,      // Bottom-right
-            x,     y + h,  // Top-left
-            x + w, y + h   // Top-right
-        };
+        // ⚡ OPTIMIZADO: Usar cache en lugar de crear nuevo array cada frame
+        quadVertexCache[0] = x;
+        quadVertexCache[1] = y;
+        quadVertexCache[2] = x + w;
+        quadVertexCache[3] = y;
+        quadVertexCache[4] = x;
+        quadVertexCache[5] = y + h;
+        quadVertexCache[6] = x + w;
+        quadVertexCache[7] = y + h;
 
         vertexBuffer.clear();
-        vertexBuffer.put(vertices);
+        vertexBuffer.put(quadVertexCache);
         vertexBuffer.position(0);
 
         // Uniforms
@@ -688,14 +699,11 @@ public class LoadingBar implements SceneObject {
         GLES30.glUniform1f(uAlphaLoc, quadAlpha);
         GLES30.glUniform1f(uIsGlowLoc, isGlow ? 1f : 0f);
 
-        // Vertex attribute
-        GLES30.glEnableVertexAttribArray(aPositionLoc);
+        // ⚡ OPTIMIZADO: vertexAttribPointer sin enable/disable repetitivo
         GLES30.glVertexAttribPointer(aPositionLoc, 2, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
         // Dibujar
         GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
-
-        GLES30.glDisableVertexAttribArray(aPositionLoc);
     }
 
     /**

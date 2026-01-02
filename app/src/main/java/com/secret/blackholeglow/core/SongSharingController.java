@@ -246,12 +246,14 @@ public class SongSharingController {
                 @Override
                 public void onResponse(String response) {
                     showMessage(response);
-                    shareToFirebase(finalUserName + ": " + response);
+                    // NO añadir userName aquí - ya está en el mensaje de Gemini
+                    shareToFirebase(response);
                 }
 
                 @Override
                 public void onError(String error) {
-                    String fallback = "♥ A " + finalUserName + " le encanta:\n🎵 " + finalSongTitle;
+                    // Fallback SIN nombre real - el display añadirá el nickname
+                    String fallback = "♥ le encanta: 🎵 " + finalSongTitle;
                     showMessage(fallback);
                     shareToFirebase(fallback);
                 }

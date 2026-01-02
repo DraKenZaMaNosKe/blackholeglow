@@ -4,6 +4,8 @@ import android.opengl.GLES20;
 import android.util.Log;
 
 import com.secret.blackholeglow.R;
+import com.secret.blackholeglow.Battery3D;
+import com.secret.blackholeglow.Clock3D;
 import com.secret.blackholeglow.EqualizerBarsDJ;
 import com.secret.blackholeglow.video.MediaCodecVideoRenderer;
 import com.secret.blackholeglow.video.VideoDownloadManager;
@@ -30,6 +32,8 @@ public class OceanFloorScene extends WallpaperScene {
     private AbyssalLeviathan3D abyssalLeviathan;
     private EqualizerBarsDJ equalizerDJ;
     private BubbleSystem bubbleSystem;
+    private Clock3D clock;
+    private Battery3D battery;
     private VideoDownloadManager downloadManager;
 
     private static final String VIDEO_FILE = "marZerg.mp4";
@@ -118,6 +122,22 @@ public class OceanFloorScene extends WallpaperScene {
         } catch (Exception e) {
             Log.e(TAG, "Error BubbleSystem: " + e.getMessage());
         }
+
+        // ⏰ Reloj con tema ABYSSIA (cyan bioluminiscente)
+        try {
+            clock = new Clock3D(context, Clock3D.THEME_ABYSSIA, 0f, 0.75f);
+            Log.d(TAG, "✅ Reloj ABYSSIA activado");
+        } catch (Exception e) {
+            Log.e(TAG, "Error Clock3D: " + e.getMessage());
+        }
+
+        // 🔋 Batería con tema ABYSSIA (orbe bioluminiscente)
+        try {
+            battery = new Battery3D(context, Battery3D.THEME_ABYSSIA, 0.81f, -0.34f);
+            Log.d(TAG, "✅ Batería ABYSSIA activada");
+        } catch (Exception e) {
+            Log.e(TAG, "Error Battery3D: " + e.getMessage());
+        }
     }
 
     @Override
@@ -138,6 +158,14 @@ public class OceanFloorScene extends WallpaperScene {
         }
         if (equalizerDJ != null) {
             equalizerDJ = null;
+        }
+        if (clock != null) {
+            clock.dispose();
+            clock = null;
+        }
+        if (battery != null) {
+            battery.dispose();
+            battery = null;
         }
         if (bubbleSystem != null) {
             bubbleSystem = null;
@@ -161,6 +189,8 @@ public class OceanFloorScene extends WallpaperScene {
         if (abyssalLurker != null) abyssalLurker.update(deltaTime);
 
         if (equalizerDJ != null) equalizerDJ.update(deltaTime);
+        if (clock != null) clock.update(deltaTime);
+        if (battery != null) battery.update(deltaTime);
 
         // 🫧 Actualizar sistema de burbujas
         if (bubbleSystem != null) {
@@ -214,6 +244,10 @@ public class OceanFloorScene extends WallpaperScene {
         }
 
         if (equalizerDJ != null) equalizerDJ.draw();
+        if (clock != null) clock.draw();
+
+        // 🔋 Batería ABYSSIA
+        if (battery != null) battery.draw();
 
         super.draw();
     }

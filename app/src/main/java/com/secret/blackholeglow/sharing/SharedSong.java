@@ -29,6 +29,7 @@ public class SharedSong {
 
     // Contador de likes (para futuro)
     private int likes;
+// Campo lastUpdate para Firestore (evita warning)    private long lastUpdate;
 
     // Constructor vacío requerido por Firebase
     public SharedSong() {}

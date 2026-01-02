@@ -714,6 +714,12 @@ public class MusicVisualizer {
         // 🔧 SIMPLIFICADO: Siempre intentar habilitar, sin importar el estado previo
         // Esto evita problemas con estados inconsistentes después de ciclos rápidos pause/resume
 
+        // 🔒 Si hay una inicialización en progreso, no hacer nada
+        if (isInitializing) {
+            Log.d(TAG, "[MusicVisualizer] ⏳ Esperando inicialización en progreso...");
+            return;
+        }
+
         if (visualizer == null) {
             // Visualizer fue liberado, reinicializar completamente
             Log.d(TAG, "[MusicVisualizer] Reinicializando visualizer (era null)...");
