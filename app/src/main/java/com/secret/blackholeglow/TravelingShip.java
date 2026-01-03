@@ -73,6 +73,13 @@ public class TravelingShip implements SceneObject, CameraAware {
     private boolean shipAdjustMode = false;
     private boolean testLinearMode = false;  // Desactivado - vuelo normal
     private float testTime = 0f;
+
+    // 📱 CONTROL POR GIROSCOPIO
+    private boolean gyroEnabled = false;
+    private float gyroTiltX = 0f;  // -1 (izquierda) a 1 (derecha)
+    private float gyroTiltY = 0f;  // -1 (hacia usuario) a 1 (alejándose)
+    private static final float GYRO_X_INFLUENCE = 1.5f;  // Cuánto afecta tilt lateral
+    private static final float GYRO_ROLL_INFLUENCE = 15f;  // Cuánto afecta al banking
     private static final float ADJUST_X = -2.5f;
     private static final float ADJUST_Y = -4.9f;
     private static final float ADJUST_Z = -2.5f;
@@ -400,6 +407,7 @@ public class TravelingShip implements SceneObject, CameraAware {
     /**
      * Actualiza el movimiento cuando está planeando en el origen
      * OPTIMIZADO: Cálculos de sin/cos reducidos usando cache
+     * 📱 GYRO: Responde a inclinación del dispositivo
      */
     private void updateHovering(float deltaTime) {
         // Posición fija en origen
@@ -420,16 +428,30 @@ public class TravelingShip implements SceneObject, CameraAware {
 
         // Drift lateral simplificado (1 sin principal + 1 armónico)
         float drift = sinT1 * 0.8f + (float) Math.sin(t1 * 1.5f) * 0.2f;
-        x = ORIGIN_X + drift * HOVER_DRIFT_AMPLITUDE;
+        float baseX = ORIGIN_X + drift * HOVER_DRIFT_AMPLITUDE;
+
+        // ═══════════════════════════════════════════════════════════════
+        // 📱 GIROSCOPIO: Añade movimiento basado en inclinación
+        // ═══════════════════════════════════════════════════════════════
+        float gyroOffsetX = 0f;
+        float gyroRoll = 0f;
+        if (gyroEnabled) {
+            // Mover lateralmente según inclinación
+            gyroOffsetX = gyroTiltX * GYRO_X_INFLUENCE;
+            // Inclinar visualmente la nave según tilt
+            gyroRoll = gyroTiltX * GYRO_ROLL_INFLUENCE;
+        }
+
+        x = baseX + gyroOffsetX;
 
         // Bobbing vertical
         y = ORIGIN_Y + sinT2 * 0.05f;
 
-        // Roll basado en velocidad del drift
+        // Roll basado en velocidad del drift + giroscopio
         float driftVelocity = cosT1 * HOVER_DRIFT_SPEED * 0.9f;
         float mainRoll = driftVelocity * ROLL_FACTOR * 2.5f;
         float stabilization = sinT3 * 3.5f;
-        rotationZ = 4.0f + mainRoll + stabilization;
+        rotationZ = 4.0f + mainRoll + stabilization + gyroRoll;
 
         // Pitch simplificado
         rotationX = (float) Math.sin(time * 0.7f) * 4.0f;
@@ -564,6 +586,31 @@ public class TravelingShip implements SceneObject, CameraAware {
         this.rotationZ = roll;
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // 📱 CONTROL POR GIROSCOPIO
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Habilita/deshabilita el control por giroscopio
+     */
+    public void setGyroEnabled(boolean enabled) {
+        this.gyroEnabled = enabled;
+        Log.d(TAG, "📱 Giroscopio " + (enabled ? "habilitado" : "deshabilitado"));
+    }
+
+    /**
+     * Recibe valores de inclinación del GyroscopeManager
+     * @param tiltX -1 (izquierda) a 1 (derecha)
+     * @param tiltY -1 (hacia usuario) a 1 (alejándose)
+     */
+    public void setTiltInput(float tiltX, float tiltY) {
+        this.gyroTiltX = tiltX;
+        this.gyroTiltY = tiltY;
+    }
+
+    public boolean isGyroEnabled() {
+        return gyroEnabled;
+    }
 
     // ═══════════════════════════════════════════════════════════════════════
     // 🎮 CONTROL POR TOUCH - Rotación en ejes

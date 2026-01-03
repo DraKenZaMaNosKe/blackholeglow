@@ -12,6 +12,7 @@ import com.secret.blackholeglow.video.MediaCodecVideoRenderer;
 import com.secret.blackholeglow.video.VideoDownloadManager;
 import com.secret.blackholeglow.video.VideoConfig;
 import com.secret.blackholeglow.TravelingShip;
+import com.secret.blackholeglow.GyroscopeManager;
 
 /**
  * ╔══════════════════════════════════════════════════════════════════════════╗
@@ -31,6 +32,7 @@ public class LabScene extends WallpaperScene {
     private EqualizerBarsDJ equalizerDJ;
     private Clock3D clock;
     private Battery3D battery;
+    private GyroscopeManager gyroscope;
 
     @Override
     public String getName() {
@@ -80,6 +82,20 @@ public class LabScene extends WallpaperScene {
             Log.d(TAG, "✅ Nave activada");
         } catch (Exception e) {
             Log.e(TAG, "❌ Error Nave: " + e.getMessage());
+        }
+
+        // 📱 Giroscopio para control por inclinación
+        try {
+            gyroscope = new GyroscopeManager(context);
+            if (gyroscope.isAvailable() && travelingShip != null) {
+                travelingShip.setGyroEnabled(true);
+                gyroscope.start();
+                Log.d(TAG, "✅ Giroscopio activado para nave");
+            } else {
+                Log.w(TAG, "⚠️ Giroscopio no disponible");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error Gyroscope: " + e.getMessage());
         }
 
         // 🎵 Ecualizador con tema PYRALIS (fuego)
@@ -134,10 +150,19 @@ public class LabScene extends WallpaperScene {
             equalizerDJ.release();
             equalizerDJ = null;
         }
+        if (gyroscope != null) {
+            gyroscope.release();
+            gyroscope = null;
+        }
     }
 
     @Override
     public void update(float deltaTime) {
+        // 📱 Pasar datos del giroscopio a la nave
+        if (gyroscope != null && travelingShip != null && gyroscope.isEnabled()) {
+            travelingShip.setTiltInput(gyroscope.getTiltX(), gyroscope.getTiltY());
+        }
+
         if (travelingShip != null) travelingShip.update(deltaTime);
         if (equalizerDJ != null) equalizerDJ.update(deltaTime);
         if (clock != null) clock.update(deltaTime);
@@ -204,6 +229,11 @@ public class LabScene extends WallpaperScene {
             videoBackground.pause();
             Log.d(TAG, "⏸️ Video de fondo PAUSADO");
         }
+        // 📱 Pausar giroscopio para ahorrar batería
+        if (gyroscope != null) {
+            gyroscope.pause();
+            Log.d(TAG, "⏸️ Giroscopio PAUSADO");
+        }
     }
 
     @Override
@@ -213,6 +243,11 @@ public class LabScene extends WallpaperScene {
         if (videoBackground != null) {
             videoBackground.resume();
             Log.d(TAG, "▶️ Video de fondo REANUDADO");
+        }
+        // 📱 Reanudar giroscopio
+        if (gyroscope != null && gyroscope.isAvailable()) {
+            gyroscope.resume();
+            Log.d(TAG, "▶️ Giroscopio REANUDADO");
         }
     }
 
