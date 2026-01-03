@@ -9,11 +9,9 @@ import android.view.MotionEvent;
 
 import com.secret.blackholeglow.CameraController;
 import com.secret.blackholeglow.MusicVisualizer;
-import com.secret.blackholeglow.ResourceLoader;
 import com.secret.blackholeglow.TextureManager;
 import com.secret.blackholeglow.scenes.OceanFloorScene;
 import com.secret.blackholeglow.scenes.LabScene;
-import com.secret.blackholeglow.scenes.SceneConstants;
 import com.secret.blackholeglow.sharing.LikeButton;
 import com.secret.blackholeglow.scenes.WallpaperScene;
 import com.secret.blackholeglow.systems.AspectRatioManager;
@@ -58,7 +56,6 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     private TextureManager textureManager;
     private MusicVisualizer musicVisualizer;
     private ScreenEffectsManager screenEffects;
-    private ResourceLoader resourceLoader;
     private EventBus eventBus;
     private FirebaseQueueManager firebaseQueue;
     private BloomEffect bloomEffect;
@@ -71,7 +68,6 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     private int screenHeight = 1;
     private String pendingSceneName = "";
     private boolean pendingPreviewMode = false; // Para guardar preview mode antes de inicializar
-    private boolean pendingArcadeMode = false;  // 🎮 Para guardar arcade mode antes de inicializar
 
 
     // TIMING (deltaTime y FPS manejados por GLStateManager)
@@ -292,7 +288,6 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         musicVisualizer = new MusicVisualizer(context);
         musicVisualizer.initialize();
         screenEffects = new ScreenEffectsManager();
-        resourceLoader = new ResourceLoader(context, textureManager);
         // TODO: BloomEffect deshabilitado temporalmente para debugging
         // bloomEffect = new BloomEffect();
 
@@ -319,12 +314,6 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         }
         panelRenderer = new PanelModeRenderer(context);
         panelRenderer.initialize();
-
-        // 🎮 Aplicar modo arcade pendiente
-        if (pendingArcadeMode) {
-            panelRenderer.setArcadeModeEnabled(true);
-            Log.d(TAG, "🎮 Modo ARCADE aplicado (estaba pendiente)");
-        }
 
         sceneFactory = new SceneFactory();
         sceneFactory.setContext(context);
@@ -401,6 +390,9 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         }
         if (musicVisualizer != null) musicVisualizer.pause();
 
+        // ⏸️ Pausar video del panel para ahorrar batería y CPU
+        if (panelRenderer != null) panelRenderer.pause();
+
         // Flush Firebase queue al pausar para guardar datos pendientes
         try {
             if (firebaseQueue != null) {
@@ -424,6 +416,9 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             }
         }
 
+        // ▶️ Reanudar video del panel
+        if (panelRenderer != null) panelRenderer.resume();
+
         // 🎵 Reanudar MusicVisualizer - SIEMPRE reconectar para evitar estados inválidos
         // después de ciclos rápidos de pause/resume del sistema Android
         if (musicVisualizer != null) {
@@ -444,7 +439,6 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     public void changeScene(String sceneName) {
         Log.d(TAG, "Escena pendiente: " + sceneName);
         pendingSceneName = sceneName;
-        pendingArcadeMode = false;
 
         // Activar modo estándar en el panel
         if (panelRenderer != null) {

@@ -131,6 +131,7 @@ public class LabScene extends WallpaperScene {
             battery = null;
         }
         if (equalizerDJ != null) {
+            equalizerDJ.release();
             equalizerDJ = null;
         }
     }

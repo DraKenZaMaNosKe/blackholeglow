@@ -270,18 +270,6 @@ public class WallpaperCatalog {
                 .featured()
                 .build());
 
-        // 🧊 RUBIK - Cubo Rubik interactivo
-        catalog.add(new WallpaperItem.Builder("🧊 RUBIK 🧊")
-                .descripcion("Cubo Rubik 3D interactivo. " +
-                        "Desliza para rotar caras. ¡Resuélvelo!")
-                .preview(R.drawable.preview_oceano_sc)
-                .sceneName("RUBIK")
-                .tier(WallpaperTier.FREE)
-                .badge("🎮 NUEVO")
-                .glow(0xFFFFD700)  // Gold
-                .featured()
-                .build());
-
         Log.d(TAG, "📚 Catálogo inicializado: " + catalog.size() + " wallpapers");
     }
 }

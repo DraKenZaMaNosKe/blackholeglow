@@ -128,19 +128,6 @@ public class TouchRouter {
     private boolean handlePanelModeTouch(float nx, float ny, int action) {
         if (panelRenderer == null) return false;
 
-        // ✨ Enviar eventos de touch para efectos de chispitas (Christmas mode)
-        switch (action) {
-            case MotionEvent.ACTION_DOWN:
-                panelRenderer.onTouchDown(nx, ny);
-                break;
-            case MotionEvent.ACTION_MOVE:
-                panelRenderer.onTouchMove(nx, ny);
-                break;
-            case MotionEvent.ACTION_UP:
-            case MotionEvent.ACTION_CANCEL:
-                panelRenderer.onTouchUp();
-                break;
-        }
 
         // Verificar PlayPauseButton (solo en DOWN/UP)
         if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_UP) {

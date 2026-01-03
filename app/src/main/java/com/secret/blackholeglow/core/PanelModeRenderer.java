@@ -338,49 +338,29 @@ public class PanelModeRenderer {
         Log.d(TAG, "🤖 Greeting " + (enabled ? "habilitado" : "deshabilitado"));
     }
 
-    // Métodos stub para compatibilidad (ya no hacen nada)
-    public void setArcadeModeEnabled(boolean enabled) {
-        // Arcade mode removed
+    // ═══════════════════════════════════════════════════════════════
+    // ⏸️ PAUSE / RESUME - Ahorra batería cuando app en background
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Pausa el video de fondo cuando el wallpaper no es visible
+     * Importante para ahorrar batería y CPU cuando el usuario cambia de app
+     */
+    public void pause() {
+        if (videoBackground != null && videoReady) {
+            videoBackground.pause();
+            Log.d(TAG, "⏸️ Video de panel pausado");
+        }
     }
 
-    public boolean isArcadeModeEnabled() {
-        return false;
-    }
-
-    public void setChristmasModeEnabled(boolean enabled) {
-        // Christmas mode removed
-    }
-
-    public boolean isChristmasModeEnabled() {
-        return false;
-    }
-
-    public void onTouchDown(float nx, float ny) {
-        // Touch sparkles removed
-    }
-
-    public void onTouchMove(float nx, float ny) {
-        // Touch sparkles removed
-    }
-
-    public void onTouchUp() {
-        // Touch sparkles removed
-    }
-
-    public void updateMusicBands(float[] bands) {
-        // Equalizer removed
-    }
-
-    public void triggerGiftPhotoReveal() {
-        // Gift photo reveal removed
-    }
-
-    public boolean hasGalleryPermission() {
-        return false;
-    }
-
-    public String getGalleryPermission() {
-        return null;
+    /**
+     * Reanuda el video de fondo cuando el wallpaper vuelve a ser visible
+     */
+    public void resume() {
+        if (videoBackground != null && videoReady) {
+            videoBackground.resume();
+            Log.d(TAG, "▶️ Video de panel reanudado");
+        }
     }
 
     public void release() {

@@ -7,7 +7,6 @@ import com.secret.blackholeglow.CameraController;
 import com.secret.blackholeglow.TextureManager;
 import com.secret.blackholeglow.scenes.LabScene;
 import com.secret.blackholeglow.scenes.OceanFloorScene;
-import com.secret.blackholeglow.scenes.RubikScene;
 import com.secret.blackholeglow.scenes.WallpaperScene;
 import com.secret.blackholeglow.systems.EventBus;
 import com.secret.blackholeglow.systems.ResourceManager;
@@ -104,8 +103,6 @@ public class SceneFactory {
         registerScene("ABYSSIA", OceanFloorScene.class);
         // 🧪 Laboratorio: Portal cósmico con nubes de fuego
         registerScene("PYRALIS", LabScene.class);
-        // 🧊 Rubik: Cubo interactivo
-        registerScene("RUBIK", RubikScene.class);
         Log.d(TAG, "🎭 " + registeredScenes.size() + " escenas registradas");
     }
 

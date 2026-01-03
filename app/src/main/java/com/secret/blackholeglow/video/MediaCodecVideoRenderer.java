@@ -11,6 +11,7 @@ import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.util.Log;
 import android.view.Surface;
+import android.os.Process;
 
 import java.io.File;
 import java.io.IOException;
@@ -166,6 +167,9 @@ public class MediaCodecVideoRenderer {
 
     private void decoderLoop() {
         Log.d(TAG, "🔄 Iniciando loop de decodificación");
+
+        // 🚀 Prioridad alta para playback suave (menos stuttering)
+        Process.setThreadPriority(Process.THREAD_PRIORITY_VIDEO);
 
         while (isRunning) {
             try {

@@ -12,7 +12,6 @@ import android.view.MotionEvent;
 import android.content.Context;
 import android.opengl.GLSurfaceView;
 
-import androidx.annotation.NonNull;
 
 import com.secret.blackholeglow.core.WallpaperDirector;
 import com.secret.blackholeglow.systems.UsageTracker;
@@ -61,13 +60,10 @@ public class LiveWallpaperService extends WallpaperService {
         private RenderState currentState = RenderState.UNINITIALIZED;
         private boolean surfaceExists = false;
         private boolean isSystemPreviewMode = false;  // 🎬 Para mantener el wallpaper visible en preview del sistema
-        private android.os.Handler mainHandler;
 
         // ═══════════════════════════════════════════════════════════════
         // 📱 DETECCIÓN DE EVENTOS DEL SISTEMA
         // ═══════════════════════════════════════════════════════════════
-        private boolean isScreenOn = true;
-        private boolean isUserPresent = false;
         private ScreenStateReceiver screenStateReceiver;
 
         GLWallpaperEngine(Context context) {
@@ -90,9 +86,6 @@ public class LiveWallpaperService extends WallpaperService {
 
             // Habilitar touch
             setTouchEventsEnabled(true);
-
-            // Handler para operaciones en main thread
-            mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
 
             // Gestor de pantalla de carga
             chargingScreenManager = new ChargingScreenManager(context);
@@ -139,20 +132,16 @@ public class LiveWallpaperService extends WallpaperService {
                 switch (action) {
                     case Intent.ACTION_SCREEN_OFF:
                         Log.d(TAG, "📱 SCREEN_OFF - Forzando STOP");
-                        isScreenOn = false;
-                        isUserPresent = false;
                         forceStopAnimation();
                         break;
 
                     case Intent.ACTION_SCREEN_ON:
                         Log.d(TAG, "📱 SCREEN_ON");
-                        isScreenOn = true;
-                        // No iniciamos aquí, esperamos USER_PRESENT o visibilidad
+                        // No iniciamos aquí, esperamos visibilidad
                         break;
 
                     case Intent.ACTION_USER_PRESENT:
                         Log.d(TAG, "📱 USER_PRESENT - Usuario desbloqueó");
-                        isUserPresent = true;
                         // El sistema llamará onVisibilityChanged si es necesario
                         break;
 
@@ -345,21 +334,6 @@ public class LiveWallpaperService extends WallpaperService {
             currentState = RenderState.STOPPED;
 
             Log.d(TAG, "🔴 STOPPED");
-        }
-
-        private void loadWallpaperAsync() {
-            wallpaperPrefs.getSelectedWallpaper(new WallpaperPreferences.WallpaperCallback() {
-                @Override
-                public void onWallpaperReceived(@NonNull String wallpaperName) {
-                    synchronized (stateLock) {
-                        if (currentState == RenderState.RUNNING) {
-                            if (wallpaperDirector != null) {
-                                wallpaperDirector.changeScene(wallpaperName);
-                            }
-                        }
-                    }
-                }
-            });
         }
 
         // ═══════════════════════════════════════════════════════════════
