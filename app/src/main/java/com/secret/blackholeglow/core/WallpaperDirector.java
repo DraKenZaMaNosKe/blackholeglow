@@ -407,17 +407,33 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
     public void resume() {
         paused = false;
-        // Reanudar escena si existe (preview mode o wallpaper con escena activa)
-        if (sceneFactory != null && sceneFactory.hasCurrentScene()) {
-            sceneFactory.resumeCurrentScene();
-            // En preview mode, asegurar que estamos en WALLPAPER_MODE
-            if (modeController != null && modeController.isPreviewMode()) {
-                modeController.goDirectToWallpaper();
+
+        // 🎯 Solo reanudar el video correspondiente al MODO ACTUAL
+        RenderModeController.RenderMode currentMode = modeController != null ?
+            modeController.getCurrentMode() : RenderModeController.RenderMode.PANEL_MODE;
+
+        if (currentMode == RenderModeController.RenderMode.WALLPAPER_MODE) {
+            // En WALLPAPER_MODE: Solo reanudar escena (NO panel video)
+            if (sceneFactory != null && sceneFactory.hasCurrentScene()) {
+                sceneFactory.resumeCurrentScene();
             }
+            // Asegurar que panel video está PAUSADO
+            if (panelRenderer != null) panelRenderer.pause();
+            Log.d(TAG, "▶️ Resume WALLPAPER_MODE: Solo escena activa");
+        } else {
+            // En PANEL_MODE o LOADING_MODE: Solo reanudar panel video (NO escena)
+            if (panelRenderer != null) panelRenderer.resume();
+            // Pausar escena si existe
+            if (sceneFactory != null && sceneFactory.hasCurrentScene()) {
+                sceneFactory.pauseCurrentScene();
+            }
+            Log.d(TAG, "▶️ Resume PANEL_MODE: Solo panel activo");
         }
 
-        // ▶️ Reanudar video del panel
-        if (panelRenderer != null) panelRenderer.resume();
+        // Preview mode handling
+        if (modeController != null && modeController.isPreviewMode()) {
+            modeController.goDirectToWallpaper();
+        }
 
         // 🎵 Reanudar MusicVisualizer - SIEMPRE reconectar para evitar estados inválidos
         // después de ciclos rápidos de pause/resume del sistema Android

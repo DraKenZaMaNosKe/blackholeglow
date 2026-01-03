@@ -156,11 +156,35 @@ public class LabScene extends WallpaperScene {
         }
     }
 
+    // 🔄 Auto-recovery para video
+    private float videoCheckTimer = 0f;
+    private static final float VIDEO_CHECK_INTERVAL = 2.0f;  // Cada 2 segundos
+    private boolean sceneIsActive = true;  // Flag para saber si debemos estar corriendo
+
     @Override
     public void update(float deltaTime) {
         // 📱 Pasar datos del giroscopio a la nave
         if (gyroscope != null && travelingShip != null && gyroscope.isEnabled()) {
             travelingShip.setTiltInput(gyroscope.getTiltX(), gyroscope.getTiltY());
+        }
+
+        // 🔄 AUTO-RECOVERY MEJORADO:
+        // Si update() se está llamando, significa que el render loop está activo
+        // y la escena DEBERÍA estar activa, incluso si onResume() no se llamó
+        if (!sceneIsActive) {
+            // 🔧 Auto-fix: Si estamos en update() pero sceneIsActive=false,
+            // significa que Android no llamó onResume() - corregir automáticamente
+            Log.w(TAG, "🔧 Auto-fix: update() llamado pero sceneIsActive=false, corrigiendo...");
+            sceneIsActive = true;
+        }
+
+        videoCheckTimer += deltaTime;
+        if (videoCheckTimer >= VIDEO_CHECK_INTERVAL) {
+            videoCheckTimer = 0f;
+            if (videoBackground != null && !videoBackground.isPlaying()) {
+                Log.w(TAG, "⚠️ Video detenido pero escena activa - Auto-recovery");
+                videoBackground.resume();
+            }
         }
 
         if (travelingShip != null) travelingShip.update(deltaTime);
@@ -224,6 +248,9 @@ public class LabScene extends WallpaperScene {
     @Override
     public void onPause() {
         super.onPause();
+        sceneIsActive = false;  // 🛑 Marcar escena como inactiva
+        videoCheckTimer = 0f;   // Reset timer
+
         // ⏸️ CRÍTICO: Pausar video para liberar CPU/batería
         if (videoBackground != null) {
             videoBackground.pause();
@@ -239,6 +266,9 @@ public class LabScene extends WallpaperScene {
     @Override
     public void onResume() {
         super.onResume();
+        sceneIsActive = true;   // ✅ Marcar escena como activa
+        videoCheckTimer = 0f;   // Reset timer
+
         // ▶️ Reanudar video
         if (videoBackground != null) {
             videoBackground.resume();

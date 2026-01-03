@@ -47,6 +47,11 @@ public class OceanFloorScene extends WallpaperScene {
     private int screenWidth = 1080;
     private int screenHeight = 1920;
 
+    // 🔄 Auto-recovery para video
+    private float videoCheckTimer = 0f;
+    private static final float VIDEO_CHECK_INTERVAL = 2.0f;
+    private boolean sceneIsActive = true;
+
     // ═══════════════════════════════════════════════════════════════════════════
     // 🎛️ SISTEMA DE CALIBRACIÓN
     // ═══════════════════════════════════════════════════════════════════════════
@@ -174,6 +179,22 @@ public class OceanFloorScene extends WallpaperScene {
 
     @Override
     public void update(float deltaTime) {
+        // 🔄 AUTO-RECOVERY MEJORADO:
+        // Si update() se está llamando, significa que el render loop está activo
+        if (!sceneIsActive) {
+            Log.w(TAG, "🔧 Auto-fix: update() llamado pero sceneIsActive=false, corrigiendo...");
+            sceneIsActive = true;
+        }
+
+        videoCheckTimer += deltaTime;
+        if (videoCheckTimer >= VIDEO_CHECK_INTERVAL) {
+            videoCheckTimer = 0f;
+            if (videoRenderer != null && !videoRenderer.isPlaying()) {
+                Log.w(TAG, "⚠️ Video detenido pero escena activa - Auto-recovery");
+                videoRenderer.resume();
+            }
+        }
+
         // Actualizar Leviathan primero
         if (abyssalLeviathan != null) abyssalLeviathan.update(deltaTime);
 
@@ -255,13 +276,21 @@ public class OceanFloorScene extends WallpaperScene {
     @Override
     public void onPause() {
         super.onPause();
-        if (videoRenderer != null) videoRenderer.pause();
+        sceneIsActive = false;
+        if (videoRenderer != null) {
+            videoRenderer.pause();
+            Log.d(TAG, "⏸️ Video de fondo PAUSADO");
+        }
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        if (videoRenderer != null) videoRenderer.resume();
+        sceneIsActive = true;
+        if (videoRenderer != null) {
+            videoRenderer.resume();
+            Log.d(TAG, "▶️ Video de fondo REANUDADO");
+        }
     }
 
     @Override

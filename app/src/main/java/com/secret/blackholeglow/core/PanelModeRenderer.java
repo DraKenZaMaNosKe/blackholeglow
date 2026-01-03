@@ -236,6 +236,10 @@ public class PanelModeRenderer {
      * @param glowColor Color glow del wallpaper
      */
     public void onStartLoading(String sceneName, String displayName, int glowColor) {
+        // 🔴 CRÍTICO: Pausar video del panel ANTES de iniciar carga
+        // Esto libera CPU para la descarga/inicialización del wallpaper
+        pause();
+
         if (orbixGreeting != null) {
             orbixGreeting.hide();
         }
@@ -261,6 +265,9 @@ public class PanelModeRenderer {
     public void onWallpaperActivated() {
         Log.d(TAG, "🎬 Wallpaper activado");
         if (orbixGreeting != null) orbixGreeting.hide();
+
+        // 🔴 CRÍTICO: Pausar video del panel para evitar 2 videos simultáneos
+        pause();
     }
 
     public void onReturnToPanel() {
@@ -268,6 +275,9 @@ public class PanelModeRenderer {
         if (orbixGreeting != null) {
             orbixGreeting.show();
         }
+
+        // 🔴 CRÍTICO: Reanudar video del panel al volver de WALLPAPER_MODE
+        resume();
     }
 
     // ═══════════════════════════════════════════════════════════════
