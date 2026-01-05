@@ -492,8 +492,8 @@ public class LoadingBar implements SceneObject {
             textCanvas.drawText(title, centerX, line1Y, titlePaint);
         }
 
-        // === LINEA 2: "Cargando..." con puntos animados ===
-        String loadingText = "Cargando" + dots.toString();
+        // === LINEA 2: "Descargando recursos..." con puntos animados ===
+        String loadingText = "Descargando recursos" + dots.toString();
         if (textGlowPaint != null) {
             textCanvas.drawText(loadingText, centerX, line2Y, textGlowPaint);
         }

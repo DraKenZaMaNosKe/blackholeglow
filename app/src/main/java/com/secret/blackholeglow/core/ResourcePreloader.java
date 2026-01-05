@@ -98,6 +98,15 @@ public class ResourcePreloader {
                 prepareOceanSceneTasks();
                 break;
 
+            case "GOKU":
+                prepareGokuSceneTasks();
+                break;
+
+            case "ADVENTURE_TIME":
+                prepareAdventureTimeSceneTasks();
+                break;
+
+
             default:
                 // Default: usar Lab
                 prepareLabSceneTasks();
@@ -139,6 +148,41 @@ public class ResourcePreloader {
         // Calcular total
         calculateTotalWeight();
         Log.d(TAG, "OceanScene: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    /**
+     * Prepara tareas para GokuScene (Kamehameha)
+     * Incluye descarga del video de Goku
+     */
+    public void prepareGokuSceneTasks() {
+        tasks.clear();
+
+        // 1. VIDEO - Goku Estilo Anime desde Supabase
+        addVideoDownloadTask("Video Goku Anime", "gokuEstiloAnime.mp4", 10);
+
+        // 2. Preview texture
+        addTextureTask("Preparando escena Goku", R.drawable.preview_goku, 2);
+
+        // Calcular total
+        calculateTotalWeight();
+        Log.d(TAG, "GokuScene: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    /**
+     * Prepara tareas para AdventureTimeScene (Hora de Aventura)
+     * Solo descarga del video (preview es local: hdapreview.webp)
+     */
+    public void prepareAdventureTimeSceneTasks() {
+        tasks.clear();
+
+        // 1. VIDEO - Adventure Time Fogata desde Supabase
+        addVideoDownloadTask("Video Adventure Time", "escenaHDA.mp4", 10);
+
+        // Preview ahora es local (hdapreview.webp) - no requiere descarga
+
+        // Calcular total
+        calculateTotalWeight();
+        Log.d(TAG, "AdventureTimeScene: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
     }
 
     private void calculateTotalWeight() {
@@ -290,6 +334,37 @@ public class ResourcePreloader {
 
             if (!success) {
                 Log.e(TAG, "Error descargando video: " + videoFileName);
+            }
+        }, weight));
+    }
+
+    /**
+     * Agrega tarea de descarga de imagen desde Supabase
+     * Si la imagen ya existe, la tarea completa inmediatamente
+     */
+    private void addImageDownloadTask(String name, String imageFileName, int weight) {
+        tasks.add(new PreloadTask(name, () -> {
+            VideoDownloadManager downloader = VideoDownloadManager.getInstance(context);
+
+            if (downloader.isImageAvailable(imageFileName)) {
+                Log.d(TAG, "Imagen ya descargada: " + imageFileName);
+                return;
+            }
+
+            // Imagen no disponible - descargar
+            Log.d(TAG, "Descargando imagen: " + imageFileName);
+            boolean success = downloader.downloadImageSync(imageFileName, percent -> {
+                // Actualizar progreso de descarga
+                String progressText = name + " (" + percent + "%)";
+                mainHandler.post(() -> {
+                    if (listener != null) {
+                        listener.onProgressUpdate(completedTasks, totalTasks, progressText);
+                    }
+                });
+            });
+
+            if (!success) {
+                Log.e(TAG, "Error descargando imagen: " + imageFileName);
             }
         }, weight));
     }

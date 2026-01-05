@@ -48,6 +48,20 @@ public class VideoConfig {
             "The House"
         ));
 
+        // GokuScene - Dragon Ball Estilo Anime
+        VIDEOS.put("gokuEstiloAnime.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "gokuEstiloAnime.mp4",
+            13_656_755L,  // 13.02 MB exacto
+            "Goku Estilo Anime"
+        ));
+
+        // AdventureTimeScene - Hora de Aventura Fogata
+        VIDEOS.put("escenaHDA.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "escenaHDA.mp4",
+            13_000_000L,  // ~13 MB
+            "Adventure Time Fogata"
+        ));
+
         // ═══════════════════════════════════════════════════════════════
         // IMAGENES - Escena Navidad
         // ═══════════════════════════════════════════════════════════════
@@ -68,6 +82,26 @@ public class VideoConfig {
             SUPABASE_IMAGES_URL + "preview_navidad.png",
             5_500_000L,  // ~5.5 MB
             "Preview Navidad"
+        ));
+
+        // ═══════════════════════════════════════════════════════════════
+        // IMAGENES - Escena Goku
+        // ═══════════════════════════════════════════════════════════════
+
+        IMAGES.put("gokuprimerframe.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "gokuprimerframe.png",  // Está en wallpaper-videos
+            2_900_000L,  // ~2.9 MB
+            "Preview Goku"
+        ));
+
+        // ═══════════════════════════════════════════════════════════════
+        // IMAGENES - Escena Adventure Time
+        // ═══════════════════════════════════════════════════════════════
+
+        IMAGES.put("hdaPreview.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "hdaPreview.png",  // Está en wallpaper-videos
+            1_180_000L,  // ~1.18 MB
+            "Preview Adventure Time"
         ));
     }
 

@@ -13,10 +13,24 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
+/**
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║                    🎵 LIKE BUTTON - Song Sharing                         ║
+ * ╠══════════════════════════════════════════════════════════════════════════╣
+ * ║  Botón de like temático para compartir canciones.                        ║
+ * ║                                                                          ║
+ * ║  TEMAS DISPONIBLES:                                                      ║
+ * ║  • DEFAULT       - Corazón rosa procedural                               ║
+ * ║  • ABYSSIA       - Huevo Zerg (textura) cyan                            ║
+ * ║  • PYRALIS       - Orbe de fuego (textura) naranja                      ║
+ * ║  • ADVENTURE_TIME - Gema de Ooo (procedural) verde esmeralda            ║
+ * ║  • GOKU          - Esfera del Dragón (procedural) naranja con estrellas ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
+ */
 public class LikeButton {
     private static final String TAG = "LikeButton";
 
-    public enum Theme { DEFAULT, ABYSSIA, PYRALIS }
+    public enum Theme { DEFAULT, ABYSSIA, PYRALIS, ADVENTURE_TIME, GOKU }
     private Theme currentTheme = Theme.DEFAULT;
 
     private float x = 0.85f;
@@ -32,17 +46,32 @@ public class LikeButton {
     private int programIdColor;
     private FloatBuffer quadBuffer;
     private FloatBuffer heartBuffer;
+    private FloatBuffer gemBuffer;      // 💎 Gema de Ooo
+    private FloatBuffer sphereBuffer;   // 🟠 Esfera del Dragón
     private boolean isInitialized = false;
 
+    // Texturas solo para ABYSSIA y PYRALIS
     private int textureAbyssia = -1;
     private int textureFireOrb = -1;
     private Context context;
 
+    // Colores para corazón DEFAULT
     private float[] colorNormal = {1.0f, 0.0f, 0.5f, 0.85f};
     private float[] colorPressed = {0.0f, 0.85f, 1.0f, 1.0f};
     private float[] colorCooldown = {0.3f, 0.3f, 0.35f, 0.6f};
     private float[] glowCyan = {0.0f, 0.85f, 1.0f};
     private float[] glowPink = {1.0f, 0.0f, 0.5f};
+
+    // Colores para Gema de Ooo (verde esmeralda)
+    private float[] gemColorMain = {0.1f, 0.9f, 0.4f, 0.95f};
+    private float[] gemColorHighlight = {0.5f, 1.0f, 0.7f, 1.0f};
+    private float[] gemGlow = {0.0f, 1.0f, 0.5f};
+
+    // Colores para Esfera del Dragón (naranja dorado)
+    private float[] dragonBallMain = {1.0f, 0.6f, 0.1f, 0.95f};
+    private float[] dragonBallHighlight = {1.0f, 0.9f, 0.5f, 1.0f};
+    private float[] dragonBallGlow = {1.0f, 0.5f, 0.0f};
+    private float[] starColor = {0.8f, 0.2f, 0.1f, 1.0f};  // Estrellas rojas
 
     private final float[] modelMatrix = new float[16];
     private final float[] finalMatrix = new float[16];
@@ -94,6 +123,8 @@ public class LikeButton {
 
     public void init() {
         if (isInitialized) return;
+
+        // Shader de texturas
         int vertexShaderTex = loadShader(GLES30.GL_VERTEX_SHADER, TEXTURE_VERTEX_SHADER);
         int fragmentShaderTex = loadShader(GLES30.GL_FRAGMENT_SHADER, TEXTURE_FRAGMENT_SHADER);
         programIdTexture = GLES30.glCreateProgram();
@@ -106,6 +137,8 @@ public class LikeButton {
         textureHandle = GLES30.glGetUniformLocation(programIdTexture, "u_Texture");
         alphaHandle = GLES30.glGetUniformLocation(programIdTexture, "u_Alpha");
         pulseHandle = GLES30.glGetUniformLocation(programIdTexture, "u_Pulse");
+
+        // Shader de color sólido
         int vertexShaderCol = loadShader(GLES30.GL_VERTEX_SHADER, COLOR_VERTEX_SHADER);
         int fragmentShaderCol = loadShader(GLES30.GL_FRAGMENT_SHADER, COLOR_FRAGMENT_SHADER);
         programIdColor = GLES30.glCreateProgram();
@@ -115,11 +148,18 @@ public class LikeButton {
         positionHandleColor = GLES30.glGetAttribLocation(programIdColor, "a_Position");
         mvpMatrixHandleColor = GLES30.glGetUniformLocation(programIdColor, "u_MVPMatrix");
         colorHandle = GLES30.glGetUniformLocation(programIdColor, "u_Color");
+
+        // Crear geometrías
         createQuadGeometry();
         createHeartGeometry();
+        createGemGeometry();      // 💎 Gema de Ooo
+        createSphereGeometry();   // 🟠 Esfera del Dragón
+
+        // Cargar texturas (solo para ABYSSIA y PYRALIS)
         loadTextures();
+
         isInitialized = true;
-        Log.d(TAG, "LikeButton init");
+        Log.d(TAG, "LikeButton init (con Gema y Dragon Ball procedurales)");
     }
 
     private void createQuadGeometry() {
@@ -149,10 +189,60 @@ public class LikeButton {
         heartBuffer.position(0);
     }
 
+    /**
+     * 💎 Crea la geometría de la Gema de Ooo (hexágono con punta)
+     * Forma de diamante/cristal típico de Adventure Time
+     */
+    private void createGemGeometry() {
+        // Diamante de 6 puntas (forma de gema)
+        float[] vertices = {
+            // Centro
+            0.0f, 0.0f,
+            // Punta superior
+            0.0f, 1.0f,
+            // Esquina superior derecha
+            0.6f, 0.5f,
+            // Esquina inferior derecha
+            0.6f, -0.3f,
+            // Punta inferior
+            0.0f, -0.8f,
+            // Esquina inferior izquierda
+            -0.6f, -0.3f,
+            // Esquina superior izquierda
+            -0.6f, 0.5f,
+            // Cerrar (volver a punta superior)
+            0.0f, 1.0f
+        };
+        ByteBuffer bb = ByteBuffer.allocateDirect(vertices.length * 4);
+        bb.order(ByteOrder.nativeOrder());
+        gemBuffer = bb.asFloatBuffer();
+        gemBuffer.put(vertices);
+        gemBuffer.position(0);
+    }
+
+    /**
+     * 🟠 Crea la geometría de la Esfera del Dragón (círculo)
+     */
+    private void createSphereGeometry() {
+        int segments = 48;
+        float[] vertices = new float[(segments + 2) * 2];
+        vertices[0] = 0f; vertices[1] = 0f;  // Centro
+        for (int i = 0; i <= segments; i++) {
+            float angle = (float) (2.0 * Math.PI * i / segments);
+            vertices[(i + 1) * 2] = (float) Math.cos(angle);
+            vertices[(i + 1) * 2 + 1] = (float) Math.sin(angle);
+        }
+        ByteBuffer bb = ByteBuffer.allocateDirect(vertices.length * 4);
+        bb.order(ByteOrder.nativeOrder());
+        sphereBuffer = bb.asFloatBuffer();
+        sphereBuffer.put(vertices);
+        sphereBuffer.position(0);
+    }
+
     private void loadTextures() {
         textureAbyssia = loadTexture(R.drawable.huevo_zerg);
         textureFireOrb = loadTexture(R.drawable.fire_orb);
-        Log.d(TAG, "Textures loaded");
+        Log.d(TAG, "Textures loaded (ABYSSIA & PYRALIS)");
     }
 
     private int loadTexture(int resourceId) {
@@ -173,7 +263,10 @@ public class LikeButton {
         return texHandle[0];
     }
 
-    public void setTheme(Theme theme) { this.currentTheme = theme; Log.d(TAG, "Theme: " + theme); }
+    public void setTheme(Theme theme) {
+        this.currentTheme = theme;
+        Log.d(TAG, "Theme: " + theme);
+    }
 
     public void draw(float[] mvpMatrix, float time) {
         if (!isInitialized) return;
@@ -182,9 +275,262 @@ public class LikeButton {
         pulsePhase = time;
         float pulse = (float) Math.sin(pulsePhase * 2.5) * 0.5f + 0.5f;
         floatOffset = (float) Math.sin(pulsePhase * 1.5) * 0.01f;
-        if (currentTheme == Theme.DEFAULT) { drawHeartProcedural(mvpMatrix, pulse); }
-        else { drawTexturedButton(mvpMatrix, pulse); }
+
+        switch (currentTheme) {
+            case DEFAULT:
+                drawHeartProcedural(mvpMatrix, pulse);
+                break;
+            case ABYSSIA:
+            case PYRALIS:
+                drawTexturedButton(mvpMatrix, pulse);
+                break;
+            case ADVENTURE_TIME:
+                drawGemProcedural(mvpMatrix, pulse);
+                break;
+            case GOKU:
+                drawDragonBallProcedural(mvpMatrix, pulse);
+                break;
+        }
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 💎 GEMA DE OOO - Adventure Time (Procedural)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    private void drawGemProcedural(float[] mvpMatrix, float pulse) {
+        GLES30.glUseProgram(programIdColor);
+        float scale = size * (1.0f + pulse * 0.15f);
+        float currentY = y + floatOffset;
+
+        // Glow verde esmeralda
+        if (!isOnCooldown) {
+            drawGemGlow(mvpMatrix, scale * 1.6f, 0.15f, pulse);
+            drawGemGlow(mvpMatrix, scale * 1.3f, 0.25f, pulse);
+        }
+
+        // Gema principal
+        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
+        android.opengl.Matrix.translateM(modelMatrix, 0, x, currentY, 0);
+        android.opengl.Matrix.scaleM(modelMatrix, 0, scale, scale, 1);
+        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandleColor, 1, false, finalMatrix, 0);
+
+        // Color de la gema (varía con pulse para efecto brillante)
+        float brightness = 0.8f + pulse * 0.2f;
+        colorCache[0] = gemColorMain[0] * brightness;
+        colorCache[1] = gemColorMain[1] * brightness;
+        colorCache[2] = gemColorMain[2] * brightness;
+        colorCache[3] = isOnCooldown ? 0.4f : (isPressed ? 1.0f : 0.95f);
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+
+        gemBuffer.position(0);
+        GLES30.glEnableVertexAttribArray(positionHandleColor);
+        GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, gemBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 8);
+
+        // Borde brillante
+        float borderPulse = (float) (Math.sin(pulsePhase * 3.5) * 0.3 + 0.7);
+        colorCache[0] = gemColorHighlight[0] * borderPulse;
+        colorCache[1] = gemColorHighlight[1] * borderPulse;
+        colorCache[2] = gemColorHighlight[2] * borderPulse;
+        colorCache[3] = 1.0f;
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+        GLES30.glLineWidth(2.5f);
+        GLES30.glDrawArrays(GLES30.GL_LINE_LOOP, 1, 7);
+
+        // Destello interior (línea vertical brillante)
+        drawGemHighlight(mvpMatrix, scale * 0.6f, pulse);
+
+        GLES30.glDisableVertexAttribArray(positionHandleColor);
+    }
+
+    private void drawGemGlow(float[] mvpMatrix, float glowSize, float alpha, float pulse) {
+        float currentY = y + floatOffset;
+        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
+        android.opengl.Matrix.translateM(modelMatrix, 0, x, currentY, 0);
+        android.opengl.Matrix.scaleM(modelMatrix, 0, glowSize, glowSize, 1);
+        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandleColor, 1, false, finalMatrix, 0);
+
+        colorCache[0] = gemGlow[0];
+        colorCache[1] = gemGlow[1];
+        colorCache[2] = gemGlow[2];
+        colorCache[3] = alpha * pulse;
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+
+        gemBuffer.position(0);
+        GLES30.glEnableVertexAttribArray(positionHandleColor);
+        GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, gemBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 8);
+        GLES30.glDisableVertexAttribArray(positionHandleColor);
+    }
+
+    private void drawGemHighlight(float[] mvpMatrix, float highlightSize, float pulse) {
+        // Línea de brillo vertical dentro de la gema
+        float[] highlight = { 0.0f, 0.6f, 0.0f, -0.4f };
+        ByteBuffer bb = ByteBuffer.allocateDirect(highlight.length * 4);
+        bb.order(ByteOrder.nativeOrder());
+        FloatBuffer highlightBuffer = bb.asFloatBuffer();
+        highlightBuffer.put(highlight);
+        highlightBuffer.position(0);
+
+        float currentY = y + floatOffset;
+        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
+        android.opengl.Matrix.translateM(modelMatrix, 0, x, currentY, 0);
+        android.opengl.Matrix.scaleM(modelMatrix, 0, highlightSize, highlightSize, 1);
+        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandleColor, 1, false, finalMatrix, 0);
+
+        colorCache[0] = 1.0f;
+        colorCache[1] = 1.0f;
+        colorCache[2] = 1.0f;
+        colorCache[3] = 0.4f + pulse * 0.3f;
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+
+        GLES30.glLineWidth(2.0f);
+        GLES30.glEnableVertexAttribArray(positionHandleColor);
+        GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, highlightBuffer);
+        GLES30.glDrawArrays(GLES30.GL_LINES, 0, 2);
+        GLES30.glDisableVertexAttribArray(positionHandleColor);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🟠 ESFERA DEL DRAGÓN - Goku (Procedural)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    private void drawDragonBallProcedural(float[] mvpMatrix, float pulse) {
+        GLES30.glUseProgram(programIdColor);
+        float scale = size * (1.0f + pulse * 0.12f);
+        float currentY = y + floatOffset;
+
+        // Glow naranja/dorado
+        if (!isOnCooldown) {
+            drawDragonBallGlow(mvpMatrix, scale * 1.5f, 0.2f, pulse);
+            drawDragonBallGlow(mvpMatrix, scale * 1.25f, 0.3f, pulse);
+        }
+
+        // Esfera principal (naranja)
+        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
+        android.opengl.Matrix.translateM(modelMatrix, 0, x, currentY, 0);
+        android.opengl.Matrix.scaleM(modelMatrix, 0, scale, scale, 1);
+        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandleColor, 1, false, finalMatrix, 0);
+
+        float brightness = 0.85f + pulse * 0.15f;
+        colorCache[0] = dragonBallMain[0] * brightness;
+        colorCache[1] = dragonBallMain[1] * brightness;
+        colorCache[2] = dragonBallMain[2] * brightness;
+        colorCache[3] = isOnCooldown ? 0.4f : (isPressed ? 1.0f : 0.95f);
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+
+        sphereBuffer.position(0);
+        GLES30.glEnableVertexAttribArray(positionHandleColor);
+        GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, sphereBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 50);
+
+        // Borde dorado brillante
+        float borderPulse = (float) (Math.sin(pulsePhase * 3.0) * 0.3 + 0.7);
+        colorCache[0] = dragonBallHighlight[0] * borderPulse;
+        colorCache[1] = dragonBallHighlight[1] * borderPulse;
+        colorCache[2] = dragonBallHighlight[2] * borderPulse;
+        colorCache[3] = 0.9f;
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+        GLES30.glLineWidth(2.0f);
+        GLES30.glDrawArrays(GLES30.GL_LINE_LOOP, 1, 49);
+
+        GLES30.glDisableVertexAttribArray(positionHandleColor);
+
+        // ⭐ Dibujar 4 estrellas (como la esfera de 4 estrellas de Goku)
+        drawDragonBallStars(mvpMatrix, scale * 0.7f, pulse);
+    }
+
+    private void drawDragonBallGlow(float[] mvpMatrix, float glowSize, float alpha, float pulse) {
+        float currentY = y + floatOffset;
+        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
+        android.opengl.Matrix.translateM(modelMatrix, 0, x, currentY, 0);
+        android.opengl.Matrix.scaleM(modelMatrix, 0, glowSize, glowSize, 1);
+        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandleColor, 1, false, finalMatrix, 0);
+
+        colorCache[0] = dragonBallGlow[0];
+        colorCache[1] = dragonBallGlow[1];
+        colorCache[2] = dragonBallGlow[2];
+        colorCache[3] = alpha * pulse;
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+
+        sphereBuffer.position(0);
+        GLES30.glEnableVertexAttribArray(positionHandleColor);
+        GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, sphereBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 50);
+        GLES30.glDisableVertexAttribArray(positionHandleColor);
+    }
+
+    /**
+     * ⭐ Dibuja las 4 estrellas rojas dentro de la esfera del dragón
+     * Disposición: una arriba, una abajo, dos a los lados
+     */
+    private void drawDragonBallStars(float[] mvpMatrix, float starScale, float pulse) {
+        // Posiciones de las 4 estrellas (patrón de diamante)
+        float[][] starPositions = {
+            { 0.0f,  0.35f},  // Arriba
+            { 0.0f, -0.35f},  // Abajo
+            {-0.3f,  0.0f},   // Izquierda
+            { 0.3f,  0.0f}    // Derecha
+        };
+
+        float currentY = y + floatOffset;
+        float starSize = 0.15f * starScale;
+
+        for (float[] pos : starPositions) {
+            drawSingleStar(mvpMatrix, x + pos[0] * size, currentY + pos[1] * size, starSize, pulse);
+        }
+    }
+
+    /**
+     * Dibuja una estrella de 5 puntas
+     */
+    private void drawSingleStar(float[] mvpMatrix, float starX, float starY, float starSize, float pulse) {
+        // Geometría de estrella de 5 puntas
+        int points = 5;
+        float[] starVerts = new float[(points * 2 + 2) * 2];
+        starVerts[0] = 0f; starVerts[1] = 0f;  // Centro
+
+        for (int i = 0; i <= points * 2; i++) {
+            float angle = (float) (Math.PI / 2 + 2.0 * Math.PI * i / (points * 2));
+            float radius = (i % 2 == 0) ? 1.0f : 0.4f;  // Puntas largas y cortas alternadas
+            starVerts[(i + 1) * 2] = (float) Math.cos(angle) * radius;
+            starVerts[(i + 1) * 2 + 1] = (float) Math.sin(angle) * radius;
+        }
+
+        ByteBuffer bb = ByteBuffer.allocateDirect(starVerts.length * 4);
+        bb.order(ByteOrder.nativeOrder());
+        FloatBuffer starBuffer = bb.asFloatBuffer();
+        starBuffer.put(starVerts);
+        starBuffer.position(0);
+
+        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
+        android.opengl.Matrix.translateM(modelMatrix, 0, starX, starY, 0);
+        android.opengl.Matrix.scaleM(modelMatrix, 0, starSize, starSize, 1);
+        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandleColor, 1, false, finalMatrix, 0);
+
+        // Estrellas rojas con brillo
+        float starBrightness = 0.9f + pulse * 0.1f;
+        colorCache[0] = starColor[0] * starBrightness;
+        colorCache[1] = starColor[1] * starBrightness;
+        colorCache[2] = starColor[2] * starBrightness;
+        colorCache[3] = isOnCooldown ? 0.3f : 0.95f;
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+
+        GLES30.glEnableVertexAttribArray(positionHandleColor);
+        GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, starBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, points * 2 + 2);
+        GLES30.glDisableVertexAttribArray(positionHandleColor);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // TEXTURAS (ABYSSIA y PYRALIS)
+    // ═══════════════════════════════════════════════════════════════════════════
 
     private void drawTexturedButton(float[] mvpMatrix, float pulse) {
         int textureId = (currentTheme == Theme.ABYSSIA) ? textureAbyssia : textureFireOrb;
@@ -219,7 +565,9 @@ public class LikeButton {
         if (isOnCooldown) return;
         GLES30.glUseProgram(programIdColor);
         float currentY = y + floatOffset;
-        float[] glowColor = (currentTheme == Theme.ABYSSIA) ? new float[]{0.4f, 0.8f, 1.0f, 0.25f * pulse} : new float[]{1.0f, 0.5f, 0.1f, 0.3f * pulse};
+        float[] glowColor = (currentTheme == Theme.ABYSSIA)
+            ? new float[]{0.4f, 0.8f, 1.0f, 0.25f * pulse}   // Cyan
+            : new float[]{1.0f, 0.5f, 0.1f, 0.3f * pulse};   // Orange fire
         android.opengl.Matrix.setIdentityM(modelMatrix, 0);
         android.opengl.Matrix.translateM(modelMatrix, 0, x, currentY, 0);
         android.opengl.Matrix.scaleM(modelMatrix, 0, glowSize, glowSize, 1);
@@ -249,11 +597,18 @@ public class LikeButton {
         GLES30.glDisableVertexAttribArray(positionHandleColor);
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CORAZÓN DEFAULT (Procedural)
+    // ═══════════════════════════════════════════════════════════════════════════
+
     private void drawHeartProcedural(float[] mvpMatrix, float pulse) {
         GLES30.glUseProgram(programIdColor);
         float scale = size * (1.0f + pulse * 0.12f);
         float currentY = y + floatOffset;
-        if (!isOnCooldown) { drawHeartGlow(mvpMatrix, scale * 1.5f, 0.2f); drawHeartGlow(mvpMatrix, scale * 1.3f, 0.3f); }
+        if (!isOnCooldown) {
+            drawHeartGlow(mvpMatrix, scale * 1.5f, 0.2f);
+            drawHeartGlow(mvpMatrix, scale * 1.3f, 0.3f);
+        }
         android.opengl.Matrix.setIdentityM(modelMatrix, 0);
         android.opengl.Matrix.translateM(modelMatrix, 0, x, currentY, 0);
         android.opengl.Matrix.scaleM(modelMatrix, 0, scale, scale, 1);
@@ -294,7 +649,16 @@ public class LikeButton {
         GLES30.glDisableVertexAttribArray(positionHandleColor);
     }
 
-    public boolean isTouched(float touchX, float touchY) { float dx = touchX - x; float dy = touchY - y; return Math.sqrt(dx * dx + dy * dy) <= size * 1.5f; }
+    // ═══════════════════════════════════════════════════════════════════════════
+    // UTILIDADES
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    public boolean isTouched(float touchX, float touchY) {
+        float dx = touchX - x;
+        float dy = touchY - y;
+        return Math.sqrt(dx * dx + dy * dy) <= size * 1.5f;
+    }
+
     public void onPress() { isPressed = true; Log.d(TAG, "Press"); }
     public void onRelease() { isPressed = false; }
     public void setCooldown(boolean cooldown) { isOnCooldown = cooldown; }
@@ -302,6 +666,19 @@ public class LikeButton {
     public void setSize(float size) { this.size = size; }
     public float getX() { return x; }
     public float getY() { return y; }
-    private int loadShader(int type, String shaderCode) { int shader = GLES30.glCreateShader(type); GLES30.glShaderSource(shader, shaderCode); GLES30.glCompileShader(shader); return shader; }
-    public void cleanup() { if (programIdTexture != 0) GLES30.glDeleteProgram(programIdTexture); if (programIdColor != 0) GLES30.glDeleteProgram(programIdColor); if (textureAbyssia > 0) GLES30.glDeleteTextures(1, new int[]{textureAbyssia}, 0); if (textureFireOrb > 0) GLES30.glDeleteTextures(1, new int[]{textureFireOrb}, 0); isInitialized = false; }
+
+    private int loadShader(int type, String shaderCode) {
+        int shader = GLES30.glCreateShader(type);
+        GLES30.glShaderSource(shader, shaderCode);
+        GLES30.glCompileShader(shader);
+        return shader;
+    }
+
+    public void cleanup() {
+        if (programIdTexture != 0) GLES30.glDeleteProgram(programIdTexture);
+        if (programIdColor != 0) GLES30.glDeleteProgram(programIdColor);
+        if (textureAbyssia > 0) GLES30.glDeleteTextures(1, new int[]{textureAbyssia}, 0);
+        if (textureFireOrb > 0) GLES30.glDeleteTextures(1, new int[]{textureFireOrb}, 0);
+        isInitialized = false;
+    }
 }

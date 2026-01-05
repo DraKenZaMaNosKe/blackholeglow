@@ -44,6 +44,7 @@ public class Battery3D implements SceneObject {
     // ═══════════════════════════════════════════════════════════════
     public static final int THEME_ABYSSIA = 0;
     public static final int THEME_PYRALIS = 1;
+    public static final int THEME_KAMEHAMEHA = 2;
 
     // Colores PYRALIS (Fuego/Plasma)
     private static final int PYRALIS_HIGH = 0xFFFFD700;      // Gold (>50%)
@@ -58,6 +59,13 @@ public class Battery3D implements SceneObject {
     private static final int ABYSSIA_LOW = 0xFFFFD700;       // Gold warning (<20%)
     private static final int ABYSSIA_GLOW = 0xFF00FFFF;      // Cyan glow
     private static final int ABYSSIA_CORE = 0xFFE0FFFF;      // Light Cyan (núcleo)
+
+    // Colores KAMEHAMEHA (Energía Ki - Azul)
+    private static final int KAMEHAMEHA_HIGH = 0xFF4FC3F7;   // Light Blue (>50%)
+    private static final int KAMEHAMEHA_MED = 0xFF29B6F6;    // Blue (20-50%)
+    private static final int KAMEHAMEHA_LOW = 0xFFFF5722;    // Orange warning (<20%)
+    private static final int KAMEHAMEHA_GLOW = 0xFF00E5FF;   // Cyan accent glow
+    private static final int KAMEHAMEHA_CORE = 0xFFE1F5FE;   // Light Blue (núcleo)
 
     // ═══════════════════════════════════════════════════════════════
     // ESTADO DE BATERÍA
@@ -196,6 +204,10 @@ public class Battery3D implements SceneObject {
             primaryColor = PYRALIS_HIGH;
             glowColor = PYRALIS_GLOW;
             coreColor = PYRALIS_CORE;
+        } else if (theme == THEME_KAMEHAMEHA) {
+            primaryColor = KAMEHAMEHA_HIGH;
+            glowColor = KAMEHAMEHA_GLOW;
+            coreColor = KAMEHAMEHA_CORE;
         } else {
             primaryColor = ABYSSIA_HIGH;
             glowColor = ABYSSIA_GLOW;
@@ -208,6 +220,10 @@ public class Battery3D implements SceneObject {
             if (level > 50) return PYRALIS_HIGH;
             if (level > 20) return PYRALIS_MED;
             return PYRALIS_LOW;
+        } else if (currentTheme == THEME_KAMEHAMEHA) {
+            if (level > 50) return KAMEHAMEHA_HIGH;
+            if (level > 20) return KAMEHAMEHA_MED;
+            return KAMEHAMEHA_LOW;
         } else {
             if (level > 50) return ABYSSIA_HIGH;
             if (level > 20) return ABYSSIA_MED;

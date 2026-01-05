@@ -169,7 +169,7 @@ public class LiveWallpaperService extends WallpaperService {
                     wallpaperDirector.pause();
                 }
             }
-            Log.d(TAG, "⚡ PANEL_MODE forzado - sin flickering");
+            Log.d(TAG, "⚡ Animación forzada a parar");
         }
 
         @Override
@@ -224,7 +224,7 @@ public class LiveWallpaperService extends WallpaperService {
                 Log.d(TAG, "✓ OpenGL inicializado en modo STOPPED");
 
             } catch (Exception e) {
-                Log.e(TAG, "Error inicializando OpenGL", e);
+                Log.e(TAG, "Error inicializando renderer", e);
             }
         }
 
@@ -238,7 +238,6 @@ public class LiveWallpaperService extends WallpaperService {
             Log.d(TAG, visible ? "👁️ VISIBLE" : "🔒 OCULTO");
 
             synchronized (stateLock) {
-                // OpenGL ES normal
                 if (glSurfaceView == null || currentState == RenderState.UNINITIALIZED) {
                     Log.w(TAG, "GL no inicializado, ignorando cambio de visibilidad");
                     return;
@@ -294,7 +293,9 @@ public class LiveWallpaperService extends WallpaperService {
             }
 
             // PASO 1: Cambiar modo de render
-            glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+            if (glSurfaceView != null) {
+                glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+            }
 
             // PASO 2: Reanudar lógica
             if (wallpaperDirector != null) {
@@ -328,7 +329,9 @@ public class LiveWallpaperService extends WallpaperService {
             }
 
             // PASO 2: Cambiar modo de render
-            glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+            if (glSurfaceView != null) {
+                glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+            }
 
             // PASO 3: Actualizar estado
             currentState = RenderState.STOPPED;

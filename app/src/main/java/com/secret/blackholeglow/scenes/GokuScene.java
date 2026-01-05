@@ -8,62 +8,59 @@ import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.Battery3D;
 import com.secret.blackholeglow.Clock3D;
 import com.secret.blackholeglow.EqualizerBarsDJ;
+import com.secret.blackholeglow.effects.ElectricSparksOverlay;
 import com.secret.blackholeglow.video.MediaCodecVideoRenderer;
 import com.secret.blackholeglow.video.VideoDownloadManager;
-import com.secret.blackholeglow.video.VideoConfig;
-import com.secret.blackholeglow.TravelingShip;
-import com.secret.blackholeglow.GyroscopeManager;
 
 /**
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║                    🌌 LAB SCENE - Portal Cósmico                         ║
+ * ║                    🐉 GOKU SCENE - Kamehameha                            ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  Video de fondo con nubes de fuego + nave Enterprise viajando.           ║
- * ║  Video editado en CapCut con técnica de transiciones seamless.           ║
+ * ║  Video de Goku lanzando Kamehameha con ecualizador azul energía Ki.      ║
+ * ║  Estilo Dragon Ball FighterZ - visual espectacular.                      ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-public class LabScene extends WallpaperScene {
-    private static final String TAG = "LabScene";
-    private static final String VIDEO_FILE = "cielovolando.mp4";
+public class GokuScene extends WallpaperScene {
+    private static final String TAG = "GokuScene";
+    private static final String VIDEO_FILE = "gokuEstiloAnime.mp4";
 
     private MediaCodecVideoRenderer videoBackground;
-    private TravelingShip travelingShip;
     private VideoDownloadManager downloadManager;
     private EqualizerBarsDJ equalizerDJ;
     private Clock3D clock;
     private Battery3D battery;
-    private GyroscopeManager gyroscope;
+    private ElectricSparksOverlay electricSparks;  // ⚡ Rayos Ultra Instinct
 
     @Override
     public String getName() {
-        return "PYRALIS";
+        return "GOKU";
     }
 
     @Override
     public String getDescription() {
-        return "Portal cósmico con nubes de fuego";
+        return "Goku Kamehameha - Energía Ki";
     }
 
     @Override
     public int getPreviewResourceId() {
-        return R.drawable.preview_space;
+        return R.drawable.preview_goku;
     }
 
     @Override
     protected void setupScene() {
-        Log.d(TAG, "🌌 Configurando Portal Cosmico...");
+        Log.d(TAG, "🐉 Configurando Goku Kamehameha...");
 
         downloadManager = VideoDownloadManager.getInstance(context);
 
-        // Video de fondo - El preloader ya lo descargo de Supabase
+        // Video de fondo - Descargar si no existe
         try {
             String localPath = downloadManager.getVideoPath(VIDEO_FILE);
 
-            // Si no existe, descarga on-demand (Preview mode bypass)
             if (localPath == null) {
-                Log.d(TAG, "📥 Descargando video on-demand: " + VIDEO_FILE);
-                boolean success = downloadManager.downloadVideoSync(VIDEO_FILE, progress -> {
-                    Log.d(TAG, "📥 Descarga: " + progress + "%");
+                // Video no descargado - descargar ahora
+                Log.d(TAG, "📥 Descargando video: " + VIDEO_FILE);
+                boolean success = downloadManager.downloadVideoSync(VIDEO_FILE, percent -> {
+                    Log.d(TAG, "📥 Descarga: " + percent + "%");
                 });
                 if (success) {
                     localPath = downloadManager.getVideoPath(VIDEO_FILE);
@@ -77,68 +74,51 @@ public class LabScene extends WallpaperScene {
             if (localPath != null) {
                 Log.d(TAG, "📦 Usando video: " + localPath);
                 videoBackground = new MediaCodecVideoRenderer(context, VIDEO_FILE, localPath);
-            } else {
-                Log.e(TAG, "❌ Video no disponible: " + VIDEO_FILE);
-                return;
+                videoBackground.initialize();
+                Log.d(TAG, "✅ Video de Goku activado");
             }
-
-            videoBackground.initialize();
-            Log.d(TAG, "✅ Video de fondo activado");
         } catch (Exception e) {
             Log.e(TAG, "❌ Error Video: " + e.getMessage());
         }
 
-        // Nave Enterprise
-        try {
-            travelingShip = new TravelingShip(context, textureManager);
-            travelingShip.setCameraController(camera);
-            Log.d(TAG, "✅ Nave activada");
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Error Nave: " + e.getMessage());
-        }
-
-        // 📱 Giroscopio para control por inclinación
-        try {
-            gyroscope = new GyroscopeManager(context);
-            if (gyroscope.isAvailable() && travelingShip != null) {
-                travelingShip.setGyroEnabled(true);
-                gyroscope.start();
-                Log.d(TAG, "✅ Giroscopio activado para nave");
-            } else {
-                Log.w(TAG, "⚠️ Giroscopio no disponible");
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Error Gyroscope: " + e.getMessage());
-        }
-
-        // 🎵 Ecualizador con tema PYRALIS (fuego)
+        // 🎵 Ecualizador con tema KAMEHAMEHA (azul/cyan/blanco)
         try {
             equalizerDJ = new EqualizerBarsDJ();
             equalizerDJ.initialize();
-            equalizerDJ.setTheme(EqualizerBarsDJ.Theme.PYRALIS);  // 🔥 Tema fuego
+            equalizerDJ.setTheme(EqualizerBarsDJ.Theme.KAMEHAMEHA);  // 🐉 Tema energía Ki
             equalizerDJ.setScreenSize(screenWidth, screenHeight);
-            Log.d(TAG, "✅ Ecualizador PYRALIS activado");
+            Log.d(TAG, "✅ Ecualizador KAMEHAMEHA activado");
         } catch (Exception e) {
             Log.e(TAG, "❌ Error EqualizerBarsDJ: " + e.getMessage());
         }
 
-        // ⏰ Reloj con tema PYRALIS (dorado celestial)
+        // ⏰ Reloj con tema KAMEHAMEHA (azul energía)
         try {
-            clock = new Clock3D(context, Clock3D.THEME_PYRALIS, 0f, 0.75f);
-            Log.d(TAG, "✅ Reloj PYRALIS activado");
+            clock = new Clock3D(context, Clock3D.THEME_KAMEHAMEHA, 0f, 0.75f);
+            Log.d(TAG, "✅ Reloj KAMEHAMEHA activado");
         } catch (Exception e) {
             Log.e(TAG, "❌ Error Clock3D: " + e.getMessage());
         }
 
-        // 🔋 Batería con tema PYRALIS (reactor de plasma)
+        // 🔋 Batería con tema KAMEHAMEHA (energía Ki)
         try {
-            battery = new Battery3D(context, Battery3D.THEME_PYRALIS, 0.81f, -0.34f);
-            Log.d(TAG, "✅ Batería PYRALIS activada");
+            battery = new Battery3D(context, Battery3D.THEME_KAMEHAMEHA, 0.81f, -0.34f);
+            Log.d(TAG, "✅ Batería KAMEHAMEHA activada");
         } catch (Exception e) {
             Log.e(TAG, "❌ Error Battery3D: " + e.getMessage());
         }
 
-        Log.d(TAG, "🌌 Portal Cósmico listo!");
+        // ⚡ Electric Sparks - Rayos Ultra Instinct al tocar
+        try {
+            electricSparks = new ElectricSparksOverlay();
+            electricSparks.initialize();
+            electricSparks.setScreenSize(screenWidth, screenHeight);
+            Log.d(TAG, "✅ Electric Sparks activado ⚡");
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error ElectricSparks: " + e.getMessage());
+        }
+
+        Log.d(TAG, "🐉 Goku Kamehameha listo!");
     }
 
     @Override
@@ -146,10 +126,6 @@ public class LabScene extends WallpaperScene {
         if (videoBackground != null) {
             videoBackground.release();
             videoBackground = null;
-        }
-        if (travelingShip != null) {
-            travelingShip.release();
-            travelingShip = null;
         }
         if (clock != null) {
             clock.dispose();
@@ -163,30 +139,21 @@ public class LabScene extends WallpaperScene {
             equalizerDJ.release();
             equalizerDJ = null;
         }
-        if (gyroscope != null) {
-            gyroscope.release();
-            gyroscope = null;
+        if (electricSparks != null) {
+            electricSparks.release();
+            electricSparks = null;
         }
     }
 
     // 🔄 Auto-recovery para video
     private float videoCheckTimer = 0f;
-    private static final float VIDEO_CHECK_INTERVAL = 2.0f;  // Cada 2 segundos
-    private boolean sceneIsActive = true;  // Flag para saber si debemos estar corriendo
+    private static final float VIDEO_CHECK_INTERVAL = 2.0f;
+    private boolean sceneIsActive = true;
 
     @Override
     public void update(float deltaTime) {
-        // 📱 Pasar datos del giroscopio a la nave
-        if (gyroscope != null && travelingShip != null && gyroscope.isEnabled()) {
-            travelingShip.setTiltInput(gyroscope.getTiltX(), gyroscope.getTiltY());
-        }
-
-        // 🔄 AUTO-RECOVERY MEJORADO:
-        // Si update() se está llamando, significa que el render loop está activo
-        // y la escena DEBERÍA estar activa, incluso si onResume() no se llamó
+        // 🔄 AUTO-RECOVERY MEJORADO
         if (!sceneIsActive) {
-            // 🔧 Auto-fix: Si estamos en update() pero sceneIsActive=false,
-            // significa que Android no llamó onResume() - corregir automáticamente
             Log.w(TAG, "🔧 Auto-fix: update() llamado pero sceneIsActive=false, corrigiendo...");
             sceneIsActive = true;
         }
@@ -200,10 +167,10 @@ public class LabScene extends WallpaperScene {
             }
         }
 
-        if (travelingShip != null) travelingShip.update(deltaTime);
         if (equalizerDJ != null) equalizerDJ.update(deltaTime);
         if (clock != null) clock.update(deltaTime);
         if (battery != null) battery.update(deltaTime);
+        if (electricSparks != null) electricSparks.update(deltaTime);  // ⚡
         super.update(deltaTime);
     }
 
@@ -218,19 +185,21 @@ public class LabScene extends WallpaperScene {
         GLES30.glDisable(GLES30.GL_DEPTH_TEST);
         if (videoBackground != null) videoBackground.draw();
 
-        // 2. Nave
+        // 2. ⚡ Electric Sparks (rayos sobre el video)
+        if (electricSparks != null) electricSparks.draw();
+
+        // 3. Elementos UI
         GLES30.glEnable(GLES30.GL_DEPTH_TEST);
         GLES30.glEnable(GLES30.GL_BLEND);
         GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
-        if (travelingShip != null) travelingShip.draw();
 
-        // 3. 🎵 Ecualizador PYRALIS
+        // 4. 🎵 Ecualizador KAMEHAMEHA
         if (equalizerDJ != null) equalizerDJ.draw();
 
-        // 4. ⏰ Reloj PYRALIS
+        // 4. ⏰ Reloj KAMEHAMEHA
         if (clock != null) clock.draw();
 
-        // 5. 🔋 Batería PYRALIS
+        // 5. 🔋 Batería KAMEHAMEHA
         if (battery != null) battery.draw();
 
         super.draw();
@@ -240,11 +209,11 @@ public class LabScene extends WallpaperScene {
     public void setScreenSize(int width, int height) {
         super.setScreenSize(width, height);
         if (equalizerDJ != null) equalizerDJ.setScreenSize(width, height);
+        if (electricSparks != null) electricSparks.setScreenSize(width, height);
     }
 
     public void updateMusicBands(float[] bands) {
         if (equalizerDJ != null && bands != null && bands.length > 0) {
-            // Debug: verificar si hay datos
             float sum = 0;
             for (float b : bands) sum += b;
             if (sum > 0.1f) {
@@ -255,70 +224,41 @@ public class LabScene extends WallpaperScene {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // ⏸️▶️ PAUSE/RESUME - Libera recursos cuando no es visible
+    // ⏸️▶️ PAUSE/RESUME
     // ═══════════════════════════════════════════════════════════════════════
 
     @Override
     public void onPause() {
         super.onPause();
-        sceneIsActive = false;  // 🛑 Marcar escena como inactiva
-        videoCheckTimer = 0f;   // Reset timer
+        sceneIsActive = false;
+        videoCheckTimer = 0f;
 
-        // ⏸️ CRÍTICO: Pausar video para liberar CPU/batería
         if (videoBackground != null) {
             videoBackground.pause();
-            Log.d(TAG, "⏸️ Video de fondo PAUSADO");
-        }
-        // 📱 Pausar giroscopio para ahorrar batería
-        if (gyroscope != null) {
-            gyroscope.pause();
-            Log.d(TAG, "⏸️ Giroscopio PAUSADO");
+            Log.d(TAG, "⏸️ Video de Goku PAUSADO");
         }
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        sceneIsActive = true;   // ✅ Marcar escena como activa
-        videoCheckTimer = 0f;   // Reset timer
+        sceneIsActive = true;
+        videoCheckTimer = 0f;
 
-        // ▶️ Reanudar video
         if (videoBackground != null) {
             videoBackground.resume();
-            Log.d(TAG, "▶️ Video de fondo REANUDADO");
-        }
-        // 📱 Reanudar giroscopio
-        if (gyroscope != null && gyroscope.isAvailable()) {
-            gyroscope.resume();
-            Log.d(TAG, "▶️ Giroscopio REANUDADO");
+            Log.d(TAG, "▶️ Video de Goku REANUDADO");
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // TOUCH PARA AJUSTAR LLAMAS (EJE X)
-    // ═══════════════════════════════════════════════════════════════════════
-
+    // ⚡ Touch events - Rayos Ultra Instinct
     @Override
     public boolean onTouchEvent(float normalizedX, float normalizedY, int action) {
-        if (travelingShip == null) return false;
-
-        // Convertir NDC (-1,1) a coordenadas de pantalla para sensibilidad
-        float screenX = (normalizedX + 1f) * 500f;  // Rango aproximado 0-1000
-        float screenY = (normalizedY + 1f) * 500f;
-
-        switch (action) {
-            case android.view.MotionEvent.ACTION_DOWN:
-                travelingShip.onTouchDown(screenX, screenY);
-                return true;
-            case android.view.MotionEvent.ACTION_MOVE:
-                travelingShip.onTouchMove(screenX, screenY);
-                return true;
-            case android.view.MotionEvent.ACTION_UP:
-            case android.view.MotionEvent.ACTION_CANCEL:
-                travelingShip.onTouchUp(screenX, screenY);
-                return true;
+        // Trigger electric sparks on touch down and move
+        if (electricSparks != null && (action == 0 || action == 2)) {  // ACTION_DOWN=0, ACTION_MOVE=2
+            electricSparks.triggerSpark(normalizedX, normalizedY);
+            return true;
         }
         return false;
     }
-
 }

@@ -153,11 +153,36 @@ public class PanelModeRenderer {
     // 🔄 UPDATE
     // ═══════════════════════════════════════════════════════════════
 
+    // 🔧 Auto-recovery para video del panel (Android visibility callbacks son unreliable)
+    private boolean panelIsActive = true;
+    private float videoCheckTimer = 0f;
+    private static final float VIDEO_CHECK_INTERVAL = 2.0f; // Revisar cada 2 segundos
+
     public void updatePanelMode(float deltaTime) {
         // Inicializar video si está pendiente (debe hacerse en GL thread)
         if (pendingVideoInit) {
             pendingVideoInit = false;
             initializeVideoBackground();
+        }
+
+        // 🔧 AUTO-FIX: Si updatePanelMode() se llama, el panel ESTÁ activo
+        // Android a veces no llama onResume correctamente
+        if (!panelIsActive) {
+            Log.w(TAG, "🔧 Auto-fix: updatePanelMode() llamado pero panelIsActive=false, corrigiendo...");
+            panelIsActive = true;
+        }
+
+        // 🔧 AUTO-RECOVERY: Verificar periódicamente si video está reproduciendo
+        if (panelIsActive && videoBackground != null && videoReady) {
+            videoCheckTimer += deltaTime;
+            if (videoCheckTimer >= VIDEO_CHECK_INTERVAL) {
+                videoCheckTimer = 0f;
+                // Si el video no está reproduciendo pero debería, reanudarlo
+                if (!videoBackground.isPlaying()) {
+                    Log.w(TAG, "🔧 Auto-recovery: Video del panel detenido, reanudando...");
+                    videoBackground.resume();
+                }
+            }
         }
 
         if (grimoire != null) {
@@ -357,6 +382,7 @@ public class PanelModeRenderer {
      * Importante para ahorrar batería y CPU cuando el usuario cambia de app
      */
     public void pause() {
+        panelIsActive = false;
         if (videoBackground != null && videoReady) {
             videoBackground.pause();
             Log.d(TAG, "⏸️ Video de panel pausado");
@@ -367,6 +393,8 @@ public class PanelModeRenderer {
      * Reanuda el video de fondo cuando el wallpaper vuelve a ser visible
      */
     public void resume() {
+        panelIsActive = true;
+        videoCheckTimer = 0f; // Reset timer para check inmediato
         if (videoBackground != null && videoReady) {
             videoBackground.resume();
             Log.d(TAG, "▶️ Video de panel reanudado");

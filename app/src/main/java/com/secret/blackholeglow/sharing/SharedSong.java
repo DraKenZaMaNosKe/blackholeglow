@@ -29,7 +29,10 @@ public class SharedSong {
 
     // Contador de likes (para futuro)
     private int likes;
-// Campo lastUpdate para Firestore (evita warning)    private long lastUpdate;
+
+    // Campo lastUpdate para Firestore (evita warning)
+    // Debe ser Date porque Firebase lo almacena como Timestamp
+    private Date lastUpdate;
 
     // Constructor vacío requerido por Firebase
     public SharedSong() {}
@@ -120,6 +123,14 @@ public class SharedSong {
 
     public void setLikes(int likes) {
         this.likes = likes;
+    }
+
+    public Date getLastUpdate() {
+        return lastUpdate;
+    }
+
+    public void setLastUpdate(Date lastUpdate) {
+        this.lastUpdate = lastUpdate;
     }
 
     // ═══════════════════════════════════════════════════════════

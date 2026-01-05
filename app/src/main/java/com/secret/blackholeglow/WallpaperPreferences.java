@@ -67,6 +67,8 @@ public class WallpaperPreferences {
         "Ocean Pearl",        // Fondo del mar con ostra y perla (modular)
         "ABYSSIA",      // Video wallpaper océano alienígena
         "PYRALIS",        // 🧪 Escena experimental para probar efectos
+        "GOKU",           // 🐉 Dragon Ball Kamehameha
+        "ADVENTURE_TIME", // 🌳 Parallax Hora de Aventura
 
         // ═══════════════════════════════════════════
         // 📦 WALLPAPERS LEGADOS (compatibilidad)

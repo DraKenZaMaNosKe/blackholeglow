@@ -13,7 +13,6 @@ import com.secret.blackholeglow.sharing.SongSharingManager;
 
 import java.util.LinkedList;
 import java.util.Queue;
-import java.util.Random;
 
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
@@ -41,13 +40,11 @@ public class SongSharingController {
     private boolean initialized = false;
     private final Context context;
 
-    // Cola de canciones recibidas (anti-spam visual)
+    // Cola de canciones recibidas - mostrar cada 65 segundos
     private final Queue<SharedSong> songQueue = new LinkedList<>();
     private float nextShowTime = 0f;
     private float elapsedTime = 0f;
-    private final Random random = new Random();
-    private static final float MIN_DELAY = 30f;  // 30 seg minimo
-    private static final float MAX_DELAY = 60f;  // 60 seg maximo
+    private static final float DISPLAY_INTERVAL = 65f;  // 65 segundos (1 min + 5 seg) para mostrar
 
     public SongSharingController(Context context) {
         this.context = context.getApplicationContext();
@@ -88,9 +85,9 @@ public class SongSharingController {
                     songQueue.offer(song);  // Agregar a la cola
                 }
             });
-            // Iniciar timer aleatorio para primera cancion
-            nextShowTime = MIN_DELAY + random.nextFloat() * (MAX_DELAY - MIN_DELAY);
-            Log.d(TAG, "Listener de canciones ACTIVADO (delay: " + nextShowTime + "s)");
+            // Iniciar timer fijo para primera cancion (65 segundos)
+            nextShowTime = DISPLAY_INTERVAL;
+            Log.d(TAG, "Listener de canciones ACTIVADO (intervalo fijo: " + DISPLAY_INTERVAL + "s)");
 
             initialized = true;
             Log.d(TAG, "✅ SongSharingController completamente inicializado");
@@ -121,25 +118,26 @@ public class SongSharingController {
             likeButton.setCooldown(!songSharingManager.canShare());
         }
 
-        // Procesar cola de canciones con delay aleatorio (30-60 seg)
+        // Mostrar canción RANDOM de Firebase cada 65 segundos
         elapsedTime += deltaTime;
         if (elapsedTime >= nextShowTime) {
-            SharedSong song = null;
-            synchronized (songQueue) {
-                song = songQueue.poll();  // Sacar siguiente cancion
-            }
-            if (song != null) {
-                // Mostrar cancion - songTitle YA incluye el nombre desde Gemini
-                String msg = song.getSongTitle();
-                if (songMessageRenderer != null) {
-                    songMessageRenderer.showMessage(msg);
-                }
-                emitHeartParticles();
-                Log.d(TAG, "🎵 MOSTRANDO: " + msg);
-            }
-            // Resetear timer con nuevo delay aleatorio
+            // Resetear timer ANTES de hacer la petición async
             elapsedTime = 0f;
-            nextShowTime = MIN_DELAY + random.nextFloat() * (MAX_DELAY - MIN_DELAY);
+            nextShowTime = DISPLAY_INTERVAL;
+
+            // Obtener canción random de Firebase
+            if (songSharingManager != null) {
+                songSharingManager.getRandomSong(song -> {
+                    if (song != null) {
+                        String msg = song.getSongTitle();
+                        if (songMessageRenderer != null) {
+                            songMessageRenderer.showMessage(msg);
+                        }
+                        emitHeartParticles();
+                        Log.d(TAG, "🎲 MOSTRANDO RANDOM: " + msg);
+                    }
+                });
+            }
         }
     }
 
@@ -209,7 +207,7 @@ public class SongSharingController {
         }
 
         if (!songSharingManager.canShare()) {
-            Log.d(TAG, "⏳ En cooldown (5 min), no se puede compartir");
+            Log.d(TAG, "⏳ En cooldown (1 min), no se puede compartir");
             return;
         }
 

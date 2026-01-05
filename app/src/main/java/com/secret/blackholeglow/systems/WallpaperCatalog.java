@@ -270,6 +270,30 @@ public class WallpaperCatalog {
                 .featured()
                 .build());
 
+        // 🐉 GOKU - Dragon Ball Kamehameha
+        catalog.add(new WallpaperItem.Builder("✧ GOKU ✧")
+                .descripcion("¡KAME-HAME-HAAA! Libera el poder del Ultra Instinto. " +
+                        "La energía Ki más poderosa del universo.")
+                .preview(R.drawable.preview_goku)
+                .sceneName("GOKU")
+                .tier(WallpaperTier.FREE)
+                .badge("🐉 NUEVO")
+                .glow(0xFF00BFFF)  // Deep Sky Blue (energía Ki)
+                .featured()
+                .build());
+
+        // 🌳 ADVENTURE TIME - Fogata con Finn y Jake
+        catalog.add(new WallpaperItem.Builder("✧ ADVENTURE TIME ✧")
+                .descripcion("¡Hora de Aventura! Finn, Jake, Tronquitos y Dulce Princesa " +
+                        "alrededor de una acogedora fogata en el bosque.")
+                .preview(R.drawable.hdapreview)
+                .sceneName("ADVENTURE_TIME")
+                .tier(WallpaperTier.FREE)
+                .badge("🌳 NUEVO")
+                .glow(0xFFFF8C00)  // Dark Orange (fogata)
+                .featured()
+                .build());
+
         Log.d(TAG, "📚 Catálogo inicializado: " + catalog.size() + " wallpapers");
     }
 }

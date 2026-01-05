@@ -30,13 +30,13 @@ import java.util.Map;
  * Características:
  * - Compartir canciones con un toque
  * - Recibir canciones de otros usuarios en tiempo real
- * - Rate limiting (1 canción cada 5 minutos)
+ * - Rate limiting (1 canción cada minuto)
  * - Verificación de conectividad
  */
 public class SongSharingManager {
     private static final String TAG = "SongSharing";
     private static final String COLLECTION_SHARED_SONGS = "shared_songs";
-    private static final long RATE_LIMIT_MS = 5 * 60 * 1000;  // 5 minutos anti-spam
+    private static final long RATE_LIMIT_MS = 60 * 1000;  // 60 segundos (1 minuto) cooldown
 
     private final Context context;
     private final FirebaseFirestore db;
@@ -399,6 +399,59 @@ public class SongSharingManager {
         }
 
         return "Usuario";
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // OBTENER CANCIÓN RANDOM DE FIREBASE
+    // ═══════════════════════════════════════════════════════════
+
+    /**
+     * 🎲 Obtiene una canción aleatoria de la colección de Firebase
+     * Callback con la canción o null si no hay canciones
+     */
+    public void getRandomSong(OnNewSongListener callback) {
+        if (callback == null) return;
+
+        db.collection(COLLECTION_SHARED_SONGS)
+                .get()
+                .addOnSuccessListener(snapshots -> {
+                    if (snapshots == null || snapshots.isEmpty()) {
+                        Log.d(TAG, "🎲 No hay canciones en Firebase");
+                        return;
+                    }
+
+                    // Obtener lista de todas las canciones
+                    java.util.List<SharedSong> allSongs = new java.util.ArrayList<>();
+                    for (com.google.firebase.firestore.DocumentSnapshot doc : snapshots.getDocuments()) {
+                        SharedSong song = doc.toObject(SharedSong.class);
+                        if (song != null) {
+                            song.setId(doc.getId());
+
+                            // No mostrar propias canciones
+                            FirebaseUser currentUser = auth.getCurrentUser();
+                            if (currentUser != null && song.getUserId() != null
+                                    && song.getUserId().equals(currentUser.getUid())) {
+                                continue;
+                            }
+
+                            allSongs.add(song);
+                        }
+                    }
+
+                    if (allSongs.isEmpty()) {
+                        Log.d(TAG, "🎲 No hay canciones de otros usuarios");
+                        return;
+                    }
+
+                    // Elegir una canción al azar
+                    java.util.Random random = new java.util.Random();
+                    SharedSong randomSong = allSongs.get(random.nextInt(allSongs.size()));
+                    Log.d(TAG, "🎲 Canción random seleccionada: " + randomSong.getSongTitle());
+                    callback.onNewSong(randomSong);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "🎲 Error obteniendo canción random: " + e.getMessage());
+                });
     }
 
     // ═══════════════════════════════════════════════════════════

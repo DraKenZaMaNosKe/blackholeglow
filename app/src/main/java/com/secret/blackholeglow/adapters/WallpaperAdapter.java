@@ -26,6 +26,11 @@ import com.secret.blackholeglow.models.WallpaperTier;
 import com.secret.blackholeglow.activities.WallpaperPreviewActivity;
 import com.secret.blackholeglow.WallpaperPreferences;
 import com.secret.blackholeglow.ui.GradientTextView;
+import com.secret.blackholeglow.video.VideoDownloadManager;
+import android.graphics.BitmapFactory;
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 import java.util.List;
 
@@ -154,7 +159,7 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         // ╔═════════════════════════════════════════════════════════╗
         // ║  🎨 ASIGNAR IMAGEN DE PREVIEW DESDE WallpaperItem      ║
         // ╚═════════════════════════════════════════════════════════╝
-        holder.imagePreview.setImageResource(item.getResourceIdPreview());
+        loadPreviewImage(holder.imagePreview, item);
 
         // ╔═════════════════════════════════════════════════════════╗
         // ║  🏷️ BADGE - Mostrar etiqueta si tiene                 ║
@@ -444,5 +449,115 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
                 onComplete.run();
             }
         }).start();
+    }
+
+    // ╔═════════════════════════════════════════════════════════════════╗
+    // ║  📥 CARGA DE PREVIEW CON SOPORTE REMOTO                        ║
+    // ║  Si el wallpaper tiene preview remoto descargado, lo usa       ║
+    // ║  Sino, usa el drawable local como fallback                     ║
+    // ╚═════════════════════════════════════════════════════════════════╝
+
+    // Mapeo de sceneName -> nombre de archivo remoto (para futuros previews remotos)
+    private static final Map<String, String> REMOTE_PREVIEWS = new HashMap<>();
+    static {
+        // Preview de Adventure Time ahora es local (hdapreview.webp)
+        // Agregar más wallpapers con preview remoto aquí si es necesario
+    }
+
+    /**
+     * Carga la imagen de preview del wallpaper.
+     * Si tiene preview remoto descargado, lo usa. Sino, usa drawable local.
+     * OPTIMIZADO: Escala imágenes grandes para evitar OutOfMemoryError
+     */
+    private void loadPreviewImage(ImageView imageView, WallpaperItem item) {
+        String remoteFile = REMOTE_PREVIEWS.get(item.getSceneName());
+
+        if (remoteFile != null) {
+            // Verificar si el preview remoto está descargado
+            VideoDownloadManager downloader = VideoDownloadManager.getInstance(context);
+            String localPath = downloader.getImagePath(remoteFile);
+
+            if (localPath != null) {
+                // Preview remoto disponible - cargar desde archivo
+                File file = new File(localPath);
+                if (file.exists()) {
+                    Bitmap bitmap = decodeSampledBitmapFromFile(localPath, 512, 512);
+                    if (bitmap != null) {
+                        imageView.setImageBitmap(bitmap);
+                        Log.d("WallpaperAdapter", "📥 Preview remoto cargado: " + remoteFile);
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Fallback: usar drawable local con escalado para evitar OOM
+        Bitmap bitmap = decodeSampledBitmapFromResource(item.getResourceIdPreview(), 512, 512);
+        if (bitmap != null) {
+            imageView.setImageBitmap(bitmap);
+        } else {
+            // Ultra fallback si todo falla
+            imageView.setImageResource(item.getResourceIdPreview());
+        }
+    }
+
+    /**
+     * Decodifica un bitmap desde recursos con tamaño reducido
+     * Evita OutOfMemoryError en dispositivos con poca RAM
+     */
+    private Bitmap decodeSampledBitmapFromResource(int resId, int reqWidth, int reqHeight) {
+        try {
+            // Primero obtener dimensiones sin cargar el bitmap
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inJustDecodeBounds = true;
+            BitmapFactory.decodeResource(context.getResources(), resId, options);
+
+            // Calcular inSampleSize
+            options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
+
+            // Decodificar con el tamaño reducido
+            options.inJustDecodeBounds = false;
+            return BitmapFactory.decodeResource(context.getResources(), resId, options);
+        } catch (Exception e) {
+            Log.e("WallpaperAdapter", "Error decodificando recurso: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Decodifica un bitmap desde archivo con tamaño reducido
+     */
+    private Bitmap decodeSampledBitmapFromFile(String filePath, int reqWidth, int reqHeight) {
+        try {
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(filePath, options);
+
+            options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
+            options.inJustDecodeBounds = false;
+            return BitmapFactory.decodeFile(filePath, options);
+        } catch (Exception e) {
+            Log.e("WallpaperAdapter", "Error decodificando archivo: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Calcula el factor de escala óptimo para reducir memoria
+     */
+    private int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
+        int height = options.outHeight;
+        int width = options.outWidth;
+        int inSampleSize = 1;
+
+        if (height > reqHeight || width > reqWidth) {
+            int halfHeight = height / 2;
+            int halfWidth = width / 2;
+
+            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
+                inSampleSize *= 2;
+            }
+        }
+        return inSampleSize;
     }
 }

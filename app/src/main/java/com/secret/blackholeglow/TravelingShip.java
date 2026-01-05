@@ -231,7 +231,15 @@ public class TravelingShip implements SceneObject, CameraAware {
 
     private void loadTexture() {
         textureId = textureLoader.getTexture(R.drawable.human_interceptor_texture);
-        Log.d(TAG, "✅ Textura cargada: " + textureId);
+
+        // 🚀 MIPMAPS para mejor rendimiento (GROK SUGGESTION)
+        // GPU usa textura de menor resolución cuando nave está lejos
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
+        GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR_MIPMAP_LINEAR);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
+
+        Log.d(TAG, "✅ Textura cargada con mipmaps: " + textureId);
     }
 
     private void compileShader() {
@@ -312,6 +320,12 @@ public class TravelingShip implements SceneObject, CameraAware {
 
     // Parámetros de vuelo orgánico
     private static final float ROLL_FACTOR = 10f;
+
+    // 🎯 BANKING CON ACELERACIÓN (GROK SUGGESTION)
+    // Usa cambio en dx (aceleración) en lugar de dx puro para roll más realista
+    private float previousDx = 0f;
+    private static final float ACCEL_BANKING_FACTOR = 60f;  // Factor para aceleración
+    private static final float VELOCITY_BANKING_FACTOR = 15f; // Factor para velocidad (menor)
 
     // Parámetros de planeo en hover
     private static final float HOVER_DRIFT_AMPLITUDE = 0.75f;
@@ -491,9 +505,17 @@ public class TravelingShip implements SceneObject, CameraAware {
         targetRotationY = (dy >= 0) ? BASE_ROTATION_Y : BASE_ROTATION_Y + 180f;
         rotationY = lerpAngle(rotationY, targetRotationY, deltaTime * 4f);
 
-        // Banking simplificado
+        // ═══════════════════════════════════════════════════════════════
+        // 🎯 BANKING CON ACELERACIÓN (GROK SUGGESTION)
+        // Fórmula realista: roll = f(aceleración) + f(velocidad)
+        // La aceleración (cambio en dx) produce banking más natural
+        // ═══════════════════════════════════════════════════════════════
         float sinStab = (float) Math.sin(time * 4.0f);
-        rotationZ = 4.0f + dx * 30f + sinStab * 2.5f;
+        float accel = dx - previousDx;  // Aceleración = cambio en velocidad
+        previousDx = dx;  // Guardar para siguiente frame
+
+        // Banking combinado: aceleración (dominante) + velocidad (suave) + estabilización
+        rotationZ = 4.0f + accel * ACCEL_BANKING_FACTOR + dx * VELOCITY_BANKING_FACTOR + sinStab * 2.5f;
 
         // Pitch
         rotationX = dy * 8f + sinStab * 0.5f;
@@ -559,6 +581,12 @@ public class TravelingShip implements SceneObject, CameraAware {
 
         GLES30.glDisableVertexAttribArray(aPositionHandle);
         GLES30.glDisableVertexAttribArray(aTexCoordHandle);
+
+        // 🔍 DEBUG: Check for OpenGL errors (GROK SUGGESTION)
+        int error = GLES30.glGetError();
+        if (error != GLES30.GL_NO_ERROR) {
+            Log.e(TAG, "⚠️ GL Error en draw(): " + error);
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -665,10 +693,24 @@ public class TravelingShip implements SceneObject, CameraAware {
     public float getRotationZ() { return rotationZ; }
 
     public void release() {
+        // 🗑️ Liberar shader program
         if (shaderProgram != 0) {
             GLES30.glDeleteProgram(shaderProgram);
             shaderProgram = 0;
         }
-        Log.d(TAG, "🗑️ TravelingShip liberada");
+
+        // 🧹 Liberar buffers para GC (GROK SUGGESTION)
+        vertexBuffer = null;
+        uvBuffer = null;
+        indexBuffer = null;
+
+        // 🖼️ Liberar textura
+        if (textureId != 0) {
+            int[] textures = {textureId};
+            GLES30.glDeleteTextures(1, textures, 0);
+            textureId = 0;
+        }
+
+        Log.d(TAG, "🗑️ TravelingShip liberada - buffers y texturas limpiados");
     }
 }

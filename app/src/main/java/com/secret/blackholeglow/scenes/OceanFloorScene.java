@@ -81,6 +81,22 @@ public class OceanFloorScene extends WallpaperScene {
 
         // Video de fondo - El preloader ya lo descargo de Supabase
         String localPath = downloadManager.getVideoPath(VIDEO_FILE);
+
+        // Si no existe, descarga on-demand (Preview mode bypass)
+        if (localPath == null) {
+            Log.d(TAG, "📥 Descargando video on-demand: " + VIDEO_FILE);
+            boolean success = downloadManager.downloadVideoSync(VIDEO_FILE, progress -> {
+                Log.d(TAG, "📥 Descarga: " + progress + "%");
+            });
+            if (success) {
+                localPath = downloadManager.getVideoPath(VIDEO_FILE);
+                Log.d(TAG, "✅ Video descargado: " + localPath);
+            } else {
+                Log.e(TAG, "❌ Error descargando video");
+                return;
+            }
+        }
+
         if (localPath != null) {
             Log.d(TAG, "📦 Usando video: " + localPath);
             videoRenderer = new MediaCodecVideoRenderer(context, VIDEO_FILE, localPath);

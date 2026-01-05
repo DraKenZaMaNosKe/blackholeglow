@@ -5,6 +5,8 @@ import android.util.Log;
 
 import com.secret.blackholeglow.CameraController;
 import com.secret.blackholeglow.TextureManager;
+import com.secret.blackholeglow.scenes.AdventureTimeScene;
+import com.secret.blackholeglow.scenes.GokuScene;
 import com.secret.blackholeglow.scenes.LabScene;
 import com.secret.blackholeglow.scenes.OceanFloorScene;
 import com.secret.blackholeglow.scenes.WallpaperScene;
@@ -103,6 +105,10 @@ public class SceneFactory {
         registerScene("ABYSSIA", OceanFloorScene.class);
         // 🧪 Laboratorio: Portal cósmico con nubes de fuego
         registerScene("PYRALIS", LabScene.class);
+        // 🐉 Dragon Ball: Goku Kamehameha con energía Ki
+        registerScene("GOKU", GokuScene.class);
+        // 🌳 Adventure Time: Parallax de Hora de Aventura
+        registerScene("ADVENTURE_TIME", AdventureTimeScene.class);
         Log.d(TAG, "🎭 " + registeredScenes.size() + " escenas registradas");
     }
 

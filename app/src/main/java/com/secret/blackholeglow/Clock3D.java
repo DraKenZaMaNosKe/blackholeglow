@@ -35,14 +35,17 @@ public class Clock3D implements SceneObject {
     // ═══════════════════════════════════════════════════════════════
     // TEMAS PREDEFINIDOS
     // ═══════════════════════════════════════════════════════════════
-    public static final int THEME_ABYSSIA = 0;  // Cyan bioluminiscente
-    public static final int THEME_PYRALIS = 1;  // Dorado celestial
+    public static final int THEME_ABYSSIA = 0;    // Cyan bioluminiscente
+    public static final int THEME_PYRALIS = 1;    // Dorado celestial
+    public static final int THEME_KAMEHAMEHA = 2; // Azul energía Ki
 
     // Colores por tema
     private static final int COLOR_ABYSSIA_PRIMARY = 0xFF00CED1;   // Dark Turquoise
     private static final int COLOR_ABYSSIA_GLOW = 0xFF00FFFF;      // Cyan
     private static final int COLOR_PYRALIS_PRIMARY = 0xFFFFD700;   // Gold
     private static final int COLOR_PYRALIS_GLOW = 0xFFFF8C00;      // Dark Orange
+    private static final int COLOR_KAMEHAMEHA_PRIMARY = 0xFF4FC3F7; // Light Blue
+    private static final int COLOR_KAMEHAMEHA_GLOW = 0xFF00E5FF;   // Cyan accent
 
     // ═══════════════════════════════════════════════════════════════
     // OPENGL
@@ -154,6 +157,10 @@ public class Clock3D implements SceneObject {
             case THEME_PYRALIS:
                 primaryColor = COLOR_PYRALIS_PRIMARY;
                 glowColor = COLOR_PYRALIS_GLOW;
+                break;
+            case THEME_KAMEHAMEHA:
+                primaryColor = COLOR_KAMEHAMEHA_PRIMARY;
+                glowColor = COLOR_KAMEHAMEHA_GLOW;
                 break;
             case THEME_ABYSSIA:
             default:

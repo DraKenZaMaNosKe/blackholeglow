@@ -1,6 +1,5 @@
 package com.secret.blackholeglow.scenes;
 
-import android.content.Context;
 import android.opengl.GLES30;
 import android.util.Log;
 
@@ -10,60 +9,57 @@ import com.secret.blackholeglow.Clock3D;
 import com.secret.blackholeglow.EqualizerBarsDJ;
 import com.secret.blackholeglow.video.MediaCodecVideoRenderer;
 import com.secret.blackholeglow.video.VideoDownloadManager;
-import com.secret.blackholeglow.video.VideoConfig;
-import com.secret.blackholeglow.TravelingShip;
-import com.secret.blackholeglow.GyroscopeManager;
 
 /**
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║                    🌌 LAB SCENE - Portal Cósmico                         ║
+ * ║          🌳 ADVENTURE TIME SCENE - Hora de Aventura Fogata              ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  Video de fondo con nubes de fuego + nave Enterprise viajando.           ║
- * ║  Video editado en CapCut con técnica de transiciones seamless.           ║
+ * ║  Video de Finn, Jake, Tronquitos y Princess Bubblegum alrededor de      ║
+ * ║  una fogata en el bosque al atardecer.                                   ║
+ * ║                                                                          ║
+ * ║  Estilo: Cozy campfire vibes con ecualizador cálido.                    ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-public class LabScene extends WallpaperScene {
-    private static final String TAG = "LabScene";
-    private static final String VIDEO_FILE = "cielovolando.mp4";
+public class AdventureTimeScene extends WallpaperScene {
+    private static final String TAG = "AdventureTime";
+    private static final String VIDEO_FILE = "escenaHDA.mp4";
 
     private MediaCodecVideoRenderer videoBackground;
-    private TravelingShip travelingShip;
     private VideoDownloadManager downloadManager;
     private EqualizerBarsDJ equalizerDJ;
     private Clock3D clock;
     private Battery3D battery;
-    private GyroscopeManager gyroscope;
 
     @Override
     public String getName() {
-        return "PYRALIS";
+        return "ADVENTURE_TIME";
     }
 
     @Override
     public String getDescription() {
-        return "Portal cósmico con nubes de fuego";
+        return "Hora de Aventura - Fogata con Finn y Jake";
     }
 
     @Override
     public int getPreviewResourceId() {
-        return R.drawable.preview_space;
+        return R.drawable.hdapreview;
     }
 
     @Override
     protected void setupScene() {
-        Log.d(TAG, "🌌 Configurando Portal Cosmico...");
+        Log.d(TAG, "🌳 Configurando Adventure Time Fogata...");
 
         downloadManager = VideoDownloadManager.getInstance(context);
 
-        // Video de fondo - El preloader ya lo descargo de Supabase
+        // Video de fondo - Descargar si no existe
         try {
             String localPath = downloadManager.getVideoPath(VIDEO_FILE);
 
-            // Si no existe, descarga on-demand (Preview mode bypass)
             if (localPath == null) {
-                Log.d(TAG, "📥 Descargando video on-demand: " + VIDEO_FILE);
-                boolean success = downloadManager.downloadVideoSync(VIDEO_FILE, progress -> {
-                    Log.d(TAG, "📥 Descarga: " + progress + "%");
+                // Video no descargado - descargar ahora
+                Log.d(TAG, "📥 Descargando video: " + VIDEO_FILE);
+                boolean success = downloadManager.downloadVideoSync(VIDEO_FILE, percent -> {
+                    Log.d(TAG, "📥 Descarga: " + percent + "%");
                 });
                 if (success) {
                     localPath = downloadManager.getVideoPath(VIDEO_FILE);
@@ -77,52 +73,25 @@ public class LabScene extends WallpaperScene {
             if (localPath != null) {
                 Log.d(TAG, "📦 Usando video: " + localPath);
                 videoBackground = new MediaCodecVideoRenderer(context, VIDEO_FILE, localPath);
-            } else {
-                Log.e(TAG, "❌ Video no disponible: " + VIDEO_FILE);
-                return;
+                videoBackground.initialize();
+                Log.d(TAG, "✅ Video de Adventure Time activado");
             }
-
-            videoBackground.initialize();
-            Log.d(TAG, "✅ Video de fondo activado");
         } catch (Exception e) {
             Log.e(TAG, "❌ Error Video: " + e.getMessage());
         }
 
-        // Nave Enterprise
-        try {
-            travelingShip = new TravelingShip(context, textureManager);
-            travelingShip.setCameraController(camera);
-            Log.d(TAG, "✅ Nave activada");
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Error Nave: " + e.getMessage());
-        }
-
-        // 📱 Giroscopio para control por inclinación
-        try {
-            gyroscope = new GyroscopeManager(context);
-            if (gyroscope.isAvailable() && travelingShip != null) {
-                travelingShip.setGyroEnabled(true);
-                gyroscope.start();
-                Log.d(TAG, "✅ Giroscopio activado para nave");
-            } else {
-                Log.w(TAG, "⚠️ Giroscopio no disponible");
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Error Gyroscope: " + e.getMessage());
-        }
-
-        // 🎵 Ecualizador con tema PYRALIS (fuego)
+        // 🎵 Ecualizador con tema PYRALIS (rojo/naranja/amarillo como fuego)
         try {
             equalizerDJ = new EqualizerBarsDJ();
             equalizerDJ.initialize();
-            equalizerDJ.setTheme(EqualizerBarsDJ.Theme.PYRALIS);  // 🔥 Tema fuego
+            equalizerDJ.setTheme(EqualizerBarsDJ.Theme.PYRALIS);  // 🔥 Colores fuego para fogata
             equalizerDJ.setScreenSize(screenWidth, screenHeight);
             Log.d(TAG, "✅ Ecualizador PYRALIS activado");
         } catch (Exception e) {
             Log.e(TAG, "❌ Error EqualizerBarsDJ: " + e.getMessage());
         }
 
-        // ⏰ Reloj con tema PYRALIS (dorado celestial)
+        // ⏰ Reloj con tema PYRALIS (dorado cálido)
         try {
             clock = new Clock3D(context, Clock3D.THEME_PYRALIS, 0f, 0.75f);
             Log.d(TAG, "✅ Reloj PYRALIS activado");
@@ -130,7 +99,7 @@ public class LabScene extends WallpaperScene {
             Log.e(TAG, "❌ Error Clock3D: " + e.getMessage());
         }
 
-        // 🔋 Batería con tema PYRALIS (reactor de plasma)
+        // 🔋 Batería con tema PYRALIS (dorado cálido)
         try {
             battery = new Battery3D(context, Battery3D.THEME_PYRALIS, 0.81f, -0.34f);
             Log.d(TAG, "✅ Batería PYRALIS activada");
@@ -138,7 +107,7 @@ public class LabScene extends WallpaperScene {
             Log.e(TAG, "❌ Error Battery3D: " + e.getMessage());
         }
 
-        Log.d(TAG, "🌌 Portal Cósmico listo!");
+        Log.d(TAG, "🌳 Adventure Time Fogata listo!");
     }
 
     @Override
@@ -146,10 +115,6 @@ public class LabScene extends WallpaperScene {
         if (videoBackground != null) {
             videoBackground.release();
             videoBackground = null;
-        }
-        if (travelingShip != null) {
-            travelingShip.release();
-            travelingShip = null;
         }
         if (clock != null) {
             clock.dispose();
@@ -163,30 +128,17 @@ public class LabScene extends WallpaperScene {
             equalizerDJ.release();
             equalizerDJ = null;
         }
-        if (gyroscope != null) {
-            gyroscope.release();
-            gyroscope = null;
-        }
     }
 
     // 🔄 Auto-recovery para video
     private float videoCheckTimer = 0f;
-    private static final float VIDEO_CHECK_INTERVAL = 2.0f;  // Cada 2 segundos
-    private boolean sceneIsActive = true;  // Flag para saber si debemos estar corriendo
+    private static final float VIDEO_CHECK_INTERVAL = 2.0f;
+    private boolean sceneIsActive = true;
 
     @Override
     public void update(float deltaTime) {
-        // 📱 Pasar datos del giroscopio a la nave
-        if (gyroscope != null && travelingShip != null && gyroscope.isEnabled()) {
-            travelingShip.setTiltInput(gyroscope.getTiltX(), gyroscope.getTiltY());
-        }
-
-        // 🔄 AUTO-RECOVERY MEJORADO:
-        // Si update() se está llamando, significa que el render loop está activo
-        // y la escena DEBERÍA estar activa, incluso si onResume() no se llamó
+        // 🔄 AUTO-RECOVERY MEJORADO
         if (!sceneIsActive) {
-            // 🔧 Auto-fix: Si estamos en update() pero sceneIsActive=false,
-            // significa que Android no llamó onResume() - corregir automáticamente
             Log.w(TAG, "🔧 Auto-fix: update() llamado pero sceneIsActive=false, corrigiendo...");
             sceneIsActive = true;
         }
@@ -200,7 +152,6 @@ public class LabScene extends WallpaperScene {
             }
         }
 
-        if (travelingShip != null) travelingShip.update(deltaTime);
         if (equalizerDJ != null) equalizerDJ.update(deltaTime);
         if (clock != null) clock.update(deltaTime);
         if (battery != null) battery.update(deltaTime);
@@ -218,11 +169,10 @@ public class LabScene extends WallpaperScene {
         GLES30.glDisable(GLES30.GL_DEPTH_TEST);
         if (videoBackground != null) videoBackground.draw();
 
-        // 2. Nave
+        // 2. Elementos UI
         GLES30.glEnable(GLES30.GL_DEPTH_TEST);
         GLES30.glEnable(GLES30.GL_BLEND);
         GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
-        if (travelingShip != null) travelingShip.draw();
 
         // 3. 🎵 Ecualizador PYRALIS
         if (equalizerDJ != null) equalizerDJ.draw();
@@ -244,7 +194,6 @@ public class LabScene extends WallpaperScene {
 
     public void updateMusicBands(float[] bands) {
         if (equalizerDJ != null && bands != null && bands.length > 0) {
-            // Debug: verificar si hay datos
             float sum = 0;
             for (float b : bands) sum += b;
             if (sum > 0.1f) {
@@ -255,70 +204,37 @@ public class LabScene extends WallpaperScene {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // ⏸️▶️ PAUSE/RESUME - Libera recursos cuando no es visible
+    // ⏸️▶️ PAUSE/RESUME
     // ═══════════════════════════════════════════════════════════════════════
 
     @Override
     public void onPause() {
         super.onPause();
-        sceneIsActive = false;  // 🛑 Marcar escena como inactiva
-        videoCheckTimer = 0f;   // Reset timer
+        sceneIsActive = false;
+        videoCheckTimer = 0f;
 
-        // ⏸️ CRÍTICO: Pausar video para liberar CPU/batería
         if (videoBackground != null) {
             videoBackground.pause();
-            Log.d(TAG, "⏸️ Video de fondo PAUSADO");
-        }
-        // 📱 Pausar giroscopio para ahorrar batería
-        if (gyroscope != null) {
-            gyroscope.pause();
-            Log.d(TAG, "⏸️ Giroscopio PAUSADO");
+            Log.d(TAG, "⏸️ Video Adventure Time PAUSADO");
         }
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        sceneIsActive = true;   // ✅ Marcar escena como activa
-        videoCheckTimer = 0f;   // Reset timer
+        sceneIsActive = true;
+        videoCheckTimer = 0f;
 
-        // ▶️ Reanudar video
         if (videoBackground != null) {
             videoBackground.resume();
-            Log.d(TAG, "▶️ Video de fondo REANUDADO");
-        }
-        // 📱 Reanudar giroscopio
-        if (gyroscope != null && gyroscope.isAvailable()) {
-            gyroscope.resume();
-            Log.d(TAG, "▶️ Giroscopio REANUDADO");
+            Log.d(TAG, "▶️ Video Adventure Time REANUDADO");
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // TOUCH PARA AJUSTAR LLAMAS (EJE X)
-    // ═══════════════════════════════════════════════════════════════════════
-
+    // Touch events (no electric sparks, just simple interaction)
     @Override
     public boolean onTouchEvent(float normalizedX, float normalizedY, int action) {
-        if (travelingShip == null) return false;
-
-        // Convertir NDC (-1,1) a coordenadas de pantalla para sensibilidad
-        float screenX = (normalizedX + 1f) * 500f;  // Rango aproximado 0-1000
-        float screenY = (normalizedY + 1f) * 500f;
-
-        switch (action) {
-            case android.view.MotionEvent.ACTION_DOWN:
-                travelingShip.onTouchDown(screenX, screenY);
-                return true;
-            case android.view.MotionEvent.ACTION_MOVE:
-                travelingShip.onTouchMove(screenX, screenY);
-                return true;
-            case android.view.MotionEvent.ACTION_UP:
-            case android.view.MotionEvent.ACTION_CANCEL:
-                travelingShip.onTouchUp(screenX, screenY);
-                return true;
-        }
+        // No special touch effects for this cozy scene
         return false;
     }
-
 }

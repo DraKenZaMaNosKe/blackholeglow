@@ -32,7 +32,8 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     public enum Theme {
         DEFAULT,   // Rosa → Cyan (original)
         ABYSSIA,   // Púrpura bioluminiscente → Turquesa (océano profundo)
-        PYRALIS    // Rojo → Naranja → Amarillo (fuego)
+        PYRALIS,   // Rojo → Naranja → Amarillo (fuego)
+        KAMEHAMEHA // Azul → Cyan → Blanco (energía Ki)
     }
 
     private Theme currentTheme = Theme.DEFAULT;
@@ -76,6 +77,15 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     private static final float[] PYRALIS_WAVE_NORMAL = {1.0f, 0.2f, 0.0f};   // Rojo fuego
     private static final float[] PYRALIS_LIGHTNING_1 = {1.0f, 0.5f, 0.0f};   // Arco naranja
     private static final float[] PYRALIS_LIGHTNING_2 = {1.0f, 0.9f, 0.3f};   // Arco dorado
+
+    // === KAMEHAMEHA (Energía Ki - Azul → Cyan → Blanco) ===
+    private static final float[] KAMEHAMEHA_BASS = {0.0f, 0.4f, 1.0f};       // Azul profundo Ki
+    private static final float[] KAMEHAMEHA_TREBLE = {0.4f, 0.9f, 1.0f};     // Cyan energía
+    private static final float[] KAMEHAMEHA_PEAK = {0.85f, 0.95f, 1.0f};     // Blanco-azulado brillante
+    private static final float[] KAMEHAMEHA_WAVE_STRONG = {0.0f, 0.85f, 1.0f};   // Cyan intenso
+    private static final float[] KAMEHAMEHA_WAVE_NORMAL = {0.2f, 0.5f, 1.0f};    // Azul medio
+    private static final float[] KAMEHAMEHA_LIGHTNING_1 = {0.5f, 0.9f, 1.0f};    // Rayo cyan
+    private static final float[] KAMEHAMEHA_LIGHTNING_2 = {0.7f, 0.85f, 1.0f};   // Rayo blanco-azul
 
     // Colores activos (se actualizan con setTheme)
     private float[] colorBass = DEFAULT_BASS;
@@ -305,6 +315,17 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
                 colorLightning1 = PYRALIS_LIGHTNING_1;
                 colorLightning2 = PYRALIS_LIGHTNING_2;
                 Log.d(TAG, "🔥 Tema PYRALIS activado - Fuego");
+                break;
+
+            case KAMEHAMEHA:
+                colorBass = KAMEHAMEHA_BASS;
+                colorTreble = KAMEHAMEHA_TREBLE;
+                colorPeak = KAMEHAMEHA_PEAK;
+                colorWaveStrong = KAMEHAMEHA_WAVE_STRONG;
+                colorWaveNormal = KAMEHAMEHA_WAVE_NORMAL;
+                colorLightning1 = KAMEHAMEHA_LIGHTNING_1;
+                colorLightning2 = KAMEHAMEHA_LIGHTNING_2;
+                Log.d(TAG, "🐉 Tema KAMEHAMEHA activado - Energía Ki");
                 break;
 
             default:

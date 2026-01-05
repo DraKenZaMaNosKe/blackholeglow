@@ -165,6 +165,11 @@ public class MediaCodecVideoRenderer {
         decoderThread.start();
     }
 
+    /**
+     * Thread principal de decodificación
+     * Ahora decodeLoop() maneja el looping interno con seekTo(0)
+     * Este método solo inicializa una vez y maneja errores
+     */
     private void decoderLoop() {
         Log.d(TAG, "🔄 Iniciando loop de decodificación");
 
@@ -173,19 +178,19 @@ public class MediaCodecVideoRenderer {
 
         while (isRunning) {
             try {
-                // Inicializar extractor y decoder
+                // Inicializar extractor y decoder (solo una vez por sesión)
                 if (!initializeMediaCodec()) {
                     Log.e(TAG, "Error inicializando MediaCodec, reintentando en 1s...");
                     Thread.sleep(1000);
                     continue;
                 }
 
-                // Loop de decodificación
+                // Loop de decodificación con seamless looping interno
+                // Solo sale cuando isRunning = false (pause/stop)
                 decodeLoop();
 
-                // Si llegamos aquí, el video terminó - reiniciar para loop
-                releaseDecoder();
-                Log.d(TAG, "🔄 Reiniciando video (loop)");
+                // Si llegamos aquí, fue pause/stop, no loop
+                break;
 
             } catch (InterruptedException e) {
                 Log.d(TAG, "Decoder thread interrumpido");
@@ -259,13 +264,17 @@ public class MediaCodecVideoRenderer {
         }
     }
 
+    /**
+     * Loop de decodificación con SEAMLESS LOOPING
+     * Usa seekTo(0) + flush() en vez de recrear decoder (ahorra ~100ms por loop)
+     */
     private void decodeLoop() {
         MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
         boolean inputDone = false;
-        boolean outputDone = false;
         long startTime = System.nanoTime();
 
-        while (!outputDone && isRunning) {
+        // Loop continuo hasta que isRunning = false
+        while (isRunning) {
             // Enviar datos al decoder
             if (!inputDone) {
                 int inputIndex = decoder.dequeueInputBuffer(10000);
@@ -305,8 +314,13 @@ public class MediaCodecVideoRenderer {
                 // Liberar buffer y renderizar al Surface
                 decoder.releaseOutputBuffer(outputIndex, true);
 
+                // ✅ SEAMLESS LOOP: Cuando llega al final, seek al inicio
                 if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                    outputDone = true;
+                    Log.d(TAG, "🔄 Seamless loop: seekTo(0) + flush()");
+                    extractor.seekTo(0, MediaExtractor.SEEK_TO_CLOSEST_SYNC);
+                    decoder.flush();
+                    inputDone = false;  // Reset para recibir nuevos datos
+                    startTime = System.nanoTime();  // Reset timing
                 }
             }
         }
