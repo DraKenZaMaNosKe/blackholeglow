@@ -241,4 +241,17 @@ public class NeonCityScene extends WallpaperScene {
             Log.d(TAG, "▶️ Video Neon City REANUDADO");
         }
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔧 TOUCH - POSICIONAR DELOREAN
+    // ═══════════════════════════════════════════════════════════════════════
+
+    @Override
+    public boolean onTouchEvent(float normalizedX, float normalizedY, int action) {
+        // Pasar touch al DeLorean para posicionarlo
+        if (delorean != null && action == android.view.MotionEvent.ACTION_DOWN) {
+            return delorean.onTouchEvent(normalizedX, normalizedY);
+        }
+        return super.onTouchEvent(normalizedX, normalizedY, action);
+    }
 }

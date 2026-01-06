@@ -48,16 +48,19 @@ public class DeLorean3D implements SceneObject, CameraAware {
     private int uTextureHandle;
     private int uTimeHandle;
 
-    // Transformación - POSICIÓN FIJA (parte inferior, centrado)
-    private float x = 0f;
-    private float y = -3.5f;  // Abajo en la pantalla
-    private float z = -1.0f;  // Cerca de la cámara
-    private float scale = 0.6f;
+    // Transformación - POSICIÓN FIJA (calibrada por usuario 2026-01-06)
+    private float x = 0f;       // Centrado en la carretera
+    private float y = -4.0f;    // Sobre la carretera (abajo)
+    private float z = -4.0f;    // Profundidad
+    private float scale = 1.2f;
 
-    // Rotación - Vemos el carro desde atrás
-    private float rotationX = 0f;
-    private float rotationY = 180f;  // Rotado 180 para ver la parte trasera
+    // Rotación - Vemos el carro desde atrás (luces traseras)
+    private float rotationX = 15f;   // Inclinado hacia adelante
+    private float rotationY = -90f;  // Rotado para ver la parte trasera
     private float rotationZ = 0f;
+
+    // 🔧 MODO AJUSTE - Touch para posicionar
+    private boolean adjustMode = false;  // DESACTIVADO - posición calibrada
 
     // Tiempo para animaciones
     private float time = 0f;
@@ -316,6 +319,35 @@ public class DeLorean3D implements SceneObject, CameraAware {
     @Override
     public void setCameraController(CameraController camera) {
         this.camera = camera;
+    }
+
+    /**
+     * 🔧 Maneja touch para posicionar el carro
+     * @param normalizedX -1 (izquierda) a 1 (derecha)
+     * @param normalizedY -1 (abajo) a 1 (arriba)
+     * @return true si se procesó el touch
+     */
+    public boolean onTouchEvent(float normalizedX, float normalizedY) {
+        if (!adjustMode) return false;
+
+        // Convertir coordenadas normalizadas a posición 3D
+        // X: -1 a 1 -> -3 a 3
+        // Y: -1 a 1 -> -5 a 0
+        this.x = normalizedX * 3.0f;
+        this.y = normalizedY * 2.5f - 2.5f;  // Ajuste para que quede en la parte inferior
+
+        Log.d(TAG, "🎯 DeLorean posición: x=" + x + ", y=" + y + ", z=" + z);
+        Log.d(TAG, "   Rotación: rX=" + rotationX + ", rY=" + rotationY);
+
+        return true;
+    }
+
+    /**
+     * Activa/desactiva modo ajuste
+     */
+    public void setAdjustMode(boolean enabled) {
+        this.adjustMode = enabled;
+        Log.d(TAG, "🔧 Modo ajuste: " + (enabled ? "ON" : "OFF"));
     }
 
     // ═══════════════════════════════════════════════════════════════════════
