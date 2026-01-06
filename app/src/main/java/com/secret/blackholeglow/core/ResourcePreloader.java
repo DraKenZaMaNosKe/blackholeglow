@@ -157,8 +157,8 @@ public class ResourcePreloader {
     public void prepareGokuSceneTasks() {
         tasks.clear();
 
-        // 1. VIDEO - Goku Estilo Anime desde Supabase
-        addVideoDownloadTask("Video Goku Anime", "gokuEstiloAnime.mp4", 10);
+        // 1. VIDEO - Goku Kamehameha Final desde Supabase
+        addVideoDownloadTask("Video Goku Kamehameha", "gokukamehameFinal.mp4", 10);
 
         // 2. Preview texture
         addTextureTask("Preparando escena Goku", R.drawable.preview_goku, 2);

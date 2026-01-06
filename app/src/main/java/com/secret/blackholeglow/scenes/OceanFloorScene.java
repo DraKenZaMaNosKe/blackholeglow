@@ -195,10 +195,8 @@ public class OceanFloorScene extends WallpaperScene {
 
     @Override
     public void update(float deltaTime) {
-        // 🔄 AUTO-RECOVERY MEJORADO:
-        // Si update() se está llamando, significa que el render loop está activo
+        // 🔄 AUTO-RECOVERY (sin logs para mejor rendimiento)
         if (!sceneIsActive) {
-            Log.w(TAG, "🔧 Auto-fix: update() llamado pero sceneIsActive=false, corrigiendo...");
             sceneIsActive = true;
         }
 
@@ -206,7 +204,6 @@ public class OceanFloorScene extends WallpaperScene {
         if (videoCheckTimer >= VIDEO_CHECK_INTERVAL) {
             videoCheckTimer = 0f;
             if (videoRenderer != null && !videoRenderer.isPlaying()) {
-                Log.w(TAG, "⚠️ Video detenido pero escena activa - Auto-recovery");
                 videoRenderer.resume();
             }
         }

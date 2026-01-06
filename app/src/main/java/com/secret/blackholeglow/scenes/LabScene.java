@@ -181,13 +181,8 @@ public class LabScene extends WallpaperScene {
             travelingShip.setTiltInput(gyroscope.getTiltX(), gyroscope.getTiltY());
         }
 
-        // 🔄 AUTO-RECOVERY MEJORADO:
-        // Si update() se está llamando, significa que el render loop está activo
-        // y la escena DEBERÍA estar activa, incluso si onResume() no se llamó
+        // 🔄 AUTO-RECOVERY (sin logs para mejor rendimiento)
         if (!sceneIsActive) {
-            // 🔧 Auto-fix: Si estamos en update() pero sceneIsActive=false,
-            // significa que Android no llamó onResume() - corregir automáticamente
-            Log.w(TAG, "🔧 Auto-fix: update() llamado pero sceneIsActive=false, corrigiendo...");
             sceneIsActive = true;
         }
 
@@ -195,7 +190,6 @@ public class LabScene extends WallpaperScene {
         if (videoCheckTimer >= VIDEO_CHECK_INTERVAL) {
             videoCheckTimer = 0f;
             if (videoBackground != null && !videoBackground.isPlaying()) {
-                Log.w(TAG, "⚠️ Video detenido pero escena activa - Auto-recovery");
                 videoBackground.resume();
             }
         }

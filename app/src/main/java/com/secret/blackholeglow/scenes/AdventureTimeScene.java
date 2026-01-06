@@ -137,9 +137,8 @@ public class AdventureTimeScene extends WallpaperScene {
 
     @Override
     public void update(float deltaTime) {
-        // 🔄 AUTO-RECOVERY MEJORADO
+        // 🔄 AUTO-RECOVERY (sin logs para mejor rendimiento)
         if (!sceneIsActive) {
-            Log.w(TAG, "🔧 Auto-fix: update() llamado pero sceneIsActive=false, corrigiendo...");
             sceneIsActive = true;
         }
 
@@ -147,7 +146,6 @@ public class AdventureTimeScene extends WallpaperScene {
         if (videoCheckTimer >= VIDEO_CHECK_INTERVAL) {
             videoCheckTimer = 0f;
             if (videoBackground != null && !videoBackground.isPlaying()) {
-                Log.w(TAG, "⚠️ Video detenido pero escena activa - Auto-recovery");
                 videoBackground.resume();
             }
         }

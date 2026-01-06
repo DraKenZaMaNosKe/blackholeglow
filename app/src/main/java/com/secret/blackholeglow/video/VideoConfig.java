@@ -48,11 +48,11 @@ public class VideoConfig {
             "The House"
         ));
 
-        // GokuScene - Dragon Ball Estilo Anime
-        VIDEOS.put("gokuEstiloAnime.mp4", new ResourceInfo(
-            SUPABASE_VIDEOS_URL + "gokuEstiloAnime.mp4",
-            13_656_755L,  // 13.02 MB exacto
-            "Goku Estilo Anime"
+        // GokuScene - Kamehameha Final (Goku lanzando el Kamehameha)
+        VIDEOS.put("gokukamehameFinal.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "gokukamehameFinal.mp4",
+            8_210_000L,  // 7.83 MB
+            "Goku Kamehameha Final"
         ));
 
         // AdventureTimeScene - Hora de Aventura Fogata
