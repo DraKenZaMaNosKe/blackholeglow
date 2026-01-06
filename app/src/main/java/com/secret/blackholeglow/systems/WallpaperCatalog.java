@@ -294,6 +294,18 @@ public class WallpaperCatalog {
                 .featured()
                 .build());
 
+        // 🚗 NEON CITY - Synthwave DeLorean
+        catalog.add(new WallpaperItem.Builder("✧ NEON CITY ✧")
+                .descripcion("Carretera infinita hacia el horizonte neón. " +
+                        "DeLorean, palmeras y un sol eterno estilo synthwave 80s.")
+                .preview(R.drawable.preview_neoncity)
+                .sceneName("NEON_CITY")
+                .tier(WallpaperTier.FREE)
+                .badge("🚗 NUEVO")
+                .glow(0xFFFF1493)  // Deep Pink (synthwave)
+                .featured()
+                .build());
+
         Log.d(TAG, "📚 Catálogo inicializado: " + catalog.size() + " wallpapers");
     }
 }

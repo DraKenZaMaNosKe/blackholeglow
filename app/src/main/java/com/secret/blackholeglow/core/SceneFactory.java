@@ -8,6 +8,7 @@ import com.secret.blackholeglow.TextureManager;
 import com.secret.blackholeglow.scenes.AdventureTimeScene;
 import com.secret.blackholeglow.scenes.GokuScene;
 import com.secret.blackholeglow.scenes.LabScene;
+import com.secret.blackholeglow.scenes.NeonCityScene;
 import com.secret.blackholeglow.scenes.OceanFloorScene;
 import com.secret.blackholeglow.scenes.WallpaperScene;
 import com.secret.blackholeglow.systems.EventBus;
@@ -109,6 +110,8 @@ public class SceneFactory {
         registerScene("GOKU", GokuScene.class);
         // 🌳 Adventure Time: Parallax de Hora de Aventura
         registerScene("ADVENTURE_TIME", AdventureTimeScene.class);
+        // 🚗 Neon City: Synthwave DeLorean en carretera infinita
+        registerScene("NEON_CITY", NeonCityScene.class);
         Log.d(TAG, "🎭 " + registeredScenes.size() + " escenas registradas");
     }
 

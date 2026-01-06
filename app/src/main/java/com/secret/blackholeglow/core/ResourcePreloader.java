@@ -106,6 +106,9 @@ public class ResourcePreloader {
                 prepareAdventureTimeSceneTasks();
                 break;
 
+            case "NEON_CITY":
+                prepareNeonCitySceneTasks();
+                break;
 
             default:
                 // Default: usar Lab
@@ -183,6 +186,23 @@ public class ResourcePreloader {
         // Calcular total
         calculateTotalWeight();
         Log.d(TAG, "AdventureTimeScene: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    /**
+     * Prepara tareas para NeonCityScene (Synthwave DeLorean)
+     * Descarga del video de carretera infinita
+     */
+    public void prepareNeonCitySceneTasks() {
+        tasks.clear();
+
+        // 1. VIDEO - Neon City Synthwave desde Supabase
+        addVideoDownloadTask("Video Neon City", "neoncity.mp4", 10);
+
+        // Preview es local (preview_neoncity) - no requiere descarga
+
+        // Calcular total
+        calculateTotalWeight();
+        Log.d(TAG, "NeonCityScene: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
     }
 
     private void calculateTotalWeight() {
