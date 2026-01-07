@@ -196,7 +196,7 @@ public class ResourcePreloader {
         tasks.clear();
 
         // 1. VIDEO - Neon City Synthwave desde Supabase
-        addVideoDownloadTask("Video Neon City", "neoncity.mp4", 10);
+        addVideoDownloadTask("Video Neon City", "neoncityScene.mp4", 10);
 
         // Preview es local (preview_neoncity) - no requiere descarga
 

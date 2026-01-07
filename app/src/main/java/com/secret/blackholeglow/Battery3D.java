@@ -45,6 +45,7 @@ public class Battery3D implements SceneObject {
     public static final int THEME_ABYSSIA = 0;
     public static final int THEME_PYRALIS = 1;
     public static final int THEME_KAMEHAMEHA = 2;
+    public static final int THEME_SYNTHWAVE = 3;
 
     // Colores PYRALIS (Fuego/Plasma)
     private static final int PYRALIS_HIGH = 0xFFFFD700;      // Gold (>50%)
@@ -65,6 +66,13 @@ public class Battery3D implements SceneObject {
     private static final int KAMEHAMEHA_MED = 0xFF29B6F6;    // Blue (20-50%)
     private static final int KAMEHAMEHA_LOW = 0xFFFF5722;    // Orange warning (<20%)
     private static final int KAMEHAMEHA_GLOW = 0xFF00E5FF;   // Cyan accent glow
+
+    // Colores SYNTHWAVE (Retrowave 80s - Pink/Cyan)
+    private static final int SYNTHWAVE_HIGH = 0xFF00FFFF;    // Cyan (>50%)
+    private static final int SYNTHWAVE_MED = 0xFFFF1493;     // Hot Pink (20-50%)
+    private static final int SYNTHWAVE_LOW = 0xFFFF0066;     // Red-Pink (<20%)
+    private static final int SYNTHWAVE_GLOW = 0xFFFF00FF;    // Magenta glow
+    private static final int SYNTHWAVE_CORE = 0xFFFFB6C1;    // Light Pink (núcleo)
     private static final int KAMEHAMEHA_CORE = 0xFFE1F5FE;   // Light Blue (núcleo)
 
     // ═══════════════════════════════════════════════════════════════
@@ -208,6 +216,10 @@ public class Battery3D implements SceneObject {
             primaryColor = KAMEHAMEHA_HIGH;
             glowColor = KAMEHAMEHA_GLOW;
             coreColor = KAMEHAMEHA_CORE;
+        } else if (theme == THEME_SYNTHWAVE) {
+            primaryColor = SYNTHWAVE_HIGH;
+            glowColor = SYNTHWAVE_GLOW;
+            coreColor = SYNTHWAVE_CORE;
         } else {
             primaryColor = ABYSSIA_HIGH;
             glowColor = ABYSSIA_GLOW;
@@ -224,6 +236,10 @@ public class Battery3D implements SceneObject {
             if (level > 50) return KAMEHAMEHA_HIGH;
             if (level > 20) return KAMEHAMEHA_MED;
             return KAMEHAMEHA_LOW;
+        } else if (currentTheme == THEME_SYNTHWAVE) {
+            if (level > 50) return SYNTHWAVE_HIGH;
+            if (level > 20) return SYNTHWAVE_MED;
+            return SYNTHWAVE_LOW;
         } else {
             if (level > 50) return ABYSSIA_HIGH;
             if (level > 20) return ABYSSIA_MED;

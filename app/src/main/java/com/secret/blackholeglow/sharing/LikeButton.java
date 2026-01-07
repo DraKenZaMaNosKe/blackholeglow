@@ -30,7 +30,7 @@ import java.nio.FloatBuffer;
 public class LikeButton {
     private static final String TAG = "LikeButton";
 
-    public enum Theme { DEFAULT, ABYSSIA, PYRALIS, ADVENTURE_TIME, GOKU }
+    public enum Theme { DEFAULT, ABYSSIA, PYRALIS, ADVENTURE_TIME, GOKU, SYNTHWAVE }
     private Theme currentTheme = Theme.DEFAULT;
 
     private float x = 0.85f;
@@ -72,6 +72,12 @@ public class LikeButton {
     private float[] dragonBallHighlight = {1.0f, 0.9f, 0.5f, 1.0f};
     private float[] dragonBallGlow = {1.0f, 0.5f, 0.0f};
     private float[] starColor = {0.8f, 0.2f, 0.1f, 1.0f};  // Estrellas rojas
+
+    // 🌅 Colores para Sol Synthwave (Hot Pink → Yellow gradient)
+    private float[] synthwaveSunTop = {1.0f, 1.0f, 0.2f, 0.95f};      // Amarillo brillante
+    private float[] synthwaveSunBottom = {1.0f, 0.08f, 0.58f, 0.95f}; // Hot Pink
+    private float[] synthwaveGlow = {1.0f, 0.0f, 1.0f};               // Magenta glow
+    private float[] synthwaveLine = {0.2f, 0.0f, 0.3f, 0.8f};         // Líneas púrpura oscuro
 
     private final float[] modelMatrix = new float[16];
     private final float[] finalMatrix = new float[16];
@@ -289,6 +295,9 @@ public class LikeButton {
                 break;
             case GOKU:
                 drawDragonBallProcedural(mvpMatrix, pulse);
+                break;
+            case SYNTHWAVE:
+                drawSynthwaveSunProcedural(mvpMatrix, pulse);
                 break;
         }
     }
@@ -526,6 +535,156 @@ public class LikeButton {
         GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, starBuffer);
         GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, points * 2 + 2);
         GLES30.glDisableVertexAttribArray(positionHandleColor);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🌅 SOL SYNTHWAVE - NeonCity (Procedural)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Dibuja el icónico sol synthwave con gradiente y líneas horizontales
+     */
+    private void drawSynthwaveSunProcedural(float[] mvpMatrix, float pulse) {
+        GLES30.glUseProgram(programIdColor);
+        float scale = size * (1.0f + pulse * 0.12f);
+        float currentY = y + floatOffset;
+
+        // 1. Glow magenta exterior
+        if (!isOnCooldown) {
+            drawSynthwaveGlow(mvpMatrix, scale * 1.8f, 0.15f, pulse);
+            drawSynthwaveGlow(mvpMatrix, scale * 1.4f, 0.25f, pulse);
+        }
+
+        // 2. Semicírculo superior (amarillo → naranja)
+        drawSynthwaveSunHalf(mvpMatrix, scale, currentY, true, pulse);
+
+        // 3. Semicírculo inferior (naranja → hot pink)
+        drawSynthwaveSunHalf(mvpMatrix, scale, currentY, false, pulse);
+
+        // 4. Líneas horizontales (scanlines estilo retrowave)
+        drawSynthwaveScanlines(mvpMatrix, scale, currentY, pulse);
+    }
+
+    private void drawSynthwaveGlow(float[] mvpMatrix, float glowSize, float alpha, float pulse) {
+        float currentY = y + floatOffset;
+
+        // Crear círculo para glow
+        int segments = 32;
+        float[] glowVerts = new float[(segments + 2) * 2];
+        glowVerts[0] = 0f; glowVerts[1] = 0f;
+        for (int i = 0; i <= segments; i++) {
+            float angle = (float) (2.0 * Math.PI * i / segments);
+            glowVerts[(i + 1) * 2] = (float) Math.cos(angle);
+            glowVerts[(i + 1) * 2 + 1] = (float) Math.sin(angle);
+        }
+
+        ByteBuffer bb = ByteBuffer.allocateDirect(glowVerts.length * 4);
+        bb.order(ByteOrder.nativeOrder());
+        FloatBuffer glowBuffer = bb.asFloatBuffer();
+        glowBuffer.put(glowVerts);
+        glowBuffer.position(0);
+
+        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
+        android.opengl.Matrix.translateM(modelMatrix, 0, x, currentY, 0);
+        android.opengl.Matrix.scaleM(modelMatrix, 0, glowSize, glowSize, 1);
+        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandleColor, 1, false, finalMatrix, 0);
+
+        // Glow magenta pulsante
+        colorCache[0] = synthwaveGlow[0];
+        colorCache[1] = synthwaveGlow[1];
+        colorCache[2] = synthwaveGlow[2];
+        colorCache[3] = alpha * (0.8f + pulse * 0.2f);
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+
+        GLES30.glEnableVertexAttribArray(positionHandleColor);
+        GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, glowBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, segments + 2);
+        GLES30.glDisableVertexAttribArray(positionHandleColor);
+    }
+
+    private void drawSynthwaveSunHalf(float[] mvpMatrix, float scale, float currentY, boolean isTop, float pulse) {
+        // Semicírculo (mitad superior o inferior)
+        int segments = 20;
+        float[] halfVerts = new float[(segments + 2) * 2];
+        halfVerts[0] = 0f; halfVerts[1] = 0f;
+
+        float startAngle = isTop ? 0f : (float) Math.PI;
+        float endAngle = isTop ? (float) Math.PI : (float) (2 * Math.PI);
+
+        for (int i = 0; i <= segments; i++) {
+            float angle = startAngle + (endAngle - startAngle) * i / segments;
+            halfVerts[(i + 1) * 2] = (float) Math.cos(angle);
+            halfVerts[(i + 1) * 2 + 1] = (float) Math.sin(angle);
+        }
+
+        ByteBuffer bb = ByteBuffer.allocateDirect(halfVerts.length * 4);
+        bb.order(ByteOrder.nativeOrder());
+        FloatBuffer halfBuffer = bb.asFloatBuffer();
+        halfBuffer.put(halfVerts);
+        halfBuffer.position(0);
+
+        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
+        android.opengl.Matrix.translateM(modelMatrix, 0, x, currentY, 0);
+        android.opengl.Matrix.scaleM(modelMatrix, 0, scale, scale, 1);
+        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandleColor, 1, false, finalMatrix, 0);
+
+        // Gradiente: amarillo arriba, hot pink abajo
+        float brightness = 0.85f + pulse * 0.15f;
+        float[] color = isTop ? synthwaveSunTop : synthwaveSunBottom;
+        colorCache[0] = color[0] * brightness;
+        colorCache[1] = color[1] * brightness;
+        colorCache[2] = color[2] * brightness;
+        colorCache[3] = isOnCooldown ? 0.4f : (isPressed ? 1.0f : 0.95f);
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+
+        GLES30.glEnableVertexAttribArray(positionHandleColor);
+        GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, halfBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, segments + 2);
+        GLES30.glDisableVertexAttribArray(positionHandleColor);
+    }
+
+    private void drawSynthwaveScanlines(float[] mvpMatrix, float scale, float currentY, float pulse) {
+        // Líneas horizontales en la parte inferior del sol
+        int numLines = 5;
+        float lineHeight = 0.04f * scale;
+        float lineWidth = scale * 0.95f;
+
+        for (int i = 0; i < numLines; i++) {
+            float lineY = currentY - (0.1f + i * 0.15f) * scale;
+
+            // Cada línea es un rectángulo pequeño
+            float[] lineVerts = {
+                -lineWidth, lineY - lineHeight,
+                 lineWidth, lineY - lineHeight,
+                -lineWidth, lineY + lineHeight,
+                 lineWidth, lineY + lineHeight
+            };
+
+            ByteBuffer bb = ByteBuffer.allocateDirect(lineVerts.length * 4);
+            bb.order(ByteOrder.nativeOrder());
+            FloatBuffer lineBuffer = bb.asFloatBuffer();
+            lineBuffer.put(lineVerts);
+            lineBuffer.position(0);
+
+            android.opengl.Matrix.setIdentityM(modelMatrix, 0);
+            android.opengl.Matrix.translateM(modelMatrix, 0, x, 0, 0);
+            android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+            GLES30.glUniformMatrix4fv(mvpMatrixHandleColor, 1, false, finalMatrix, 0);
+
+            // Líneas púrpura oscuro (como el fondo synthwave)
+            colorCache[0] = synthwaveLine[0];
+            colorCache[1] = synthwaveLine[1];
+            colorCache[2] = synthwaveLine[2];
+            colorCache[3] = isOnCooldown ? 0.3f : synthwaveLine[3];
+            GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+
+            GLES30.glEnableVertexAttribArray(positionHandleColor);
+            GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, lineBuffer);
+            GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
+            GLES30.glDisableVertexAttribArray(positionHandleColor);
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

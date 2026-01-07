@@ -38,6 +38,7 @@ public class Clock3D implements SceneObject {
     public static final int THEME_ABYSSIA = 0;    // Cyan bioluminiscente
     public static final int THEME_PYRALIS = 1;    // Dorado celestial
     public static final int THEME_KAMEHAMEHA = 2; // Azul energía Ki
+    public static final int THEME_SYNTHWAVE = 3;  // Hot Pink retrowave 80s
 
     // Colores por tema
     private static final int COLOR_ABYSSIA_PRIMARY = 0xFF00CED1;   // Dark Turquoise
@@ -46,6 +47,8 @@ public class Clock3D implements SceneObject {
     private static final int COLOR_PYRALIS_GLOW = 0xFFFF8C00;      // Dark Orange
     private static final int COLOR_KAMEHAMEHA_PRIMARY = 0xFF4FC3F7; // Light Blue
     private static final int COLOR_KAMEHAMEHA_GLOW = 0xFF00E5FF;   // Cyan accent
+    private static final int COLOR_SYNTHWAVE_PRIMARY = 0xFFFF1493; // Hot Pink
+    private static final int COLOR_SYNTHWAVE_GLOW = 0xFFFF00FF;    // Magenta
 
     // ═══════════════════════════════════════════════════════════════
     // OPENGL
@@ -161,6 +164,10 @@ public class Clock3D implements SceneObject {
             case THEME_KAMEHAMEHA:
                 primaryColor = COLOR_KAMEHAMEHA_PRIMARY;
                 glowColor = COLOR_KAMEHAMEHA_GLOW;
+                break;
+            case THEME_SYNTHWAVE:
+                primaryColor = COLOR_SYNTHWAVE_PRIMARY;
+                glowColor = COLOR_SYNTHWAVE_GLOW;
                 break;
             case THEME_ABYSSIA:
             default:

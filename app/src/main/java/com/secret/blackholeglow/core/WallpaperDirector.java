@@ -14,6 +14,7 @@ import com.secret.blackholeglow.scenes.OceanFloorScene;
 import com.secret.blackholeglow.scenes.LabScene;
 import com.secret.blackholeglow.scenes.GokuScene;
 import com.secret.blackholeglow.scenes.AdventureTimeScene;
+import com.secret.blackholeglow.scenes.NeonCityScene;
 import com.secret.blackholeglow.sharing.LikeButton;
 import com.secret.blackholeglow.scenes.WallpaperScene;
 import com.secret.blackholeglow.systems.AspectRatioManager;
@@ -205,6 +206,9 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             } else if (scene instanceof AdventureTimeScene) {
                 // 🌳 Adventure Time tiene ecualizador PYRALIS
                 ((AdventureTimeScene) scene).updateMusicBands(bands);
+            } else if (scene instanceof NeonCityScene) {
+                // 🌆 Neon City tiene ecualizador SYNTHWAVE
+                ((NeonCityScene) scene).updateMusicBands(bands);
             }
         }
         sceneFactory.updateCurrentScene(deltaTime);
@@ -375,6 +379,8 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
                 songSharing.setLikeButtonTheme(LikeButton.Theme.ADVENTURE_TIME);
             } else if (sceneName.equals("GOKU") || sceneName.toLowerCase().contains("goku")) {
                 songSharing.setLikeButtonTheme(LikeButton.Theme.GOKU);
+            } else if (sceneName.equals("NEON_CITY") || sceneName.toLowerCase().contains("neon")) {
+                songSharing.setLikeButtonTheme(LikeButton.Theme.SYNTHWAVE);
             } else {
                 songSharing.setLikeButtonTheme(LikeButton.Theme.DEFAULT);
             }

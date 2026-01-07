@@ -22,7 +22,7 @@ import com.secret.blackholeglow.video.VideoDownloadManager;
  */
 public class NeonCityScene extends WallpaperScene {
     private static final String TAG = "NeonCityScene";
-    private static final String VIDEO_FILE = "neoncity.mp4";
+    private static final String VIDEO_FILE = "neoncityScene.mp4";
 
     private MediaCodecVideoRenderer videoBackground;
     private VideoDownloadManager downloadManager;
@@ -80,28 +80,28 @@ public class NeonCityScene extends WallpaperScene {
             Log.e(TAG, "❌ Error Video: " + e.getMessage());
         }
 
-        // 🎵 Ecualizador con tema PYRALIS (fuego/naranja - combina con synthwave)
+        // 🎵 Ecualizador con tema SYNTHWAVE (Hot Pink → Cyan → Magenta)
         try {
             equalizerDJ = new EqualizerBarsDJ();
             equalizerDJ.initialize();
-            equalizerDJ.setTheme(EqualizerBarsDJ.Theme.PYRALIS);  // 🔥 Tema fuego neón
+            equalizerDJ.setTheme(EqualizerBarsDJ.Theme.SYNTHWAVE);  // 🌆 Tema retrowave 80s
             equalizerDJ.setScreenSize(screenWidth, screenHeight);
             Log.d(TAG, "✅ Ecualizador SYNTHWAVE activado");
         } catch (Exception e) {
             Log.e(TAG, "❌ Error EqualizerBarsDJ: " + e.getMessage());
         }
 
-        // ⏰ Reloj con tema PYRALIS (naranja neón)
+        // ⏰ Reloj con tema SYNTHWAVE (Hot Pink neón)
         try {
-            clock = new Clock3D(context, Clock3D.THEME_PYRALIS, 0f, 0.75f);
+            clock = new Clock3D(context, Clock3D.THEME_SYNTHWAVE, 0f, 0.75f);
             Log.d(TAG, "✅ Reloj SYNTHWAVE activado");
         } catch (Exception e) {
             Log.e(TAG, "❌ Error Clock3D: " + e.getMessage());
         }
 
-        // 🔋 Batería con tema PYRALIS
+        // 🔋 Batería con tema SYNTHWAVE (Cyan/Pink)
         try {
-            battery = new Battery3D(context, Battery3D.THEME_PYRALIS, 0.81f, -0.34f);
+            battery = new Battery3D(context, Battery3D.THEME_SYNTHWAVE, 0.81f, -0.34f);
             Log.d(TAG, "✅ Batería SYNTHWAVE activada");
         } catch (Exception e) {
             Log.e(TAG, "❌ Error Battery3D: " + e.getMessage());
@@ -243,14 +243,15 @@ public class NeonCityScene extends WallpaperScene {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // 🔧 TOUCH - POSICIONAR DELOREAN
+    // 🔧 TOUCH - SISTEMA DE CALIBRACIÓN DELOREAN
     // ═══════════════════════════════════════════════════════════════════════
 
     @Override
     public boolean onTouchEvent(float normalizedX, float normalizedY, int action) {
-        // Pasar touch al DeLorean para posicionarlo
-        if (delorean != null && action == android.view.MotionEvent.ACTION_DOWN) {
-            return delorean.onTouchEvent(normalizedX, normalizedY);
+        // Pasar TODOS los eventos de touch al DeLorean para calibración completa
+        if (delorean != null) {
+            boolean handled = delorean.onTouchEvent(normalizedX, normalizedY, action);
+            if (handled) return true;
         }
         return super.onTouchEvent(normalizedX, normalizedY, action);
     }

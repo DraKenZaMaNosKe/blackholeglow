@@ -48,19 +48,65 @@ public class DeLorean3D implements SceneObject, CameraAware {
     private int uTextureHandle;
     private int uTimeHandle;
 
-    // Transformación - POSICIÓN FIJA (calibrada por usuario 2026-01-06)
-    private float x = 0f;       // Centrado en la carretera
-    private float y = -4.0f;    // Sobre la carretera (abajo)
-    private float z = -4.0f;    // Profundidad
-    private float scale = 1.2f;
+    // Transformación - POSICIÓN CALIBRADA (usuario 2026-01-06 21:25)
+    private float x = -0.52f;      // Posición horizontal
+    private float y = -4.98f;      // Sobre la carretera (abajo)
+    private float z = 0.21f;       // Profundidad
+    private float scale = 0.77f;   // Tamaño
 
-    // Rotación - Vemos el carro desde atrás (luces traseras)
-    private float rotationX = 15f;   // Inclinado hacia adelante
-    private float rotationY = -90f;  // Rotado para ver la parte trasera
-    private float rotationZ = 0f;
+    // Rotación base calibrada
+    private float rotationX = 0.8f;    // Inclinación
+    private float rotationY = -55.3f;  // Orientación horizontal
+    private float rotationZ = 36.0f;   // Rotación volante
 
-    // 🔧 MODO AJUSTE - Touch para posicionar
-    private boolean adjustMode = false;  // DESACTIVADO - posición calibrada
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🚗 SISTEMA DE MICRO-MOVIMIENTOS SUTILES
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private boolean autonomousDriving = true;  // Activar movimiento sutil
+
+    // Posición base (el carro se queda aquí, solo micro-movimientos)
+    private static final float BASE_X = -0.52f;
+    private static final float BASE_Y = -4.98f;
+    private static final float BASE_ROT_Z = 36.0f;
+
+    // Micro-movimientos MUY sutiles
+    private float wobblePhase = 0f;
+    private static final float WOBBLE_SPEED = 1.5f;       // Velocidad del movimiento
+    private static final float WOBBLE_X = 0.015f;         // Movimiento lateral MUY pequeño
+    private static final float WOBBLE_Y = 0.008f;         // Movimiento vertical MUY pequeño
+    private static final float WOBBLE_ROT = 0.8f;         // Rotación MUY sutil (grados)
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎮 SISTEMA DE CALIBRACIÓN POR TOUCH
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public enum AdjustMode {
+        OFF,           // Sin ajuste
+        POSITION_XY,   // Mover en X/Y
+        POSITION_Z,    // Mover en Z (profundidad)
+        ROTATE_Y,      // Girar horizontalmente
+        ROTATE_X,      // Inclinar adelante/atrás
+        ROTATE_Z,      // Rotar como volante
+        SCALE          // Cambiar tamaño
+    }
+
+    private AdjustMode currentMode = AdjustMode.POSITION_XY;  // Modo inicial
+    private boolean adjustEnabled = false;  // 🔧 DESACTIVADO - conducción autónoma activa
+
+    // Sensibilidad de ajustes
+    private static final float SENSITIVITY_POSITION = 5.0f;
+    private static final float SENSITIVITY_ROTATION = 180.0f;
+    private static final float SENSITIVITY_SCALE = 2.0f;
+    private static final float SENSITIVITY_Z = 10.0f;
+
+    // Para detectar TAP vs DRAG
+    private float lastTouchX = 0f;
+    private float lastTouchY = 0f;
+    private long touchStartTime = 0;
+    private boolean isDragging = false;
+    private static final long TAP_TIMEOUT = 200; // ms
+    private static final float DRAG_THRESHOLD = 0.02f;
 
     // Tiempo para animaciones
     private float time = 0f;
@@ -244,6 +290,34 @@ public class DeLorean3D implements SceneObject, CameraAware {
 
         // Balanceo sutil (como si fuera en la carretera)
         bobOffset = (float) Math.sin(time * BOB_SPEED) * BOB_AMOUNT;
+
+        // 🚗 CONDUCCIÓN AUTÓNOMA
+        if (autonomousDriving && !adjustEnabled) {
+            updateAutonomousDriving(deltaTime);
+        }
+    }
+
+    /**
+     * Sistema de micro-movimientos sutiles (el carro se queda en su lugar)
+     */
+    private void updateAutonomousDriving(float deltaTime) {
+        // Avanzar fase del wobble
+        wobblePhase += deltaTime * WOBBLE_SPEED;
+
+        // Micro-movimiento lateral (como pequeñas correcciones de volante)
+        float wobbleX = (float) Math.sin(wobblePhase) * WOBBLE_X;
+        wobbleX += (float) Math.sin(wobblePhase * 1.7f) * WOBBLE_X * 0.5f;  // Segundo armónico
+
+        // Micro-movimiento vertical (como pequeños baches en la carretera)
+        float wobbleY = (float) Math.sin(wobblePhase * 1.3f) * WOBBLE_Y;
+
+        // Micro-rotación (como ajustes sutiles del volante)
+        float wobbleRot = (float) Math.sin(wobblePhase * 0.8f) * WOBBLE_ROT;
+
+        // Aplicar micro-movimientos a la posición base
+        x = BASE_X + wobbleX;
+        y = BASE_Y + wobbleY;
+        rotationZ = BASE_ROT_Z + wobbleRot;
     }
 
     @Override
@@ -321,33 +395,177 @@ public class DeLorean3D implements SceneObject, CameraAware {
         this.camera = camera;
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎮 SISTEMA DE CALIBRACIÓN COMPLETO
+    // ═══════════════════════════════════════════════════════════════════════
+
     /**
-     * 🔧 Maneja touch para posicionar el carro
+     * Maneja eventos de touch para calibración
      * @param normalizedX -1 (izquierda) a 1 (derecha)
      * @param normalizedY -1 (abajo) a 1 (arriba)
+     * @param action MotionEvent action (ACTION_DOWN, ACTION_MOVE, ACTION_UP)
      * @return true si se procesó el touch
      */
-    public boolean onTouchEvent(float normalizedX, float normalizedY) {
-        if (!adjustMode) return false;
+    public boolean onTouchEvent(float normalizedX, float normalizedY, int action) {
+        if (!adjustEnabled || currentMode == AdjustMode.OFF) return false;
 
-        // Convertir coordenadas normalizadas a posición 3D
-        // X: -1 a 1 -> -3 a 3
-        // Y: -1 a 1 -> -5 a 0
-        this.x = normalizedX * 3.0f;
-        this.y = normalizedY * 2.5f - 2.5f;  // Ajuste para que quede en la parte inferior
+        switch (action) {
+            case android.view.MotionEvent.ACTION_DOWN:
+                lastTouchX = normalizedX;
+                lastTouchY = normalizedY;
+                touchStartTime = System.currentTimeMillis();
+                isDragging = false;
+                logCurrentState("👆 TOUCH DOWN");
+                return true;
 
-        Log.d(TAG, "🎯 DeLorean posición: x=" + x + ", y=" + y + ", z=" + z);
-        Log.d(TAG, "   Rotación: rX=" + rotationX + ", rY=" + rotationY);
+            case android.view.MotionEvent.ACTION_MOVE:
+                float deltaX = normalizedX - lastTouchX;
+                float deltaY = normalizedY - lastTouchY;
 
-        return true;
+                // Detectar si es drag
+                if (Math.abs(deltaX) > DRAG_THRESHOLD || Math.abs(deltaY) > DRAG_THRESHOLD) {
+                    isDragging = true;
+                    applyAdjustment(deltaX, deltaY);
+                    lastTouchX = normalizedX;
+                    lastTouchY = normalizedY;
+                }
+                return true;
+
+            case android.view.MotionEvent.ACTION_UP:
+                long touchDuration = System.currentTimeMillis() - touchStartTime;
+
+                // Si fue un TAP rápido (no drag), cambiar modo
+                if (!isDragging && touchDuration < TAP_TIMEOUT) {
+                    cycleMode();
+                }
+                return true;
+        }
+        return false;
+    }
+
+    /**
+     * Aplica el ajuste según el modo actual
+     */
+    private void applyAdjustment(float deltaX, float deltaY) {
+        switch (currentMode) {
+            case POSITION_XY:
+                x += deltaX * SENSITIVITY_POSITION;
+                y += deltaY * SENSITIVITY_POSITION;
+                logCurrentState("📍 POSICIÓN X/Y");
+                break;
+
+            case POSITION_Z:
+                z += deltaY * SENSITIVITY_Z;
+                logCurrentState("📍 POSICIÓN Z (profundidad)");
+                break;
+
+            case ROTATE_Y:
+                rotationY += deltaX * SENSITIVITY_ROTATION;
+                logCurrentState("🔄 ROTACIÓN Y (horizontal)");
+                break;
+
+            case ROTATE_X:
+                rotationX += deltaY * SENSITIVITY_ROTATION;
+                logCurrentState("🔄 ROTACIÓN X (inclinación)");
+                break;
+
+            case ROTATE_Z:
+                rotationZ += deltaX * SENSITIVITY_ROTATION;
+                logCurrentState("🔄 ROTACIÓN Z (volante)");
+                break;
+
+            case SCALE:
+                scale += deltaY * SENSITIVITY_SCALE;
+                scale = Math.max(0.1f, Math.min(5.0f, scale)); // Limitar entre 0.1 y 5.0
+                logCurrentState("📐 ESCALA");
+                break;
+        }
+    }
+
+    /**
+     * Cambia al siguiente modo de ajuste
+     */
+    private void cycleMode() {
+        AdjustMode[] modes = AdjustMode.values();
+        int currentIndex = currentMode.ordinal();
+        int nextIndex = (currentIndex + 1) % modes.length;
+
+        // Saltar OFF en el ciclo
+        if (modes[nextIndex] == AdjustMode.OFF) {
+            nextIndex = (nextIndex + 1) % modes.length;
+        }
+
+        currentMode = modes[nextIndex];
+
+        Log.d(TAG, "═══════════════════════════════════════════════════");
+        Log.d(TAG, "🎮 MODO CAMBIADO A: " + getModeDescription(currentMode));
+        Log.d(TAG, "═══════════════════════════════════════════════════");
+        logCurrentState("📊 VALORES ACTUALES");
+    }
+
+    /**
+     * Obtiene descripción del modo
+     */
+    private String getModeDescription(AdjustMode mode) {
+        switch (mode) {
+            case POSITION_XY: return "POSICIÓN X/Y (arrastra para mover)";
+            case POSITION_Z:  return "POSICIÓN Z (arrastra vertical = profundidad)";
+            case ROTATE_Y:    return "ROTACIÓN Y (arrastra horizontal = girar)";
+            case ROTATE_X:    return "ROTACIÓN X (arrastra vertical = inclinar)";
+            case ROTATE_Z:    return "ROTACIÓN Z (arrastra horizontal = rotar volante)";
+            case SCALE:       return "ESCALA (arrastra vertical = tamaño)";
+            default:          return "DESACTIVADO";
+        }
+    }
+
+    /**
+     * Log del estado actual con todos los valores
+     */
+    private void logCurrentState(String action) {
+        Log.d(TAG, "───────────────────────────────────────────────────");
+        Log.d(TAG, action);
+        Log.d(TAG, "🎮 MODO: " + getModeDescription(currentMode));
+        Log.d(TAG, "───────────────────────────────────────────────────");
+        Log.d(TAG, String.format("📍 POSICIÓN:  x=%.2f  y=%.2f  z=%.2f", x, y, z));
+        Log.d(TAG, String.format("🔄 ROTACIÓN:  rX=%.1f°  rY=%.1f°  rZ=%.1f°", rotationX, rotationY, rotationZ));
+        Log.d(TAG, String.format("📐 ESCALA:    %.2f", scale));
+        Log.d(TAG, "───────────────────────────────────────────────────");
     }
 
     /**
      * Activa/desactiva modo ajuste
      */
-    public void setAdjustMode(boolean enabled) {
-        this.adjustMode = enabled;
-        Log.d(TAG, "🔧 Modo ajuste: " + (enabled ? "ON" : "OFF"));
+    public void setAdjustEnabled(boolean enabled) {
+        this.adjustEnabled = enabled;
+        Log.d(TAG, "🔧 Sistema de ajuste: " + (enabled ? "ACTIVADO" : "DESACTIVADO"));
+        if (enabled) {
+            logCurrentState("📊 ESTADO INICIAL");
+        }
+    }
+
+    /**
+     * Establece el modo de ajuste
+     */
+    public void setAdjustMode(AdjustMode mode) {
+        this.currentMode = mode;
+        Log.d(TAG, "🎮 Modo establecido: " + getModeDescription(mode));
+    }
+
+    /**
+     * Imprime los valores finales para copiar al código
+     */
+    public void printFinalValues() {
+        Log.d(TAG, "╔══════════════════════════════════════════════════════════════╗");
+        Log.d(TAG, "║  📋 VALORES FINALES PARA COPIAR AL CÓDIGO:                   ║");
+        Log.d(TAG, "╠══════════════════════════════════════════════════════════════╣");
+        Log.d(TAG, String.format("║  private float x = %.2ff;", x));
+        Log.d(TAG, String.format("║  private float y = %.2ff;", y));
+        Log.d(TAG, String.format("║  private float z = %.2ff;", z));
+        Log.d(TAG, String.format("║  private float scale = %.2ff;", scale));
+        Log.d(TAG, String.format("║  private float rotationX = %.1ff;", rotationX));
+        Log.d(TAG, String.format("║  private float rotationY = %.1ff;", rotationY));
+        Log.d(TAG, String.format("║  private float rotationZ = %.1ff;", rotationZ));
+        Log.d(TAG, "╚══════════════════════════════════════════════════════════════╝");
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -358,6 +576,10 @@ public class DeLorean3D implements SceneObject, CameraAware {
         if (shaderProgram != 0) {
             GLES30.glDeleteProgram(shaderProgram);
             shaderProgram = 0;
+        }
+        // Imprimir valores finales al liberar
+        if (adjustEnabled) {
+            printFinalValues();
         }
         Log.d(TAG, "🚗 DeLorean3D liberado");
     }

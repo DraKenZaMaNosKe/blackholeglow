@@ -62,10 +62,10 @@ public class VideoConfig {
             "Adventure Time Fogata"
         ));
 
-        // NeonCityScene - Synthwave Endless Road
-        VIDEOS.put("neoncity.mp4", new ResourceInfo(
-            SUPABASE_VIDEOS_URL + "neoncity.mp4",
-            13_670_000L,  // 13.04 MB
+        // NeonCityScene - Synthwave Endless Road (VIDEO FINAL)
+        VIDEOS.put("neoncityScene.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "neoncityScene.mp4",
+            13_680_000L,  // 13.05 MB
             "Neon City Synthwave"
         ));
 

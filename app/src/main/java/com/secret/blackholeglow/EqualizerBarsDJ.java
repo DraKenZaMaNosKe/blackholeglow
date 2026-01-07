@@ -33,7 +33,8 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         DEFAULT,   // Rosa → Cyan (original)
         ABYSSIA,   // Púrpura bioluminiscente → Turquesa (océano profundo)
         PYRALIS,   // Rojo → Naranja → Amarillo (fuego)
-        KAMEHAMEHA // Azul → Cyan → Blanco (energía Ki)
+        KAMEHAMEHA, // Azul → Cyan → Blanco (energía Ki)
+        SYNTHWAVE  // Hot Pink → Cyan → Magenta (retrowave 80s)
     }
 
     private Theme currentTheme = Theme.DEFAULT;
@@ -86,6 +87,15 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     private static final float[] KAMEHAMEHA_WAVE_NORMAL = {0.2f, 0.5f, 1.0f};    // Azul medio
     private static final float[] KAMEHAMEHA_LIGHTNING_1 = {0.5f, 0.9f, 1.0f};    // Rayo cyan
     private static final float[] KAMEHAMEHA_LIGHTNING_2 = {0.7f, 0.85f, 1.0f};   // Rayo blanco-azul
+
+    // === SYNTHWAVE (Retrowave 80s - Hot Pink → Cyan → Magenta) ===
+    private static final float[] SYNTHWAVE_BASS = {1.0f, 0.08f, 0.58f};      // Hot Pink (#FF1493)
+    private static final float[] SYNTHWAVE_TREBLE = {0.0f, 1.0f, 1.0f};      // Cyan puro (#00FFFF)
+    private static final float[] SYNTHWAVE_PEAK = {1.0f, 0.0f, 1.0f};        // Magenta (#FF00FF)
+    private static final float[] SYNTHWAVE_WAVE_STRONG = {0.0f, 1.0f, 1.0f}; // Cyan neón
+    private static final float[] SYNTHWAVE_WAVE_NORMAL = {1.0f, 0.2f, 0.8f}; // Pink/Magenta
+    private static final float[] SYNTHWAVE_LIGHTNING_1 = {0.4f, 0.0f, 1.0f}; // Electric Purple
+    private static final float[] SYNTHWAVE_LIGHTNING_2 = {1.0f, 0.0f, 0.6f}; // Hot Pink eléctrico
 
     // Colores activos (se actualizan con setTheme)
     private float[] colorBass = DEFAULT_BASS;
@@ -326,6 +336,17 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
                 colorLightning1 = KAMEHAMEHA_LIGHTNING_1;
                 colorLightning2 = KAMEHAMEHA_LIGHTNING_2;
                 Log.d(TAG, "🐉 Tema KAMEHAMEHA activado - Energía Ki");
+                break;
+
+            case SYNTHWAVE:
+                colorBass = SYNTHWAVE_BASS;
+                colorTreble = SYNTHWAVE_TREBLE;
+                colorPeak = SYNTHWAVE_PEAK;
+                colorWaveStrong = SYNTHWAVE_WAVE_STRONG;
+                colorWaveNormal = SYNTHWAVE_WAVE_NORMAL;
+                colorLightning1 = SYNTHWAVE_LIGHTNING_1;
+                colorLightning2 = SYNTHWAVE_LIGHTNING_2;
+                Log.d(TAG, "🌆 Tema SYNTHWAVE activado - Retrowave 80s");
                 break;
 
             default:
