@@ -30,7 +30,7 @@ import java.nio.FloatBuffer;
 public class LikeButton {
     private static final String TAG = "LikeButton";
 
-    public enum Theme { DEFAULT, ABYSSIA, PYRALIS, ADVENTURE_TIME, GOKU, SYNTHWAVE }
+    public enum Theme { DEFAULT, ABYSSIA, PYRALIS, ADVENTURE_TIME, GOKU, SYNTHWAVE, COSMOS }
     private Theme currentTheme = Theme.DEFAULT;
 
     private float x = 0.85f;
@@ -298,6 +298,9 @@ public class LikeButton {
                 break;
             case SYNTHWAVE:
                 drawSynthwaveSunProcedural(mvpMatrix, pulse);
+                break;
+            case COSMOS:
+                drawCosmosStarProcedural(mvpMatrix, pulse);
                 break;
         }
     }
@@ -685,6 +688,161 @@ public class LikeButton {
             GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
             GLES30.glDisableVertexAttribArray(positionHandleColor);
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ⭐ COSMOS STAR - Saint Seiya (Procedural)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // Colores COSMOS (dorado/púrpura celestial)
+    private static final float[] cosmosGold = {1.0f, 0.84f, 0.0f};      // Dorado (#FFD700)
+    private static final float[] cosmosPurple = {0.58f, 0.44f, 0.86f}; // Púrpura (#9370DB)
+    private static final float[] cosmosGlow = {0.8f, 0.6f, 1.0f};       // Glow púrpura claro
+
+    private void drawCosmosStarProcedural(float[] mvpMatrix, float pulse) {
+        GLES30.glUseProgram(programIdColor);
+        float scale = size * (1.0f + pulse * 0.15f);
+        float currentY = y + floatOffset;
+
+        // 1. Glow púrpura exterior
+        if (!isOnCooldown) {
+            drawCosmosGlow(mvpMatrix, scale * 2.0f, 0.12f, pulse);
+            drawCosmosGlow(mvpMatrix, scale * 1.5f, 0.25f, pulse);
+        }
+
+        // 2. Estrella de 5 puntas (pentagrama)
+        drawCosmosStar5Points(mvpMatrix, scale, currentY, pulse);
+
+        // 3. Centro brillante
+        drawCosmosCore(mvpMatrix, scale * 0.4f, currentY, pulse);
+    }
+
+    private void drawCosmosGlow(float[] mvpMatrix, float glowSize, float alpha, float pulse) {
+        float currentY = y + floatOffset;
+
+        // Círculo para glow
+        int segments = 32;
+        float[] glowVerts = new float[(segments + 2) * 2];
+        glowVerts[0] = 0f; glowVerts[1] = 0f;
+        for (int i = 0; i <= segments; i++) {
+            float angle = (float) (2.0 * Math.PI * i / segments);
+            glowVerts[(i + 1) * 2] = (float) Math.cos(angle);
+            glowVerts[(i + 1) * 2 + 1] = (float) Math.sin(angle);
+        }
+
+        ByteBuffer bb = ByteBuffer.allocateDirect(glowVerts.length * 4);
+        bb.order(ByteOrder.nativeOrder());
+        FloatBuffer glowBuffer = bb.asFloatBuffer();
+        glowBuffer.put(glowVerts);
+        glowBuffer.position(0);
+
+        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
+        android.opengl.Matrix.translateM(modelMatrix, 0, x, currentY, 0);
+        android.opengl.Matrix.scaleM(modelMatrix, 0, glowSize, glowSize, 1);
+        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandleColor, 1, false, finalMatrix, 0);
+
+        // Glow púrpura pulsante
+        colorCache[0] = cosmosGlow[0];
+        colorCache[1] = cosmosGlow[1];
+        colorCache[2] = cosmosGlow[2];
+        colorCache[3] = alpha * (0.7f + pulse * 0.3f);
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+
+        GLES30.glEnableVertexAttribArray(positionHandleColor);
+        GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, glowBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, segments + 2);
+        GLES30.glDisableVertexAttribArray(positionHandleColor);
+    }
+
+    private void drawCosmosStar5Points(float[] mvpMatrix, float scale, float currentY, float pulse) {
+        // Estrella de 5 puntas (10 vértices + centro)
+        float[] starVerts = new float[22];  // (10 + 1) * 2
+        starVerts[0] = 0f; starVerts[1] = 0f;  // Centro
+
+        float outerRadius = 1.0f;
+        float innerRadius = 0.4f;
+
+        for (int i = 0; i < 10; i++) {
+            float angle = (float) (Math.PI / 2 + 2 * Math.PI * i / 10);  // Empezar desde arriba
+            float radius = (i % 2 == 0) ? outerRadius : innerRadius;
+            starVerts[(i + 1) * 2] = (float) (Math.cos(angle) * radius);
+            starVerts[(i + 1) * 2 + 1] = (float) (Math.sin(angle) * radius);
+        }
+
+        ByteBuffer bb = ByteBuffer.allocateDirect(starVerts.length * 4);
+        bb.order(ByteOrder.nativeOrder());
+        FloatBuffer starBuffer = bb.asFloatBuffer();
+        starBuffer.put(starVerts);
+        starBuffer.position(0);
+
+        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
+        android.opengl.Matrix.translateM(modelMatrix, 0, x, currentY, 0);
+        android.opengl.Matrix.scaleM(modelMatrix, 0, scale, scale, 1);
+        // Rotación sutil con el tiempo
+        float rotation = pulsePhase * 0.3f;
+        android.opengl.Matrix.rotateM(modelMatrix, 0, rotation * 57.3f, 0, 0, 1);
+        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandleColor, 1, false, finalMatrix, 0);
+
+        // Color dorado brillante
+        float brightness = 0.85f + pulse * 0.15f;
+        colorCache[0] = cosmosGold[0] * brightness;
+        colorCache[1] = cosmosGold[1] * brightness;
+        colorCache[2] = cosmosGold[2] * brightness;
+        colorCache[3] = isOnCooldown ? 0.4f : (isPressed ? 1.0f : 0.95f);
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+
+        GLES30.glEnableVertexAttribArray(positionHandleColor);
+        GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, starBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 11);
+
+        // Borde púrpura
+        colorCache[0] = cosmosPurple[0];
+        colorCache[1] = cosmosPurple[1];
+        colorCache[2] = cosmosPurple[2];
+        colorCache[3] = 0.8f;
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+        GLES30.glLineWidth(2.0f);
+        GLES30.glDrawArrays(GLES30.GL_LINE_LOOP, 1, 10);
+
+        GLES30.glDisableVertexAttribArray(positionHandleColor);
+    }
+
+    private void drawCosmosCore(float[] mvpMatrix, float coreSize, float currentY, float pulse) {
+        // Centro brillante blanco-dorado
+        int segments = 16;
+        float[] coreVerts = new float[(segments + 2) * 2];
+        coreVerts[0] = 0f; coreVerts[1] = 0f;
+        for (int i = 0; i <= segments; i++) {
+            float angle = (float) (2.0 * Math.PI * i / segments);
+            coreVerts[(i + 1) * 2] = (float) Math.cos(angle);
+            coreVerts[(i + 1) * 2 + 1] = (float) Math.sin(angle);
+        }
+
+        ByteBuffer bb = ByteBuffer.allocateDirect(coreVerts.length * 4);
+        bb.order(ByteOrder.nativeOrder());
+        FloatBuffer coreBuffer = bb.asFloatBuffer();
+        coreBuffer.put(coreVerts);
+        coreBuffer.position(0);
+
+        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
+        android.opengl.Matrix.translateM(modelMatrix, 0, x, currentY, 0);
+        android.opengl.Matrix.scaleM(modelMatrix, 0, coreSize * (1.0f + pulse * 0.2f), coreSize * (1.0f + pulse * 0.2f), 1);
+        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandleColor, 1, false, finalMatrix, 0);
+
+        // Blanco brillante con tinte dorado
+        colorCache[0] = 1.0f;
+        colorCache[1] = 0.95f;
+        colorCache[2] = 0.8f;
+        colorCache[3] = 0.9f + pulse * 0.1f;
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+
+        GLES30.glEnableVertexAttribArray(positionHandleColor);
+        GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, coreBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, segments + 2);
+        GLES30.glDisableVertexAttribArray(positionHandleColor);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

@@ -15,6 +15,7 @@ import com.secret.blackholeglow.scenes.LabScene;
 import com.secret.blackholeglow.scenes.GokuScene;
 import com.secret.blackholeglow.scenes.AdventureTimeScene;
 import com.secret.blackholeglow.scenes.NeonCityScene;
+import com.secret.blackholeglow.scenes.SaintSeiyaScene;
 import com.secret.blackholeglow.sharing.LikeButton;
 import com.secret.blackholeglow.scenes.WallpaperScene;
 import com.secret.blackholeglow.systems.AspectRatioManager;
@@ -209,6 +210,9 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             } else if (scene instanceof NeonCityScene) {
                 // 🌆 Neon City tiene ecualizador SYNTHWAVE
                 ((NeonCityScene) scene).updateMusicBands(bands);
+            } else if (scene instanceof SaintSeiyaScene) {
+                // ⭐ Saint Seiya tiene ecualizador COSMOS
+                ((SaintSeiyaScene) scene).updateMusicBands(bands);
             }
         }
         sceneFactory.updateCurrentScene(deltaTime);
@@ -381,6 +385,8 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
                 songSharing.setLikeButtonTheme(LikeButton.Theme.GOKU);
             } else if (sceneName.equals("NEON_CITY") || sceneName.toLowerCase().contains("neon")) {
                 songSharing.setLikeButtonTheme(LikeButton.Theme.SYNTHWAVE);
+            } else if (sceneName.equals("SAINT_SEIYA") || sceneName.toLowerCase().contains("seiya")) {
+                songSharing.setLikeButtonTheme(LikeButton.Theme.COSMOS);
             } else {
                 songSharing.setLikeButtonTheme(LikeButton.Theme.DEFAULT);
             }

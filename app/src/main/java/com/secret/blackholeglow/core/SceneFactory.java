@@ -9,6 +9,7 @@ import com.secret.blackholeglow.scenes.AdventureTimeScene;
 import com.secret.blackholeglow.scenes.GokuScene;
 import com.secret.blackholeglow.scenes.LabScene;
 import com.secret.blackholeglow.scenes.NeonCityScene;
+import com.secret.blackholeglow.scenes.SaintSeiyaScene;
 import com.secret.blackholeglow.scenes.OceanFloorScene;
 import com.secret.blackholeglow.scenes.WallpaperScene;
 import com.secret.blackholeglow.systems.EventBus;
@@ -112,6 +113,8 @@ public class SceneFactory {
         registerScene("ADVENTURE_TIME", AdventureTimeScene.class);
         // 🚗 Neon City: Synthwave DeLorean en carretera infinita
         registerScene("NEON_CITY", NeonCityScene.class);
+        // ⭐ Saint Seiya: Cosmos power con caballeros del zodiaco
+        registerScene("SAINT_SEIYA", SaintSeiyaScene.class);
         Log.d(TAG, "🎭 " + registeredScenes.size() + " escenas registradas");
     }
 

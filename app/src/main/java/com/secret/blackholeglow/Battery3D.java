@@ -46,6 +46,7 @@ public class Battery3D implements SceneObject {
     public static final int THEME_PYRALIS = 1;
     public static final int THEME_KAMEHAMEHA = 2;
     public static final int THEME_SYNTHWAVE = 3;
+    public static final int THEME_COSMOS = 4;
 
     // Colores PYRALIS (Fuego/Plasma)
     private static final int PYRALIS_HIGH = 0xFFFFD700;      // Gold (>50%)
@@ -74,6 +75,13 @@ public class Battery3D implements SceneObject {
     private static final int SYNTHWAVE_GLOW = 0xFFFF00FF;    // Magenta glow
     private static final int SYNTHWAVE_CORE = 0xFFFFB6C1;    // Light Pink (núcleo)
     private static final int KAMEHAMEHA_CORE = 0xFFE1F5FE;   // Light Blue (núcleo)
+
+    // Colores COSMOS (Saint Seiya - Dorado/Púrpura)
+    private static final int COSMOS_HIGH = 0xFFFFD700;       // Gold (>50%)
+    private static final int COSMOS_MED = 0xFF9370DB;        // Medium Purple (20-50%)
+    private static final int COSMOS_LOW = 0xFFFF4500;        // Orange Red (<20%)
+    private static final int COSMOS_GLOW = 0xFF8A2BE2;       // Blue Violet glow
+    private static final int COSMOS_CORE = 0xFFFFF8DC;       // Cornsilk (núcleo dorado claro)
 
     // ═══════════════════════════════════════════════════════════════
     // ESTADO DE BATERÍA
@@ -220,6 +228,10 @@ public class Battery3D implements SceneObject {
             primaryColor = SYNTHWAVE_HIGH;
             glowColor = SYNTHWAVE_GLOW;
             coreColor = SYNTHWAVE_CORE;
+        } else if (theme == THEME_COSMOS) {
+            primaryColor = COSMOS_HIGH;
+            glowColor = COSMOS_GLOW;
+            coreColor = COSMOS_CORE;
         } else {
             primaryColor = ABYSSIA_HIGH;
             glowColor = ABYSSIA_GLOW;
@@ -240,6 +252,10 @@ public class Battery3D implements SceneObject {
             if (level > 50) return SYNTHWAVE_HIGH;
             if (level > 20) return SYNTHWAVE_MED;
             return SYNTHWAVE_LOW;
+        } else if (currentTheme == THEME_COSMOS) {
+            if (level > 50) return COSMOS_HIGH;
+            if (level > 20) return COSMOS_MED;
+            return COSMOS_LOW;
         } else {
             if (level > 50) return ABYSSIA_HIGH;
             if (level > 20) return ABYSSIA_MED;

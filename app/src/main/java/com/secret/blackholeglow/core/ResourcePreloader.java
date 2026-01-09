@@ -110,6 +110,10 @@ public class ResourcePreloader {
                 prepareNeonCitySceneTasks();
                 break;
 
+            case "SAINT_SEIYA":
+                prepareSaintSeiyaSceneTasks();
+                break;
+
             default:
                 // Default: usar Lab
                 prepareLabSceneTasks();
@@ -203,6 +207,19 @@ public class ResourcePreloader {
         // Calcular total
         calculateTotalWeight();
         Log.d(TAG, "NeonCityScene: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    public void prepareSaintSeiyaSceneTasks() {
+        tasks.clear();
+
+        // 1. VIDEO - Saint Seiya desde Supabase (cuando esté disponible)
+        addVideoDownloadTask("Video Saint Seiya", "saintseiya.mp4", 10);
+
+        // Preview es local (preview_saintseiya) - no requiere descarga
+
+        // Calcular total
+        calculateTotalWeight();
+        Log.d(TAG, "SaintSeiyaScene: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
     }
 
     private void calculateTotalWeight() {

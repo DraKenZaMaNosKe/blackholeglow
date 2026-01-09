@@ -70,6 +70,7 @@ public class WallpaperPreferences {
         "GOKU",           // 🐉 Dragon Ball Kamehameha
         "ADVENTURE_TIME", // 🌳 Parallax Hora de Aventura
         "NEON_CITY",      // 🚗 Synthwave DeLorean
+        "SAINT_SEIYA",    // ⭐ Saint Seiya Cosmos
 
         // ═══════════════════════════════════════════
         // 📦 WALLPAPERS LEGADOS (compatibilidad)

@@ -34,7 +34,8 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         ABYSSIA,   // Púrpura bioluminiscente → Turquesa (océano profundo)
         PYRALIS,   // Rojo → Naranja → Amarillo (fuego)
         KAMEHAMEHA, // Azul → Cyan → Blanco (energía Ki)
-        SYNTHWAVE  // Hot Pink → Cyan → Magenta (retrowave 80s)
+        SYNTHWAVE, // Hot Pink → Cyan → Magenta (retrowave 80s)
+        COSMOS     // Azul → Dorado → Púrpura (Saint Seiya cosmos)
     }
 
     private Theme currentTheme = Theme.DEFAULT;
@@ -96,6 +97,15 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     private static final float[] SYNTHWAVE_WAVE_NORMAL = {1.0f, 0.2f, 0.8f}; // Pink/Magenta
     private static final float[] SYNTHWAVE_LIGHTNING_1 = {0.4f, 0.0f, 1.0f}; // Electric Purple
     private static final float[] SYNTHWAVE_LIGHTNING_2 = {1.0f, 0.0f, 0.6f}; // Hot Pink eléctrico
+
+    // === COSMOS (Saint Seiya - Azul → Dorado → Púrpura) ===
+    private static final float[] COSMOS_BASS = {0.2f, 0.3f, 1.0f};           // Azul cosmos profundo
+    private static final float[] COSMOS_TREBLE = {1.0f, 0.84f, 0.0f};        // Dorado celestial (#FFD700)
+    private static final float[] COSMOS_PEAK = {1.0f, 1.0f, 0.8f};           // Blanco dorado brillante
+    private static final float[] COSMOS_WAVE_STRONG = {0.8f, 0.6f, 1.0f};    // Púrpura cósmico
+    private static final float[] COSMOS_WAVE_NORMAL = {0.3f, 0.5f, 1.0f};    // Azul constelación
+    private static final float[] COSMOS_LIGHTNING_1 = {1.0f, 0.9f, 0.3f};    // Rayo dorado
+    private static final float[] COSMOS_LIGHTNING_2 = {0.6f, 0.4f, 1.0f};    // Rayo púrpura
 
     // Colores activos (se actualizan con setTheme)
     private float[] colorBass = DEFAULT_BASS;
@@ -347,6 +357,17 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
                 colorLightning1 = SYNTHWAVE_LIGHTNING_1;
                 colorLightning2 = SYNTHWAVE_LIGHTNING_2;
                 Log.d(TAG, "🌆 Tema SYNTHWAVE activado - Retrowave 80s");
+                break;
+
+            case COSMOS:
+                colorBass = COSMOS_BASS;
+                colorTreble = COSMOS_TREBLE;
+                colorPeak = COSMOS_PEAK;
+                colorWaveStrong = COSMOS_WAVE_STRONG;
+                colorWaveNormal = COSMOS_WAVE_NORMAL;
+                colorLightning1 = COSMOS_LIGHTNING_1;
+                colorLightning2 = COSMOS_LIGHTNING_2;
+                Log.d(TAG, "⭐ Tema COSMOS activado - Saint Seiya Power");
                 break;
 
             default:

@@ -306,6 +306,18 @@ public class WallpaperCatalog {
                 .featured()
                 .build());
 
+        // ⭐ SAINT SEIYA - Caballeros del Zodiaco
+        catalog.add(new WallpaperItem.Builder("⭐ SAINT SEIYA ⭐")
+                .descripcion("¡Enciende tu cosmos! Los Caballeros del Zodiaco " +
+                        "protegen a Athena con energía dorada y constelaciones.")
+                .preview(R.drawable.preview_saintseiya)
+                .sceneName("SAINT_SEIYA")
+                .tier(WallpaperTier.FREE)
+                .badge("⭐ COSMOS")
+                .glow(0xFFFFD700)  // Gold (cosmos)
+                .featured()
+                .build());
+
         Log.d(TAG, "📚 Catálogo inicializado: " + catalog.size() + " wallpapers");
     }
 }
