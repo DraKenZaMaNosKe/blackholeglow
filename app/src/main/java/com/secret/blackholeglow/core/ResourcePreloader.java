@@ -8,6 +8,7 @@ import android.os.HandlerThread;
 import android.util.Log;
 
 import com.secret.blackholeglow.R;
+import com.secret.blackholeglow.image.ImageDownloadManager;
 import com.secret.blackholeglow.video.VideoDownloadManager;
 
 import java.util.ArrayList;
@@ -212,14 +213,21 @@ public class ResourcePreloader {
     public void prepareSaintSeiyaSceneTasks() {
         tasks.clear();
 
-        // 1. VIDEO - Saint Seiya desde Supabase (cuando esté disponible)
-        addVideoDownloadTask("Video Saint Seiya", "saintseiya.mp4", 10);
+        // ═══════════════════════════════════════════════════════════════
+        // SISTEMA 2 CAPAS: Fondo + Seiya separados
+        // ═══════════════════════════════════════════════════════════════
 
-        // Preview es local (preview_saintseiya) - no requiere descarga
+        // CAPA 1: Fondo cosmos
+        addImageDownloadTask("Fondo Universo", "fondouniverso.png", 8);
+        addImageDownloadTask("Fondo Depth", "fondouniverso3d.png", 2);
+
+        // CAPA 2: Seiya (personaje sin fondo)
+        addImageDownloadTask("Seiya Solo", "seiya_solo.png", 5);
+        addImageDownloadTask("Seiya Depth", "seiya_depth.png", 3);  // Depth existente
 
         // Calcular total
         calculateTotalWeight();
-        Log.d(TAG, "SaintSeiyaScene: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+        Log.d(TAG, "SaintSeiyaScene: " + tasks.size() + " recursos 2-capas (peso: " + totalTasks + ")");
     }
 
     private void calculateTotalWeight() {
@@ -376,20 +384,21 @@ public class ResourcePreloader {
     }
 
     /**
-     * Agrega tarea de descarga de imagen desde Supabase
-     * Si la imagen ya existe, la tarea completa inmediatamente
+     * Agrega tarea de descarga de imagen desde Supabase.
+     * Usa ImageDownloadManager (especialista en imágenes).
+     * Si la imagen ya existe, la tarea completa inmediatamente.
      */
     private void addImageDownloadTask(String name, String imageFileName, int weight) {
         tasks.add(new PreloadTask(name, () -> {
-            VideoDownloadManager downloader = VideoDownloadManager.getInstance(context);
+            ImageDownloadManager downloader = ImageDownloadManager.getInstance(context);
 
             if (downloader.isImageAvailable(imageFileName)) {
-                Log.d(TAG, "Imagen ya descargada: " + imageFileName);
+                Log.d(TAG, "🖼️ Imagen ya descargada: " + imageFileName);
                 return;
             }
 
             // Imagen no disponible - descargar
-            Log.d(TAG, "Descargando imagen: " + imageFileName);
+            Log.d(TAG, "🖼️ Descargando imagen: " + imageFileName);
             boolean success = downloader.downloadImageSync(imageFileName, percent -> {
                 // Actualizar progreso de descarga
                 String progressText = name + " (" + percent + "%)";
@@ -401,7 +410,7 @@ public class ResourcePreloader {
             });
 
             if (!success) {
-                Log.e(TAG, "Error descargando imagen: " + imageFileName);
+                Log.e(TAG, "❌ Error descargando imagen: " + imageFileName);
             }
         }, weight));
     }

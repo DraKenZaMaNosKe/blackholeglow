@@ -94,6 +94,7 @@ public class NeonCityScene extends WallpaperScene {
         // ⏰ Reloj con tema SYNTHWAVE (Hot Pink neón)
         try {
             clock = new Clock3D(context, Clock3D.THEME_SYNTHWAVE, 0f, 0.75f);
+            clock.setShowMilliseconds(true);
             Log.d(TAG, "✅ Reloj SYNTHWAVE activado");
         } catch (Exception e) {
             Log.e(TAG, "❌ Error Clock3D: " + e.getMessage());

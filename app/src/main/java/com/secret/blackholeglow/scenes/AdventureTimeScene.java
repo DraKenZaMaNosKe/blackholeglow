@@ -94,6 +94,7 @@ public class AdventureTimeScene extends WallpaperScene {
         // ⏰ Reloj con tema PYRALIS (dorado cálido)
         try {
             clock = new Clock3D(context, Clock3D.THEME_PYRALIS, 0f, 0.75f);
+            clock.setShowMilliseconds(true);
             Log.d(TAG, "✅ Reloj PYRALIS activado");
         } catch (Exception e) {
             Log.e(TAG, "❌ Error Clock3D: " + e.getMessage());

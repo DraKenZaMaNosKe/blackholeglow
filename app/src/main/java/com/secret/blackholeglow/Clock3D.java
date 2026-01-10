@@ -93,6 +93,8 @@ public class Clock3D implements SceneObject {
     // Formato de hora
     private boolean use24HourFormat = true;
     private boolean showSeconds = false;
+    private boolean showMilliseconds = false;
+    private long lastMillis = -1;
 
     // ═══════════════════════════════════════════════════════════════
     // SHADERS CON EFECTO GLOW
@@ -291,8 +293,12 @@ public class Clock3D implements SceneObject {
         int hour = cal.get(use24HourFormat ? Calendar.HOUR_OF_DAY : Calendar.HOUR);
         int minute = cal.get(Calendar.MINUTE);
         int second = cal.get(Calendar.SECOND);
+        int millis = cal.get(Calendar.MILLISECOND);
 
-        if (showSeconds) {
+        if (showMilliseconds) {
+            // Formato: HH:MM:SS.mmm
+            return String.format("%02d:%02d:%02d.%03d", hour, minute, second, millis);
+        } else if (showSeconds) {
             return String.format("%02d:%02d:%02d", hour, minute, second);
         } else {
             return String.format("%02d:%02d", hour, minute);
@@ -302,15 +308,34 @@ public class Clock3D implements SceneObject {
     private void checkTimeUpdate() {
         Calendar cal = Calendar.getInstance();
         int currentMinute = cal.get(Calendar.MINUTE);
+        long currentMillis = System.currentTimeMillis();
 
-        // Actualizar solo cuando cambia el minuto (o segundo si showSeconds)
-        if (showSeconds || currentMinute != lastMinute) {
-            lastMinute = currentMinute;
+        // Milisegundos: actualizar cada ~33ms (~30 FPS para los números)
+        if (showMilliseconds) {
+            if (currentMillis - lastMillis >= 33) {
+                lastMillis = currentMillis;
+                currentTime = getCurrentTimeString();
+                needsUpdate = true;
+            }
+            return;
+        }
+
+        // Segundos: actualizar cada segundo
+        if (showSeconds) {
+            int currentSecond = cal.get(Calendar.SECOND);
             String newTime = getCurrentTimeString();
             if (!newTime.equals(currentTime)) {
                 currentTime = newTime;
                 needsUpdate = true;
             }
+            return;
+        }
+
+        // Solo minutos: actualizar cuando cambia el minuto
+        if (currentMinute != lastMinute) {
+            lastMinute = currentMinute;
+            currentTime = getCurrentTimeString();
+            needsUpdate = true;
         }
     }
 
@@ -462,6 +487,15 @@ public class Clock3D implements SceneObject {
      */
     public void setShowSeconds(boolean show) {
         this.showSeconds = show;
+        needsUpdate = true;
+    }
+
+    /**
+     * Muestra/oculta los milisegundos (incluye segundos automáticamente)
+     */
+    public void setShowMilliseconds(boolean show) {
+        this.showMilliseconds = show;
+        if (show) this.showSeconds = true;  // Milisegundos implica segundos
         needsUpdate = true;
     }
 

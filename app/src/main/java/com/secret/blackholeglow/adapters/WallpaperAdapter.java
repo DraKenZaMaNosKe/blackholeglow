@@ -26,7 +26,7 @@ import com.secret.blackholeglow.models.WallpaperTier;
 import com.secret.blackholeglow.activities.WallpaperPreviewActivity;
 import com.secret.blackholeglow.WallpaperPreferences;
 import com.secret.blackholeglow.ui.GradientTextView;
-import com.secret.blackholeglow.video.VideoDownloadManager;
+import com.secret.blackholeglow.image.ImageDownloadManager;
 import android.graphics.BitmapFactory;
 import java.io.File;
 import java.util.HashMap;
@@ -474,7 +474,7 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
 
         if (remoteFile != null) {
             // Verificar si el preview remoto está descargado
-            VideoDownloadManager downloader = VideoDownloadManager.getInstance(context);
+            ImageDownloadManager downloader = ImageDownloadManager.getInstance(context);
             String localPath = downloader.getImagePath(remoteFile);
 
             if (localPath != null) {

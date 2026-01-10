@@ -95,6 +95,7 @@ public class GokuScene extends WallpaperScene {
         // ⏰ Reloj con tema KAMEHAMEHA (azul energía)
         try {
             clock = new Clock3D(context, Clock3D.THEME_KAMEHAMEHA, 0f, 0.75f);
+            clock.setShowMilliseconds(true);
             Log.d(TAG, "✅ Reloj KAMEHAMEHA activado");
         } catch (Exception e) {
             Log.e(TAG, "❌ Error Clock3D: " + e.getMessage());

@@ -1,27 +1,32 @@
 package com.secret.blackholeglow.scenes;
 
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.opengl.GLES30;
 import android.opengl.GLUtils;
+import android.opengl.Matrix;
 import android.util.Log;
 
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.Battery3D;
 import com.secret.blackholeglow.Clock3D;
 import com.secret.blackholeglow.EqualizerBarsDJ;
+import com.secret.blackholeglow.image.ImageDownloadManager;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.nio.ShortBuffer;
 
 /**
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║                    ⭐ SAINT SEIYA SCENE - Cosmos                         ║
+ * ║           ⭐ SAINT SEIYA SCENE - Doble Capa 3D                           ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  Caballeros del Zodiaco - Shader cosmos + Imagen de Seiya.               ║
- * ║  Fondo: Nebulosa animada con estrellas (ShaderToy optimizado).           ║
+ * ║  CAPA 1: Fondo Cosmos (mesh 3D con depth - movimiento sutil)             ║
+ * ║  CAPA 2: Seiya 3D (mesh con depth - movimiento principal)                ║
+ * ║                                                                          ║
+ * ║  Ambas capas usan mesh 3D con desplazamiento de vértices.                ║
+ * ║  El fondo se mueve menos que Seiya para crear profundidad.               ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 public class SaintSeiyaScene extends WallpaperScene {
@@ -31,29 +36,96 @@ public class SaintSeiyaScene extends WallpaperScene {
     private EqualizerBarsDJ equalizerDJ;
     private Clock3D clock;
     private Battery3D battery;
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🏛️ IMAGEN DE FONDO (Santuario)
-    // ═══════════════════════════════════════════════════════════════════════
-    private int bgTexture = -1;
-    private int bgShaderProgram = -1;
-    private FloatBuffer bgQuadBuffer;
-    private int bgPositionLoc;
-    private int bgTexCoordLoc;
-    private int bgTextureLoc;
     private float time = 0f;
 
     // ═══════════════════════════════════════════════════════════════════════
-    // 🖼️ IMAGEN DE SEIYA
+    // 🖼️ TEXTURAS - 2 CAPAS
     // ═══════════════════════════════════════════════════════════════════════
-    private int seiyaTexture = -1;
-    private int seiyaShaderProgram = -1;
-    private FloatBuffer seiyaQuadBuffer;
-    private int seiyaPositionLoc;
-    private int seiyaTexCoordLoc;
-    private int seiyaTextureLoc;
-    private int seiyaAlphaLoc;
-    private int seiyaTimeLoc;
+    private int texBackground = -1;
+    private int texBackgroundDepth = -1;
+    private int texSeiya = -1;
+    private int texSeiyaDepth = -1;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎲 MESH 3D - Compartido por ambas capas
+    // ═══════════════════════════════════════════════════════════════════════
+    private static final int GRID_SIZE = 50;
+    private static final int VERTEX_COUNT = GRID_SIZE * GRID_SIZE;
+    private static final int INDEX_COUNT = (GRID_SIZE - 1) * (GRID_SIZE - 1) * 6;
+
+    private FloatBuffer vertexBuffer;
+    private FloatBuffer texCoordBuffer;
+    private ShortBuffer indexBuffer;
+
+    private int meshShaderProgram = -1;
+    private int positionLoc, texCoordLoc, mvpMatrixLoc, imageLoc, depthLoc, depthStrengthLoc;
+    private int timeLoc, heatDistortionLoc, cosmosAuraLoc, fistPosLoc;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 📐 MATRICES 3D
+    // ═══════════════════════════════════════════════════════════════════════
+    private float[] projectionMatrix = new float[16];
+    private float[] viewMatrix = new float[16];
+    private float[] modelMatrix = new float[16];
+    private float[] mvpMatrix = new float[16];
+    private float[] tempMatrix = new float[16];
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎭 CONFIGURACIÓN 3D - Ángulos separados para cada capa
+    // ═══════════════════════════════════════════════════════════════════════
+    private float cameraAngleX = 0f;  // Para Seiya (automático)
+    private float cameraAngleY = 0f;
+
+    private float bgAngleX = 0f;      // Para Fondo (controlado por touch)
+    private float bgAngleY = 0f;
+
+    // Configuración para cada capa
+    private static final float BG_DEPTH_STRENGTH = 0.15f;    // Fondo: relieve sutil
+    private static final float BG_CAMERA_DISTANCE = 2.8f;    // Fondo: más lejos
+    private static final float BG_ANGLE_MULT = 0.4f;         // Fondo: se mueve menos
+    private static final float BG_SCALE = 0.72f;             // Fondo: más compacto
+    private static final float BG_HEAT_DISTORTION = 0.5f;    // Fondo: distorsión sutil
+
+    private static final float SEIYA_DEPTH_STRENGTH = 0.25f; // Seiya: relieve más pronunciado
+    private static final float SEIYA_CAMERA_DISTANCE = 2.0f; // Seiya: más cerca
+    private static final float SEIYA_SCALE = 0.48f;          // Seiya: un poco más lejos
+    private static final float SEIYA_HEAT_DISTORTION = 0.0f; // Seiya: SIN distorsión (nítido)
+    private static final float SEIYA_COSMOS_AURA = 1.0f;     // Seiya: AURA DE COSMOS activada
+
+    // Ángulos base SEIYA (calibrado)
+    private static final float BASE_ANGLE_X = 13.4f;
+    private static final float BASE_ANGLE_Y = 18.0f;
+
+    // Ángulos base FONDO (calibrado)
+    private static final float BG_BASE_ANGLE_X = 11.6f;
+    private static final float BG_BASE_ANGLE_Y = -2.3f;
+
+    // Movimiento sutil
+    private static final float SWAY_ANGLE_X = 3f;
+    private static final float SWAY_ANGLE_Y = 2f;
+    private static final float SPEED_X = 0.15f;
+    private static final float SPEED_Y = 0.12f;
+
+    // Touch para calibración
+    private boolean touchMode = false;  // DESHABILITADO - puño calibrado
+    private float fistX = 0.675f, fistY = 0.253f;  // Posición del puño CALIBRADA
+    private boolean calibratingSeiya = true;
+    private float touchX = 0f, touchY = 0f;
+    private float lastTouchX = 0f, lastTouchY = 0f;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ✨ PARTÍCULAS MÁGICAS - Sistema simple y eficiente
+    // ═══════════════════════════════════════════════════════════════════════
+    private static final int MAX_PARTICLES = 30;  // Máximo de partículas
+    private float[] particleX = new float[MAX_PARTICLES];
+    private float[] particleY = new float[MAX_PARTICLES];
+    private float[] particleVX = new float[MAX_PARTICLES];
+    private float[] particleVY = new float[MAX_PARTICLES];
+    private float[] particleLife = new float[MAX_PARTICLES];  // 0-1, cuando llega a 0 muere
+    private float[] particleSize = new float[MAX_PARTICLES];
+    private int particleShader = -1;
+    private int particlePosLoc, particleColorLoc, particlePointSizeLoc;
+    private java.util.Random random = new java.util.Random();
 
     @Override
     public String getName() {
@@ -62,7 +134,7 @@ public class SaintSeiyaScene extends WallpaperScene {
 
     @Override
     public String getDescription() {
-        return "Saint Seiya - Cosmos Power";
+        return "Saint Seiya - Doble Capa 3D";
     }
 
     @Override
@@ -72,281 +144,452 @@ public class SaintSeiyaScene extends WallpaperScene {
 
     @Override
     protected void setupScene() {
-        Log.d(TAG, "⭐ Configurando Saint Seiya Cosmos...");
+        Log.d(TAG, "⭐ Configurando Saint Seiya DOBLE CAPA 3D...");
 
-        // 1. Imagen de fondo (Santuario)
-        setupBackgroundShader();
-        loadBackgroundTexture();
-        createBackgroundQuad();
+        // 1. Crear mesh 3D (compartido)
+        createMesh();
 
-        // 2. Shader y textura de Seiya
-        setupSeiyaShader();
-        loadSeiyaTexture();
-        createSeiyaQuad();
+        // 2. Shader con depth displacement
+        setupMeshShader();
 
-        // 🎵 Ecualizador con tema COSMOS
+        // 3. Cargar texturas
+        loadTextures();
+
+        // 4. Inicializar matrices
+        Matrix.setIdentityM(modelMatrix, 0);
+
+        // 🎵 Ecualizador
         try {
             equalizerDJ = new EqualizerBarsDJ();
             equalizerDJ.initialize();
             equalizerDJ.setTheme(EqualizerBarsDJ.Theme.COSMOS);
             equalizerDJ.setScreenSize(screenWidth, screenHeight);
-            Log.d(TAG, "✅ Ecualizador COSMOS activado");
         } catch (Exception e) {
-            Log.e(TAG, "❌ Error EqualizerBarsDJ: " + e.getMessage());
+            Log.e(TAG, "Error EqualizerBarsDJ: " + e.getMessage());
         }
 
-        // ⏰ Reloj con tema COSMOS
+        // ⏰ Reloj
         try {
             clock = new Clock3D(context, Clock3D.THEME_COSMOS, 0f, 0.75f);
-            Log.d(TAG, "✅ Reloj COSMOS activado");
+            clock.setShowMilliseconds(true);  // ⏱️ Mostrar HH:MM:SS.mmm
         } catch (Exception e) {
-            Log.e(TAG, "❌ Error Clock3D: " + e.getMessage());
+            Log.e(TAG, "Error Clock3D: " + e.getMessage());
         }
 
-        // 🔋 Batería con tema COSMOS
+        // 🔋 Batería
         try {
             battery = new Battery3D(context, Battery3D.THEME_COSMOS, 0.81f, -0.34f);
-            Log.d(TAG, "✅ Batería COSMOS activada");
         } catch (Exception e) {
-            Log.e(TAG, "❌ Error Battery3D: " + e.getMessage());
+            Log.e(TAG, "Error Battery3D: " + e.getMessage());
         }
 
-        Log.d(TAG, "⭐ Saint Seiya Cosmos listo!");
+        Log.d(TAG, "⭐ Saint Seiya DOBLE CAPA 3D listo!");
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // 🏛️ BACKGROUND SHADER (Imagen fija del Santuario)
+    // 🎲 CREAR MESH 3D
     // ═══════════════════════════════════════════════════════════════════════
 
-    private void setupBackgroundShader() {
-        String vertexShader =
-            "attribute vec4 aPosition;\n" +
-            "attribute vec2 aTexCoord;\n" +
-            "varying vec2 vTexCoord;\n" +
-            "void main() {\n" +
-            "    gl_Position = aPosition;\n" +
-            "    vTexCoord = aTexCoord;\n" +
-            "}\n";
+    private void createMesh() {
+        float[] positions = new float[VERTEX_COUNT * 2];
+        float[] texCoords = new float[VERTEX_COUNT * 2];
+        short[] indices = new short[INDEX_COUNT];
 
-        String fragmentShader =
-            "precision mediump float;\n" +
-            "varying vec2 vTexCoord;\n" +
-            "uniform sampler2D uTexture;\n" +
-            "void main() {\n" +
-            "    gl_FragColor = texture2D(uTexture, vTexCoord);\n" +
-            "}\n";
+        int posIndex = 0, texIndex = 0;
 
-        bgShaderProgram = createProgram(vertexShader, fragmentShader);
-        bgPositionLoc = GLES30.glGetAttribLocation(bgShaderProgram, "aPosition");
-        bgTexCoordLoc = GLES30.glGetAttribLocation(bgShaderProgram, "aTexCoord");
-        bgTextureLoc = GLES30.glGetUniformLocation(bgShaderProgram, "uTexture");
+        for (int y = 0; y < GRID_SIZE; y++) {
+            for (int x = 0; x < GRID_SIZE; x++) {
+                float px = (float) x / (GRID_SIZE - 1) * 2f - 1f;
+                float py = (float) y / (GRID_SIZE - 1) * 2f - 1f;
+                positions[posIndex++] = px;
+                positions[posIndex++] = py;
 
-        Log.d(TAG, "✅ Shader Background compilado");
-    }
-
-    private void loadBackgroundTexture() {
-        try {
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inScaled = false;
-            Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(),
-                R.drawable.saintseiya_background, options);
-
-            if (bitmap != null) {
-                int[] textures = new int[1];
-                GLES30.glGenTextures(1, textures, 0);
-                bgTexture = textures[0];
-
-                GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, bgTexture);
-                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
-                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
-                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
-                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
-
-                GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0);
-
-                Log.d(TAG, "✅ Textura Background cargada (" + bitmap.getWidth() + "x" + bitmap.getHeight() + ")");
-                bitmap.recycle();
+                float u = (float) x / (GRID_SIZE - 1);
+                float v = 1f - (float) y / (GRID_SIZE - 1);
+                texCoords[texIndex++] = u;
+                texCoords[texIndex++] = v;
             }
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Error cargando background: " + e.getMessage());
         }
-    }
 
-    private void createBackgroundQuad() {
-        // Quad con posición (x,y) y texcoord (u,v)
-        float[] quadVerts = {
-            -1f, -1f, 0f, 1f,  // bottom-left
-             1f, -1f, 1f, 1f,  // bottom-right
-            -1f,  1f, 0f, 0f,  // top-left
-             1f,  1f, 1f, 0f   // top-right
-        };
-        ByteBuffer bb = ByteBuffer.allocateDirect(quadVerts.length * 4);
-        bb.order(ByteOrder.nativeOrder());
-        bgQuadBuffer = bb.asFloatBuffer();
-        bgQuadBuffer.put(quadVerts);
-        bgQuadBuffer.position(0);
+        int idx = 0;
+        for (int y = 0; y < GRID_SIZE - 1; y++) {
+            for (int x = 0; x < GRID_SIZE - 1; x++) {
+                int tl = y * GRID_SIZE + x;
+                int tr = tl + 1;
+                int bl = (y + 1) * GRID_SIZE + x;
+                int br = bl + 1;
+                indices[idx++] = (short) tl;
+                indices[idx++] = (short) bl;
+                indices[idx++] = (short) tr;
+                indices[idx++] = (short) tr;
+                indices[idx++] = (short) bl;
+                indices[idx++] = (short) br;
+            }
+        }
+
+        ByteBuffer bb1 = ByteBuffer.allocateDirect(positions.length * 4);
+        bb1.order(ByteOrder.nativeOrder());
+        vertexBuffer = bb1.asFloatBuffer();
+        vertexBuffer.put(positions);
+        vertexBuffer.position(0);
+
+        ByteBuffer bb2 = ByteBuffer.allocateDirect(texCoords.length * 4);
+        bb2.order(ByteOrder.nativeOrder());
+        texCoordBuffer = bb2.asFloatBuffer();
+        texCoordBuffer.put(texCoords);
+        texCoordBuffer.position(0);
+
+        ByteBuffer bb3 = ByteBuffer.allocateDirect(indices.length * 2);
+        bb3.order(ByteOrder.nativeOrder());
+        indexBuffer = bb3.asShortBuffer();
+        indexBuffer.put(indices);
+        indexBuffer.position(0);
+
+        Log.d(TAG, "✅ Mesh 3D: " + VERTEX_COUNT + " vértices");
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // 🖼️ SEIYA SHADER & TEXTURE
+    // 🎨 SHADER - OPTIMIZADO
     // ═══════════════════════════════════════════════════════════════════════
 
-    private void setupSeiyaShader() {
+    private void setupMeshShader() {
         String vertexShader =
-            "attribute vec4 aPosition;\n" +
-            "attribute vec2 aTexCoord;\n" +
-            "varying vec2 vTexCoord;\n" +
-            "void main() {\n" +
-            "    gl_Position = aPosition;\n" +
-            "    vTexCoord = aTexCoord;\n" +
-            "}\n";
-
-        // Fragment shader COSMOS CLASICO - Aura azul suave con smoothstep
-        String fragmentShader =
-            "precision mediump float;\n" +
-            "varying vec2 vTexCoord;\n" +
-            "uniform sampler2D uTexture;\n" +
-            "uniform float uAlpha;\n" +
-            "uniform float uTime;\n" +
+            "#version 300 es\n" +
+            "precision highp float;\n" +
+            "in vec2 aPosition;\n" +
+            "in vec2 aTexCoord;\n" +
+            "out vec2 vTexCoord;\n" +
+            "uniform mat4 uMVPMatrix;\n" +
+            "uniform sampler2D uDepth;\n" +
+            "uniform float uDepthStrength;\n" +
             "\n" +
             "void main() {\n" +
-            "    vec4 color = texture2D(uTexture, vTexCoord);\n" +
-            "    vec2 ps = vec2(0.004, 0.005);\n" +
-            "    \n" +
-            "    // Deteccion de bordes suave (4 samples)\n" +
-            "    float aU = texture2D(uTexture, vTexCoord + vec2(0.0, ps.y)).a;\n" +
-            "    float aD = texture2D(uTexture, vTexCoord - vec2(0.0, ps.y)).a;\n" +
-            "    float aL = texture2D(uTexture, vTexCoord - vec2(ps.x, 0.0)).a;\n" +
-            "    float aR = texture2D(uTexture, vTexCoord + vec2(ps.x, 0.0)).a;\n" +
-            "    float near = (aU + aD + aL + aR) * 0.25;\n" +
-            "    \n" +
-            "    // Capa exterior (mas lejos)\n" +
-            "    float aU2 = texture2D(uTexture, vTexCoord + vec2(0.0, ps.y * 2.5)).a;\n" +
-            "    float aD2 = texture2D(uTexture, vTexCoord - vec2(0.0, ps.y * 2.5)).a;\n" +
-            "    float aL2 = texture2D(uTexture, vTexCoord - vec2(ps.x * 2.5, 0.0)).a;\n" +
-            "    float aR2 = texture2D(uTexture, vTexCoord + vec2(ps.x * 2.5, 0.0)).a;\n" +
-            "    float far = (aU2 + aD2 + aL2 + aR2) * 0.25;\n" +
-            "    \n" +
-            "    // Bordes suavizados con smoothstep\n" +
-            "    float edgeInner = smoothstep(0.0, 0.5, near) * smoothstep(0.5, 0.0, color.a);\n" +
-            "    float edgeOuter = smoothstep(0.0, 0.4, far) * smoothstep(0.3, 0.0, color.a);\n" +
-            "    \n" +
-            "    // Tiempo suavizado para animacion fluida\n" +
-            "    float t = uTime;\n" +
-            "    \n" +
-            "    // Llamas cosmos - smoothstep para transiciones suaves\n" +
-            "    float wave1 = sin(vTexCoord.y * 12.0 - t * 3.0 + vTexCoord.x * 5.0);\n" +
-            "    float wave2 = sin(vTexCoord.y * 18.0 - t * 4.0 - vTexCoord.x * 4.0);\n" +
-            "    float wave3 = sin(vTexCoord.y * 8.0 - t * 2.5);\n" +
-            "    float flames = smoothstep(-0.3, 0.8, (wave1 + wave2 + wave3) / 3.0);\n" +
-            "    \n" +
-            "    // Pulso suave\n" +
-            "    float pulse = smoothstep(0.0, 1.0, 0.5 + 0.5 * sin(t * 2.0));\n" +
-            "    pulse = 0.7 + 0.3 * pulse;\n" +
-            "    \n" +
-            "    // Colores cosmos (azul profundo -> cyan -> blanco)\n" +
-            "    vec3 cDeep = vec3(0.05, 0.15, 0.6);\n" +
-            "    vec3 cMid = vec3(0.2, 0.4, 0.9);\n" +
-            "    vec3 cBright = vec3(0.5, 0.7, 1.0);\n" +
-            "    vec3 cosmosColor = mix(cDeep, cMid, flames);\n" +
-            "    cosmosColor = mix(cosmosColor, cBright, smoothstep(0.3, 0.8, edgeInner));\n" +
-            "    \n" +
-            "    // Intensidad del aura con smoothstep\n" +
-            "    float auraInner = smoothstep(0.0, 0.6, edgeInner * flames) * pulse * 1.2;\n" +
-            "    float auraOuter = smoothstep(0.0, 0.5, edgeOuter * flames) * pulse * 0.6;\n" +
-            "    float totalAura = auraInner + auraOuter;\n" +
-            "    \n" +
-            "    // Brillo en zonas claras\n" +
-            "    float lum = dot(color.rgb, vec3(0.299, 0.587, 0.114));\n" +
-            "    float energyBoost = smoothstep(0.5, 0.95, lum) * pulse * 0.2;\n" +
-            "    \n" +
-            "    // Combinar todo\n" +
-            "    vec3 finalRGB = color.rgb;\n" +
-            "    finalRGB += cosmosColor * totalAura;\n" +
-            "    finalRGB += vec3(1.0, 0.85, 0.4) * energyBoost * color.a;\n" +
-            "    \n" +
-            "    // Alpha final suave\n" +
-            "    float auraAlpha = smoothstep(0.0, 0.8, totalAura) * 0.7;\n" +
-            "    float finalAlpha = max(color.a, auraAlpha);\n" +
-            "    \n" +
-            "    gl_FragColor = vec4(finalRGB, finalAlpha * uAlpha);\n" +
+            "    vTexCoord = aTexCoord;\n" +
+            "    float depth = texture(uDepth, aTexCoord).r;\n" +
+            "    float z = (depth - 0.5) * uDepthStrength;\n" +
+            "    vec4 position = vec4(aPosition.x, aPosition.y, z, 1.0);\n" +
+            "    gl_Position = uMVPMatrix * position;\n" +
             "}\n";
 
-        seiyaShaderProgram = createProgram(vertexShader, fragmentShader);
-        seiyaPositionLoc = GLES30.glGetAttribLocation(seiyaShaderProgram, "aPosition");
-        seiyaTexCoordLoc = GLES30.glGetAttribLocation(seiyaShaderProgram, "aTexCoord");
-        seiyaTextureLoc = GLES30.glGetUniformLocation(seiyaShaderProgram, "uTexture");
-        seiyaAlphaLoc = GLES30.glGetUniformLocation(seiyaShaderProgram, "uAlpha");
-        seiyaTimeLoc = GLES30.glGetUniformLocation(seiyaShaderProgram, "uTime");
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎨 FRAGMENT SHADER - COSMOS AURA + PUÑO PODER
+        // ═══════════════════════════════════════════════════════════════════════
+        String fragmentShader =
+            "#version 300 es\n" +
+            "precision mediump float;\n" +
+            "in vec2 vTexCoord;\n" +
+            "out vec4 fragColor;\n" +
+            "uniform sampler2D uImage;\n" +
+            "uniform float uTime;\n" +
+            "uniform float uHeatDistortion;\n" +
+            "uniform float uCosmosAura;\n" +
+            "uniform vec2 uFistPos;  // Posición del puño (desde Java)\n" +
+            "\n" +
+            "// HSB to RGB\n" +
+            "vec3 hsb2rgb(vec3 c) {\n" +
+            "    vec3 rgb = clamp(abs(mod(c.x*6.0+vec3(0.0,4.0,2.0),6.0)-3.0)-1.0, 0.0, 1.0);\n" +
+            "    return c.z * mix(vec3(1.0), rgb*rgb*(3.0-2.0*rgb), c.y);\n" +
+            "}\n" +
+            "\n" +
+            "const float GLOW = 0.015;\n" +
+            "const float FIST_RADIUS = 0.20;\n" +
+            "const vec2 D[8] = vec2[](vec2(1,0),vec2(.707,.707),vec2(0,1),vec2(-.707,.707),\n" +
+            "                         vec2(-1,0),vec2(-.707,-.707),vec2(0,-1),vec2(.707,-.707));\n" +
+            "\n" +
+            "void main() {\n" +
+            "    vec2 uv = vTexCoord;\n" +
+            "    float t = mod(uTime, 62.83);\n" +
+            "    \n" +
+            "    // Heat distortion (solo fondo)\n" +
+            "    if (uHeatDistortion > 0.0) {\n" +
+            "        float m = 1.0 - smoothstep(0.09, 0.18, distance(uv, vec2(0.75, 0.55)));\n" +
+            "        if (m > 0.01) {\n" +
+            "            float s = 0.002 * uHeatDistortion * m;\n" +
+            "            uv.x += sin(uv.y * 30.0 + t * 2.5) * s;\n" +
+            "            uv.y += cos(uv.x * 35.0 + t * 2.2) * s * 0.4;\n" +
+            "        }\n" +
+            "    }\n" +
+            "    \n" +
+            "    vec4 color = texture(uImage, uv);\n" +
+            "    \n" +
+            "    // Variable para el efecto del puño (se aplica al final como capa extra)\n" +
+            "    vec4 fistEffect = vec4(0.0);\n" +
+            "    \n" +
+            "    // ═══════════════════════════════════════════════════════════════\n" +
+            "    // 👊 PUÑO PODER - Cosmos Concentrado + Rayos (capa separada)\n" +
+            "    // ═══════════════════════════════════════════════════════════════\n" +
+            "    if (uCosmosAura > 0.0) {\n" +
+            "        float fistDist = distance(uv, uFistPos);\n" +
+            "        \n" +
+            "        if (fistDist < FIST_RADIUS) {\n" +
+            "            // Intensidad del cosmos concentrado\n" +
+            "            float fistIntensity = 1.0 - smoothstep(0.0, FIST_RADIUS, fistDist);\n" +
+            "            fistIntensity *= fistIntensity;\n" +
+            "            \n" +
+            "            // Pulso de energía\n" +
+            "            float pulse = sin(t * 6.0) * 0.3 + 0.7;\n" +
+            "            \n" +
+            "            // ⚡ RAYOS - líneas de energía\n" +
+            "            vec2 toFist = uv - uFistPos;\n" +
+            "            float angle = atan(toFist.y, toFist.x);\n" +
+            "            \n" +
+            "            // 6 rayos que rotan\n" +
+            "            float rays = 0.0;\n" +
+            "            for (float i = 0.0; i < 6.0; i++) {\n" +
+            "                float rayAngle = i * 1.047 + t * 3.0;\n" +
+            "                float rayDiff = abs(mod(angle - rayAngle + 3.14159, 6.28318) - 3.14159);\n" +
+            "                float ray = smoothstep(0.25, 0.0, rayDiff) * (1.0 - fistDist / FIST_RADIUS);\n" +
+            "                rays += ray;\n" +
+            "            }\n" +
+            "            rays = min(rays, 1.0);\n" +
+            "            \n" +
+            "            // Colores del poder\n" +
+            "            vec3 coreColor = vec3(0.9, 0.97, 1.0);   // Blanco-cyan brillante\n" +
+            "            vec3 rayColor = vec3(0.4, 0.7, 1.0);     // Azul eléctrico\n" +
+            "            vec3 outerColor = vec3(0.2, 0.5, 0.9);   // Azul\n" +
+            "            \n" +
+            "            // Mix de colores\n" +
+            "            vec3 fistColor = mix(outerColor, rayColor, rays);\n" +
+            "            fistColor = mix(fistColor, coreColor, fistIntensity * pulse);\n" +
+            "            \n" +
+            "            // Guardar como capa separada (OPACA)\n" +
+            "            float fistAlpha = (fistIntensity * 0.7 + rays * 0.5) * pulse * uCosmosAura;\n" +
+            "            fistEffect = vec4(fistColor, fistAlpha);\n" +
+            "        }\n" +
+            "    }\n" +
+            "    \n" +
+            "    // ⭐ COSMOS AURA - Una sola capa suave\n" +
+            "    if (uCosmosAura > 0.0 && color.a < 0.1) {\n" +
+            "        float totalAlpha = 0.0;\n" +
+            "        float avgAngle = 0.0;\n" +
+            "        \n" +
+            "        for (int i = 0; i < 8; i++) {\n" +
+            "            float a = texture(uImage, uv + D[i] * GLOW).a;\n" +
+            "            if (a > 0.3) {\n" +
+            "                totalAlpha += a;\n" +
+            "                avgAngle += float(i);\n" +
+            "            }\n" +
+            "        }\n" +
+            "        \n" +
+            "        if (totalAlpha > 0.0) {\n" +
+            "            avgAngle = avgAngle / totalAlpha * 0.785;\n" +
+            "            float intensity = smoothstep(0.0, 4.0, totalAlpha);\n" +
+            "            \n" +
+            "            vec3 coreColor = vec3(0.4, 0.7, 1.0);\n" +
+            "            vec3 outerColor = vec3(0.15, 0.25, 0.6);\n" +
+            "            \n" +
+            "            float hueShift = sin(avgAngle + t * 1.5) * 0.5 + 0.5;\n" +
+            "            vec3 aura = mix(outerColor, coreColor, intensity * hueShift);\n" +
+            "            \n" +
+            "            vec3 accentColor = vec3(0.3, 0.5, 0.9);\n" +
+            "            float blend = sin(t * 2.0 + uv.y * 10.0) * 0.5 + 0.5;\n" +
+            "            aura = mix(aura, accentColor, blend * 0.3);\n" +
+            "            aura += coreColor * intensity * intensity * 0.4;\n" +
+            "            \n" +
+            "            float alpha = intensity * uCosmosAura * 0.7;\n" +
+            "            color = vec4(aura, alpha);\n" +
+            "        }\n" +
+            "    }\n" +
+            "    \n" +
+            "    // ═══════════════════════════════════════════════════════════════\n" +
+            "    // 🔝 APLICAR PUÑO COMO CAPA ENCIMA (additive + overlay)\n" +
+            "    // ═══════════════════════════════════════════════════════════════\n" +
+            "    if (fistEffect.a > 0.0) {\n" +
+            "        // Blend: la capa del puño se suma encima\n" +
+            "        color.rgb = color.rgb + fistEffect.rgb * fistEffect.a;\n" +
+            "        color.a = max(color.a, fistEffect.a);\n" +
+            "    }\n" +
+            "    \n" +
+            "    if (color.a < 0.02) discard;\n" +
+            "    fragColor = color;\n" +
+            "}\n";
 
-        Log.d(TAG, "✅ Shader Seiya COSMOS compilado");
+        meshShaderProgram = createProgram(vertexShader, fragmentShader);
+        positionLoc = GLES30.glGetAttribLocation(meshShaderProgram, "aPosition");
+        texCoordLoc = GLES30.glGetAttribLocation(meshShaderProgram, "aTexCoord");
+        mvpMatrixLoc = GLES30.glGetUniformLocation(meshShaderProgram, "uMVPMatrix");
+        imageLoc = GLES30.glGetUniformLocation(meshShaderProgram, "uImage");
+        depthLoc = GLES30.glGetUniformLocation(meshShaderProgram, "uDepth");
+        depthStrengthLoc = GLES30.glGetUniformLocation(meshShaderProgram, "uDepthStrength");
+        timeLoc = GLES30.glGetUniformLocation(meshShaderProgram, "uTime");
+        heatDistortionLoc = GLES30.glGetUniformLocation(meshShaderProgram, "uHeatDistortion");
+        cosmosAuraLoc = GLES30.glGetUniformLocation(meshShaderProgram, "uCosmosAura");
+        fistPosLoc = GLES30.glGetUniformLocation(meshShaderProgram, "uFistPos");
+
+        Log.d(TAG, "✅ Shader 3D OPTIMIZADO con COSMOS AURA compilado");
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // ✨ SHADER DE PARTÍCULAS - Ultra simple
+        // ═══════════════════════════════════════════════════════════════════════
+        String particleVS =
+            "#version 300 es\n" +
+            "in vec2 aPosition;\n" +
+            "uniform float uPointSize;\n" +
+            "void main() {\n" +
+            "    gl_Position = vec4(aPosition, 0.0, 1.0);\n" +
+            "    gl_PointSize = uPointSize;\n" +
+            "}\n";
+
+        String particleFS =
+            "#version 300 es\n" +
+            "precision mediump float;\n" +
+            "uniform vec4 uColor;\n" +
+            "out vec4 fragColor;\n" +
+            "void main() {\n" +
+            "    vec2 center = gl_PointCoord - vec2(0.5);\n" +
+            "    float dist = length(center);\n" +
+            "    float alpha = smoothstep(0.5, 0.2, dist) * uColor.a;\n" +
+            "    fragColor = vec4(uColor.rgb, alpha);\n" +
+            "}\n";
+
+        particleShader = createProgram(particleVS, particleFS);
+        particlePosLoc = GLES30.glGetAttribLocation(particleShader, "aPosition");
+        particleColorLoc = GLES30.glGetUniformLocation(particleShader, "uColor");
+        particlePointSizeLoc = GLES30.glGetUniformLocation(particleShader, "uPointSize");
+
+        Log.d(TAG, "✅ Shader de partículas compilado");
     }
 
-    private void loadSeiyaTexture() {
+    // ═══════════════════════════════════════════════════════════════════════
+    // ✨ MÉTODOS DE PARTÍCULAS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private void spawnParticles(float x, float y, int count) {
+        for (int i = 0; i < MAX_PARTICLES && count > 0; i++) {
+            if (particleLife[i] <= 0) {
+                // Posición inicial (convertir UV a coordenadas normalizadas -1 a 1)
+                particleX[i] = x * 2f - 1f;
+                particleY[i] = -(y * 2f - 1f);  // Invertir Y
+
+                // Velocidad aleatoria (dispersión suave)
+                float angle = random.nextFloat() * 6.28318f;
+                float speed = 0.3f + random.nextFloat() * 0.5f;
+                particleVX[i] = (float)Math.cos(angle) * speed;
+                particleVY[i] = (float)Math.sin(angle) * speed + 0.2f;  // Subir un poco
+
+                // Vida y tamaño
+                particleLife[i] = 0.8f + random.nextFloat() * 0.4f;
+                particleSize[i] = 8f + random.nextFloat() * 12f;
+
+                count--;
+            }
+        }
+    }
+
+    private void updateParticles(float dt) {
+        for (int i = 0; i < MAX_PARTICLES; i++) {
+            if (particleLife[i] > 0) {
+                // Mover
+                particleX[i] += particleVX[i] * dt;
+                particleY[i] += particleVY[i] * dt;
+
+                // Desacelerar
+                particleVX[i] *= 0.98f;
+                particleVY[i] *= 0.98f;
+
+                // Reducir vida
+                particleLife[i] -= dt * 1.5f;
+            }
+        }
+    }
+
+    private void drawParticles() {
+        if (particleShader <= 0) return;
+
+        GLES30.glUseProgram(particleShader);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE);  // Additive
+
+        float[] pos = new float[2];
+
+        for (int i = 0; i < MAX_PARTICLES; i++) {
+            if (particleLife[i] > 0) {
+                pos[0] = particleX[i];
+                pos[1] = particleY[i];
+
+                // Color cyan brillante con fade
+                float alpha = particleLife[i];
+                GLES30.glUniform4f(particleColorLoc, 0.5f, 0.8f, 1.0f, alpha);
+                GLES30.glUniform1f(particlePointSizeLoc, particleSize[i] * alpha);
+
+                // Dibujar punto
+                java.nio.FloatBuffer fb = java.nio.ByteBuffer.allocateDirect(8)
+                    .order(java.nio.ByteOrder.nativeOrder()).asFloatBuffer();
+                fb.put(pos).position(0);
+
+                GLES30.glEnableVertexAttribArray(particlePosLoc);
+                GLES30.glVertexAttribPointer(particlePosLoc, 2, GLES30.GL_FLOAT, false, 0, fb);
+                GLES30.glDrawArrays(GLES30.GL_POINTS, 0, 1);
+                GLES30.glDisableVertexAttribArray(particlePosLoc);
+            }
+        }
+
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 📥 CARGAR TEXTURAS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private void loadTextures() {
+        // Usar ImageDownloadManager para obtener el directorio correcto de imágenes
+        java.io.File imagesDir = ImageDownloadManager.getInstance(context).getImageDirectory();
+
+        texBackground = loadTextureFromFile(new java.io.File(imagesDir, "fondouniverso.png"));
+        texBackgroundDepth = loadTextureFromFile(new java.io.File(imagesDir, "fondouniverso3d.png"));
+        texSeiya = loadTextureFromFile(new java.io.File(imagesDir, "seiya_solo.png"));
+        texSeiyaDepth = loadTextureFromFile(new java.io.File(imagesDir, "seiya_depth.png"));
+
+        Log.d(TAG, "✅ Texturas: bg=" + texBackground + ", bgDepth=" + texBackgroundDepth +
+                   ", seiya=" + texSeiya + ", seiyaDepth=" + texSeiyaDepth);
+    }
+
+    private int loadTextureFromFile(java.io.File file) {
+        if (!file.exists()) {
+            Log.e(TAG, "❌ No existe: " + file.getName());
+            return -1;
+        }
         try {
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inScaled = false;
-            Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(),
-                R.drawable.seiya_character, options);
+            Bitmap bitmap = BitmapFactory.decodeFile(file.getAbsolutePath(), options);
 
             if (bitmap != null) {
                 int[] textures = new int[1];
                 GLES30.glGenTextures(1, textures, 0);
-                seiyaTexture = textures[0];
+                int texId = textures[0];
 
-                GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, seiyaTexture);
+                GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, texId);
                 GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
                 GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
                 GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
                 GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
-
                 GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0);
 
-                Log.d(TAG, "✅ Textura Seiya cargada (" + bitmap.getWidth() + "x" + bitmap.getHeight() + ")");
+                Log.d(TAG, "📥 " + file.getName() + " (" + bitmap.getWidth() + "x" + bitmap.getHeight() + ")");
                 bitmap.recycle();
+                return texId;
             }
         } catch (Exception e) {
-            Log.e(TAG, "❌ Error cargando textura: " + e.getMessage());
+            Log.e(TAG, "Error: " + e.getMessage());
         }
-    }
-
-    private void createSeiyaQuad() {
-        float[] quadVerts = {
-            -1f, -1f, 0f, 1f,
-             1f, -1f, 1f, 1f,
-            -1f,  1f, 0f, 0f,
-             1f,  1f, 1f, 0f
-        };
-        ByteBuffer bb = ByteBuffer.allocateDirect(quadVerts.length * 4);
-        bb.order(ByteOrder.nativeOrder());
-        seiyaQuadBuffer = bb.asFloatBuffer();
-        seiyaQuadBuffer.put(quadVerts);
-        seiyaQuadBuffer.position(0);
+        return -1;
     }
 
     private int createProgram(String vertexSource, String fragmentSource) {
-        int vertexShader = loadShader(GLES30.GL_VERTEX_SHADER, vertexSource);
-        int fragmentShader = loadShader(GLES30.GL_FRAGMENT_SHADER, fragmentSource);
+        int vs = GLES30.glCreateShader(GLES30.GL_VERTEX_SHADER);
+        GLES30.glShaderSource(vs, vertexSource);
+        GLES30.glCompileShader(vs);
+
+        int fs = GLES30.glCreateShader(GLES30.GL_FRAGMENT_SHADER);
+        GLES30.glShaderSource(fs, fragmentSource);
+        GLES30.glCompileShader(fs);
+
         int program = GLES30.glCreateProgram();
-        GLES30.glAttachShader(program, vertexShader);
-        GLES30.glAttachShader(program, fragmentShader);
+        GLES30.glAttachShader(program, vs);
+        GLES30.glAttachShader(program, fs);
         GLES30.glLinkProgram(program);
         return program;
-    }
-
-    private int loadShader(int type, String source) {
-        int shader = GLES30.glCreateShader(type);
-        GLES30.glShaderSource(shader, source);
-        GLES30.glCompileShader(shader);
-
-        // Verificar errores de compilación
-        int[] compiled = new int[1];
-        GLES30.glGetShaderiv(shader, GLES30.GL_COMPILE_STATUS, compiled, 0);
-        if (compiled[0] == 0) {
-            String error = GLES30.glGetShaderInfoLog(shader);
-            Log.e(TAG, "❌ Error compilando shader: " + error);
-        }
-        return shader;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -355,34 +598,57 @@ public class SaintSeiyaScene extends WallpaperScene {
 
     @Override
     protected void releaseSceneResources() {
-        if (seiyaTexture > 0) {
-            GLES30.glDeleteTextures(1, new int[]{seiyaTexture}, 0);
-            seiyaTexture = -1;
-        }
-        if (seiyaShaderProgram > 0) {
-            GLES30.glDeleteProgram(seiyaShaderProgram);
-            seiyaShaderProgram = -1;
-        }
-        if (bgTexture > 0) {
-            GLES30.glDeleteTextures(1, new int[]{bgTexture}, 0);
-            bgTexture = -1;
-        }
-        if (bgShaderProgram > 0) {
-            GLES30.glDeleteProgram(bgShaderProgram);
-            bgShaderProgram = -1;
-        }
-        if (clock != null) { clock.dispose(); clock = null; }
-        if (battery != null) { battery.dispose(); battery = null; }
-        if (equalizerDJ != null) { equalizerDJ.release(); equalizerDJ = null; }
+        if (texBackground > 0) GLES30.glDeleteTextures(1, new int[]{texBackground}, 0);
+        if (texBackgroundDepth > 0) GLES30.glDeleteTextures(1, new int[]{texBackgroundDepth}, 0);
+        if (texSeiya > 0) GLES30.glDeleteTextures(1, new int[]{texSeiya}, 0);
+        if (texSeiyaDepth > 0) GLES30.glDeleteTextures(1, new int[]{texSeiyaDepth}, 0);
+
+        if (meshShaderProgram > 0) GLES30.glDeleteProgram(meshShaderProgram);
+        if (particleShader > 0) GLES30.glDeleteProgram(particleShader);
+
+        if (clock != null) clock.dispose();
+        if (battery != null) battery.dispose();
+        if (equalizerDJ != null) equalizerDJ.release();
     }
 
     @Override
     public void update(float deltaTime) {
+        // Tiempo con wrap seguro (ciclo cada ~100 segundos)
         time += deltaTime;
-        if (time > 628.0f) time -= 628.0f; // Reset cada ~100 ciclos (evita overflow)
+        if (time > 100.0f) time -= 100.0f;
+
+        float swayX = (float)(Math.sin(time * SPEED_X) * SWAY_ANGLE_X);
+        float swayY = (float)(Math.sin(time * SPEED_Y + 1.5) * SWAY_ANGLE_Y);
+
+        // SEIYA: Touch o automático
+        if (touchMode && calibratingSeiya) {
+            cameraAngleX = touchX * 25f;
+            cameraAngleY = touchY * 18f;
+            Log.d(TAG, "📐 SEIYA CALIBRACIÓN: angleX=" + String.format("%.1f", cameraAngleX) +
+                  "° angleY=" + String.format("%.1f", cameraAngleY) + "°");
+        } else {
+            cameraAngleX = BASE_ANGLE_X + swayX;
+            cameraAngleY = BASE_ANGLE_Y + swayY;
+        }
+
+        // FONDO: Touch o automático
+        if (touchMode && !calibratingSeiya) {
+            bgAngleX = touchX * 20f;
+            bgAngleY = touchY * 15f;
+            Log.d(TAG, "📐 BG CALIBRACIÓN: angleX=" + String.format("%.1f", bgAngleX) +
+                  "° angleY=" + String.format("%.1f", bgAngleY) + "°");
+        } else {
+            bgAngleX = BG_BASE_ANGLE_X + swayX * 0.3f;
+            bgAngleY = BG_BASE_ANGLE_Y + swayY * 0.3f;
+        }
+
         if (equalizerDJ != null) equalizerDJ.update(deltaTime);
         if (clock != null) clock.update(deltaTime);
         if (battery != null) battery.update(deltaTime);
+
+        // ✨ Actualizar partículas
+        updateParticles(deltaTime);
+
         super.update(deltaTime);
     }
 
@@ -391,66 +657,102 @@ public class SaintSeiyaScene extends WallpaperScene {
         if (isDisposed) return;
 
         GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
-        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+        GLES30.glDisable(GLES30.GL_CULL_FACE);
 
-        // 🔥 Seiya con cosmos
+        // ═══════════════════════════════════════════════════════════════
+        // CAPA 1: FONDO 3D (sin aura)
+        // ═══════════════════════════════════════════════════════════════
+        GLES30.glDisable(GLES30.GL_BLEND);
+        drawLayerWithAngles(texBackground, texBackgroundDepth,
+                  BG_CAMERA_DISTANCE, BG_DEPTH_STRENGTH, bgAngleX, bgAngleY,
+                  BG_SCALE, BG_HEAT_DISTORTION, 0.0f);  // Sin aura
+
+        // ═══════════════════════════════════════════════════════════════
+        // CAPA 2: SEIYA 3D (con AURA DE COSMOS!)
+        // ═══════════════════════════════════════════════════════════════
         GLES30.glEnable(GLES30.GL_BLEND);
         GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
-        drawSeiyaImage();
+        GLES30.glClear(GLES30.GL_DEPTH_BUFFER_BIT);
+        drawLayerWithAngles(texSeiya, texSeiyaDepth,
+                  SEIYA_CAMERA_DISTANCE, SEIYA_DEPTH_STRENGTH, cameraAngleX, cameraAngleY,
+                  SEIYA_SCALE, SEIYA_HEAT_DISTORTION, SEIYA_COSMOS_AURA);  // ⭐ CON AURA
 
-        // 3. UI Elements
-        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+        // ═══════════════════════════════════════════════════════════════
+        // UI Elements
+        // ═══════════════════════════════════════════════════════════════
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
         if (equalizerDJ != null) equalizerDJ.draw();
         if (clock != null) clock.draw();
         if (battery != null) battery.draw();
 
+        // ✨ Partículas mágicas (encima de todo)
+        drawParticles();
+
         super.draw();
     }
 
-    private void drawBackground() {
-        if (bgTexture <= 0 || bgShaderProgram <= 0) return;
+    private void drawLayerWithAngles(int texImage, int texDepth,
+                          float cameraDistance, float depthStrength,
+                          float angleX, float angleY,
+                          float scale, float heatDistortion, float cosmosAura) {
+        if (texImage <= 0 || meshShaderProgram <= 0) return;
 
-        GLES30.glUseProgram(bgShaderProgram);
+        GLES30.glUseProgram(meshShaderProgram);
+
+        // Calcular MVP con parámetros específicos de esta capa
+        float aspect = (float) screenWidth / screenHeight;
+        Matrix.perspectiveM(projectionMatrix, 0, 45f, aspect, 0.1f, 100f);
+
+        // Usar ángulos directamente (ya calculados por capa)
+        float angleXRad = (float) Math.toRadians(angleX);
+        float angleYRad = (float) Math.toRadians(angleY);
+
+        float camX = (float)(cameraDistance * Math.sin(angleXRad) * Math.cos(angleYRad));
+        float camY = (float)(cameraDistance * Math.sin(angleYRad));
+        float camZ = (float)(cameraDistance * Math.cos(angleXRad) * Math.cos(angleYRad));
+
+        Matrix.setLookAtM(viewMatrix, 0, camX, camY, camZ, 0f, 0f, 0f, 0f, 1f, 0f);
+        Matrix.setIdentityM(modelMatrix, 0);
+        // Aplicar escala - ajustar Y para pantallas altas
+        float scaleX = scale;
+        float scaleY = scale / aspect;  // Estirar en Y para cubrir pantallas altas
+        Matrix.scaleM(modelMatrix, 0, scaleX, scaleY, scale);
+        Matrix.multiplyMM(tempMatrix, 0, viewMatrix, 0, modelMatrix, 0);
+        Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, tempMatrix, 0);
+
+        GLES30.glUniformMatrix4fv(mvpMatrixLoc, 1, false, mvpMatrix, 0);
+        GLES30.glUniform1f(depthStrengthLoc, depthStrength);
+
+        // Pasar tiempo, distorsión, aura y posición del puño al shader
+        GLES30.glUniform1f(timeLoc, time);
+        GLES30.glUniform1f(heatDistortionLoc, heatDistortion);
+        GLES30.glUniform1f(cosmosAuraLoc, cosmosAura);
+        GLES30.glUniform2f(fistPosLoc, fistX, fistY);
+
+        // Texturas
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
-        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, bgTexture);
-        GLES30.glUniform1i(bgTextureLoc, 0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, texImage);
+        GLES30.glUniform1i(imageLoc, 0);
 
-        bgQuadBuffer.position(0);
-        GLES30.glEnableVertexAttribArray(bgPositionLoc);
-        GLES30.glVertexAttribPointer(bgPositionLoc, 2, GLES30.GL_FLOAT, false, 16, bgQuadBuffer);
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE1);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, texDepth > 0 ? texDepth : texImage);
+        GLES30.glUniform1i(depthLoc, 1);
 
-        bgQuadBuffer.position(2);
-        GLES30.glEnableVertexAttribArray(bgTexCoordLoc);
-        GLES30.glVertexAttribPointer(bgTexCoordLoc, 2, GLES30.GL_FLOAT, false, 16, bgQuadBuffer);
+        // Dibujar mesh
+        vertexBuffer.position(0);
+        GLES30.glEnableVertexAttribArray(positionLoc);
+        GLES30.glVertexAttribPointer(positionLoc, 2, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
-        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
+        texCoordBuffer.position(0);
+        GLES30.glEnableVertexAttribArray(texCoordLoc);
+        GLES30.glVertexAttribPointer(texCoordLoc, 2, GLES30.GL_FLOAT, false, 0, texCoordBuffer);
 
-        GLES30.glDisableVertexAttribArray(bgPositionLoc);
-        GLES30.glDisableVertexAttribArray(bgTexCoordLoc);
-    }
+        indexBuffer.position(0);
+        GLES30.glDrawElements(GLES30.GL_TRIANGLES, INDEX_COUNT, GLES30.GL_UNSIGNED_SHORT, indexBuffer);
 
-    private void drawSeiyaImage() {
-        if (seiyaTexture <= 0 || seiyaShaderProgram <= 0) return;
-
-        GLES30.glUseProgram(seiyaShaderProgram);
-        GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
-        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, seiyaTexture);
-        GLES30.glUniform1i(seiyaTextureLoc, 0);
-        GLES30.glUniform1f(seiyaAlphaLoc, 1.0f);
-        GLES30.glUniform1f(seiyaTimeLoc, time);
-
-        seiyaQuadBuffer.position(0);
-        GLES30.glEnableVertexAttribArray(seiyaPositionLoc);
-        GLES30.glVertexAttribPointer(seiyaPositionLoc, 2, GLES30.GL_FLOAT, false, 16, seiyaQuadBuffer);
-
-        seiyaQuadBuffer.position(2);
-        GLES30.glEnableVertexAttribArray(seiyaTexCoordLoc);
-        GLES30.glVertexAttribPointer(seiyaTexCoordLoc, 2, GLES30.GL_FLOAT, false, 16, seiyaQuadBuffer);
-
-        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
-
-        GLES30.glDisableVertexAttribArray(seiyaPositionLoc);
-        GLES30.glDisableVertexAttribArray(seiyaTexCoordLoc);
+        GLES30.glDisableVertexAttribArray(positionLoc);
+        GLES30.glDisableVertexAttribArray(texCoordLoc);
     }
 
     @Override
@@ -460,25 +762,42 @@ public class SaintSeiyaScene extends WallpaperScene {
     }
 
     public void updateMusicBands(float[] bands) {
-        if (equalizerDJ != null && bands != null && bands.length > 0) {
+        if (equalizerDJ != null && bands != null) {
             equalizerDJ.updateFromBands(bands);
         }
     }
 
     @Override
+    public boolean onTouchEvent(float normalizedX, float normalizedY, int action) {
+        // Convertir de coordenadas normalizadas (-1 a 1) a UV (0 a 1)
+        float uvX = (normalizedX + 1f) / 2f;
+        float uvY = 1f - ((normalizedY + 1f) / 2f);  // Invertir Y para UV
+
+        // ✨ PARTÍCULAS MÁGICAS - Spawnar en cualquier toque
+        if (action == 0) {  // ACTION_DOWN - toque inicial
+            spawnParticles(uvX, uvY, 5);  // 5 partículas por toque
+        } else if (action == 2) {  // ACTION_MOVE - arrastrando
+            spawnParticles(uvX, uvY, 2);  // 2 partículas al arrastrar
+        }
+
+        // Modo calibración del puño (solo si touchMode está activo)
+        if (touchMode && (action == 0 || action == 2)) {
+            fistX = uvX;
+            fistY = uvY;
+            Log.d(TAG, "👊 PUÑO MOVIDO A: x=" + String.format("%.3f", fistX) +
+                       " y=" + String.format("%.3f", fistY));
+        }
+
+        return true;
+    }
+
+    @Override
     public void onPause() {
         super.onPause();
-        Log.d(TAG, "⏸️ Saint Seiya PAUSADO");
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        Log.d(TAG, "▶️ Saint Seiya REANUDADO");
-    }
-
-    @Override
-    public boolean onTouchEvent(float normalizedX, float normalizedY, int action) {
-        return super.onTouchEvent(normalizedX, normalizedY, action);
     }
 }

@@ -4,120 +4,96 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Configuracion de recursos remotos en Supabase Storage
- *
- * Videos e imagenes se descargan bajo demanda y se guardan en cache local.
- * Esto reduce significativamente el tamano del APK.
+ * ╔══════════════════════════════════════════════════════════════════╗
+ * ║                         VideoConfig                              ║
+ * ║        Configuración de videos remotos en Supabase Storage       ║
+ * ╠══════════════════════════════════════════════════════════════════╣
+ * ║  RESPONSABILIDADES:                                              ║
+ * ║  • Mapear nombres de archivo a URLs de Supabase                  ║
+ * ║  • Almacenar tamaños esperados para validación                   ║
+ * ║  • Gestionar versiones para auto-actualización                   ║
+ * ╠══════════════════════════════════════════════════════════════════╣
+ * ║  PARA AGREGAR NUEVOS VIDEOS:                                     ║
+ * ║  1. Subir video a Supabase (bucket: wallpaper-videos)            ║
+ * ║  2. Agregar entrada en el bloque static con:                     ║
+ * ║     - nombre de archivo                                          ║
+ * ║     - URL completa                                               ║
+ * ║     - tamaño en bytes                                            ║
+ * ║     - descripción                                                ║
+ * ║     - versión (incrementar si reemplazas el video)               ║
+ * ╠══════════════════════════════════════════════════════════════════╣
+ * ║  NOTA: Para imágenes usar ImageConfig                            ║
+ * ╚══════════════════════════════════════════════════════════════════╝
  */
 public class VideoConfig {
 
-    // Base URLs de Supabase Storage
+    // Base URL de Supabase Storage para videos
     private static final String SUPABASE_VIDEOS_URL =
         "https://vzuwvsmlyigjtsearxym.supabase.co/storage/v1/object/public/wallpaper-videos/";
 
-    private static final String SUPABASE_IMAGES_URL =
-        "https://vzuwvsmlyigjtsearxym.supabase.co/storage/v1/object/public/wallpaper-images/";
-
-    // Mapeo: nombre de archivo -> URL remota
+    // Mapeo: nombre de archivo -> información del recurso
     private static final Map<String, ResourceInfo> VIDEOS = new HashMap<>();
-    private static final Map<String, ResourceInfo> IMAGES = new HashMap<>();
 
     static {
         // ═══════════════════════════════════════════════════════════════
-        // VIDEOS
+        // VIDEOS - Escenas de Wallpaper
         // ═══════════════════════════════════════════════════════════════
 
-        // LabScene - Portal cosmico con nubes de fuego
+        // LabScene - Portal cósmico con nubes de fuego
         VIDEOS.put("cielovolando.mp4", new ResourceInfo(
             SUPABASE_VIDEOS_URL + "cielovolando.mp4",
             10_199_549L,  // 10.2 MB
-            "Portal Cosmico"
+            "Portal Cosmico",
+            1
         ));
 
         // OceanFloorScene - Abyssia (océano alienígena)
         VIDEOS.put("marZerg.mp4", new ResourceInfo(
             SUPABASE_VIDEOS_URL + "marZerg.mp4",
             9_983_000L,  // ~10 MB
-            "Abyssia"
+            "Abyssia",
+            1
         ));
 
         // Panel de Control - The House (cabaña acogedora con chimenea)
         VIDEOS.put("thehouse.mp4", new ResourceInfo(
             SUPABASE_VIDEOS_URL + "thehouse.mp4",
             10_235_904L,  // 9.76 MB
-            "The House"
+            "The House",
+            1
         ));
 
-        // GokuScene - Kamehameha Final (Goku lanzando el Kamehameha)
+        // GokuScene - Kamehameha Final
         VIDEOS.put("gokukamehameFinal.mp4", new ResourceInfo(
             SUPABASE_VIDEOS_URL + "gokukamehameFinal.mp4",
             8_210_000L,  // 7.83 MB
-            "Goku Kamehameha Final"
+            "Goku Kamehameha Final",
+            1
         ));
 
         // AdventureTimeScene - Hora de Aventura Fogata
         VIDEOS.put("escenaHDA.mp4", new ResourceInfo(
             SUPABASE_VIDEOS_URL + "escenaHDA.mp4",
             13_000_000L,  // ~13 MB
-            "Adventure Time Fogata"
+            "Adventure Time Fogata",
+            1
         ));
 
-        // NeonCityScene - Synthwave Endless Road (VIDEO FINAL)
+        // NeonCityScene - Synthwave Endless Road
         VIDEOS.put("neoncityScene.mp4", new ResourceInfo(
             SUPABASE_VIDEOS_URL + "neoncityScene.mp4",
             13_680_000L,  // 13.05 MB
-            "Neon City Synthwave"
-        ));
-
-        // ═══════════════════════════════════════════════════════════════
-        // IMAGENES - Escena Navidad
-        // ═══════════════════════════════════════════════════════════════
-
-        IMAGES.put("christmas_background.png", new ResourceInfo(
-            SUPABASE_IMAGES_URL + "christmas_background.png",
-            5_500_000L,  // ~5.5 MB
-            "Fondo Navidad"
-        ));
-
-        IMAGES.put("christmas_bg.png", new ResourceInfo(
-            SUPABASE_IMAGES_URL + "christmas_bg.png",
-            1_800_000L,  // ~1.8 MB
-            "Fondo Navidad Panel"
-        ));
-
-        IMAGES.put("preview_navidad.png", new ResourceInfo(
-            SUPABASE_IMAGES_URL + "preview_navidad.png",
-            5_500_000L,  // ~5.5 MB
-            "Preview Navidad"
-        ));
-
-        // ═══════════════════════════════════════════════════════════════
-        // IMAGENES - Escena Goku
-        // ═══════════════════════════════════════════════════════════════
-
-        IMAGES.put("gokuprimerframe.png", new ResourceInfo(
-            SUPABASE_VIDEOS_URL + "gokuprimerframe.png",  // Está en wallpaper-videos
-            2_900_000L,  // ~2.9 MB
-            "Preview Goku"
-        ));
-
-        // ═══════════════════════════════════════════════════════════════
-        // IMAGENES - Escena Adventure Time
-        // ═══════════════════════════════════════════════════════════════
-
-        IMAGES.put("hdaPreview.png", new ResourceInfo(
-            SUPABASE_VIDEOS_URL + "hdaPreview.png",  // Está en wallpaper-videos
-            1_180_000L,  // ~1.18 MB
-            "Preview Adventure Time"
+            "Neon City Synthwave",
+            1
         ));
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // METODOS PARA VIDEOS
-    // ═══════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════
+    // MÉTODOS PÚBLICOS
+    // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * Obtiene la URL remota para un video
+     * Obtiene la URL remota para un video.
      */
     public static String getRemoteUrl(String fileName) {
         ResourceInfo info = VIDEOS.get(fileName);
@@ -125,7 +101,7 @@ public class VideoConfig {
     }
 
     /**
-     * Obtiene el tamano esperado del video en bytes
+     * Obtiene el tamaño esperado del video en bytes.
      */
     public static long getExpectedSize(String fileName) {
         ResourceInfo info = VIDEOS.get(fileName);
@@ -133,7 +109,7 @@ public class VideoConfig {
     }
 
     /**
-     * Obtiene el nombre descriptivo del video
+     * Obtiene el nombre descriptivo del video.
      */
     public static String getDisplayName(String fileName) {
         ResourceInfo info = VIDEOS.get(fileName);
@@ -141,63 +117,43 @@ public class VideoConfig {
     }
 
     /**
-     * Verifica si un video esta configurado para descarga remota
+     * Verifica si un video está configurado para descarga remota.
      */
     public static boolean isRemoteVideo(String fileName) {
         return VIDEOS.containsKey(fileName);
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // METODOS PARA IMAGENES
-    // ═══════════════════════════════════════════════════════════════
-
     /**
-     * Obtiene la URL remota para una imagen
+     * Obtiene la versión de un video.
+     * Incrementar cuando se reemplaza el video en Supabase.
      */
-    public static String getImageRemoteUrl(String fileName) {
-        ResourceInfo info = IMAGES.get(fileName);
-        return info != null ? info.url : null;
+    public static int getVideoVersion(String fileName) {
+        ResourceInfo info = VIDEOS.get(fileName);
+        return info != null ? info.version : 1;
     }
 
-    /**
-     * Obtiene el tamano esperado de la imagen en bytes
-     */
-    public static long getImageExpectedSize(String fileName) {
-        ResourceInfo info = IMAGES.get(fileName);
-        return info != null ? info.sizeBytes : 0;
-    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // CLASE INTERNA - ResourceInfo
+    // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * Obtiene el nombre descriptivo de la imagen
-     */
-    public static String getImageDisplayName(String fileName) {
-        ResourceInfo info = IMAGES.get(fileName);
-        return info != null ? info.displayName : fileName;
-    }
-
-    /**
-     * Verifica si una imagen esta configurada para descarga remota
-     */
-    public static boolean isRemoteImage(String fileName) {
-        return IMAGES.containsKey(fileName);
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // CLASE DE INFORMACION DE RECURSO
-    // ═══════════════════════════════════════════════════════════════
-
-    /**
-     * Informacion de un recurso remoto (video o imagen)
+     * Información de un recurso de video remoto.
      */
     public static class ResourceInfo {
         public final String url;
         public final long sizeBytes;
         public final String displayName;
+        public final int version;
 
         ResourceInfo(String url, long sizeBytes, String displayName) {
+            this(url, sizeBytes, displayName, 1);
+        }
+
+        ResourceInfo(String url, long sizeBytes, String displayName, int version) {
             this.url = url;
             this.sizeBytes = sizeBytes;
             this.displayName = displayName;
+            this.version = version;
         }
     }
 }

@@ -147,6 +147,7 @@ public class OceanFloorScene extends WallpaperScene {
         // ⏰ Reloj con tema ABYSSIA (cyan bioluminiscente)
         try {
             clock = new Clock3D(context, Clock3D.THEME_ABYSSIA, 0f, 0.75f);
+            clock.setShowMilliseconds(true);
             Log.d(TAG, "✅ Reloj ABYSSIA activado");
         } catch (Exception e) {
             Log.e(TAG, "Error Clock3D: " + e.getMessage());

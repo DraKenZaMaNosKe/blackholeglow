@@ -1,4 +1,4 @@
-package com.secret.blackholeglow.video;
+package com.secret.blackholeglow.image;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -15,84 +15,84 @@ import java.util.concurrent.Executors;
 
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
- * ║                    VideoDownloadManager                          ║
- * ║          Especialista en descarga de videos desde Supabase       ║
+ * ║                    ImageDownloadManager                          ║
+ * ║         Especialista en descarga de imágenes desde Supabase      ║
  * ╠══════════════════════════════════════════════════════════════════╣
  * ║  RESPONSABILIDADES:                                              ║
- * ║  • Descargar videos desde Supabase                               ║
- * ║  • Cachear videos en almacenamiento local                        ║
+ * ║  • Descargar imágenes desde Supabase                             ║
+ * ║  • Cachear imágenes en almacenamiento local                      ║
  * ║  • Verificar versiones para auto-actualización                   ║
  * ║  • Reportar progreso de descarga                                 ║
  * ╠══════════════════════════════════════════════════════════════════╣
  * ║  USO:                                                            ║
- * ║    VideoDownloadManager mgr = VideoDownloadManager.getInstance();║
- * ║    if (mgr.isVideoAvailable("cielovolando.mp4")) {               ║
- * ║        String path = mgr.getVideoPath("cielovolando.mp4");       ║
+ * ║    ImageDownloadManager mgr = ImageDownloadManager.getInstance();║
+ * ║    if (mgr.isImageAvailable("seiya_solo.png")) {                 ║
+ * ║        String path = mgr.getImagePath("seiya_solo.png");         ║
  * ║    } else {                                                      ║
- * ║        mgr.downloadVideo("cielovolando.mp4", callback);          ║
+ * ║        mgr.downloadImageSync("seiya_solo.png", callback);        ║
  * ║    }                                                             ║
- * ╠══════════════════════════════════════════════════════════════════╣
- * ║  NOTA: Para imágenes usar ImageDownloadManager                   ║
  * ╚══════════════════════════════════════════════════════════════════╝
  */
-public class VideoDownloadManager {
-    private static final String TAG = "VideoDownload";
-    private static final String VIDEO_DIR = "wallpaper_videos";
-    private static final String PREFS_NAME = "resource_versions";
+public class ImageDownloadManager {
+    private static final String TAG = "ImageDownload";
+    private static final String IMAGE_DIR = "wallpaper_images";
+    private static final String PREFS_NAME = "image_versions";
     private static final String VERSION_PREFIX = "v_";
 
-    private static VideoDownloadManager instance;
+    private static ImageDownloadManager instance;
     private final Context context;
-    private final File videoDir;
+    private final File imageDir;
     private final ExecutorService executor;
     private final SharedPreferences versionPrefs;
 
-    private VideoDownloadManager(Context context) {
+    private ImageDownloadManager(Context context) {
         this.context = context.getApplicationContext();
-        // Usar filesDir en lugar de videoDir para persistencia
-        // Los videos no se eliminan automaticamente como en cache
-        this.videoDir = new File(context.getFilesDir(), VIDEO_DIR);
-        if (!videoDir.exists()) {
-            videoDir.mkdirs();
+        this.imageDir = new File(context.getFilesDir(), IMAGE_DIR);
+        if (!imageDir.exists()) {
+            imageDir.mkdirs();
         }
         this.executor = Executors.newSingleThreadExecutor();
         this.versionPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        Log.d(TAG, "Video storage dir: " + videoDir.getAbsolutePath());
+        Log.d(TAG, "🖼️ Image storage dir: " + imageDir.getAbsolutePath());
     }
 
-    public static synchronized VideoDownloadManager getInstance(Context context) {
+    public static synchronized ImageDownloadManager getInstance(Context context) {
         if (instance == null) {
-            instance = new VideoDownloadManager(context);
+            instance = new ImageDownloadManager(context);
         }
         return instance;
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // VERIFICACIÓN DE DISPONIBILIDAD
+    // ═══════════════════════════════════════════════════════════════════════
+
     /**
-     * Verifica si el video ya esta descargado en cache Y es la version correcta
-     * Si la version en VideoConfig es mayor que la descargada, elimina y retorna false
+     * Verifica si una imagen ya está descargada Y es la versión correcta.
+     * Si la versión en ImageConfig es mayor que la descargada, elimina y retorna false.
      */
-    public boolean isVideoAvailable(String fileName) {
-        File videoFile = new File(videoDir, fileName);
-        if (!videoFile.exists()) {
+    public boolean isImageAvailable(String fileName) {
+        File imageFile = new File(imageDir, fileName);
+        if (!imageFile.exists()) {
             return false;
         }
 
-        // Verificar VERSION - si hay nueva version, eliminar archivo viejo
-        int currentVersion = VideoConfig.getVideoVersion(fileName);
+        // Verificar VERSION - si hay nueva versión, eliminar archivo viejo
+        int currentVersion = ImageConfig.getImageVersion(fileName);
         int storedVersion = versionPrefs.getInt(VERSION_PREFIX + fileName, 0);
         if (currentVersion > storedVersion) {
-            Log.w(TAG, "🔄 Nueva version disponible: " + fileName +
+            Log.w(TAG, "🔄 Nueva versión de imagen: " + fileName +
                   " (local:" + storedVersion + " -> remota:" + currentVersion + ")");
-            videoFile.delete();
+            imageFile.delete();
             return false;
         }
 
-        // Verificar tamano (descarga parcial?)
-        long expectedSize = VideoConfig.getExpectedSize(fileName);
-        if (expectedSize > 0 && videoFile.length() < expectedSize * 0.95) {
-            Log.w(TAG, "Video incompleto: " + fileName +
-                  " (" + videoFile.length() + "/" + expectedSize + ")");
-            videoFile.delete();
+        // Verificar tamaño (descarga parcial?)
+        long expectedSize = ImageConfig.getExpectedSize(fileName);
+        if (expectedSize > 0 && imageFile.length() < expectedSize * 0.95) {
+            Log.w(TAG, "⚠️ Imagen incompleta: " + fileName +
+                  " (" + imageFile.length() + "/" + expectedSize + ")");
+            imageFile.delete();
             versionPrefs.edit().remove(VERSION_PREFIX + fileName).apply();
             return false;
         }
@@ -101,34 +101,38 @@ public class VideoDownloadManager {
     }
 
     /**
-     * Obtiene la ruta del video en cache
-     * @return null si no esta disponible
+     * Obtiene la ruta de una imagen en storage local.
+     * @return null si no está disponible
      */
-    public String getVideoPath(String fileName) {
-        if (!isVideoAvailable(fileName)) {
+    public String getImagePath(String fileName) {
+        if (!isImageAvailable(fileName)) {
             return null;
         }
-        return new File(videoDir, fileName).getAbsolutePath();
+        return new File(imageDir, fileName).getAbsolutePath();
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // DESCARGA ASÍNCRONA
+    // ═══════════════════════════════════════════════════════════════════════
+
     /**
-     * Descarga un video en background
+     * Descarga una imagen en background.
      */
-    public void downloadVideo(String fileName, DownloadCallback callback) {
-        String remoteUrl = VideoConfig.getRemoteUrl(fileName);
+    public void downloadImage(String fileName, DownloadCallback callback) {
+        String remoteUrl = ImageConfig.getRemoteUrl(fileName);
         if (remoteUrl == null) {
-            Log.e(TAG, "Video no configurado: " + fileName);
+            Log.e(TAG, "❌ Imagen no configurada: " + fileName);
             if (callback != null) {
-                callback.onError("Video no configurado: " + fileName);
+                callback.onError("Imagen no configurada: " + fileName);
             }
             return;
         }
 
         executor.execute(() -> {
             try {
-                downloadVideoInternal(fileName, remoteUrl, callback);
+                downloadImageInternal(fileName, remoteUrl, callback);
             } catch (Exception e) {
-                Log.e(TAG, "Error descargando: " + e.getMessage());
+                Log.e(TAG, "❌ Error descargando: " + e.getMessage());
                 if (callback != null) {
                     callback.onError(e.getMessage());
                 }
@@ -136,12 +140,12 @@ public class VideoDownloadManager {
         });
     }
 
-    private void downloadVideoInternal(String fileName, String urlStr, DownloadCallback callback)
+    private void downloadImageInternal(String fileName, String urlStr, DownloadCallback callback)
             throws IOException {
-        Log.d(TAG, "Descargando: " + urlStr);
+        Log.d(TAG, "📥 Descargando imagen: " + urlStr);
 
-        File tempFile = new File(videoDir, fileName + ".tmp");
-        File finalFile = new File(videoDir, fileName);
+        File tempFile = new File(imageDir, fileName + ".tmp");
+        File finalFile = new File(imageDir, fileName);
 
         HttpURLConnection connection = null;
         InputStream input = null;
@@ -160,7 +164,7 @@ public class VideoDownloadManager {
             }
 
             long totalBytes = connection.getContentLength();
-            Log.d(TAG, "Tamano total: " + (totalBytes / 1024 / 1024) + " MB");
+            Log.d(TAG, "📦 Tamaño: " + (totalBytes / 1024) + " KB");
 
             input = connection.getInputStream();
             output = new FileOutputStream(tempFile);
@@ -195,13 +199,12 @@ public class VideoDownloadManager {
                 throw new IOException("Error moviendo archivo temporal");
             }
 
-            // ⚠️ CRÍTICO: Guardar version ANTES de llamar callback
-            // Si no se guarda, isVideoAvailable() detectará "nueva versión" y eliminará el archivo
-            int version = VideoConfig.getVideoVersion(fileName);
+            // ⚠️ CRÍTICO: Guardar versión ANTES de llamar callback
+            int version = ImageConfig.getImageVersion(fileName);
             versionPrefs.edit().putInt(VERSION_PREFIX + fileName, version).apply();
-            Log.d(TAG, "✓ Version " + version + " guardada para: " + fileName);
+            Log.d(TAG, "✅ Versión " + version + " guardada para: " + fileName);
 
-            Log.d(TAG, "Descarga completada: " + fileName);
+            Log.d(TAG, "✅ Descarga completada: " + fileName);
             if (callback != null) {
                 callback.onComplete(finalFile.getAbsolutePath());
             }
@@ -214,44 +217,48 @@ public class VideoDownloadManager {
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // DESCARGA SÍNCRONA (para ResourcePreloader)
+    // ═══════════════════════════════════════════════════════════════════════
+
     /**
-     * Descarga un video de forma SINCRONA (bloquea el thread)
-     * Usar solo desde background threads como ResourcePreloader
+     * Descarga una imagen de forma SÍNCRONA (bloquea el thread).
+     * Usar solo desde background threads como ResourcePreloader.
      *
-     * @return true si la descarga fue exitosa o el video ya existia
+     * @return true si la descarga fue exitosa o la imagen ya existía
      */
-    public boolean downloadVideoSync(String fileName, SyncProgressCallback callback) {
-        // Si ya existe, retornar exito
-        if (isVideoAvailable(fileName)) {
-            Log.d(TAG, "Video ya disponible: " + fileName);
+    public boolean downloadImageSync(String fileName, SyncProgressCallback callback) {
+        // Si ya existe, retornar éxito
+        if (isImageAvailable(fileName)) {
+            Log.d(TAG, "✅ Imagen ya disponible: " + fileName);
             return true;
         }
 
-        String remoteUrl = VideoConfig.getRemoteUrl(fileName);
+        String remoteUrl = ImageConfig.getRemoteUrl(fileName);
         if (remoteUrl == null) {
-            Log.e(TAG, "Video no configurado: " + fileName);
+            Log.e(TAG, "❌ Imagen no configurada: " + fileName);
             return false;
         }
 
         try {
-            downloadVideoSyncInternal(fileName, remoteUrl, callback);
-            // Guardar version despues de descarga exitosa
-            int version = VideoConfig.getVideoVersion(fileName);
+            downloadImageSyncInternal(fileName, remoteUrl, callback);
+            // Guardar versión después de descarga exitosa
+            int version = ImageConfig.getImageVersion(fileName);
             versionPrefs.edit().putInt(VERSION_PREFIX + fileName, version).apply();
-            Log.d(TAG, "✓ Version " + version + " guardada para: " + fileName);
+            Log.d(TAG, "✅ Versión " + version + " guardada para: " + fileName);
             return true;
         } catch (Exception e) {
-            Log.e(TAG, "Error descargando: " + e.getMessage());
+            Log.e(TAG, "❌ Error descargando imagen: " + e.getMessage());
             return false;
         }
     }
 
-    private void downloadVideoSyncInternal(String fileName, String urlStr, SyncProgressCallback callback)
+    private void downloadImageSyncInternal(String fileName, String urlStr, SyncProgressCallback callback)
             throws IOException {
-        Log.d(TAG, "Descargando (sync): " + urlStr);
+        Log.d(TAG, "📥 Descargando (sync): " + urlStr);
 
-        File tempFile = new File(videoDir, fileName + ".tmp");
-        File finalFile = new File(videoDir, fileName);
+        File tempFile = new File(imageDir, fileName + ".tmp");
+        File finalFile = new File(imageDir, fileName);
 
         HttpURLConnection connection = null;
         InputStream input = null;
@@ -303,7 +310,7 @@ public class VideoDownloadManager {
                 throw new IOException("Error moviendo archivo temporal");
             }
 
-            Log.d(TAG, "Descarga sync completada: " + fileName);
+            Log.d(TAG, "✅ Descarga sync completada: " + fileName);
 
         } finally {
             if (output != null) try { output.close(); } catch (Exception ignored) {}
@@ -313,56 +320,49 @@ public class VideoDownloadManager {
         }
     }
 
-    /**
-     * Callback simple para progreso sincrono
-     */
-    public interface SyncProgressCallback {
-        void onProgress(int percent);
-    }
-
-    /**
-     * Obtiene el directorio donde se guardan los videos
-     */
-    public File getVideoDirectory() {
-        return videoDir;
-    }
-
     // ═══════════════════════════════════════════════════════════════════════
     // GESTIÓN DE CACHE
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * Elimina un video del storage y su versión.
+     * Obtiene el directorio donde se guardan las imágenes.
      */
-    public void deleteVideo(String fileName) {
-        File file = new File(videoDir, fileName);
+    public File getImageDirectory() {
+        return imageDir;
+    }
+
+    /**
+     * Elimina una imagen del storage y su versión.
+     */
+    public void deleteImage(String fileName) {
+        File file = new File(imageDir, fileName);
         if (file.exists()) {
             file.delete();
         }
         versionPrefs.edit().remove(VERSION_PREFIX + fileName).apply();
-        Log.d(TAG, "🗑️ Video eliminado: " + fileName);
+        Log.d(TAG, "🗑️ Imagen eliminada: " + fileName);
     }
 
     /**
-     * Elimina todos los videos del cache y sus versiones.
+     * Elimina todas las imágenes del cache y sus versiones.
      */
     public void clearCache() {
-        File[] files = videoDir.listFiles();
+        File[] files = imageDir.listFiles();
         if (files != null) {
             for (File f : files) {
                 f.delete();
             }
         }
         versionPrefs.edit().clear().apply();
-        Log.d(TAG, "🗑️ Cache de videos limpiado");
+        Log.d(TAG, "🗑️ Cache de imágenes limpiado");
     }
 
     /**
-     * Obtiene el tamaño total del cache de videos en bytes.
+     * Obtiene el tamaño total del cache de imágenes en bytes.
      */
     public long getCacheSize() {
         long size = 0;
-        File[] files = videoDir.listFiles();
+        File[] files = imageDir.listFiles();
         if (files != null) {
             for (File f : files) {
                 size += f.length();
@@ -372,10 +372,10 @@ public class VideoDownloadManager {
     }
 
     /**
-     * Obtiene el número de videos en cache.
+     * Obtiene el número de imágenes en cache.
      */
-    public int getCachedVideoCount() {
-        File[] files = videoDir.listFiles();
+    public int getCachedImageCount() {
+        File[] files = imageDir.listFiles();
         return files != null ? files.length : 0;
     }
 
@@ -390,5 +390,12 @@ public class VideoDownloadManager {
         void onProgress(int percent, long downloadedBytes, long totalBytes);
         void onComplete(String filePath);
         void onError(String message);
+    }
+
+    /**
+     * Callback simple para progreso síncrono.
+     */
+    public interface SyncProgressCallback {
+        void onProgress(int percent);
     }
 }
