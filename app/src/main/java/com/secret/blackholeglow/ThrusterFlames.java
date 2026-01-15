@@ -5,6 +5,8 @@ import android.opengl.GLES30;
 import android.opengl.Matrix;
 import android.util.Log;
 
+import com.secret.blackholeglow.image.ImageDownloadManager;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -183,7 +185,17 @@ public class ThrusterFlames implements SceneObject, CameraAware {
     }
 
     private void loadTexture() {
-        textureId = textureLoader.getTexture(R.drawable.thruster_flames);
+        // Cargar desde archivos descargados (ResourcePreloader garantiza disponibilidad)
+        ImageDownloadManager imageMgr = ImageDownloadManager.getInstance(context);
+        String texturePath = imageMgr.getImagePath("thruster_flames.png");
+
+        if (texturePath != null && textureLoader instanceof TextureManager) {
+            Log.d(TAG, "🌐 Cargando textura desde descarga: " + texturePath);
+            textureId = ((TextureManager) textureLoader).loadTextureFromFile(texturePath);
+        } else {
+            Log.e(TAG, "❌ Textura no disponible: thruster_flames.png");
+            return;
+        }
         Log.d(TAG, "✅ Textura de llamas cargada: " + textureId);
     }
 

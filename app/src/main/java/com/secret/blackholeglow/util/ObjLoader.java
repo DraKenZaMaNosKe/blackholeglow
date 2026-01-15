@@ -8,6 +8,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -295,10 +297,43 @@ public class ObjLoader {
     @NonNull
     public static Mesh loadObj(@NonNull Context ctx, @NonNull String assetPath,
                                @NonNull LoadOptions options) throws IOException {
+        try (InputStream is = ctx.getAssets().open(assetPath)) {
+            return loadObjFromStream(is, assetPath, options);
+        }
+    }
+
+    /**
+     * Carga un modelo OBJ desde un archivo en el sistema de archivos.
+     * Útil para modelos descargados dinámicamente.
+     *
+     * @param filePath Ruta completa al archivo OBJ
+     * @param flipV    Si voltear coordenadas V
+     * @return Mesh cargado
+     */
+    @NonNull
+    public static Mesh loadObjFromFile(@NonNull String filePath, boolean flipV) throws IOException {
+        File file = new File(filePath);
+        if (!file.exists()) {
+            throw new IOException("Archivo no encontrado: " + filePath);
+        }
+
+        try (InputStream is = new FileInputStream(file)) {
+            return loadObjFromStream(is, file.getName(), new LoadOptions().setFlipV(flipV));
+        }
+    }
+
+    /**
+     * Carga un modelo OBJ desde un InputStream genérico.
+     * Método interno compartido por loadObj() y loadObjFromFile().
+     */
+    @NonNull
+    private static Mesh loadObjFromStream(@NonNull InputStream inputStream,
+                                          @NonNull String sourceName,
+                                          @NonNull LoadOptions options) throws IOException {
         long startTime = System.currentTimeMillis();
 
         Log.d(TAG, "╔═══════════════════════════════════════════════════════════════╗");
-        Log.d(TAG, "║  Cargando: " + assetPath);
+        Log.d(TAG, "║  Cargando: " + sourceName);
         Log.d(TAG, "╚═══════════════════════════════════════════════════════════════╝");
 
         // Determinar si necesitamos flipV
@@ -307,7 +342,7 @@ public class ObjLoader {
             flipV = options.flipV;
             Log.d(TAG, "FlipV: " + flipV + " (explícito)");
         } else {
-            flipV = shouldAutoFlipV(assetPath);
+            flipV = shouldAutoFlipV(sourceName);
             Log.d(TAG, "FlipV: " + flipV + " (auto-detectado)");
         }
 
@@ -327,8 +362,7 @@ public class ObjLoader {
         // ═══════════════════════════════════════════════════════════════════════════
         // FASE 1: Parsear archivo OBJ
         // ═══════════════════════════════════════════════════════════════════════════
-        try (InputStream is = ctx.getAssets().open(assetPath);
-             BufferedReader reader = new BufferedReader(new InputStreamReader(is), 8192)) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream), 8192)) {
 
             String line;
             while ((line = reader.readLine()) != null) {
@@ -410,7 +444,7 @@ public class ObjLoader {
 
         // Validación
         if (rawVertCount == 0 || rawFaceCount == 0) {
-            throw new IOException("Modelo vacío o inválido: " + assetPath);
+            throw new IOException("Modelo vacío o inválido: " + sourceName);
         }
 
         // Bounding box por defecto si no hay vértices válidos
@@ -541,7 +575,7 @@ public class ObjLoader {
         );
 
         Log.d(TAG, "╔═══════════════════════════════════════════════════════════════╗");
-        Log.d(TAG, "║  ✅ Carga completada: " + assetPath);
+        Log.d(TAG, "║  ✅ Carga completada: " + sourceName);
         Log.d(TAG, "║  " + stats);
         Log.d(TAG, "╚═══════════════════════════════════════════════════════════════╝");
 

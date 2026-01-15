@@ -118,6 +118,79 @@ public class ImageConfig {
             "Preview Adventure Time",
             1
         ));
+
+        // ═══════════════════════════════════════════════════════════════
+        // OCEAN FLOOR SCENE (Abyssia) - Texturas
+        // ═══════════════════════════════════════════════════════════════
+
+        IMAGES.put("abyssal_lurker_texture.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "abyssal_lurker_texture.png",
+            6_000_000L,  // ~5.8 MB
+            "Textura Acechador Abisal",
+            1
+        ));
+
+        IMAGES.put("abyssal_leviathan_texture.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "abyssal_leviathan_texture.png",
+            2_100_000L,  // ~2 MB
+            "Textura Leviatán Abisal",
+            1
+        ));
+
+        IMAGES.put("huevo_zerg.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "huevo_zerg.png",
+            260_000L,  // ~248 KB
+            "Huevo Zerg",
+            1
+        ));
+
+        // ═══════════════════════════════════════════════════════════════
+        // NEON CITY SCENE (Synthwave) - Texturas
+        // ═══════════════════════════════════════════════════════════════
+
+        IMAGES.put("delorean_texture.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "delorean_texture.png",
+            4_000_000L,  // ~3.9 MB
+            "Textura DeLorean",
+            1
+        ));
+
+        // ═══════════════════════════════════════════════════════════════
+        // LAB SCENE (Pyralis) - Texturas
+        // ═══════════════════════════════════════════════════════════════
+
+        IMAGES.put("human_interceptor_texture.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "human_interceptor_texture.png",
+            3_700_000L,  // ~3.6 MB
+            "Textura Interceptor",
+            1
+        ));
+
+        IMAGES.put("thruster_flames.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "thruster_flames.png",
+            340_000L,  // ~331 KB
+            "Llamas del Thruster",
+            1
+        ));
+
+        IMAGES.put("fire_orb.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "fire_orb.png",
+            230_000L,  // ~218 KB
+            "Orbe de Fuego",
+            1
+        ));
+
+        // ═══════════════════════════════════════════════════════════════
+        // PANEL MODE (Arcane Grimoire) - Texturas
+        // ═══════════════════════════════════════════════════════════════
+
+        IMAGES.put("grimoire_texture.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "grimoire_texture.png",
+            6_400_000L,  // ~6.23 MB
+            "Textura Grimorio",
+            1
+        ));
+
     }
 
     // ═══════════════════════════════════════════════════════════════════════

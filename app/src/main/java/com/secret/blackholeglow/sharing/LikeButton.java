@@ -8,6 +8,7 @@ import android.opengl.GLUtils;
 import android.util.Log;
 
 import com.secret.blackholeglow.R;
+import com.secret.blackholeglow.image.ImageDownloadManager;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -30,7 +31,7 @@ import java.nio.FloatBuffer;
 public class LikeButton {
     private static final String TAG = "LikeButton";
 
-    public enum Theme { DEFAULT, ABYSSIA, PYRALIS, ADVENTURE_TIME, GOKU, SYNTHWAVE, COSMOS }
+    public enum Theme { DEFAULT, ABYSSIA, PYRALIS, ADVENTURE_TIME, GOKU, SYNTHWAVE, COSMOS, WALKING_DEAD }
     private Theme currentTheme = Theme.DEFAULT;
 
     private float x = 0.85f;
@@ -78,6 +79,12 @@ public class LikeButton {
     private float[] synthwaveSunBottom = {1.0f, 0.08f, 0.58f, 0.95f}; // Hot Pink
     private float[] synthwaveGlow = {1.0f, 0.0f, 1.0f};               // Magenta glow
     private float[] synthwaveLine = {0.2f, 0.0f, 0.3f, 0.8f};         // Líneas púrpura oscuro
+
+    // 🧟 Colores para Corazón Zombie (Verde tóxico → Rojo sangre)
+    private float[] zombieHeartMain = {0.0f, 0.8f, 0.2f, 0.95f};      // Verde tóxico
+    private float[] zombieHeartDark = {0.4f, 0.1f, 0.1f, 0.95f};      // Rojo sangre oscuro
+    private float[] zombieGlow = {0.2f, 1.0f, 0.3f};                  // Verde neón glow
+    private float[] zombieVein = {0.6f, 0.0f, 0.0f, 0.8f};            // Venas rojas
 
     private final float[] modelMatrix = new float[16];
     private final float[] finalMatrix = new float[16];
@@ -246,25 +253,43 @@ public class LikeButton {
     }
 
     private void loadTextures() {
-        textureAbyssia = loadTexture(R.drawable.huevo_zerg);
-        textureFireOrb = loadTexture(R.drawable.fire_orb);
+        // Cargar desde archivos descargados (ResourcePreloader garantiza disponibilidad)
+        ImageDownloadManager imageMgr = ImageDownloadManager.getInstance(context);
+
+        String abyssiaPath = imageMgr.getImagePath("huevo_zerg.png");
+        String fireOrbPath = imageMgr.getImagePath("fire_orb.png");
+
+        if (abyssiaPath != null) {
+            textureAbyssia = loadTextureFromFile(abyssiaPath);
+        } else {
+            Log.e(TAG, "❌ Textura no disponible: huevo_zerg.png");
+        }
+
+        if (fireOrbPath != null) {
+            textureFireOrb = loadTextureFromFile(fireOrbPath);
+        } else {
+            Log.e(TAG, "❌ Textura no disponible: fire_orb.png");
+        }
+
         Log.d(TAG, "Textures loaded (ABYSSIA & PYRALIS)");
     }
 
-    private int loadTexture(int resourceId) {
+    private int loadTextureFromFile(String filePath) {
         final int[] texHandle = new int[1];
         GLES30.glGenTextures(1, texHandle, 0);
         if (texHandle[0] != 0) {
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inScaled = false;
-            Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), resourceId, options);
-            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, texHandle[0]);
-            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
-            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
-            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
-            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
-            GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0);
-            bitmap.recycle();
+            Bitmap bitmap = BitmapFactory.decodeFile(filePath, options);
+            if (bitmap != null) {
+                GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, texHandle[0]);
+                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
+                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
+                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
+                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
+                GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0);
+                bitmap.recycle();
+            }
         }
         return texHandle[0];
     }
@@ -301,6 +326,9 @@ public class LikeButton {
                 break;
             case COSMOS:
                 drawCosmosStarProcedural(mvpMatrix, pulse);
+                break;
+            case WALKING_DEAD:
+                drawZombieHeartProcedural(mvpMatrix, pulse);
                 break;
         }
     }
@@ -843,6 +871,124 @@ public class LikeButton {
         GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, coreBuffer);
         GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, segments + 2);
         GLES30.glDisableVertexAttribArray(positionHandleColor);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🧟 CORAZÓN ZOMBIE - Walking Dead (Procedural)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    private void drawZombieHeartProcedural(float[] mvpMatrix, float pulse) {
+        GLES30.glUseProgram(programIdColor);
+        float scale = size * (1.0f + pulse * 0.12f);
+        float currentY = y + floatOffset;
+
+        // 1. Glow verde tóxico exterior
+        if (!isOnCooldown) {
+            drawZombieGlow(mvpMatrix, scale * 1.8f, 0.15f, pulse);
+            drawZombieGlow(mvpMatrix, scale * 1.4f, 0.25f, pulse);
+        }
+
+        // 2. Corazón principal (verde tóxico)
+        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
+        android.opengl.Matrix.translateM(modelMatrix, 0, x, currentY, 0);
+        android.opengl.Matrix.scaleM(modelMatrix, 0, scale, scale, 1);
+        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandleColor, 1, false, finalMatrix, 0);
+
+        // Color del corazón zombie (varía con pulse)
+        float decay = 0.7f + pulse * 0.3f;
+        colorCache[0] = zombieHeartMain[0] * decay;
+        colorCache[1] = zombieHeartMain[1] * decay;
+        colorCache[2] = zombieHeartMain[2] * decay;
+        colorCache[3] = isOnCooldown ? 0.4f : (isPressed ? 1.0f : 0.95f);
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+
+        heartBuffer.position(0);
+        GLES30.glEnableVertexAttribArray(positionHandleColor);
+        GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, heartBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, heartBuffer.capacity() / 2);
+
+        // 3. "Venas" rojas (líneas sangrientas)
+        if (!isOnCooldown) {
+            drawZombieVeins(mvpMatrix, scale * 0.7f, currentY, pulse);
+        }
+
+        GLES30.glDisableVertexAttribArray(positionHandleColor);
+    }
+
+    private void drawZombieGlow(float[] mvpMatrix, float glowSize, float alpha, float pulse) {
+        float currentY = y + floatOffset;
+
+        // Círculo para glow
+        int segments = 32;
+        float[] glowVerts = new float[(segments + 2) * 2];
+        glowVerts[0] = 0f; glowVerts[1] = 0f;
+        for (int i = 0; i <= segments; i++) {
+            float angle = (float) (2.0 * Math.PI * i / segments);
+            glowVerts[(i + 1) * 2] = (float) Math.cos(angle);
+            glowVerts[(i + 1) * 2 + 1] = (float) Math.sin(angle);
+        }
+
+        ByteBuffer bb = ByteBuffer.allocateDirect(glowVerts.length * 4);
+        bb.order(ByteOrder.nativeOrder());
+        FloatBuffer glowBuffer = bb.asFloatBuffer();
+        glowBuffer.put(glowVerts);
+        glowBuffer.position(0);
+
+        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
+        android.opengl.Matrix.translateM(modelMatrix, 0, x, currentY, 0);
+        android.opengl.Matrix.scaleM(modelMatrix, 0, glowSize, glowSize, 1);
+        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandleColor, 1, false, finalMatrix, 0);
+
+        // Glow verde tóxico pulsante
+        colorCache[0] = zombieGlow[0];
+        colorCache[1] = zombieGlow[1];
+        colorCache[2] = zombieGlow[2];
+        colorCache[3] = alpha * (0.6f + pulse * 0.4f);
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+
+        GLES30.glEnableVertexAttribArray(positionHandleColor);
+        GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, glowBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, segments + 2);
+        GLES30.glDisableVertexAttribArray(positionHandleColor);
+    }
+
+    private void drawZombieVeins(float[] mvpMatrix, float veinScale, float currentY, float pulse) {
+        // 3 líneas como "venas sangrientas"
+        GLES30.glLineWidth(2.0f);
+
+        colorCache[0] = zombieVein[0];
+        colorCache[1] = zombieVein[1];
+        colorCache[2] = zombieVein[2];
+        colorCache[3] = 0.6f + pulse * 0.3f;
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+
+        float[][] veins = {
+            {-0.3f, 0.2f, 0.0f, -0.4f},
+            {0.3f, 0.2f, 0.0f, -0.3f},
+            {0.0f, 0.3f, 0.15f, -0.2f}
+        };
+
+        for (float[] vein : veins) {
+            float[] veinVerts = {vein[0], vein[1], vein[2], vein[3]};
+            ByteBuffer bb = ByteBuffer.allocateDirect(veinVerts.length * 4);
+            bb.order(ByteOrder.nativeOrder());
+            FloatBuffer veinBuffer = bb.asFloatBuffer();
+            veinBuffer.put(veinVerts);
+            veinBuffer.position(0);
+
+            android.opengl.Matrix.setIdentityM(modelMatrix, 0);
+            android.opengl.Matrix.translateM(modelMatrix, 0, x, currentY, 0);
+            android.opengl.Matrix.scaleM(modelMatrix, 0, veinScale, veinScale, 1);
+            android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+            GLES30.glUniformMatrix4fv(mvpMatrixHandleColor, 1, false, finalMatrix, 0);
+
+            GLES30.glEnableVertexAttribArray(positionHandleColor);
+            GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, veinBuffer);
+            GLES30.glDrawArrays(GLES30.GL_LINES, 0, 2);
+            GLES30.glDisableVertexAttribArray(positionHandleColor);
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

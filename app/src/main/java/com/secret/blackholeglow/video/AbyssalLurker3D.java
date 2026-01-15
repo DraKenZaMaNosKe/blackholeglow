@@ -9,6 +9,8 @@ import android.graphics.BitmapFactory;
 import android.util.Log;
 
 import com.secret.blackholeglow.R;
+import com.secret.blackholeglow.image.ImageDownloadManager;
+import com.secret.blackholeglow.model.ModelDownloadManager;
 import com.secret.blackholeglow.util.ObjLoader;
 
 import java.io.IOException;
@@ -256,7 +258,19 @@ public class AbyssalLurker3D {
 
     private void loadModel() {
         try {
-            ObjLoader.Mesh mesh = ObjLoader.loadObj(context, OBJ_FILE, true);
+            // Intentar cargar desde archivos descargados, fallback a assets
+            ObjLoader.Mesh mesh;
+            ModelDownloadManager modelMgr = ModelDownloadManager.getInstance(context);
+            String modelPath = modelMgr.getModelPath(OBJ_FILE);
+
+            if (modelPath != null) {
+                Log.d(TAG, "🌐 Cargando modelo desde descarga: " + modelPath);
+                mesh = ObjLoader.loadObjFromFile(modelPath, true);
+            } else {
+                Log.d(TAG, "📂 Cargando modelo desde assets (fallback)");
+                mesh = ObjLoader.loadObj(context, OBJ_FILE, true);
+            }
+
             this.vertexBuffer = mesh.vertexBuffer;
             this.uvBuffer = mesh.uvBuffer;
 
@@ -302,14 +316,25 @@ public class AbyssalLurker3D {
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
 
+        Bitmap bitmap = null;
         BitmapFactory.Options opts = new BitmapFactory.Options();
         opts.inScaled = false;
-        Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(),
-            R.drawable.abyssal_lurker_texture, opts);
+
+        // Cargar desde archivos descargados (ResourcePreloader garantiza disponibilidad)
+        ImageDownloadManager imageMgr = ImageDownloadManager.getInstance(context);
+        String texturePath = imageMgr.getImagePath("abyssal_lurker_texture.png");
+
+        if (texturePath != null) {
+            Log.d(TAG, "🌐 Cargando textura desde descarga: " + texturePath);
+            bitmap = BitmapFactory.decodeFile(texturePath, opts);
+        } else {
+            Log.e(TAG, "❌ Textura no disponible: abyssal_lurker_texture.png");
+        }
 
         if (bitmap != null) {
             GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
             bitmap.recycle();
+            Log.d(TAG, "✅ Textura cargada");
         }
     }
 

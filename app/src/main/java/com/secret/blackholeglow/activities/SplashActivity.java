@@ -21,6 +21,8 @@ import com.secret.blackholeglow.LoginActivity;
 import com.secret.blackholeglow.MusicPermissionActivity;
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.UserManager;
+import com.secret.blackholeglow.image.ImageDownloadManager;
+import com.secret.blackholeglow.model.ModelDownloadManager;
 import com.secret.blackholeglow.video.VideoDownloadManager;
 
 /*
@@ -43,6 +45,16 @@ public class SplashActivity extends AppCompatActivity {
     private static final String TAG = "SplashActivity";
     private static final String PANEL_VIDEO_FILE = "thehouse.mp4";
     private static final int MIN_SPLASH_DURATION = 2000; // Mínimo 2 segundos
+
+    // Recursos del Panel a descargar
+    private static final String[] PANEL_IMAGES = {
+        "grimoire_texture.png",  // Textura del libro
+        "huevo_zerg.png",        // LikeButton ABYSSIA
+        "fire_orb.png"           // LikeButton PYRALIS
+    };
+    private static final String[] PANEL_MODELS = {
+        "grimoire.obj"           // Modelo del libro
+    };
 
     // UI Elements
     private View downloadContainer;
@@ -82,18 +94,127 @@ public class SplashActivity extends AppCompatActivity {
      * Verifica si los recursos están descargados, si no los descarga
      */
     private void checkAndDownloadResources() {
-        VideoDownloadManager manager = VideoDownloadManager.getInstance(this);
+        // Contar recursos faltantes
+        int missingCount = countMissingResources();
 
-        if (manager.isVideoAvailable(PANEL_VIDEO_FILE)) {
-            // Video ya está descargado
-            Log.d(TAG, "✅ Video del panel ya disponible");
+        if (missingCount == 0) {
+            Log.d(TAG, "✅ Todos los recursos del panel ya disponibles");
             onResourcesReady();
         } else {
-            // Necesita descargar
-            Log.d(TAG, "📥 Iniciando descarga del video del panel...");
+            Log.d(TAG, "📥 Descargando " + missingCount + " recursos del panel...");
             showDownloadUI();
-            startVideoDownload(manager);
+            downloadAllPanelResources();
         }
+    }
+
+    /**
+     * Cuenta cuántos recursos faltan por descargar
+     */
+    private int countMissingResources() {
+        int missing = 0;
+        VideoDownloadManager videoMgr = VideoDownloadManager.getInstance(this);
+        ImageDownloadManager imageMgr = ImageDownloadManager.getInstance(this);
+        ModelDownloadManager modelMgr = ModelDownloadManager.getInstance(this);
+
+        if (!videoMgr.isVideoAvailable(PANEL_VIDEO_FILE)) missing++;
+        for (String img : PANEL_IMAGES) {
+            if (!imageMgr.isImageAvailable(img)) missing++;
+        }
+        for (String model : PANEL_MODELS) {
+            if (!modelMgr.isModelAvailable(model)) missing++;
+        }
+        return missing;
+    }
+
+    /**
+     * Descarga todos los recursos del panel secuencialmente
+     */
+    private void downloadAllPanelResources() {
+        Log.d(TAG, "🚀 Iniciando descarga de recursos del panel...");
+        new Thread(() -> {
+            VideoDownloadManager videoMgr = VideoDownloadManager.getInstance(this);
+            ImageDownloadManager imageMgr = ImageDownloadManager.getInstance(this);
+            ModelDownloadManager modelMgr = ModelDownloadManager.getInstance(this);
+
+            int totalResources = 1 + PANEL_IMAGES.length + PANEL_MODELS.length;
+            int completed = 0;
+            Log.d(TAG, "📊 Total recursos: " + totalResources);
+
+            // 1. Video del panel
+            if (!videoMgr.isVideoAvailable(PANEL_VIDEO_FILE)) {
+                final int c0 = completed;
+                Log.d(TAG, "📥 [1/" + totalResources + "] Descargando video: " + PANEL_VIDEO_FILE);
+                updateStatusUI("Descargando video...", c0, totalResources);
+                videoMgr.downloadVideoSync(PANEL_VIDEO_FILE, percent ->
+                    updateProgressUI(percent, c0, totalResources));
+            } else {
+                Log.d(TAG, "✅ Video ya disponible: " + PANEL_VIDEO_FILE);
+            }
+            completed++;
+
+            // 2. Modelo del grimoire
+            for (String model : PANEL_MODELS) {
+                Log.d(TAG, "📥 [" + (completed+1) + "/" + totalResources + "] Verificando modelo: " + model);
+                if (!modelMgr.isModelAvailable(model)) {
+                    Log.d(TAG, "⬇️ Descargando modelo: " + model);
+                    final int c = completed;
+                    updateStatusUI("Descargando modelo...", c, totalResources);
+                    modelMgr.downloadModelSync(model, percent ->
+                        updateProgressUI(percent, c, totalResources));
+                    Log.d(TAG, "✅ Modelo descargado: " + model);
+                } else {
+                    Log.d(TAG, "✅ Modelo ya disponible: " + model);
+                }
+                completed++;
+            }
+
+            // 3. Imágenes (grimoire texture, like button textures)
+            for (String img : PANEL_IMAGES) {
+                Log.d(TAG, "📥 [" + (completed+1) + "/" + totalResources + "] Verificando imagen: " + img);
+                if (!imageMgr.isImageAvailable(img)) {
+                    Log.d(TAG, "⬇️ Descargando: " + img);
+                    final int c = completed;
+                    updateStatusUI("Descargando texturas...", c, totalResources);
+                    imageMgr.downloadImageSync(img, percent ->
+                        updateProgressUI(percent, c, totalResources));
+                } else {
+                    Log.d(TAG, "✅ Ya disponible: " + img);
+                }
+                completed++;
+            }
+
+            // Todo listo
+            Log.d(TAG, "✅ Descarga de recursos del panel COMPLETADA");
+            mainHandler.post(() -> {
+                statusText.setText("¡Listo!");
+                onResourcesReady();
+            });
+        }).start();
+    }
+
+    /**
+     * Actualiza el texto de estado en UI thread
+     */
+    private void updateStatusUI(String status, int completedResources, int totalResources) {
+        mainHandler.post(() -> statusText.setText(status));
+    }
+
+    /**
+     * Actualiza la barra de progreso considerando múltiples recursos
+     */
+    private void updateProgressUI(int resourcePercent, int completedResources, int totalResources) {
+        mainHandler.post(() -> {
+            // Progreso global = (recursos completados + progreso actual) / total
+            float globalProgress = (completedResources + resourcePercent / 100f) / totalResources * 100f;
+            int percent = (int) globalProgress;
+            progressText.setText(percent + "%");
+
+            if (progressBarMaxWidth > 0) {
+                ViewGroup.LayoutParams params = progressFill.getLayoutParams();
+                params.width = (int) (progressBarMaxWidth * percent / 100f);
+                progressFill.setLayoutParams(params);
+            }
+        });
     }
 
     /**
@@ -109,59 +230,6 @@ public class SplashActivity extends AppCompatActivity {
             View progressBarBg = (View) progressFill.getParent();
             progressBarMaxWidth = progressBarBg.getWidth();
         });
-    }
-
-    /**
-     * Inicia la descarga del video
-     */
-    private void startVideoDownload(VideoDownloadManager manager) {
-        manager.downloadVideo(PANEL_VIDEO_FILE, new VideoDownloadManager.DownloadCallback() {
-            @Override
-            public void onProgress(int percent, long downloadedBytes, long totalBytes) {
-                mainHandler.post(() -> updateProgress(percent, downloadedBytes, totalBytes));
-            }
-
-            @Override
-            public void onComplete(String filePath) {
-                Log.d(TAG, "✅ Video descargado: " + filePath);
-                mainHandler.post(() -> {
-                    updateProgress(100, 0, 0);
-                    statusText.setText("¡Listo!");
-                    onResourcesReady();
-                });
-            }
-
-            @Override
-            public void onError(String message) {
-                Log.e(TAG, "❌ Error descargando: " + message);
-                mainHandler.post(() -> {
-                    // Continuar de todos modos, el video se descargará después
-                    statusText.setText("Continuando...");
-                    onResourcesReady();
-                });
-            }
-        });
-    }
-
-    /**
-     * Actualiza la UI de progreso
-     */
-    private void updateProgress(int percent, long downloadedBytes, long totalBytes) {
-        progressText.setText(percent + "%");
-
-        // Actualizar ancho de la barra
-        if (progressBarMaxWidth > 0) {
-            ViewGroup.LayoutParams params = progressFill.getLayoutParams();
-            params.width = (int) (progressBarMaxWidth * percent / 100f);
-            progressFill.setLayoutParams(params);
-        }
-
-        // Actualizar texto de estado
-        if (totalBytes > 0) {
-            float mbDownloaded = downloadedBytes / (1024f * 1024f);
-            float mbTotal = totalBytes / (1024f * 1024f);
-            statusText.setText(String.format("Descargando recursos... %.1f/%.1f MB", mbDownloaded, mbTotal));
-        }
     }
 
     /**

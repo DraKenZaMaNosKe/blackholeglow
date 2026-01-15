@@ -47,6 +47,7 @@ public class Battery3D implements SceneObject {
     public static final int THEME_KAMEHAMEHA = 2;
     public static final int THEME_SYNTHWAVE = 3;
     public static final int THEME_COSMOS = 4;
+    public static final int THEME_WALKING_DEAD = 5;
 
     // Colores PYRALIS (Fuego/Plasma)
     private static final int PYRALIS_HIGH = 0xFFFFD700;      // Gold (>50%)
@@ -82,6 +83,13 @@ public class Battery3D implements SceneObject {
     private static final int COSMOS_LOW = 0xFFFF4500;        // Orange Red (<20%)
     private static final int COSMOS_GLOW = 0xFF8A2BE2;       // Blue Violet glow
     private static final int COSMOS_CORE = 0xFFFFF8DC;       // Cornsilk (núcleo dorado claro)
+
+    // Colores WALKING_DEAD (Zombie - Verde tóxico/Rojo sangre)
+    private static final int WALKINGDEAD_HIGH = 0xFF00CC44;  // Verde tóxico (>50%)
+    private static final int WALKINGDEAD_MED = 0xFF886600;   // Marrón putrefacto (20-50%)
+    private static final int WALKINGDEAD_LOW = 0xFFCC0000;   // Rojo sangre (<20%)
+    private static final int WALKINGDEAD_GLOW = 0xFF33FF66;  // Verde neón glow
+    private static final int WALKINGDEAD_CORE = 0xFFAAFFAA;  // Verde claro (núcleo)
 
     // ═══════════════════════════════════════════════════════════════
     // ESTADO DE BATERÍA
@@ -256,6 +264,10 @@ public class Battery3D implements SceneObject {
             if (level > 50) return COSMOS_HIGH;
             if (level > 20) return COSMOS_MED;
             return COSMOS_LOW;
+        } else if (currentTheme == THEME_WALKING_DEAD) {
+            if (level > 50) return WALKINGDEAD_HIGH;
+            if (level > 20) return WALKINGDEAD_MED;
+            return WALKINGDEAD_LOW;
         } else {
             if (level > 50) return ABYSSIA_HIGH;
             if (level > 20) return ABYSSIA_MED;

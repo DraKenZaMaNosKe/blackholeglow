@@ -9,6 +9,7 @@ import android.util.Log;
 
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.image.ImageDownloadManager;
+import com.secret.blackholeglow.model.ModelDownloadManager;
 import com.secret.blackholeglow.video.VideoDownloadManager;
 
 import java.util.ArrayList;
@@ -115,6 +116,10 @@ public class ResourcePreloader {
                 prepareSaintSeiyaSceneTasks();
                 break;
 
+            case "WALKING_DEAD":
+                prepareWalkingDeadSceneTasks();
+                break;
+
             default:
                 // Default: usar Lab
                 prepareLabSceneTasks();
@@ -123,8 +128,34 @@ public class ResourcePreloader {
     }
 
     /**
+     * Prepara tareas para el Panel de Control (lobby)
+     * Incluye grimoire, video de fondo y texturas del LikeButton
+     * DEBE ejecutarse ANTES de mostrar el panel
+     */
+    public void preparePanelTasks() {
+        tasks.clear();
+
+        // 1. VIDEO - Fondo del panel (thehouse.mp4)
+        addVideoDownloadTask("Video Panel", "thehouse.mp4", 8);
+
+        // 2. Modelo 3D del Grimorio (libro mágico)
+        addModelDownloadTask("Modelo Grimorio", "grimoire.obj", 3);
+
+        // 3. Textura del Grimorio
+        addImageDownloadTask("Textura Grimorio", "grimoire_texture.png", 5);
+
+        // 4. Texturas del LikeButton (usadas en todas las escenas)
+        addImageDownloadTask("Huevo Zerg", "huevo_zerg.png", 1);
+        addImageDownloadTask("Orbe de Fuego", "fire_orb.png", 1);
+
+        // Calcular total
+        calculateTotalWeight();
+        Log.d(TAG, "PanelTasks: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    /**
      * Prepara tareas para LabScene (Portal Cosmico)
-     * Incluye descarga del video de nubes de fuego
+     * Incluye descarga del video de nubes de fuego, modelo 3D y textura de la nave
      */
     public void prepareLabSceneTasks() {
         tasks.clear();
@@ -132,8 +163,15 @@ public class ResourcePreloader {
         // 1. VIDEO - Lo mas importante y pesado
         addVideoDownloadTask("Video Portal Cosmico", "cielovolando.mp4", 10);
 
-        // 2. Texturas (placeholder - la escena carga sus propias texturas)
-        addTextureTask("Preparando escena", R.drawable.preview_oceano_sc, 2);
+        // 2. Modelo 3D de la nave (TravelingShip)
+        addModelDownloadTask("Modelo Nave", "human_interceptor_flames.obj", 3);
+
+        // 3. Textura de la nave
+        addImageDownloadTask("Textura Nave", "human_interceptor_texture.png", 4);
+
+        // 4. Texturas extras (thruster flames, fire orb)
+        addImageDownloadTask("Llamas Thruster", "thruster_flames.png", 1);
+        addImageDownloadTask("Orbe de Fuego", "fire_orb.png", 1);
 
         // Calcular total
         calculateTotalWeight();
@@ -142,7 +180,7 @@ public class ResourcePreloader {
 
     /**
      * Prepara tareas para OceanFloorScene (Fondo del Mar)
-     * Incluye descarga del video del oceano
+     * Incluye descarga del video, modelos 3D y texturas de las criaturas
      */
     public void prepareOceanSceneTasks() {
         tasks.clear();
@@ -150,8 +188,16 @@ public class ResourcePreloader {
         // 1. VIDEO - Lo mas importante
         addVideoDownloadTask("Video Abyssia", "marZerg.mp4", 10);
 
-        // 2. Texturas
-        addTextureTask("Textura Pez", R.drawable.abyssal_lurker_texture, 2);
+        // 2. Modelos 3D de las criaturas
+        addModelDownloadTask("Modelo Leviatán", "abyssal_leviathan.obj", 4);
+        addModelDownloadTask("Modelo Acechador", "abyssal_lurker.obj", 3);
+
+        // 3. Texturas de las criaturas
+        addImageDownloadTask("Textura Leviatán", "abyssal_leviathan_texture.png", 3);
+        addImageDownloadTask("Textura Acechador", "abyssal_lurker_texture.png", 4);
+
+        // 4. Extras
+        addImageDownloadTask("Huevo Zerg", "huevo_zerg.png", 1);
 
         // Calcular total
         calculateTotalWeight();
@@ -195,7 +241,7 @@ public class ResourcePreloader {
 
     /**
      * Prepara tareas para NeonCityScene (Synthwave DeLorean)
-     * Descarga del video de carretera infinita
+     * Descarga del video, modelo 3D y textura del DeLorean
      */
     public void prepareNeonCitySceneTasks() {
         tasks.clear();
@@ -203,7 +249,11 @@ public class ResourcePreloader {
         // 1. VIDEO - Neon City Synthwave desde Supabase
         addVideoDownloadTask("Video Neon City", "neoncityScene.mp4", 10);
 
-        // Preview es local (preview_neoncity) - no requiere descarga
+        // 2. Modelo 3D del DeLorean
+        addModelDownloadTask("Modelo DeLorean", "delorean.obj", 3);
+
+        // 3. Textura del DeLorean
+        addImageDownloadTask("Textura DeLorean", "delorean_texture.png", 4);
 
         // Calcular total
         calculateTotalWeight();
@@ -228,6 +278,17 @@ public class ResourcePreloader {
         // Calcular total
         calculateTotalWeight();
         Log.d(TAG, "SaintSeiyaScene: " + tasks.size() + " recursos 2-capas (peso: " + totalTasks + ")");
+    }
+
+    public void prepareWalkingDeadSceneTasks() {
+        tasks.clear();
+
+        // Video del cementerio zombie (67.5 MB - 2K)
+        addVideoDownloadTask("Walking Dead Video", "walkingdeathscene.mp4", 15);
+
+        // Calcular total
+        calculateTotalWeight();
+        Log.d(TAG, "WalkingDeadScene: " + tasks.size() + " recursos (peso: " + totalTasks + ")");
     }
 
     private void calculateTotalWeight() {
@@ -308,6 +369,14 @@ public class ResourcePreloader {
     }
 
     private void notifyComplete() {
+        // ⚡ CRÍTICO: Pequeña pausa para que el sistema de archivos termine de sincronizar
+        // Esto evita race conditions donde los archivos se reportan como "descargados"
+        // pero aún no están completamente disponibles para lectura
+        try {
+            Thread.sleep(300);  // 300ms de "settling time"
+            Log.d(TAG, "⚡ Settling time completado - archivos listos");
+        } catch (InterruptedException ignored) {}
+
         if (listener != null) {
             mainHandler.post(() -> {
                 listener.onPreloadComplete();
@@ -411,6 +480,38 @@ public class ResourcePreloader {
 
             if (!success) {
                 Log.e(TAG, "❌ Error descargando imagen: " + imageFileName);
+            }
+        }, weight));
+    }
+
+    /**
+     * Agrega tarea de descarga de modelo 3D desde Supabase.
+     * Usa ModelDownloadManager (especialista en modelos OBJ).
+     * Si el modelo ya existe, la tarea completa inmediatamente.
+     */
+    private void addModelDownloadTask(String name, String modelFileName, int weight) {
+        tasks.add(new PreloadTask(name, () -> {
+            ModelDownloadManager downloader = ModelDownloadManager.getInstance(context);
+
+            if (downloader.isModelAvailable(modelFileName)) {
+                Log.d(TAG, "🎮 Modelo ya descargado: " + modelFileName);
+                return;
+            }
+
+            // Modelo no disponible - descargar
+            Log.d(TAG, "🎮 Descargando modelo: " + modelFileName);
+            boolean success = downloader.downloadModelSync(modelFileName, percent -> {
+                // Actualizar progreso de descarga
+                String progressText = name + " (" + percent + "%)";
+                mainHandler.post(() -> {
+                    if (listener != null) {
+                        listener.onProgressUpdate(completedTasks, totalTasks, progressText);
+                    }
+                });
+            });
+
+            if (!success) {
+                Log.e(TAG, "❌ Error descargando modelo: " + modelFileName);
             }
         }, weight));
     }

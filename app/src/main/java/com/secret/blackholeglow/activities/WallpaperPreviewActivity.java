@@ -12,6 +12,7 @@ import android.app.WallpaperInfo;
 import android.app.WallpaperManager;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -95,8 +96,15 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         rootContainer.setBackgroundColor(COLOR_DARK_BG);
 
         // Imagen de fondo (del wallpaper seleccionado)
+        // ⚡ FIX: Cargar con inSampleSize para evitar OutOfMemoryError en dispositivos con poca RAM
         ImageView backgroundImage = new ImageView(this);
-        backgroundImage.setImageResource(previewResourceId);
+        try {
+            Bitmap previewBitmap = decodeSampledBitmapFromResource(getResources(), previewResourceId, 1080, 1920);
+            backgroundImage.setImageBitmap(previewBitmap);
+        } catch (OutOfMemoryError e) {
+            Log.e(TAG, "⚠️ OutOfMemory cargando preview, usando placeholder");
+            backgroundImage.setBackgroundColor(Color.parseColor("#1a1a2e"));
+        }
         backgroundImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
         rootContainer.addView(backgroundImage, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -943,5 +951,51 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
                     .withEndAction(this::finish)
                     .start();
         }, 2500);
+    }
+
+    // ════════════════════════════════════════
+    // ⚡ FIX: Carga eficiente de Bitmaps (evita OutOfMemoryError)
+    // ════════════════════════════════════════
+
+    /**
+     * Calcula el inSampleSize óptimo para cargar una imagen con dimensiones reducidas
+     */
+    private static int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
+        final int height = options.outHeight;
+        final int width = options.outWidth;
+        int inSampleSize = 1;
+
+        if (height > reqHeight || width > reqWidth) {
+            final int halfHeight = height / 2;
+            final int halfWidth = width / 2;
+
+            // Calcular el mayor inSampleSize que mantenga las dimensiones >= target
+            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
+                inSampleSize *= 2;
+            }
+        }
+        return inSampleSize;
+    }
+
+    /**
+     * Decodifica un recurso de imagen con dimensiones reducidas para ahorrar memoria
+     */
+    private Bitmap decodeSampledBitmapFromResource(android.content.res.Resources res, int resId, int reqWidth, int reqHeight) {
+        // Primero, obtener dimensiones sin cargar el bitmap
+        final BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        BitmapFactory.decodeResource(res, resId, options);
+
+        // Calcular inSampleSize
+        options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
+
+        // Decodificar con inSampleSize
+        options.inJustDecodeBounds = false;
+        options.inPreferredConfig = Bitmap.Config.RGB_565;  // Usa 2 bytes/pixel en vez de 4
+
+        Log.d(TAG, "⚡ Cargando preview: original=" + options.outWidth + "x" + options.outHeight +
+                   " → inSampleSize=" + options.inSampleSize);
+
+        return BitmapFactory.decodeResource(res, resId, options);
     }
 }

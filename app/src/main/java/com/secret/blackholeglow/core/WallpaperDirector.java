@@ -16,6 +16,7 @@ import com.secret.blackholeglow.scenes.GokuScene;
 import com.secret.blackholeglow.scenes.AdventureTimeScene;
 import com.secret.blackholeglow.scenes.NeonCityScene;
 import com.secret.blackholeglow.scenes.SaintSeiyaScene;
+import com.secret.blackholeglow.scenes.WalkingDeadScene;
 import com.secret.blackholeglow.sharing.LikeButton;
 import com.secret.blackholeglow.scenes.WallpaperScene;
 import com.secret.blackholeglow.systems.AspectRatioManager;
@@ -213,6 +214,9 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             } else if (scene instanceof SaintSeiyaScene) {
                 // ⭐ Saint Seiya tiene ecualizador COSMOS
                 ((SaintSeiyaScene) scene).updateMusicBands(bands);
+            } else if (scene instanceof WalkingDeadScene) {
+                // 🧟 Walking Dead tiene ecualizador WALKING_DEAD
+                ((WalkingDeadScene) scene).updateMusicBands(bands);
             }
         }
         sceneFactory.updateCurrentScene(deltaTime);
@@ -477,11 +481,29 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     }
 
     public void changeScene(String sceneName) {
-        Log.d(TAG, "Escena pendiente: " + sceneName);
+        Log.d(TAG, "🔄 changeScene llamado: " + sceneName + " (actual: " + pendingSceneName + ")");
+
+        // Si es la misma escena, no hacer nada
+        if (sceneName != null && sceneName.equals(pendingSceneName)) {
+            Log.d(TAG, "📱 Escena ya seleccionada: " + sceneName);
+            return;
+        }
+
+        String previousScene = pendingSceneName;
         pendingSceneName = sceneName;
 
-        // Activar modo estándar en el panel
-        if (panelRenderer != null) {
+        // ⚡ FIX: Si estamos en WALLPAPER_MODE con una escena activa,
+        // forzar retorno al panel para que el usuario presione PLAY de nuevo
+        if (modeController != null && modeController.isWallpaperMode() && sceneFactory != null) {
+            Log.d(TAG, "⚡ Escena activa detectada (" + previousScene + "), forzando retorno a PANEL_MODE");
+            // Destruir escena actual y volver al panel
+            sceneFactory.destroyCurrentScene();
+            modeController.stopWallpaper();
+            if (panelRenderer != null) {
+                panelRenderer.onReturnToPanel();
+            }
+            Log.d(TAG, "✅ Ahora en PANEL_MODE - Usuario debe presionar PLAY para: " + sceneName);
+        } else if (panelRenderer != null) {
             Log.d(TAG, "📱 Modo ESTÁNDAR para: " + sceneName);
         } else {
             Log.d(TAG, "Panel mode pendiente - panelRenderer aún no inicializado");

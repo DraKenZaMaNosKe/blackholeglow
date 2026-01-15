@@ -1,0 +1,16 @@
+## This file must *NOT* be checked into Version Control Systems,
+# as it contains information specific to your local configuration.
+#
+# Location of the SDK. This is only used by Gradle.
+# For customization when using a Version Control System, please read the
+# header note.
+#Sun Oct 19 01:07:01 CST 2025
+sdk.dir=C\:\\Users\\lalo\\AppData\\Local\\Android\\Sdk
+
+# 🔐 API Keys (NUNCA subir a GitHub)
+GEMINI_API_KEY=AIzaSyDi4oXYP5stfEYnKDOqb6wOi86x_6i3Cxc
+
+# 🔑 Keystore Release (NUNCA subir a GitHub)
+KEYSTORE_PASSWORD=blackholeglow2025
+KEY_ALIAS=blackholeglow
+KEY_PASSWORD=blackholeglow2025

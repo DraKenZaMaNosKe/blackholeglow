@@ -30,12 +30,13 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     // 🎨 SISTEMA DE TEMAS
     // ════════════════════════════════════════════════════════════════════════
     public enum Theme {
-        DEFAULT,   // Rosa → Cyan (original)
-        ABYSSIA,   // Púrpura bioluminiscente → Turquesa (océano profundo)
-        PYRALIS,   // Rojo → Naranja → Amarillo (fuego)
-        KAMEHAMEHA, // Azul → Cyan → Blanco (energía Ki)
-        SYNTHWAVE, // Hot Pink → Cyan → Magenta (retrowave 80s)
-        COSMOS     // Azul → Dorado → Púrpura (Saint Seiya cosmos)
+        DEFAULT,      // Rosa → Cyan (original)
+        ABYSSIA,      // Púrpura bioluminiscente → Turquesa (océano profundo)
+        PYRALIS,      // Rojo → Naranja → Amarillo (fuego)
+        KAMEHAMEHA,   // Azul → Cyan → Blanco (energía Ki)
+        SYNTHWAVE,    // Hot Pink → Cyan → Magenta (retrowave 80s)
+        COSMOS,       // Azul → Dorado → Púrpura (Saint Seiya cosmos)
+        WALKING_DEAD  // Verde tóxico → Rojo sangre → Púrpura oscuro (zombie)
     }
 
     private Theme currentTheme = Theme.DEFAULT;
@@ -106,6 +107,15 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     private static final float[] COSMOS_WAVE_NORMAL = {0.3f, 0.5f, 1.0f};    // Azul constelación
     private static final float[] COSMOS_LIGHTNING_1 = {1.0f, 0.9f, 0.3f};    // Rayo dorado
     private static final float[] COSMOS_LIGHTNING_2 = {0.6f, 0.4f, 1.0f};    // Rayo púrpura
+
+    // === WALKING_DEAD (Zombie Apocalypse - Verde tóxico → Rojo sangre) ===
+    private static final float[] WALKINGDEAD_BASS = {0.0f, 0.8f, 0.2f};      // Verde tóxico zombie
+    private static final float[] WALKINGDEAD_TREBLE = {0.8f, 0.1f, 0.1f};    // Rojo sangre
+    private static final float[] WALKINGDEAD_PEAK = {1.0f, 0.3f, 0.3f};      // Rojo brillante (sangre fresca)
+    private static final float[] WALKINGDEAD_WAVE_STRONG = {0.6f, 0.0f, 0.0f};   // Rojo oscuro sangre
+    private static final float[] WALKINGDEAD_WAVE_NORMAL = {0.0f, 0.6f, 0.15f};  // Verde putrefacto
+    private static final float[] WALKINGDEAD_LIGHTNING_1 = {0.2f, 1.0f, 0.3f};   // Rayo verde tóxico
+    private static final float[] WALKINGDEAD_LIGHTNING_2 = {0.9f, 0.2f, 0.2f};   // Rayo rojo sangre
 
     // Colores activos (se actualizan con setTheme)
     private float[] colorBass = DEFAULT_BASS;
@@ -368,6 +378,17 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
                 colorLightning1 = COSMOS_LIGHTNING_1;
                 colorLightning2 = COSMOS_LIGHTNING_2;
                 Log.d(TAG, "⭐ Tema COSMOS activado - Saint Seiya Power");
+                break;
+
+            case WALKING_DEAD:
+                colorBass = WALKINGDEAD_BASS;
+                colorTreble = WALKINGDEAD_TREBLE;
+                colorPeak = WALKINGDEAD_PEAK;
+                colorWaveStrong = WALKINGDEAD_WAVE_STRONG;
+                colorWaveNormal = WALKINGDEAD_WAVE_NORMAL;
+                colorLightning1 = WALKINGDEAD_LIGHTNING_1;
+                colorLightning2 = WALKINGDEAD_LIGHTNING_2;
+                Log.d(TAG, "🧟 Tema WALKING_DEAD activado - Zombie Apocalypse");
                 break;
 
             default:

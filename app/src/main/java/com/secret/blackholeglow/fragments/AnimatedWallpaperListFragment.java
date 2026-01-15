@@ -16,6 +16,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.adapters.WallpaperAdapter;
+import com.secret.blackholeglow.image.ImageDownloadManager;
+import com.secret.blackholeglow.model.ModelDownloadManager;
 import com.secret.blackholeglow.models.WallpaperItem;
 import com.secret.blackholeglow.systems.SubscriptionManager;
 import com.secret.blackholeglow.systems.WallpaperCatalog;
@@ -27,16 +29,39 @@ import java.util.List;
  * Fragment que muestra la lista de wallpapers disponibles.
  *
  * IMPORTANTE: Los botones "VER WALLPAPER" están DESHABILITADOS hasta que
- * el video del panel de control (thehouse.mp4) esté descargado.
+ * TODOS los recursos del panel de control estén descargados:
+ * - thehouse.mp4 (video de fondo)
+ * - grimoire.obj (modelo del libro)
+ * - grimoire_texture.png (textura del libro)
+ * - huevo_zerg.png (LikeButton ABYSSIA)
+ * - fire_orb.png (LikeButton PYRALIS)
  */
 public class AnimatedWallpaperListFragment extends Fragment {
     private static final String TAG = "WallpaperListFragment";
-    private static final String PANEL_VIDEO_FILE = "thehouse.mp4";
+
+    // ╔═══════════════════════════════════════════════════════════════════════╗
+    // ║  📦 RECURSOS DEL PANEL DE CONTROL                                     ║
+    // ║  Todos estos deben estar descargados antes de mostrar cualquier scene ║
+    // ╚═══════════════════════════════════════════════════════════════════════╝
+    private static final String PANEL_VIDEO = "thehouse.mp4";
+    private static final String PANEL_MODEL = "grimoire.obj";
+    private static final String[] PANEL_IMAGES = {
+        "grimoire_texture.png",  // Textura del libro mágico
+        "huevo_zerg.png",        // LikeButton para ABYSSIA
+        "fire_orb.png"           // LikeButton para PYRALIS
+    };
 
     private List<WallpaperItem> wallpaperItems;
     private WallpaperAdapter adapter;
-    private VideoDownloadManager videoDownloadManager;
+    private VideoDownloadManager videoManager;
+    private ImageDownloadManager imageManager;
+    private ModelDownloadManager modelManager;
     private Handler mainHandler;
+
+    // Estado de descarga
+    private int totalResources;
+    private int downloadedResources;
+    private boolean isDownloading = false;
 
     @Nullable
     @Override
@@ -52,7 +77,9 @@ public class AnimatedWallpaperListFragment extends Fragment {
         );
 
         mainHandler = new Handler(Looper.getMainLooper());
-        videoDownloadManager = VideoDownloadManager.getInstance(requireContext());
+        videoManager = VideoDownloadManager.getInstance(requireContext());
+        imageManager = ImageDownloadManager.getInstance(requireContext());
+        modelManager = ModelDownloadManager.getInstance(requireContext());
 
         RecyclerView recyclerView = view.findViewById(R.id.wallpaper_recycler_view);
         LinearLayoutManager layoutManager = new LinearLayoutManager(getContext());
@@ -71,65 +98,152 @@ public class AnimatedWallpaperListFragment extends Fragment {
         SubscriptionManager.init(requireContext());
         wallpaperItems = WallpaperCatalog.get().getAll();
 
-        // Verificar si el video del panel está disponible
-        boolean isPanelVideoReady = videoDownloadManager.isVideoAvailable(PANEL_VIDEO_FILE);
-        Log.d(TAG, "📹 Video del panel disponible: " + isPanelVideoReady);
+        // Verificar si TODOS los recursos del panel están disponibles
+        boolean isPanelReady = arePanelResourcesReady();
+        Log.d(TAG, "📦 Recursos del panel disponibles: " + isPanelReady);
 
-        // Crear adapter con estado del video
+        // Crear adapter con estado de recursos
         adapter = new WallpaperAdapter(
                 getContext(),
                 wallpaperItems,
                 item -> { },
-                isPanelVideoReady  // Nuevo parámetro
+                isPanelReady
         );
         recyclerView.setAdapter(adapter);
 
-        // Si el video no está listo, iniciar descarga
-        if (!isPanelVideoReady) {
-            startPanelVideoDownload();
+        // Si los recursos no están listos, iniciar descarga
+        if (!isPanelReady) {
+            startPanelResourcesDownload();
         }
 
         return view;
     }
 
     /**
-     * Inicia la descarga del video del panel en background.
+     * Verifica si TODOS los recursos del panel están descargados.
+     */
+    private boolean arePanelResourcesReady() {
+        // 1. Video
+        if (!videoManager.isVideoAvailable(PANEL_VIDEO)) {
+            Log.d(TAG, "❌ Falta: " + PANEL_VIDEO);
+            return false;
+        }
+
+        // 2. Modelo
+        if (!modelManager.isModelAvailable(PANEL_MODEL)) {
+            Log.d(TAG, "❌ Falta: " + PANEL_MODEL);
+            return false;
+        }
+
+        // 3. Imágenes
+        for (String img : PANEL_IMAGES) {
+            if (!imageManager.isImageAvailable(img)) {
+                Log.d(TAG, "❌ Falta: " + img);
+                return false;
+            }
+        }
+
+        Log.d(TAG, "✅ Todos los recursos del panel disponibles");
+        return true;
+    }
+
+    /**
+     * Cuenta cuántos recursos faltan por descargar.
+     */
+    private int countMissingResources() {
+        int missing = 0;
+        if (!videoManager.isVideoAvailable(PANEL_VIDEO)) missing++;
+        if (!modelManager.isModelAvailable(PANEL_MODEL)) missing++;
+        for (String img : PANEL_IMAGES) {
+            if (!imageManager.isImageAvailable(img)) missing++;
+        }
+        return missing;
+    }
+
+    /**
+     * Inicia la descarga de TODOS los recursos del panel en background.
+     * Descarga secuencialmente: video → modelo → imágenes
      * Cuando termina, actualiza el adapter para habilitar los botones.
      */
-    private void startPanelVideoDownload() {
-        Log.d(TAG, "📥 Iniciando descarga del video del panel...");
+    private void startPanelResourcesDownload() {
+        if (isDownloading) return;
+        isDownloading = true;
 
-        videoDownloadManager.downloadVideo(PANEL_VIDEO_FILE, new VideoDownloadManager.DownloadCallback() {
-            @Override
-            public void onProgress(int percent, long downloadedBytes, long totalBytes) {
-                // Actualizar progreso en el adapter
-                mainHandler.post(() -> {
-                    if (adapter != null) {
-                        adapter.setDownloadProgress(percent);
-                    }
+        totalResources = 1 + 1 + PANEL_IMAGES.length; // video + model + images
+        downloadedResources = 0;
+
+        Log.d(TAG, "📥 Iniciando descarga de " + countMissingResources() + " recursos del panel...");
+
+        new Thread(() -> {
+            // 1. VIDEO
+            if (!videoManager.isVideoAvailable(PANEL_VIDEO)) {
+                Log.d(TAG, "📥 Descargando video: " + PANEL_VIDEO);
+                updateProgress("Descargando video...");
+                videoManager.downloadVideoSync(PANEL_VIDEO, percent -> {
+                    int globalPercent = calculateGlobalProgress(downloadedResources, percent);
+                    updateAdapterProgress(globalPercent);
                 });
             }
+            downloadedResources++;
 
-            @Override
-            public void onComplete(String filePath) {
-                Log.d(TAG, "✅ Video del panel descargado: " + filePath);
-                mainHandler.post(() -> {
-                    if (adapter != null) {
-                        adapter.setPanelVideoReady(true);
-                    }
+            // 2. MODELO
+            if (!modelManager.isModelAvailable(PANEL_MODEL)) {
+                Log.d(TAG, "📥 Descargando modelo: " + PANEL_MODEL);
+                updateProgress("Descargando modelo...");
+                modelManager.downloadModelSync(PANEL_MODEL, percent -> {
+                    int globalPercent = calculateGlobalProgress(downloadedResources, percent);
+                    updateAdapterProgress(globalPercent);
                 });
             }
+            downloadedResources++;
 
-            @Override
-            public void onError(String message) {
-                Log.e(TAG, "❌ Error descargando video del panel: " + message);
-                // En caso de error, intentar de nuevo en 5 segundos
-                mainHandler.postDelayed(() -> {
-                    if (isAdded() && !videoDownloadManager.isVideoAvailable(PANEL_VIDEO_FILE)) {
-                        startPanelVideoDownload();
-                    }
-                }, 5000);
+            // 3. IMÁGENES
+            for (String img : PANEL_IMAGES) {
+                if (!imageManager.isImageAvailable(img)) {
+                    Log.d(TAG, "📥 Descargando imagen: " + img);
+                    updateProgress("Descargando texturas...");
+                    imageManager.downloadImageSync(img, percent -> {
+                        int globalPercent = calculateGlobalProgress(downloadedResources, percent);
+                        updateAdapterProgress(globalPercent);
+                    });
+                }
+                downloadedResources++;
+            }
+
+            // Todo listo
+            Log.d(TAG, "✅ Todos los recursos del panel descargados");
+            mainHandler.post(() -> {
+                isDownloading = false;
+                if (adapter != null && isAdded()) {
+                    adapter.setPanelVideoReady(true);
+                }
+            });
+        }).start();
+    }
+
+    /**
+     * Calcula el progreso global considerando todos los recursos.
+     */
+    private int calculateGlobalProgress(int completedResources, int currentResourcePercent) {
+        float progress = (completedResources + currentResourcePercent / 100f) / totalResources * 100f;
+        return (int) progress;
+    }
+
+    /**
+     * Actualiza el progreso en el adapter.
+     */
+    private void updateAdapterProgress(int percent) {
+        mainHandler.post(() -> {
+            if (adapter != null && isAdded()) {
+                adapter.setDownloadProgress(percent);
             }
         });
+    }
+
+    /**
+     * Muestra mensaje de estado (para debugging).
+     */
+    private void updateProgress(String status) {
+        Log.d(TAG, "📊 " + status + " (" + downloadedResources + "/" + totalResources + ")");
     }
 }

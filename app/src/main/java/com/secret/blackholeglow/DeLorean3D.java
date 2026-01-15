@@ -5,8 +5,11 @@ import android.opengl.GLES30;
 import android.opengl.Matrix;
 import android.util.Log;
 
+import com.secret.blackholeglow.image.ImageDownloadManager;
+import com.secret.blackholeglow.model.ModelDownloadManager;
 import com.secret.blackholeglow.util.ObjLoader;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -193,7 +196,18 @@ public class DeLorean3D implements SceneObject, CameraAware {
         try {
             Log.d(TAG, "📦 Cargando delorean.obj...");
 
-            ObjLoader.Mesh mesh = ObjLoader.loadObj(context, "delorean.obj", true);
+            // Intentar cargar desde archivos descargados, fallback a assets
+            ObjLoader.Mesh mesh;
+            ModelDownloadManager modelMgr = ModelDownloadManager.getInstance(context);
+            String modelPath = modelMgr.getModelPath("delorean.obj");
+
+            if (modelPath != null) {
+                Log.d(TAG, "🌐 Cargando modelo desde descarga: " + modelPath);
+                mesh = ObjLoader.loadObjFromFile(modelPath, true);
+            } else {
+                Log.d(TAG, "📂 Cargando modelo desde assets (fallback)");
+                mesh = ObjLoader.loadObj(context, "delorean.obj", true);
+            }
 
             Log.d(TAG, "✓ Modelo cargado: " + mesh.vertexCount + " vértices");
 
@@ -233,7 +247,17 @@ public class DeLorean3D implements SceneObject, CameraAware {
     }
 
     private void loadTexture() {
-        textureId = textureLoader.getTexture(R.drawable.delorean_texture);
+        // Cargar desde archivos descargados (ResourcePreloader garantiza disponibilidad)
+        ImageDownloadManager imageMgr = ImageDownloadManager.getInstance(context);
+        String texturePath = imageMgr.getImagePath("delorean_texture.png");
+
+        if (texturePath != null && textureLoader instanceof TextureManager) {
+            Log.d(TAG, "🌐 Cargando textura desde descarga: " + texturePath);
+            textureId = ((TextureManager) textureLoader).loadTextureFromFile(texturePath);
+        } else {
+            Log.e(TAG, "❌ Textura no disponible: delorean_texture.png");
+            return;
+        }
 
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
         GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D);

@@ -11,6 +11,7 @@ import com.secret.blackholeglow.scenes.LabScene;
 import com.secret.blackholeglow.scenes.NeonCityScene;
 import com.secret.blackholeglow.scenes.SaintSeiyaScene;
 import com.secret.blackholeglow.scenes.OceanFloorScene;
+import com.secret.blackholeglow.scenes.WalkingDeadScene;
 import com.secret.blackholeglow.scenes.WallpaperScene;
 import com.secret.blackholeglow.systems.EventBus;
 import com.secret.blackholeglow.systems.ResourceManager;
@@ -115,6 +116,8 @@ public class SceneFactory {
         registerScene("NEON_CITY", NeonCityScene.class);
         // ⭐ Saint Seiya: Cosmos power con caballeros del zodiaco
         registerScene("SAINT_SEIYA", SaintSeiyaScene.class);
+        registerScene("WALKING_DEAD", WalkingDeadScene.class);
+
         Log.d(TAG, "🎭 " + registeredScenes.size() + " escenas registradas");
     }
 

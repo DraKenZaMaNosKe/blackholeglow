@@ -8,8 +8,11 @@ import android.opengl.GLUtils;
 import android.opengl.Matrix;
 import android.util.Log;
 
+import com.secret.blackholeglow.image.ImageDownloadManager;
+import com.secret.blackholeglow.model.ModelDownloadManager;
 import com.secret.blackholeglow.util.ObjLoader;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -57,7 +60,7 @@ public class ArcaneGrimoire implements SceneObject {
     private float posX = 0f;
     private float posY = -0.2f;   // Ligeramente abajo del centro
     private float posZ = -3f;     // Profundidad
-    private float scale = 0.56f;  // 30% m�s peque�o
+    private float scale = 0.56f;  // 30% m�s peque�o
     private float rotationY = 0f;
 
     // Animación
@@ -79,7 +82,7 @@ public class ArcaneGrimoire implements SceneObject {
     private boolean visible = true;
 
     // Touch detection
-    private float hitRadius = 0.18f;  // Radio reducido para touch m�s preciso
+    private float hitRadius = 0.18f;  // Radio reducido para touch m�s preciso
 
     // ═══════════════════════════════════════════════════════════════════════
     // SHADERS - Estilo mágico con glow
@@ -150,8 +153,17 @@ public class ArcaneGrimoire implements SceneObject {
         try {
             Log.d(TAG, "📦 Cargando grimoire.obj...");
 
-            // flipV=true para modelos de Meshy
-            ObjLoader.Mesh mesh = ObjLoader.loadObj(context, "grimoire.obj", true);
+            // Cargar desde archivos descargados (SplashActivity garantiza disponibilidad)
+            ModelDownloadManager modelMgr = ModelDownloadManager.getInstance(context);
+            String modelPath = modelMgr.getModelPath("grimoire.obj");
+
+            if (modelPath == null) {
+                Log.e(TAG, "❌ Modelo no disponible: grimoire.obj");
+                return;
+            }
+
+            Log.d(TAG, "🌐 Cargando modelo desde descarga: " + modelPath);
+            ObjLoader.Mesh mesh = ObjLoader.loadObjFromFile(modelPath, true);
 
             Log.d(TAG, "✓ Modelo cargado: " + mesh.vertexCount + " vértices, " +
                        mesh.triangleCount + " triángulos");
@@ -195,9 +207,22 @@ public class ArcaneGrimoire implements SceneObject {
 
     private void loadTexture() {
         try {
-            InputStream is = context.getAssets().open("grimoire_texture.png");
-            Bitmap bitmap = BitmapFactory.decodeStream(is);
-            is.close();
+            // Cargar desde archivos descargados (SplashActivity garantiza disponibilidad)
+            ImageDownloadManager imageMgr = ImageDownloadManager.getInstance(context);
+            String texturePath = imageMgr.getImagePath("grimoire_texture.png");
+
+            if (texturePath == null) {
+                Log.e(TAG, "❌ Textura no disponible: grimoire_texture.png");
+                return;
+            }
+
+            Log.d(TAG, "🌐 Cargando textura desde descarga: " + texturePath);
+            Bitmap bitmap = BitmapFactory.decodeFile(texturePath);
+
+            if (bitmap == null) {
+                Log.e(TAG, "❌ Error: bitmap es null");
+                return;
+            }
 
             int[] textures = new int[1];
             GLES30.glGenTextures(1, textures, 0);
@@ -215,7 +240,7 @@ public class ArcaneGrimoire implements SceneObject {
             bitmap.recycle();
             Log.d(TAG, "✅ Textura cargada: " + textureId);
 
-        } catch (IOException e) {
+        } catch (Exception e) {
             Log.e(TAG, "❌ Error cargando textura: " + e.getMessage());
         }
     }

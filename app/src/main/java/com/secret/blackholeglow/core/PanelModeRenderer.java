@@ -97,6 +97,11 @@ public class PanelModeRenderer {
         Log.d(TAG, "✅ Panel de Control inicializado");
     }
 
+    // ⚡ Retry para video que falla al cargar
+    private int videoRetryCount = 0;
+    private static final int MAX_VIDEO_RETRIES = 3;
+    private static final long VIDEO_RETRY_DELAY_MS = 500;
+
     /**
      * Inicializa el video de fondo una vez descargado
      */
@@ -104,16 +109,37 @@ public class PanelModeRenderer {
         String videoPath = videoDownloadManager.getVideoPath(PANEL_VIDEO_FILE);
         if (videoPath == null) {
             Log.e(TAG, "❌ Video path es null");
+            // ⚡ RETRY: Si el path es null pero el archivo debería existir, reintentar
+            if (videoRetryCount < MAX_VIDEO_RETRIES) {
+                videoRetryCount++;
+                Log.w(TAG, "⚡ Reintentando cargar video en " + VIDEO_RETRY_DELAY_MS + "ms (intento " + videoRetryCount + "/" + MAX_VIDEO_RETRIES + ")");
+                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                    pendingVideoInit = true;  // Reintentar en siguiente frame GL
+                }, VIDEO_RETRY_DELAY_MS);
+            }
             return;
         }
 
-        videoBackground = new MediaCodecVideoRenderer(context, PANEL_VIDEO_FILE, videoPath);
-        videoBackground.initialize();
-        if (screenWidth > 0 && screenHeight > 0) {
-            videoBackground.setScreenSize(screenWidth, screenHeight);
+        try {
+            videoBackground = new MediaCodecVideoRenderer(context, PANEL_VIDEO_FILE, videoPath);
+            videoBackground.initialize();
+            if (screenWidth > 0 && screenHeight > 0) {
+                videoBackground.setScreenSize(screenWidth, screenHeight);
+            }
+            videoReady = true;
+            videoRetryCount = 0;  // Reset retry counter on success
+            Log.d(TAG, "🎬 Video de fondo inicializado: " + videoPath);
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error inicializando video: " + e.getMessage());
+            // ⚡ RETRY: Si falla la inicialización, reintentar
+            if (videoRetryCount < MAX_VIDEO_RETRIES) {
+                videoRetryCount++;
+                Log.w(TAG, "⚡ Reintentando cargar video en " + VIDEO_RETRY_DELAY_MS + "ms (intento " + videoRetryCount + "/" + MAX_VIDEO_RETRIES + ")");
+                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                    pendingVideoInit = true;
+                }, VIDEO_RETRY_DELAY_MS);
+            }
         }
-        videoReady = true;
-        Log.d(TAG, "🎬 Video de fondo inicializado: " + videoPath);
     }
 
     /**

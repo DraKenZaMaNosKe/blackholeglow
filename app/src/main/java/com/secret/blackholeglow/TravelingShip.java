@@ -5,6 +5,8 @@ import android.opengl.GLES30;
 import android.opengl.Matrix;
 import android.util.Log;
 
+import com.secret.blackholeglow.image.ImageDownloadManager;
+import com.secret.blackholeglow.model.ModelDownloadManager;
 import com.secret.blackholeglow.util.ObjLoader;
 
 import java.io.IOException;
@@ -189,8 +191,18 @@ public class TravelingShip implements SceneObject, CameraAware {
         try {
             Log.d(TAG, "📦 Cargando human_interceptor_flames.obj (nave + llamas)...");
 
-            // flipV=true para corregir orientación de texturas
-            ObjLoader.Mesh mesh = ObjLoader.loadObj(context, "human_interceptor_flames.obj", true);
+            // Intentar cargar desde archivos descargados, fallback a assets
+            ObjLoader.Mesh mesh;
+            ModelDownloadManager modelMgr = ModelDownloadManager.getInstance(context);
+            String modelPath = modelMgr.getModelPath("human_interceptor_flames.obj");
+
+            if (modelPath != null) {
+                Log.d(TAG, "🌐 Cargando modelo desde descarga: " + modelPath);
+                mesh = ObjLoader.loadObjFromFile(modelPath, true);
+            } else {
+                Log.d(TAG, "📂 Cargando modelo desde assets (fallback)");
+                mesh = ObjLoader.loadObj(context, "human_interceptor_flames.obj", true);
+            }
 
             Log.d(TAG, "✓ Modelo cargado: " + mesh.vertexCount + " vértices");
 
@@ -230,7 +242,17 @@ public class TravelingShip implements SceneObject, CameraAware {
     }
 
     private void loadTexture() {
-        textureId = textureLoader.getTexture(R.drawable.human_interceptor_texture);
+        // Cargar desde archivos descargados (ResourcePreloader garantiza disponibilidad)
+        ImageDownloadManager imageMgr = ImageDownloadManager.getInstance(context);
+        String texturePath = imageMgr.getImagePath("human_interceptor_texture.png");
+
+        if (texturePath != null && textureLoader instanceof TextureManager) {
+            Log.d(TAG, "🌐 Cargando textura desde descarga: " + texturePath);
+            textureId = ((TextureManager) textureLoader).loadTextureFromFile(texturePath);
+        } else {
+            Log.e(TAG, "❌ Textura no disponible: human_interceptor_texture.png");
+            return;
+        }
 
         // 🚀 MIPMAPS para mejor rendimiento (GROK SUGGESTION)
         // GPU usa textura de menor resolución cuando nave está lejos

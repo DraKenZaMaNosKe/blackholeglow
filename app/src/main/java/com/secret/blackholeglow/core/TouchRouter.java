@@ -98,10 +98,13 @@ public class TouchRouter {
         float ny = normalizeY(event.getY());
         int action = event.getAction();
 
-        // 📍 LOG DE TOUCH PARA DEBUG
+        // 📍 LOG DE TOUCH PARA DEBUG - Coordenadas UV para shader
         if (action == MotionEvent.ACTION_DOWN) {
+            float uvX = event.getX() / screenWidth;
+            float uvY = event.getY() / screenHeight;  // NO invertir - UV(0,0) es arriba-izquierda
             Log.d(TAG, "📍 TOUCH: nx=" + String.format("%.2f", nx) + " ny=" + String.format("%.2f", ny) +
                        " (raw: " + (int)event.getX() + "," + (int)event.getY() + ")");
+            Log.d(TAG, "🎯 UV SHADER: vec2(" + String.format("%.2f", uvX) + ", " + String.format("%.2f", uvY) + ")");
         }
 
         // Distribuir según el modo actual

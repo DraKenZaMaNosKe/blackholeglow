@@ -183,7 +183,9 @@ public class VideoDownloadManager {
                 }
             }
 
+            // ⚡ CRÍTICO: flush + sync para garantizar que los datos lleguen al disco
             output.flush();
+            output.getFD().sync();  // Fuerza escritura al sistema de archivos
             output.close();
             output = null;
 
@@ -195,11 +197,19 @@ public class VideoDownloadManager {
                 throw new IOException("Error moviendo archivo temporal");
             }
 
-            // ⚠️ CRÍTICO: Guardar version ANTES de llamar callback
+            // ⚡ Verificar que el archivo existe y tiene contenido
+            if (!finalFile.exists() || finalFile.length() == 0) {
+                throw new IOException("Archivo no disponible después de guardar");
+            }
+
+            // ⚠️ CRÍTICO: Guardar version con commit() (síncrono) NO apply() (async)
             // Si no se guarda, isVideoAvailable() detectará "nueva versión" y eliminará el archivo
             int version = VideoConfig.getVideoVersion(fileName);
-            versionPrefs.edit().putInt(VERSION_PREFIX + fileName, version).apply();
-            Log.d(TAG, "✓ Version " + version + " guardada para: " + fileName);
+            boolean saved = versionPrefs.edit().putInt(VERSION_PREFIX + fileName, version).commit();
+            if (!saved) {
+                Log.e(TAG, "⚠️ Error guardando versión en preferencias");
+            }
+            Log.d(TAG, "✓ Version " + version + " guardada (sync) para: " + fileName);
 
             Log.d(TAG, "Descarga completada: " + fileName);
             if (callback != null) {
@@ -235,10 +245,13 @@ public class VideoDownloadManager {
 
         try {
             downloadVideoSyncInternal(fileName, remoteUrl, callback);
-            // Guardar version despues de descarga exitosa
+            // ⚡ Guardar version con commit() (síncrono) después de descarga exitosa
             int version = VideoConfig.getVideoVersion(fileName);
-            versionPrefs.edit().putInt(VERSION_PREFIX + fileName, version).apply();
-            Log.d(TAG, "✓ Version " + version + " guardada para: " + fileName);
+            boolean saved = versionPrefs.edit().putInt(VERSION_PREFIX + fileName, version).commit();
+            if (!saved) {
+                Log.e(TAG, "⚠️ Error guardando versión en preferencias");
+            }
+            Log.d(TAG, "✓ Version " + version + " guardada (sync) para: " + fileName);
             return true;
         } catch (Exception e) {
             Log.e(TAG, "Error descargando: " + e.getMessage());
@@ -291,7 +304,9 @@ public class VideoDownloadManager {
                 }
             }
 
+            // ⚡ CRÍTICO: flush + sync para garantizar que los datos lleguen al disco
             output.flush();
+            output.getFD().sync();  // Fuerza escritura al sistema de archivos
             output.close();
             output = null;
 
@@ -301,6 +316,11 @@ public class VideoDownloadManager {
             }
             if (!tempFile.renameTo(finalFile)) {
                 throw new IOException("Error moviendo archivo temporal");
+            }
+
+            // ⚡ Verificar que el archivo existe y tiene contenido
+            if (!finalFile.exists() || finalFile.length() == 0) {
+                throw new IOException("Archivo no disponible después de guardar");
             }
 
             Log.d(TAG, "Descarga sync completada: " + fileName);

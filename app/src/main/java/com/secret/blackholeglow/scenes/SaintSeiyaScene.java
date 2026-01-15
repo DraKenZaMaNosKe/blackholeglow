@@ -59,7 +59,7 @@ public class SaintSeiyaScene extends WallpaperScene {
 
     private int meshShaderProgram = -1;
     private int positionLoc, texCoordLoc, mvpMatrixLoc, imageLoc, depthLoc, depthStrengthLoc;
-    private int timeLoc, heatDistortionLoc, cosmosAuraLoc, fistPosLoc;
+    private int timeLoc, heatDistortionLoc, cosmosAuraLoc, fistPosLoc, fistPowerLoc, fist2PosLoc;
 
     // ═══════════════════════════════════════════════════════════════════════
     // 📐 MATRICES 3D
@@ -90,7 +90,8 @@ public class SaintSeiyaScene extends WallpaperScene {
     private static final float SEIYA_CAMERA_DISTANCE = 2.0f; // Seiya: más cerca
     private static final float SEIYA_SCALE = 0.48f;          // Seiya: un poco más lejos
     private static final float SEIYA_HEAT_DISTORTION = 0.0f; // Seiya: SIN distorsión (nítido)
-    private static final float SEIYA_COSMOS_AURA = 1.0f;     // Seiya: AURA DE COSMOS activada
+    private static final float SEIYA_COSMOS_AURA = 0.0f;     // Seiya: AURA DE COSMOS desactivada (cuerpo)
+    private static final float SEIYA_FIST_POWER = 1.0f;      // Seiya: PUÑO PODER activado
 
     // Ángulos base SEIYA (calibrado)
     private static final float BASE_ANGLE_X = 13.4f;
@@ -107,8 +108,9 @@ public class SaintSeiyaScene extends WallpaperScene {
     private static final float SPEED_Y = 0.12f;
 
     // Touch para calibración
-    private boolean touchMode = false;  // DESHABILITADO - puño calibrado
-    private float fistX = 0.675f, fistY = 0.253f;  // Posición del puño CALIBRADA
+    private boolean touchMode = false;  // DESHABILITADO - ambos puños calibrados
+    private float fistX = 0.724f, fistY = 0.239f;  // Posición del puño PODER (rayos)
+    private float fist2X = 0.117f, fist2Y = 0.529f;  // Posición del puño COSMOS (aura)
     private boolean calibratingSeiya = true;
     private float touchX = 0f, touchY = 0f;
     private float lastTouchX = 0f, lastTouchY = 0f;
@@ -283,7 +285,9 @@ public class SaintSeiyaScene extends WallpaperScene {
             "uniform float uTime;\n" +
             "uniform float uHeatDistortion;\n" +
             "uniform float uCosmosAura;\n" +
-            "uniform vec2 uFistPos;  // Posición del puño (desde Java)\n" +
+            "uniform float uFistPower;  // Efecto del puño PODER (rayos)\n" +
+            "uniform vec2 uFistPos;  // Posición del puño PODER\n" +
+            "uniform vec2 uFist2Pos; // Posición del puño COSMOS (aura)\n" +
             "\n" +
             "// HSB to RGB\n" +
             "vec3 hsb2rgb(vec3 c) {\n" +
@@ -318,7 +322,7 @@ public class SaintSeiyaScene extends WallpaperScene {
             "    // ═══════════════════════════════════════════════════════════════\n" +
             "    // 👊 PUÑO PODER - Cosmos Concentrado + Rayos (capa separada)\n" +
             "    // ═══════════════════════════════════════════════════════════════\n" +
-            "    if (uCosmosAura > 0.0) {\n" +
+            "    if (uFistPower > 0.0) {\n" +
             "        float fistDist = distance(uv, uFistPos);\n" +
             "        \n" +
             "        if (fistDist < FIST_RADIUS) {\n" +
@@ -353,40 +357,38 @@ public class SaintSeiyaScene extends WallpaperScene {
             "            fistColor = mix(fistColor, coreColor, fistIntensity * pulse);\n" +
             "            \n" +
             "            // Guardar como capa separada (OPACA)\n" +
-            "            float fistAlpha = (fistIntensity * 0.7 + rays * 0.5) * pulse * uCosmosAura;\n" +
+            "            float fistAlpha = (fistIntensity * 0.7 + rays * 0.5) * pulse * uFistPower;\n" +
             "            fistEffect = vec4(fistColor, fistAlpha);\n" +
             "        }\n" +
             "    }\n" +
             "    \n" +
-            "    // ⭐ COSMOS AURA - Una sola capa suave\n" +
-            "    if (uCosmosAura > 0.0 && color.a < 0.1) {\n" +
+            "    // ⭐ COSMOS AURA - Solo alrededor del SEGUNDO PUÑO (gancho)\n" +
+            "    float fist2Dist = distance(uv, uFist2Pos);\n" +
+            "    float FIST2_RADIUS = 0.15;\n" +
+            "    if (fist2Dist < FIST2_RADIUS && color.a < 0.1) {\n" +
             "        float totalAlpha = 0.0;\n" +
-            "        float avgAngle = 0.0;\n" +
             "        \n" +
             "        for (int i = 0; i < 8; i++) {\n" +
             "            float a = texture(uImage, uv + D[i] * GLOW).a;\n" +
             "            if (a > 0.3) {\n" +
             "                totalAlpha += a;\n" +
-            "                avgAngle += float(i);\n" +
             "            }\n" +
             "        }\n" +
             "        \n" +
             "        if (totalAlpha > 0.0) {\n" +
-            "            avgAngle = avgAngle / totalAlpha * 0.785;\n" +
             "            float intensity = smoothstep(0.0, 4.0, totalAlpha);\n" +
+            "            float proximityFade = 1.0 - smoothstep(0.0, FIST2_RADIUS, fist2Dist);\n" +
             "            \n" +
             "            vec3 coreColor = vec3(0.4, 0.7, 1.0);\n" +
             "            vec3 outerColor = vec3(0.15, 0.25, 0.6);\n" +
             "            \n" +
-            "            float hueShift = sin(avgAngle + t * 1.5) * 0.5 + 0.5;\n" +
+            "            float hueShift = sin(t * 1.5) * 0.5 + 0.5;\n" +
             "            vec3 aura = mix(outerColor, coreColor, intensity * hueShift);\n" +
             "            \n" +
-            "            vec3 accentColor = vec3(0.3, 0.5, 0.9);\n" +
-            "            float blend = sin(t * 2.0 + uv.y * 10.0) * 0.5 + 0.5;\n" +
-            "            aura = mix(aura, accentColor, blend * 0.3);\n" +
-            "            aura += coreColor * intensity * intensity * 0.4;\n" +
+            "            float pulse = sin(t * 3.0) * 0.2 + 0.8;\n" +
+            "            aura += coreColor * intensity * intensity * 0.4 * pulse;\n" +
             "            \n" +
-            "            float alpha = intensity * uCosmosAura * 0.7;\n" +
+            "            float alpha = intensity * proximityFade * 0.8;\n" +
             "            color = vec4(aura, alpha);\n" +
             "        }\n" +
             "    }\n" +
@@ -414,9 +416,11 @@ public class SaintSeiyaScene extends WallpaperScene {
         timeLoc = GLES30.glGetUniformLocation(meshShaderProgram, "uTime");
         heatDistortionLoc = GLES30.glGetUniformLocation(meshShaderProgram, "uHeatDistortion");
         cosmosAuraLoc = GLES30.glGetUniformLocation(meshShaderProgram, "uCosmosAura");
+        fistPowerLoc = GLES30.glGetUniformLocation(meshShaderProgram, "uFistPower");
         fistPosLoc = GLES30.glGetUniformLocation(meshShaderProgram, "uFistPos");
+        fist2PosLoc = GLES30.glGetUniformLocation(meshShaderProgram, "uFist2Pos");
 
-        Log.d(TAG, "✅ Shader 3D OPTIMIZADO con COSMOS AURA compilado");
+        Log.d(TAG, "✅ Shader 3D con DOS PUÑOS compilado (PODER + COSMOS)");
 
         // ═══════════════════════════════════════════════════════════════════════
         // ✨ SHADER DE PARTÍCULAS - Ultra simple
@@ -666,7 +670,7 @@ public class SaintSeiyaScene extends WallpaperScene {
         GLES30.glDisable(GLES30.GL_BLEND);
         drawLayerWithAngles(texBackground, texBackgroundDepth,
                   BG_CAMERA_DISTANCE, BG_DEPTH_STRENGTH, bgAngleX, bgAngleY,
-                  BG_SCALE, BG_HEAT_DISTORTION, 0.0f);  // Sin aura
+                  BG_SCALE, BG_HEAT_DISTORTION, 0.0f, 0.0f);  // Sin aura, sin puño
 
         // ═══════════════════════════════════════════════════════════════
         // CAPA 2: SEIYA 3D (con AURA DE COSMOS!)
@@ -676,7 +680,7 @@ public class SaintSeiyaScene extends WallpaperScene {
         GLES30.glClear(GLES30.GL_DEPTH_BUFFER_BIT);
         drawLayerWithAngles(texSeiya, texSeiyaDepth,
                   SEIYA_CAMERA_DISTANCE, SEIYA_DEPTH_STRENGTH, cameraAngleX, cameraAngleY,
-                  SEIYA_SCALE, SEIYA_HEAT_DISTORTION, SEIYA_COSMOS_AURA);  // ⭐ CON AURA
+                  SEIYA_SCALE, SEIYA_HEAT_DISTORTION, SEIYA_COSMOS_AURA, SEIYA_FIST_POWER);  // 👊 PUÑO PODER
 
         // ═══════════════════════════════════════════════════════════════
         // UI Elements
@@ -695,7 +699,7 @@ public class SaintSeiyaScene extends WallpaperScene {
     private void drawLayerWithAngles(int texImage, int texDepth,
                           float cameraDistance, float depthStrength,
                           float angleX, float angleY,
-                          float scale, float heatDistortion, float cosmosAura) {
+                          float scale, float heatDistortion, float cosmosAura, float fistPower) {
         if (texImage <= 0 || meshShaderProgram <= 0) return;
 
         GLES30.glUseProgram(meshShaderProgram);
@@ -724,11 +728,13 @@ public class SaintSeiyaScene extends WallpaperScene {
         GLES30.glUniformMatrix4fv(mvpMatrixLoc, 1, false, mvpMatrix, 0);
         GLES30.glUniform1f(depthStrengthLoc, depthStrength);
 
-        // Pasar tiempo, distorsión, aura y posición del puño al shader
+        // Pasar tiempo, distorsión, aura, puño poder y posiciones de puños al shader
         GLES30.glUniform1f(timeLoc, time);
         GLES30.glUniform1f(heatDistortionLoc, heatDistortion);
         GLES30.glUniform1f(cosmosAuraLoc, cosmosAura);
-        GLES30.glUniform2f(fistPosLoc, fistX, fistY);
+        GLES30.glUniform1f(fistPowerLoc, fistPower);
+        GLES30.glUniform2f(fistPosLoc, fistX, fistY);      // Puño PODER (rayos)
+        GLES30.glUniform2f(fist2PosLoc, fist2X, fist2Y);   // Puño COSMOS (aura)
 
         // Texturas
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
@@ -780,12 +786,12 @@ public class SaintSeiyaScene extends WallpaperScene {
             spawnParticles(uvX, uvY, 2);  // 2 partículas al arrastrar
         }
 
-        // Modo calibración del puño (solo si touchMode está activo)
+        // Modo calibración del SEGUNDO puño (cosmos aura)
         if (touchMode && (action == 0 || action == 2)) {
-            fistX = uvX;
-            fistY = uvY;
-            Log.d(TAG, "👊 PUÑO MOVIDO A: x=" + String.format("%.3f", fistX) +
-                       " y=" + String.format("%.3f", fistY));
+            fist2X = uvX;
+            fist2Y = uvY;
+            Log.d(TAG, "👊 PUÑO COSMOS MOVIDO A: x=" + String.format("%.3f", fist2X) +
+                       " y=" + String.format("%.3f", fist2Y));
         }
 
         return true;

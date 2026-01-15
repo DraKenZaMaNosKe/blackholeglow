@@ -318,6 +318,20 @@ public class WallpaperCatalog {
                 .featured()
                 .build());
 
+        // ═══════════════════════════════════════════════════════════════════
+        // 🧟 THE WALKING DEAD - Cementerio Zombie Apocalíptico
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("🧟 THE WALKING DEAD 🧟")
+                .descripcion("Cementerio maldito bajo la luna llena. " +
+                        "Manos zombie emergiendo entre niebla verde y púrpura.")
+                .preview(R.drawable.preview_walkingdead)
+                .sceneName("WALKING_DEAD")
+                .tier(WallpaperTier.FREE)
+                .badge("🧟 ZOMBIE")
+                .glow(0xFF00FF00)  // Green zombie
+                .featured()
+                .build());
+
         Log.d(TAG, "📚 Catálogo inicializado: " + catalog.size() + " wallpapers");
     }
 }

@@ -86,6 +86,14 @@ public class VideoConfig {
             "Neon City Synthwave",
             1
         ));
+
+        // WalkingDeadScene - Cementerio Zombie Apocalíptico
+        VIDEOS.put("walkingdeathscene.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "walkingdeathscene.mp4",
+            29_000_000L,  // ~29 MB (1080p)
+            "The Walking Dead",
+            2  // v2: Re-encoded 1080p
+        ));
     }
 
     // ═══════════════════════════════════════════════════════════════════════

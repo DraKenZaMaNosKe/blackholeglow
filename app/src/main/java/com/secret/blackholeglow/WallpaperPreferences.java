@@ -71,6 +71,7 @@ public class WallpaperPreferences {
         "ADVENTURE_TIME", // 🌳 Parallax Hora de Aventura
         "NEON_CITY",      // 🚗 Synthwave DeLorean
         "SAINT_SEIYA",    // ⭐ Saint Seiya Cosmos
+        "WALKING_DEAD",   // 🧟 The Walking Dead
 
         // ═══════════════════════════════════════════
         // 📦 WALLPAPERS LEGADOS (compatibilidad)

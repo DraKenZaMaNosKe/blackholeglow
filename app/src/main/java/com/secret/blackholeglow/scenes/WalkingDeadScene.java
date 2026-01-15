@@ -1,0 +1,230 @@
+package com.secret.blackholeglow.scenes;
+
+import android.content.Context;
+import android.opengl.GLES30;
+import android.util.Log;
+
+import com.secret.blackholeglow.R;
+import com.secret.blackholeglow.Battery3D;
+import com.secret.blackholeglow.Clock3D;
+import com.secret.blackholeglow.EqualizerBarsDJ;
+import com.secret.blackholeglow.video.MediaCodecVideoRenderer;
+import com.secret.blackholeglow.video.VideoDownloadManager;
+
+/**
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║              🧟 THE WALKING DEAD SCENE - Cementerio Zombie               ║
+ * ╠══════════════════════════════════════════════════════════════════════════╣
+ * ║  Video de cementerio con manos zombie emergiendo bajo la luna llena.     ║
+ * ║  Niebla verde/morada, atmósfera apocalíptica y terror gótico.            ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
+ */
+public class WalkingDeadScene extends WallpaperScene {
+    private static final String TAG = "WalkingDeadScene";
+    private static final String VIDEO_FILE = "walkingdeathscene.mp4";
+
+    private MediaCodecVideoRenderer videoBackground;
+    private VideoDownloadManager downloadManager;
+    private EqualizerBarsDJ equalizerDJ;
+    private Clock3D clock;
+    private Battery3D battery;
+
+    @Override
+    public String getName() {
+        return "WALKING_DEAD";
+    }
+
+    @Override
+    public String getDescription() {
+        return "The Walking Dead - Cementerio Zombie";
+    }
+
+    @Override
+    public int getPreviewResourceId() {
+        return R.drawable.preview_walkingdead;
+    }
+
+    @Override
+    protected void setupScene() {
+        Log.d(TAG, "🧟 Configurando The Walking Dead Scene...");
+
+        downloadManager = VideoDownloadManager.getInstance(context);
+
+        // Video de fondo - Descargar si no existe
+        try {
+            String localPath = downloadManager.getVideoPath(VIDEO_FILE);
+
+            if (localPath == null) {
+                Log.d(TAG, "📥 Descargando video: " + VIDEO_FILE);
+                boolean success = downloadManager.downloadVideoSync(VIDEO_FILE, percent -> {
+                    Log.d(TAG, "📥 Descarga: " + percent + "%");
+                });
+                if (success) {
+                    localPath = downloadManager.getVideoPath(VIDEO_FILE);
+                    Log.d(TAG, "✅ Video descargado: " + localPath);
+                } else {
+                    Log.e(TAG, "❌ Error descargando video");
+                    return;
+                }
+            }
+
+            if (localPath != null) {
+                Log.d(TAG, "📦 Usando video: " + localPath);
+                videoBackground = new MediaCodecVideoRenderer(context, VIDEO_FILE, localPath);
+                videoBackground.initialize();
+                Log.d(TAG, "✅ Video Walking Dead activado");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error Video: " + e.getMessage());
+        }
+
+        // 🎵 Ecualizador con tema WALKING_DEAD (verde tóxico/rojo sangre)
+        try {
+            equalizerDJ = new EqualizerBarsDJ();
+            equalizerDJ.initialize();
+            equalizerDJ.setTheme(EqualizerBarsDJ.Theme.WALKING_DEAD);
+            equalizerDJ.setScreenSize(screenWidth, screenHeight);
+            Log.d(TAG, "✅ Ecualizador ZOMBIE activado");
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error EqualizerBarsDJ: " + e.getMessage());
+        }
+
+        // ⏰ Reloj con tema WALKING_DEAD (verde tóxico)
+        try {
+            clock = new Clock3D(context, Clock3D.THEME_WALKING_DEAD, 0f, 0.75f);
+            clock.setShowMilliseconds(true);
+            Log.d(TAG, "✅ Reloj ZOMBIE activado");
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error Clock3D: " + e.getMessage());
+        }
+
+        // 🔋 Batería con tema WALKING_DEAD (verde tóxico)
+        try {
+            battery = new Battery3D(context, Battery3D.THEME_WALKING_DEAD, 0.81f, -0.34f);
+            Log.d(TAG, "✅ Batería ZOMBIE activada");
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error Battery3D: " + e.getMessage());
+        }
+
+        Log.d(TAG, "🧟 The Walking Dead Scene lista!");
+    }
+
+    @Override
+    protected void releaseSceneResources() {
+        if (videoBackground != null) {
+            videoBackground.release();
+            videoBackground = null;
+        }
+        if (clock != null) {
+            clock.dispose();
+            clock = null;
+        }
+        if (battery != null) {
+            battery.dispose();
+            battery = null;
+        }
+        if (equalizerDJ != null) {
+            equalizerDJ.release();
+            equalizerDJ = null;
+        }
+    }
+
+    // 🔄 Auto-recovery para video
+    private float videoCheckTimer = 0f;
+    private static final float VIDEO_CHECK_INTERVAL = 2.0f;
+    private boolean sceneIsActive = true;
+
+    @Override
+    public void update(float deltaTime) {
+        if (!sceneIsActive) {
+            sceneIsActive = true;
+        }
+
+        videoCheckTimer += deltaTime;
+        if (videoCheckTimer >= VIDEO_CHECK_INTERVAL) {
+            videoCheckTimer = 0f;
+            if (videoBackground != null && !videoBackground.isPlaying()) {
+                videoBackground.resume();
+            }
+        }
+
+        if (equalizerDJ != null) equalizerDJ.update(deltaTime);
+        if (clock != null) clock.update(deltaTime);
+        if (battery != null) battery.update(deltaTime);
+        super.update(deltaTime);
+    }
+
+    @Override
+    public void draw() {
+        if (isDisposed) return;
+
+        GLES30.glClearColor(0f, 0f, 0f, 1.0f);
+        GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
+
+        // 1. Video de fondo
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+        if (videoBackground != null) videoBackground.draw();
+
+        // 2. Elementos UI
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
+
+        // 4. Ecualizador
+        if (equalizerDJ != null) equalizerDJ.draw();
+
+        // 5. Reloj
+        if (clock != null) clock.draw();
+
+        // 6. Batería
+        if (battery != null) battery.draw();
+
+        super.draw();
+    }
+
+    @Override
+    public void setScreenSize(int width, int height) {
+        super.setScreenSize(width, height);
+        if (equalizerDJ != null) equalizerDJ.setScreenSize(width, height);
+    }
+
+    public void updateMusicBands(float[] bands) {
+        if (equalizerDJ != null && bands != null && bands.length > 0) {
+            float sum = 0;
+            for (float b : bands) sum += b;
+            if (sum > 0.1f) {
+                Log.d(TAG, "🎵 Datos música: sum=" + sum);
+            }
+            equalizerDJ.updateFromBands(bands);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ⏸️▶️ PAUSE/RESUME
+    // ═══════════════════════════════════════════════════════════════════════
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        sceneIsActive = false;
+        videoCheckTimer = 0f;
+
+        if (videoBackground != null) {
+            videoBackground.pause();
+            Log.d(TAG, "⏸️ Video Walking Dead PAUSADO");
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        sceneIsActive = true;
+        videoCheckTimer = 0f;
+
+        if (videoBackground != null) {
+            videoBackground.resume();
+            Log.d(TAG, "▶️ Video Walking Dead REANUDADO");
+        }
+    }
+
+}
