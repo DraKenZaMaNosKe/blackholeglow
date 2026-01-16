@@ -13,6 +13,7 @@ import com.secret.blackholeglow.model.ModelDownloadManager;
 import com.secret.blackholeglow.video.VideoDownloadManager;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -29,6 +30,23 @@ import java.util.List;
  */
 public class ResourcePreloader {
     private static final String TAG = "ResourcePreloader";
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🏠 RECURSOS DEL PANEL - NUNCA SE ELIMINAN
+    // ═══════════════════════════════════════════════════════════════════════
+    private static final List<String> PANEL_VIDEOS = Arrays.asList(
+        "thehouse.mp4"  // Video de fondo del panel
+    );
+
+    private static final List<String> PANEL_IMAGES = Arrays.asList(
+        "grimoire_texture.png",  // Textura del grimorio
+        "huevo_zerg.png",        // Elemento del panel
+        "fire_orb.png"           // Elemento del panel
+    );
+
+    private static final List<String> PANEL_MODELS = Arrays.asList(
+        "grimoire.obj"  // Modelo 3D del grimorio
+    );
 
     private final Context context;
     private PreloadListener listener;
@@ -80,6 +98,9 @@ public class ResourcePreloader {
      */
     public void prepareTasksForScene(String sceneName) {
         tasks.clear();
+
+        // 🧹 LIMPIEZA: Eliminar recursos de escenas anteriores
+        cleanupOtherSceneResources(sceneName);
 
         // Determinar que escena es y preparar tareas apropiadas
         if (sceneName == null) {
@@ -153,6 +174,149 @@ public class ResourcePreloader {
         Log.d(TAG, "PanelTasks: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🧹 LIMPIEZA DE RECURSOS - Solo mantiene panel + escena actual
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Elimina recursos de escenas anteriores, manteniendo solo:
+     * - Recursos del Panel (thehouse.mp4, grimoire.obj, etc.)
+     * - Recursos de la escena actual
+     *
+     * Esto evita que el almacenamiento se llene con videos de todas las escenas.
+     */
+    private void cleanupOtherSceneResources(String currentScene) {
+        Log.d(TAG, "🧹 Limpiando recursos de escenas anteriores...");
+
+        // Obtener recursos de la escena actual
+        List<String> sceneVideos = getSceneVideos(currentScene);
+        List<String> sceneImages = getSceneImages(currentScene);
+        List<String> sceneModels = getSceneModels(currentScene);
+
+        // Combinar con recursos del panel (siempre se mantienen)
+        List<String> keepVideos = new ArrayList<>(PANEL_VIDEOS);
+        keepVideos.addAll(sceneVideos);
+
+        List<String> keepImages = new ArrayList<>(PANEL_IMAGES);
+        keepImages.addAll(sceneImages);
+
+        List<String> keepModels = new ArrayList<>(PANEL_MODELS);
+        keepModels.addAll(sceneModels);
+
+        // Ejecutar limpieza
+        long freedVideos = VideoDownloadManager.getInstance(context).deleteAllExcept(keepVideos);
+        long freedImages = ImageDownloadManager.getInstance(context).deleteAllExcept(keepImages);
+        long freedModels = ModelDownloadManager.getInstance(context).deleteAllExcept(keepModels);
+
+        long totalFreed = freedVideos + freedImages + freedModels;
+        if (totalFreed > 0) {
+            Log.d(TAG, "🧹 Total liberado: " + (totalFreed / 1024 / 1024) + " MB");
+        }
+    }
+
+    /**
+     * Obtiene los videos necesarios para una escena específica
+     */
+    private List<String> getSceneVideos(String sceneName) {
+        if (sceneName == null) return new ArrayList<>();
+
+        switch (sceneName) {
+            case "Portal Cosmico":
+            case "PYRALIS":
+            case "LabScene":
+                return Arrays.asList("cielovolando.mp4");
+
+            case "ABYSSIA":
+            case "Oceano":
+            case "OceanFloorScene":
+                return Arrays.asList("marZerg.mp4");
+
+            case "GOKU":
+                return Arrays.asList("gokufinalkamehamehaHD.mp4");
+
+            case "ADVENTURE_TIME":
+                return Arrays.asList("escenaHDA.mp4");
+
+            case "NEON_CITY":
+                return Arrays.asList("neonCityDeLorean.mp4");
+
+            case "SAINT_SEIYA":
+                return Arrays.asList();  // Solo usa imágenes
+
+            case "WALKING_DEAD":
+                return Arrays.asList("walkingdeathscene.mp4");
+
+            default:
+                return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Obtiene las imágenes necesarias para una escena específica
+     */
+    private List<String> getSceneImages(String sceneName) {
+        if (sceneName == null) return new ArrayList<>();
+
+        switch (sceneName) {
+            case "Portal Cosmico":
+            case "PYRALIS":
+            case "LabScene":
+                return Arrays.asList("human_interceptor_texture.png", "thruster_flames.png");
+
+            case "ABYSSIA":
+            case "Oceano":
+            case "OceanFloorScene":
+                return Arrays.asList("abyssal_leviathan_texture.png", "abyssal_lurker_texture.png");
+
+            case "NEON_CITY":
+                return Arrays.asList("delorean_texture.png");
+
+            case "SAINT_SEIYA":
+                return Arrays.asList(
+                    "seiya_fondo_cosmos.png",
+                    "seiya_fondo_cosmos_depth.png",
+                    "seiya_character_cosmos.png",
+                    "seiya_character_cosmos_depth.png"
+                );
+
+            case "WALKING_DEAD":
+                return Arrays.asList("zombie_head_texture.png");
+
+            // GOKU, ADVENTURE_TIME solo usan videos
+            default:
+                return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Obtiene los modelos 3D necesarios para una escena específica
+     */
+    private List<String> getSceneModels(String sceneName) {
+        if (sceneName == null) return new ArrayList<>();
+
+        switch (sceneName) {
+            case "Portal Cosmico":
+            case "PYRALIS":
+            case "LabScene":
+                return Arrays.asList("human_interceptor_flames.obj");
+
+            case "ABYSSIA":
+            case "Oceano":
+            case "OceanFloorScene":
+                return Arrays.asList("abyssal_leviathan.obj", "abyssal_lurker.obj");
+
+            case "NEON_CITY":
+                return Arrays.asList("delorean.obj");
+
+            case "WALKING_DEAD":
+                return Arrays.asList("zombie_head.obj");
+
+            // GOKU, ADVENTURE_TIME, SAINT_SEIYA no usan modelos 3D
+            default:
+                return new ArrayList<>();
+        }
+    }
+
     /**
      * Prepara tareas para LabScene (Portal Cosmico)
      * Incluye descarga del video de nubes de fuego, modelo 3D y textura de la nave
@@ -211,8 +375,8 @@ public class ResourcePreloader {
     public void prepareGokuSceneTasks() {
         tasks.clear();
 
-        // 1. VIDEO - Goku Kamehameha Final desde Supabase
-        addVideoDownloadTask("Video Goku Kamehameha", "gokukamehameFinal.mp4", 10);
+        // 1. VIDEO - Goku Kamehameha Final HD desde Supabase
+        addVideoDownloadTask("Video Goku Kamehameha HD", "gokufinalkamehamehaHD.mp4", 10);
 
         // 2. Preview texture
         addTextureTask("Preparando escena Goku", R.drawable.preview_goku, 2);
@@ -283,8 +447,14 @@ public class ResourcePreloader {
     public void prepareWalkingDeadSceneTasks() {
         tasks.clear();
 
-        // Video del cementerio zombie (67.5 MB - 2K)
+        // 1. Video del cementerio zombie
         addVideoDownloadTask("Walking Dead Video", "walkingdeathscene.mp4", 15);
+
+        // 2. Modelo 3D - Cabeza zombi colgante (Meshy AI)
+        addModelDownloadTask("Modelo Cabeza Zombi", "zombie_head.obj", 3);
+
+        // 3. Textura de la cabeza zombi
+        addImageDownloadTask("Textura Zombi", "zombie_head_texture.png", 5);
 
         // Calcular total
         calculateTotalWeight();

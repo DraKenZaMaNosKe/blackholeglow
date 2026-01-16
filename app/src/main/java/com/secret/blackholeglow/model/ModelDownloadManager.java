@@ -404,6 +404,50 @@ public class ModelDownloadManager {
         return files != null ? files.length : 0;
     }
 
+    /**
+     * 🗑️ Elimina todos los modelos EXCEPTO los especificados.
+     * Usado para limpiar recursos de escenas anteriores al cambiar de wallpaper.
+     *
+     * @param keepFiles Lista de nombres de archivo a mantener
+     * @return Cantidad de bytes liberados
+     */
+    public long deleteAllExcept(java.util.List<String> keepFiles) {
+        long freedBytes = 0;
+        File[] files = modelDir.listFiles();
+
+        if (files == null || files.length == 0) {
+            Log.d(TAG, "🗑️ No hay modelos para limpiar");
+            return 0;
+        }
+
+        java.util.Set<String> keepSet = new java.util.HashSet<>(keepFiles);
+        int deletedCount = 0;
+
+        for (File file : files) {
+            String fileName = file.getName();
+            // Ignorar archivos temporales
+            if (fileName.endsWith(".tmp")) {
+                file.delete();
+                continue;
+            }
+
+            // Si NO está en la lista de mantener, eliminar
+            if (!keepSet.contains(fileName)) {
+                long fileSize = file.length();
+                if (file.delete()) {
+                    freedBytes += fileSize;
+                    deletedCount++;
+                    versionPrefs.edit().remove(VERSION_PREFIX + fileName).apply();
+                    Log.d(TAG, "🗑️ Eliminado: " + fileName + " (" + (fileSize / 1024) + " KB)");
+                }
+            }
+        }
+
+        Log.d(TAG, "🧹 Limpieza completada: " + deletedCount + " modelos eliminados, " +
+                   (freedBytes / 1024) + " KB liberados");
+        return freedBytes;
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // INTERFACES DE CALLBACK
     // ═══════════════════════════════════════════════════════════════════════

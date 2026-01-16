@@ -191,6 +191,17 @@ public class ImageConfig {
             1
         ));
 
+        // ═══════════════════════════════════════════════════════════════
+        // WALKING DEAD SCENE - Cabeza Zombi
+        // ═══════════════════════════════════════════════════════════════
+
+        IMAGES.put("zombie_head_texture.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "zombie_head_texture.png",
+            5_200_000L,  // ~5.19 MB
+            "Textura Cabeza Zombi",
+            1
+        ));
+
     }
 
     // ═══════════════════════════════════════════════════════════════════════

@@ -45,6 +45,9 @@ public class ScreenEffectsManager {
     private FloatBuffer colorBuffer;
     private FloatBuffer uvBuffer;
 
+    // 🔧 FIX: Array cacheado para evitar allocations cada frame
+    private final float[] cachedColors = new float[16];
+
     public ScreenEffectsManager() {
         initBuffers();
     }
@@ -171,16 +174,15 @@ public class ScreenEffectsManager {
         if (flashShaderProgramId > 0 && GLES30.glIsProgram(flashShaderProgramId)) {
             GLES30.glUseProgram(flashShaderProgramId);
 
-            // Actualizar buffer de colores con alpha actual
-            float[] colors = new float[16];
+            // 🔧 FIX: Usar array cacheado en lugar de new float[16] cada frame
             for (int i = 0; i < 4; i++) {
-                colors[i * 4] = 1.0f;      // R
-                colors[i * 4 + 1] = 1.0f;  // G
-                colors[i * 4 + 2] = 1.0f;  // B
-                colors[i * 4 + 3] = impactFlashAlpha;  // A
+                cachedColors[i * 4] = 1.0f;      // R
+                cachedColors[i * 4 + 1] = 1.0f;  // G
+                cachedColors[i * 4 + 2] = 1.0f;  // B
+                cachedColors[i * 4 + 3] = impactFlashAlpha;  // A
             }
             colorBuffer.clear();
-            colorBuffer.put(colors);
+            colorBuffer.put(cachedColors);
             colorBuffer.position(0);
 
             // Configurar atributos

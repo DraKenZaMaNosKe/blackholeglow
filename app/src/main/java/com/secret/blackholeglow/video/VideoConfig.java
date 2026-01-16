@@ -63,11 +63,11 @@ public class VideoConfig {
             1
         ));
 
-        // GokuScene - Kamehameha Final
-        VIDEOS.put("gokukamehameFinal.mp4", new ResourceInfo(
-            SUPABASE_VIDEOS_URL + "gokukamehameFinal.mp4",
-            8_210_000L,  // 7.83 MB
-            "Goku Kamehameha Final",
+        // GokuScene - Kamehameha Final HD
+        VIDEOS.put("gokufinalkamehamehaHD.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "gokufinalkamehamehaHD.mp4",
+            53_210_000L,  // 53.21 MB HD
+            "Goku Kamehameha Final HD",
             1
         ));
 

@@ -8,7 +8,6 @@ import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.Battery3D;
 import com.secret.blackholeglow.Clock3D;
 import com.secret.blackholeglow.EqualizerBarsDJ;
-import com.secret.blackholeglow.effects.ElectricSparksOverlay;
 import com.secret.blackholeglow.video.MediaCodecVideoRenderer;
 import com.secret.blackholeglow.video.VideoDownloadManager;
 
@@ -22,14 +21,13 @@ import com.secret.blackholeglow.video.VideoDownloadManager;
  */
 public class GokuScene extends WallpaperScene {
     private static final String TAG = "GokuScene";
-    private static final String VIDEO_FILE = "gokukamehameFinal.mp4";
+    private static final String VIDEO_FILE = "gokufinalkamehamehaHD.mp4";
 
     private MediaCodecVideoRenderer videoBackground;
     private VideoDownloadManager downloadManager;
     private EqualizerBarsDJ equalizerDJ;
     private Clock3D clock;
     private Battery3D battery;
-    private ElectricSparksOverlay electricSparks;  // ⚡ Rayos Ultra Instinct
 
     @Override
     public String getName() {
@@ -109,16 +107,6 @@ public class GokuScene extends WallpaperScene {
             Log.e(TAG, "❌ Error Battery3D: " + e.getMessage());
         }
 
-        // ⚡ Electric Sparks - Rayos Ultra Instinct al tocar
-        try {
-            electricSparks = new ElectricSparksOverlay();
-            electricSparks.initialize();
-            electricSparks.setScreenSize(screenWidth, screenHeight);
-            Log.d(TAG, "✅ Electric Sparks activado ⚡");
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Error ElectricSparks: " + e.getMessage());
-        }
-
         Log.d(TAG, "🐉 Goku Kamehameha listo!");
     }
 
@@ -139,10 +127,6 @@ public class GokuScene extends WallpaperScene {
         if (equalizerDJ != null) {
             equalizerDJ.release();
             equalizerDJ = null;
-        }
-        if (electricSparks != null) {
-            electricSparks.release();
-            electricSparks = null;
         }
     }
 
@@ -169,7 +153,6 @@ public class GokuScene extends WallpaperScene {
         if (equalizerDJ != null) equalizerDJ.update(deltaTime);
         if (clock != null) clock.update(deltaTime);
         if (battery != null) battery.update(deltaTime);
-        if (electricSparks != null) electricSparks.update(deltaTime);  // ⚡
         super.update(deltaTime);
     }
 
@@ -184,10 +167,7 @@ public class GokuScene extends WallpaperScene {
         GLES30.glDisable(GLES30.GL_DEPTH_TEST);
         if (videoBackground != null) videoBackground.draw();
 
-        // 2. ⚡ Electric Sparks (rayos sobre el video)
-        if (electricSparks != null) electricSparks.draw();
-
-        // 3. Elementos UI
+        // 2. Elementos UI
         GLES30.glEnable(GLES30.GL_DEPTH_TEST);
         GLES30.glEnable(GLES30.GL_BLEND);
         GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
@@ -208,7 +188,6 @@ public class GokuScene extends WallpaperScene {
     public void setScreenSize(int width, int height) {
         super.setScreenSize(width, height);
         if (equalizerDJ != null) equalizerDJ.setScreenSize(width, height);
-        if (electricSparks != null) electricSparks.setScreenSize(width, height);
     }
 
     public void updateMusicBands(float[] bands) {
@@ -250,14 +229,8 @@ public class GokuScene extends WallpaperScene {
         }
     }
 
-    // ⚡ Touch events - Rayos Ultra Instinct
     @Override
     public boolean onTouchEvent(float normalizedX, float normalizedY, int action) {
-        // Trigger electric sparks on touch down and move
-        if (electricSparks != null && (action == 0 || action == 2)) {  // ACTION_DOWN=0, ACTION_MOVE=2
-            electricSparks.triggerSpark(normalizedX, normalizedY);
-            return true;
-        }
         return false;
     }
 }

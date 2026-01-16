@@ -88,6 +88,19 @@ public class ModelConfig {
             "Interceptor con Llamas",
             1
         ));
+
+        // ═══════════════════════════════════════════════════════════════
+        // WALKING DEAD SCENE - Cabeza zombi colgante
+        // ═══════════════════════════════════════════════════════════════
+
+        // Cabeza zombi encadenada (Meshy AI)
+        // NOTA: Subido a wallpaper-videos bucket
+        MODELS.put("zombie_head.obj", new ResourceInfo(
+            "https://vzuwvsmlyigjtsearxym.supabase.co/storage/v1/object/public/wallpaper-videos/zombie_head.obj",
+            280_000L,  // ~279 KB
+            "Cabeza Zombi",
+            1
+        ));
     }
 
     // ═══════════════════════════════════════════════════════════════════════

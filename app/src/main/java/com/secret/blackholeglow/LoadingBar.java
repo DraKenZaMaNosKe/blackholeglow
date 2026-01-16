@@ -91,6 +91,7 @@ public class LoadingBar implements SceneObject {
 
     // ⚡ OPTIMIZACIÓN: Cache de vértices para evitar crear arrays cada frame
     private final float[] quadVertexCache = new float[8];
+    private final float[] progressColorCache = new float[3];  // 🔧 FIX: Cache para color de progreso
 
     private static final int TEXT_TEX_WIDTH = 512;   // Mas ancho para nombres largos
     private static final int TEXT_TEX_HEIGHT = 140;  // 3 lineas: nombre + cargando + motivacional
@@ -625,10 +626,9 @@ public class LoadingBar implements SceneObject {
         if (displayProgress > 0.01f) {
             float progressWidth = adjustedWidth * displayProgress;
 
-            // Interpolar color segun progreso (primario -> secundario)
-            float[] progressColor = new float[3];
+            // 🔧 FIX: Usar cache en lugar de new float[3] cada frame
             for (int i = 0; i < 3; i++) {
-                progressColor[i] = themeColorPrimary[i] + (themeColorSecondary[i] - themeColorPrimary[i]) * displayProgress;
+                progressColorCache[i] = themeColorPrimary[i] + (themeColorSecondary[i] - themeColorPrimary[i]) * displayProgress;
             }
 
             drawQuad(
@@ -636,7 +636,7 @@ public class LoadingBar implements SceneObject {
                 barY - adjustedHeight,
                 progressWidth,
                 adjustedHeight*2,
-                progressColor,
+                progressColorCache,
                 alpha,
                 false
             );

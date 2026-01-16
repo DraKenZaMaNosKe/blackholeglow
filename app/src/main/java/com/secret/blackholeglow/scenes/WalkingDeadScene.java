@@ -8,6 +8,8 @@ import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.Battery3D;
 import com.secret.blackholeglow.Clock3D;
 import com.secret.blackholeglow.EqualizerBarsDJ;
+import com.secret.blackholeglow.TextureManager;
+import com.secret.blackholeglow.ZombieHead3D;
 import com.secret.blackholeglow.video.MediaCodecVideoRenderer;
 import com.secret.blackholeglow.video.VideoDownloadManager;
 
@@ -28,6 +30,8 @@ public class WalkingDeadScene extends WallpaperScene {
     private EqualizerBarsDJ equalizerDJ;
     private Clock3D clock;
     private Battery3D battery;
+    private ZombieHead3D zombieHead;
+    private TextureManager textureManager;
 
     @Override
     public String getName() {
@@ -106,6 +110,18 @@ public class WalkingDeadScene extends WallpaperScene {
             Log.e(TAG, "❌ Error Battery3D: " + e.getMessage());
         }
 
+        // 🧟 Cabeza zombi colgante - CON CALIBRACIÓN POR TOUCH
+        try {
+            textureManager = new TextureManager(context);
+            zombieHead = new ZombieHead3D(context, textureManager);
+            zombieHead.setScreenSize(screenWidth, screenHeight);
+            // Calibración: TAP para cambiar modo, ARRASTRAR para ajustar
+            Log.d(TAG, "✅ Cabeza Zombi activada - CALIBRACIÓN POR TOUCH ACTIVADA");
+            Log.d(TAG, "🎮 TAP = cambiar modo | ARRASTRAR = ajustar posición/escala/rotación");
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error ZombieHead3D: " + e.getMessage());
+        }
+
         Log.d(TAG, "🧟 The Walking Dead Scene lista!");
     }
 
@@ -126,6 +142,14 @@ public class WalkingDeadScene extends WallpaperScene {
         if (equalizerDJ != null) {
             equalizerDJ.release();
             equalizerDJ = null;
+        }
+        if (zombieHead != null) {
+            zombieHead.dispose();
+            zombieHead = null;
+        }
+        if (textureManager != null) {
+            textureManager.release();
+            textureManager = null;
         }
     }
 
@@ -151,6 +175,7 @@ public class WalkingDeadScene extends WallpaperScene {
         if (equalizerDJ != null) equalizerDJ.update(deltaTime);
         if (clock != null) clock.update(deltaTime);
         if (battery != null) battery.update(deltaTime);
+        if (zombieHead != null) zombieHead.update(deltaTime);
         super.update(deltaTime);
     }
 
@@ -165,11 +190,13 @@ public class WalkingDeadScene extends WallpaperScene {
         GLES30.glDisable(GLES30.GL_DEPTH_TEST);
         if (videoBackground != null) videoBackground.draw();
 
-        // 2. Elementos UI
+        // 2. Cabeza zombi colgante (3D)
         GLES30.glEnable(GLES30.GL_DEPTH_TEST);
         GLES30.glEnable(GLES30.GL_BLEND);
         GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
+        if (zombieHead != null) zombieHead.draw();
 
+        // 3. Elementos UI
         // 4. Ecualizador
         if (equalizerDJ != null) equalizerDJ.draw();
 
@@ -186,6 +213,16 @@ public class WalkingDeadScene extends WallpaperScene {
     public void setScreenSize(int width, int height) {
         super.setScreenSize(width, height);
         if (equalizerDJ != null) equalizerDJ.setScreenSize(width, height);
+        if (zombieHead != null) zombieHead.setScreenSize(width, height);
+    }
+
+    @Override
+    public boolean onTouchEvent(float normalizedX, float normalizedY, int action) {
+        // Pasar touch a la cabeza zombi para calibración
+        if (zombieHead != null) {
+            return zombieHead.onTouchEvent(normalizedX, normalizedY, action);
+        }
+        return false;
     }
 
     public void updateMusicBands(float[] bands) {
