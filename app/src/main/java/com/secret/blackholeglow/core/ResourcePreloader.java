@@ -141,6 +141,10 @@ public class ResourcePreloader {
                 prepareWalkingDeadSceneTasks();
                 break;
 
+            case "ZELDA_BOTW":
+                prepareZeldaSceneTasks();
+                break;
+
             default:
                 // Default: usar Lab
                 prepareLabSceneTasks();
@@ -246,6 +250,9 @@ public class ResourcePreloader {
             case "WALKING_DEAD":
                 return Arrays.asList("walkingdeathscene.mp4");
 
+            case "ZELDA_BOTW":
+                return Arrays.asList();  // Solo usa imágenes, no videos
+
             default:
                 return new ArrayList<>();
         }
@@ -280,7 +287,17 @@ public class ResourcePreloader {
                 );
 
             case "WALKING_DEAD":
-                return Arrays.asList("zombie_head_texture.png");
+                return Arrays.asList("zombie_head_texture.png", "zombie_body_texture.webp");
+
+            case "ZELDA_BOTW":
+                return Arrays.asList(
+                    "zelda_fondo.png",
+                    "zelda_paisaje.png",
+                    "zelda_piedra.png",
+                    "zelda_link.png",
+                    "zelda_fondo_depth.png",    // Solo fondo tiene parallax
+                    "link_3d_texture.webp"      // Textura del modelo 3D de Link (WebP)
+                );
 
             // GOKU, ADVENTURE_TIME solo usan videos
             default:
@@ -309,7 +326,7 @@ public class ResourcePreloader {
                 return Arrays.asList("delorean.obj");
 
             case "WALKING_DEAD":
-                return Arrays.asList("zombie_head.obj");
+                return Arrays.asList("zombie_head.obj", "zombie_body.obj");
 
             // GOKU, ADVENTURE_TIME, SAINT_SEIYA no usan modelos 3D
             default:
@@ -456,9 +473,45 @@ public class ResourcePreloader {
         // 3. Textura de la cabeza zombi
         addImageDownloadTask("Textura Zombi", "zombie_head_texture.png", 5);
 
+        // 4. Modelo 3D - Zombie cuerpo completo (Meshy AI)
+        addModelDownloadTask("Modelo Zombie Cuerpo", "zombie_body.obj", 3);
+
+        // 5. Textura zombie cuerpo (WebP optimizado 356KB)
+        addImageDownloadTask("Textura Zombie Cuerpo", "zombie_body_texture.webp", 2);
+
         // Calcular total
         calculateTotalWeight();
         Log.d(TAG, "WalkingDeadScene: " + tasks.size() + " recursos (peso: " + totalTasks + ")");
+    }
+
+    /**
+     * 🗡️ Prepara tareas para ZeldaParallaxScene (BOTW Parallax 3D)
+     * 4 capas con depth maps para efecto 3D de profundidad
+     */
+    public void prepareZeldaSceneTasks() {
+        tasks.clear();
+
+        // ═══════════════════════════════════════════════════════════════
+        // CAPA 1: CIELO (Fondo) - CON PARALLAX
+        // ═══════════════════════════════════════════════════════════════
+        addImageDownloadTask("Zelda Cielo", "zelda_fondo.png", 4);
+        addImageDownloadTask("Zelda Cielo Depth", "zelda_fondo_depth.png", 1);
+
+        // ═══════════════════════════════════════════════════════════════
+        // CAPAS ESTÁTICAS (sin depth maps)
+        // ═══════════════════════════════════════════════════════════════
+        addImageDownloadTask("Zelda Paisaje", "zelda_paisaje.png", 5);
+        addImageDownloadTask("Zelda Piedra", "zelda_piedra.png", 3);
+        addImageDownloadTask("Zelda Link 2D", "zelda_link.png", 3);
+
+        // ═══════════════════════════════════════════════════════════════
+        // 🗡️ LINK 3D MODEL - Textura del modelo (Meshy AI) - WebP comprimido
+        // ═══════════════════════════════════════════════════════════════
+        addImageDownloadTask("Link 3D Textura", "link_3d_texture.webp", 2);
+
+        // Calcular total
+        calculateTotalWeight();
+        Log.d(TAG, "🗡️ ZeldaScene: " + tasks.size() + " recursos (peso: " + totalTasks + ")");
     }
 
     private void calculateTotalWeight() {

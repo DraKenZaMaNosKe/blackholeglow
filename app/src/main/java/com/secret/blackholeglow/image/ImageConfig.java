@@ -202,6 +202,71 @@ public class ImageConfig {
             1
         ));
 
+        // Textura zombie cuerpo completo (WebP optimizado)
+        IMAGES.put("zombie_body_texture.webp", new ResourceInfo(
+            "https://vzuwvsmlyigjtsearxym.supabase.co/storage/v1/object/public/wallpaper-models/zombie_body_texture.webp",
+            356_000L,  // ~355.84 KB (optimizado de 3.3MB PNG)
+            "Textura Zombie Cuerpo",
+            1
+        ));
+
+        // ═══════════════════════════════════════════════════════════════
+        // ZELDA BOTW SCENE - Parallax Layers
+        // ═══════════════════════════════════════════════════════════════
+
+        IMAGES.put("zelda_fondo.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "zelda_fondo.png",
+            980_000L,  // ~982 KB real
+            "Zelda Cielo BOTW",
+            1
+        ));
+
+        IMAGES.put("zelda_paisaje.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "zelda_paisaje.png",
+            960_000L,  // ~960 KB real
+            "Zelda Paisaje Hyrule",
+            1
+        ));
+
+        IMAGES.put("zelda_piedra.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "zelda_piedra.png",
+            197_000L,  // ~197 KB real
+            "Zelda Roca Link",
+            1
+        ));
+
+        IMAGES.put("zelda_link.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "zelda_link.png",
+            272_000L,  // ~272 KB real
+            "Zelda Link 2D",
+            1
+        ));
+
+        // ═══════════════════════════════════════════════════════════════
+        // ZELDA BOTW SCENE - Depth Map (solo fondo tiene parallax)
+        // ═══════════════════════════════════════════════════════════════
+
+        IMAGES.put("zelda_fondo_depth.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "zelda_fondo_depth.png",
+            136_000L,  // ~136 KB real
+            "Zelda Cielo Depth",
+            1
+        ));
+
+        // NOTA: zelda_paisaje_depth.png y zelda_piedra_depth.png eliminados
+        // porque esas capas son estáticas (no usan parallax)
+
+        // ═══════════════════════════════════════════════════════════════
+        // ZELDA BOTW SCENE - Link 3D Model Texture
+        // ═══════════════════════════════════════════════════════════════
+
+        IMAGES.put("link_3d_texture.webp", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "link_3d_texture.webp",
+            600_000L,  // ~580 KB (WebP comprimido)
+            "Link 3D Textura",
+            1
+        ));
+
     }
 
     // ═══════════════════════════════════════════════════════════════════════

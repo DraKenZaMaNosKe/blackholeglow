@@ -317,8 +317,36 @@ public class PanelModeRenderer {
         Log.d(TAG, "🎬 Wallpaper activado");
         if (orbixGreeting != null) orbixGreeting.hide();
 
-        // 🔴 CRÍTICO: Pausar video del panel para evitar 2 videos simultáneos
-        pause();
+        // 🔴 OPTIMIZACIÓN: Liberar recursos del panel para ahorrar ~40-50 MB GPU
+        // El panel no se necesita mientras el wallpaper está activo
+        releaseForWallpaperMode();
+    }
+
+    /**
+     * 🔧 OPTIMIZACIÓN MEMORIA: Libera recursos GPU del panel cuando wallpaper está activo.
+     * Ahorra ~40-50 MB de memoria GPU que no se necesitan durante reproducción.
+     * Los recursos se recargan automáticamente al volver al panel.
+     */
+    private void releaseForWallpaperMode() {
+        Log.d(TAG, "🧹 Liberando recursos del panel para wallpaper mode...");
+
+        // Liberar video de fondo (~20-30 MB GPU)
+        if (videoBackground != null) {
+            videoBackground.release();
+            videoBackground = null;
+            Log.d(TAG, "  ✓ Video de panel liberado");
+        }
+        videoReady = false;
+
+        // Liberar grimoire (~20 MB GPU)
+        if (grimoire != null) {
+            grimoire.release();
+            grimoire = null;
+            Log.d(TAG, "  ✓ Grimoire liberado");
+        }
+
+        panelIsActive = false;
+        Log.d(TAG, "✅ Recursos del panel liberados - ~40-50 MB GPU recuperados");
     }
 
     public void onReturnToPanel() {
@@ -327,8 +355,45 @@ public class PanelModeRenderer {
             orbixGreeting.show();
         }
 
-        // 🔴 CRÍTICO: Reanudar video del panel al volver de WALLPAPER_MODE
-        resume();
+        // 🔴 OPTIMIZACIÓN: Recargar recursos del panel que fueron liberados
+        reloadForPanelMode();
+    }
+
+    /**
+     * 🔧 OPTIMIZACIÓN MEMORIA: Recarga recursos GPU del panel al volver de wallpaper.
+     * Solo se ejecuta si los recursos fueron previamente liberados.
+     */
+    private void reloadForPanelMode() {
+        Log.d(TAG, "🔄 Recargando recursos del panel...");
+
+        // Recargar video de fondo
+        if (videoBackground == null && videoDownloadManager != null) {
+            if (videoDownloadManager.isVideoAvailable(PANEL_VIDEO_FILE)) {
+                Log.d(TAG, "  🎬 Recargando video de panel...");
+                initializeVideoBackground();
+            }
+        }
+
+        // Recargar grimoire
+        if (grimoire == null) {
+            Log.d(TAG, "  📖 Recargando grimoire...");
+            grimoire = new ArcaneGrimoire(context);
+            grimoire.initialize();
+            if (screenWidth > 0 && screenHeight > 0) {
+                grimoire.setScreenSize(screenWidth, screenHeight);
+                grimoire.setAspectRatio((float) screenWidth / screenHeight);
+            }
+        }
+
+        panelIsActive = true;
+        videoCheckTimer = 0f;
+
+        // Reanudar video si está listo
+        if (videoBackground != null && videoReady) {
+            videoBackground.resume();
+        }
+
+        Log.d(TAG, "✅ Recursos del panel recargados");
     }
 
     // ═══════════════════════════════════════════════════════════════

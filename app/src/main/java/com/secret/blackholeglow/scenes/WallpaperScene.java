@@ -372,4 +372,17 @@ public abstract class WallpaperScene implements Disposable {
     public boolean onTouchEvent(float normalizedX, float normalizedY, int action) {
         return false;  // Override en subclases si necesitan touch
     }
+
+    /**
+     * Manejar evento de touch con datos completos (multi-touch)
+     * Override en subclases que necesitan pinch/zoom/rotate
+     * @param event MotionEvent completo con datos multi-touch
+     * @return true si el evento fue consumido
+     */
+    public boolean onTouchEventRaw(android.view.MotionEvent event) {
+        // Por defecto, delegar al método simple
+        float nx = (event.getX() / Math.max(1, screenWidth)) * 2f - 1f;
+        float ny = -((event.getY() / Math.max(1, screenHeight)) * 2f - 1f);
+        return onTouchEvent(nx, ny, event.getAction());
+    }
 }

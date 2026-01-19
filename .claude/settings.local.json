@@ -149,7 +149,21 @@
       "Bash(# Check if any panorama files still exist ls -la /d/Orbix/blackholeglow/app/src/main/res/drawable/)",
       "Bash(while read f)",
       "Bash(do basename \"$f\")",
-      "Bash(magick identify:*)"
+      "Bash(magick identify:*)",
+      "Bash(wmic cpu get name,numberofcores,numberoflogicalprocessors,maxclockspeed)",
+      "Bash(wmic baseboard:*)",
+      "Bash(wmic:*)",
+      "WebFetch(domain:vzuwvsmlyigjtsearxym.supabase.co)",
+      "Bash(adb shell pm:*)",
+      "Bash(adb shell cat:*)",
+      "Bash(adb shell dumpsys:*)",
+      "Bash(for i in 1 2 3 4 5 6 7 8)",
+      "Bash(do echo \"\")",
+      "Bash(# Check ZombieHead files in Supabase download location ls -la \"\"/c/Users/lalo/OneDrive/Escritorio/zeldaAssets/assetsfinales/\"\")",
+      "Bash(# Check memory usage of our app echo \"\"=== MEMORIA DE LA APP ===\"\" adb shell dumpsys meminfo com.secret.blackholeglow)",
+      "Bash(__NEW_LINE_1d42410b77b2558f__ echo \"\")",
+      "Bash(__NEW_LINE_40269f99bf423d98__ echo \"\")",
+      "Bash(__NEW_LINE_155b71083c2f1ba7__ echo \"\")"
     ],
     "deny": [],
     "ask": []

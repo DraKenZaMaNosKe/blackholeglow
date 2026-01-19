@@ -48,6 +48,7 @@ public class Battery3D implements SceneObject {
     public static final int THEME_SYNTHWAVE = 3;
     public static final int THEME_COSMOS = 4;
     public static final int THEME_WALKING_DEAD = 5;
+    public static final int THEME_ZELDA = 6;
 
     // Colores PYRALIS (Fuego/Plasma)
     private static final int PYRALIS_HIGH = 0xFFFFD700;      // Gold (>50%)
@@ -90,6 +91,13 @@ public class Battery3D implements SceneObject {
     private static final int WALKINGDEAD_LOW = 0xFFCC0000;   // Rojo sangre (<20%)
     private static final int WALKINGDEAD_GLOW = 0xFF33FF66;  // Verde neón glow
     private static final int WALKINGDEAD_CORE = 0xFFAAFFAA;  // Verde claro (núcleo)
+
+    // Colores ZELDA (Breath of the Wild - Verde Hyrule)
+    private static final int ZELDA_HIGH = 0xFF4CAF50;        // Verde Hyrule (>50%)
+    private static final int ZELDA_MED = 0xFF8BC34A;         // Verde claro (20-50%)
+    private static final int ZELDA_LOW = 0xFFFF9800;         // Naranja warning (<20%)
+    private static final int ZELDA_GLOW = 0xFF66BB6A;        // Verde glow
+    private static final int ZELDA_CORE = 0xFFC8E6C9;        // Verde claro (núcleo)
 
     // ═══════════════════════════════════════════════════════════════
     // ESTADO DE BATERÍA
@@ -240,6 +248,14 @@ public class Battery3D implements SceneObject {
             primaryColor = COSMOS_HIGH;
             glowColor = COSMOS_GLOW;
             coreColor = COSMOS_CORE;
+        } else if (theme == THEME_WALKING_DEAD) {
+            primaryColor = WALKINGDEAD_HIGH;
+            glowColor = WALKINGDEAD_GLOW;
+            coreColor = WALKINGDEAD_CORE;
+        } else if (theme == THEME_ZELDA) {
+            primaryColor = ZELDA_HIGH;
+            glowColor = ZELDA_GLOW;
+            coreColor = ZELDA_CORE;
         } else {
             primaryColor = ABYSSIA_HIGH;
             glowColor = ABYSSIA_GLOW;
@@ -268,6 +284,10 @@ public class Battery3D implements SceneObject {
             if (level > 50) return WALKINGDEAD_HIGH;
             if (level > 20) return WALKINGDEAD_MED;
             return WALKINGDEAD_LOW;
+        } else if (currentTheme == THEME_ZELDA) {
+            if (level > 50) return ZELDA_HIGH;
+            if (level > 20) return ZELDA_MED;
+            return ZELDA_LOW;
         } else {
             if (level > 50) return ABYSSIA_HIGH;
             if (level > 20) return ABYSSIA_MED;

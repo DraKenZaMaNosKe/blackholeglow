@@ -58,7 +58,8 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
     // ╚═════════════════════════════════════════════════════════════════╝
     private boolean isPanelVideoReady = false;
     private int downloadProgress = 0;
-    
+    private boolean downloadFailed = false;  // ⚠️ Estado de error en descarga
+
     // ⚡ DEBOUNCE: Prevenir doble-click en botones
     private long lastClickTime = 0;
     private static final long CLICK_DEBOUNCE_MS = 800; // 800ms entre clicks
@@ -118,6 +119,15 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
             lastNotifiedProgress = progress;
             notifyItemRangeChanged(0, getItemCount(), "BUTTON_UPDATE");
         }
+    }
+
+    /**
+     * ⚠️ Indica si la descarga falló para mostrar opción de reintento.
+     */
+    public void setDownloadFailed(boolean failed) {
+        this.downloadFailed = failed;
+        notifyItemRangeChanged(0, getItemCount(), "BUTTON_UPDATE");
+        Log.d("WallpaperAdapter", "❌ Download failed: " + failed);
     }
 
     /**
@@ -185,8 +195,24 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         // ║  está descargado (thehouse.mp4)                       ║
         // ╚═════════════════════════════════════════════════════════╝
 
+        // ⚠️ ESTADO DE ERROR: Mostrar botón de reintento
+        if (downloadFailed) {
+            holder.buttonPreview.setEnabled(true);
+            holder.buttonPreview.setAlpha(1.0f);
+            holder.buttonPreview.setText("⚠️ REINTENTAR");
+            holder.buttonPreview.setOnClickListener(v -> {
+                if (context instanceof FragmentActivity) {
+                    androidx.fragment.app.Fragment fragment = ((FragmentActivity) context)
+                            .getSupportFragmentManager()
+                            .findFragmentById(R.id.fragment_container);
+                    if (fragment instanceof com.secret.blackholeglow.fragments.AnimatedWallpaperListFragment) {
+                        ((com.secret.blackholeglow.fragments.AnimatedWallpaperListFragment) fragment).retryDownload();
+                    }
+                }
+            });
+        }
         // PRIMERO: Verificar si el video del panel está listo
-        if (!isPanelVideoReady) {
+        else if (!isPanelVideoReady) {
             // Video del panel NO disponible - botón deshabilitado con progreso
             holder.buttonPreview.setEnabled(false);
             holder.buttonPreview.setAlpha(0.6f);
@@ -252,7 +278,25 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
      * Actualiza solo el estado del botón (para actualizaciones parciales).
      */
     private void updateButtonState(WallpaperViewHolder holder, WallpaperItem item) {
-        if (!isPanelVideoReady) {
+        // ⚠️ ESTADO DE ERROR: Mostrar botón de reintento
+        if (downloadFailed) {
+            holder.buttonPreview.setEnabled(true);  // Habilitado para permitir retry
+            holder.buttonPreview.setAlpha(1.0f);
+            holder.buttonPreview.setText("⚠️ REINTENTAR");
+            holder.buttonPreview.setOnClickListener(v -> {
+                // Notificar al fragment para reintentar
+                if (context instanceof FragmentActivity) {
+                    androidx.fragment.app.Fragment fragment = ((FragmentActivity) context)
+                            .getSupportFragmentManager()
+                            .findFragmentById(R.id.fragment_container);
+                    if (fragment instanceof com.secret.blackholeglow.fragments.AnimatedWallpaperListFragment) {
+                        ((com.secret.blackholeglow.fragments.AnimatedWallpaperListFragment) fragment).retryDownload();
+                    }
+                }
+            });
+        }
+        // ESTADO NORMAL: Descargando
+        else if (!isPanelVideoReady) {
             holder.buttonPreview.setEnabled(false);
             holder.buttonPreview.setAlpha(0.6f);
             holder.buttonPreview.setOnClickListener(null);

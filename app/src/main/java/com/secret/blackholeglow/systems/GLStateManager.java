@@ -67,6 +67,13 @@ public class GLStateManager {
     private float currentFPS = 0f;
     private float deltaTime = 0f;
 
+    // ═══════════════════════════════════════════════════════════════
+    // 🔋 FPS LIMITER - Ahorro de batería para live wallpapers
+    // ═══════════════════════════════════════════════════════════════
+    private static final int TARGET_FPS = 30;  // 30 FPS es suficiente para wallpapers
+    private static final long TARGET_FRAME_TIME_NS = 1_000_000_000L / TARGET_FPS;  // ~33.3ms
+    private boolean fpsLimitEnabled = true;
+
     private GLStateManager() {
         Log.d(TAG, "╔════════════════════════════════════════╗");
         Log.d(TAG, "║   🎮 GLStateManager Creado             ║");
@@ -136,11 +143,26 @@ public class GLStateManager {
     // ═══════════════════════════════════════════════════════════════
 
     /**
-     * Inicia un nuevo frame: calcula deltaTime y limpia buffers
+     * Inicia un nuevo frame: calcula deltaTime, aplica FPS limit y limpia buffers
      * Llamar al inicio de onDrawFrame
      * @return deltaTime en segundos
      */
     public float beginFrame() {
+        // 🔋 FPS LIMITER: Esperar si el frame fue demasiado rápido
+        if (fpsLimitEnabled) {
+            long now = System.nanoTime();
+            long elapsed = now - lastFrameTime;
+            long sleepTime = TARGET_FRAME_TIME_NS - elapsed;
+
+            if (sleepTime > 1_000_000) {  // Solo si hay más de 1ms que esperar
+                try {
+                    Thread.sleep(sleepTime / 1_000_000, (int)(sleepTime % 1_000_000));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+
         // Calcular delta time
         long now = System.nanoTime();
         deltaTime = (now - lastFrameTime) / 1_000_000_000f;
@@ -162,6 +184,25 @@ public class GLStateManager {
         GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
 
         return deltaTime;
+    }
+
+    /**
+     * 🔋 Habilita/deshabilita el limitador de FPS
+     * @param enabled true para limitar a TARGET_FPS (30), false para ilimitado
+     */
+    public void setFpsLimitEnabled(boolean enabled) {
+        this.fpsLimitEnabled = enabled;
+        Log.d(TAG, "🔋 FPS Limit: " + (enabled ? "ON (30 FPS)" : "OFF (ilimitado)"));
+    }
+
+    /** @return true si el limitador de FPS está activo */
+    public boolean isFpsLimitEnabled() {
+        return fpsLimitEnabled;
+    }
+
+    /** @return El FPS objetivo cuando el limitador está activo */
+    public int getTargetFPS() {
+        return TARGET_FPS;
     }
 
     /**

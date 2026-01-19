@@ -41,6 +41,7 @@ public class Clock3D implements SceneObject {
     public static final int THEME_SYNTHWAVE = 3;  // Hot Pink retrowave 80s
     public static final int THEME_COSMOS = 4;     // Dorado celestial Saint Seiya
     public static final int THEME_WALKING_DEAD = 5; // Verde tóxico zombie
+    public static final int THEME_ZELDA = 6;        // Verde Zelda BOTW
 
     // Colores por tema
     private static final int COLOR_ABYSSIA_PRIMARY = 0xFF00CED1;   // Dark Turquoise
@@ -55,6 +56,8 @@ public class Clock3D implements SceneObject {
     private static final int COLOR_COSMOS_GLOW = 0xFF9370DB;       // Medium Purple (cosmos púrpura)
     private static final int COLOR_WALKINGDEAD_PRIMARY = 0xFF00CC44; // Verde tóxico zombie
     private static final int COLOR_WALKINGDEAD_GLOW = 0xFF33FF66;    // Verde neón glow
+    private static final int COLOR_ZELDA_PRIMARY = 0xFF4CAF50;       // Verde Hyrule
+    private static final int COLOR_ZELDA_GLOW = 0xFF8BC34A;          // Verde claro Zelda
 
     // ═══════════════════════════════════════════════════════════════
     // OPENGL
@@ -184,6 +187,10 @@ public class Clock3D implements SceneObject {
             case THEME_WALKING_DEAD:
                 primaryColor = COLOR_WALKINGDEAD_PRIMARY;
                 glowColor = COLOR_WALKINGDEAD_GLOW;
+                break;
+            case THEME_ZELDA:
+                primaryColor = COLOR_ZELDA_PRIMARY;
+                glowColor = COLOR_ZELDA_GLOW;
                 break;
             case THEME_ABYSSIA:
             default:

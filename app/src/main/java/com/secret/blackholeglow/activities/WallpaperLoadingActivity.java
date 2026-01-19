@@ -65,6 +65,12 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
     private ValueAnimator glowAnimator;
     private int currentProgress = 0;
 
+    // 🛡️ Error tracking
+    private boolean hasPreloadErrors = false;
+    private String lastErrorMessage = null;
+    private int errorRetryCount = 0;
+    private static final int MAX_RETRIES = 2;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         // 🔧 FIX Android 15: Habilitar Edge-to-Edge ANTES de super.onCreate()
@@ -350,13 +356,62 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
 
     @Override
     public void onPreloadError(String error) {
-        Log.e(TAG, "Error en precarga: " + error);
-        textCurrentTask.setText("Error: " + error);
+        Log.e(TAG, "🛡️ Error en precarga: " + error);
+        hasPreloadErrors = true;
+        lastErrorMessage = error;
 
-        // Ir al preview de todos modos despues de un delay
-        handler.postDelayed(() -> {
-            goToPreview();
-        }, 1000);
+        // Actualizar UI para mostrar error visible
+        textCurrentTask.setText("⚠️ " + error);
+        textCurrentTask.setTextColor(Color.parseColor("#FF6B6B"));  // Rojo para error
+
+        // 🛡️ MEJORA: Reintentar automáticamente si hay conexión
+        if (errorRetryCount < MAX_RETRIES) {
+            errorRetryCount++;
+            textProgress.setText("Reintentando... (" + errorRetryCount + "/" + MAX_RETRIES + ")");
+            Log.d(TAG, "🔄 Reintento automático " + errorRetryCount + "/" + MAX_RETRIES);
+
+            handler.postDelayed(() -> {
+                // Reiniciar precarga
+                if (preloader != null) {
+                    preloader.cancel();
+                }
+                preloader = new ResourcePreloader(this);
+                preloader.setListener(this);
+                preloader.prepareTasksForScene(sceneId);
+                preloader.startPreloading();
+            }, 1500);
+        } else {
+            // 🛡️ Máximo de reintentos alcanzado - preguntar al usuario
+            showErrorDialog(error);
+        }
+    }
+
+    /**
+     * 🛡️ Muestra diálogo de error con opciones para el usuario
+     */
+    private void showErrorDialog(String error) {
+        runOnUiThread(() -> {
+            new android.app.AlertDialog.Builder(this)
+                .setTitle("⚠️ Error de carga")
+                .setMessage("No se pudieron cargar algunos recursos:\n\n" + error + "\n\n¿Qué deseas hacer?")
+                .setPositiveButton("Continuar de todos modos", (dialog, which) -> {
+                    Log.d(TAG, "Usuario eligió continuar con errores");
+                    goToPreview();
+                })
+                .setNegativeButton("Reintentar", (dialog, which) -> {
+                    Log.d(TAG, "Usuario eligió reintentar");
+                    errorRetryCount = 0;
+                    hasPreloadErrors = false;
+                    textCurrentTask.setTextColor(Color.parseColor("#6B7A8F"));
+                    startPreloading();
+                })
+                .setNeutralButton("Cancelar", (dialog, which) -> {
+                    Log.d(TAG, "Usuario canceló");
+                    finish();
+                })
+                .setCancelable(false)
+                .show();
+        });
     }
 
     private void animateProgressTo(int targetPercentage) {

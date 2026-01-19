@@ -93,10 +93,13 @@ public class TouchRouter {
     public boolean onTouchEvent(MotionEvent event) {
         if (modeController == null) return false;
 
+        // Guardar el evento para escenas que necesitan multi-touch
+        this.lastMotionEvent = event;
+
         // Normalizar coordenadas a NDC (-1 a 1)
         float nx = normalizeX(event.getX());
         float ny = normalizeY(event.getY());
-        int action = event.getAction();
+        int action = event.getActionMasked();  // Usar getActionMasked para multi-touch
 
         // 📍 LOG DE TOUCH PARA DEBUG - Coordenadas UV para shader
         if (action == MotionEvent.ACTION_DOWN) {
@@ -148,6 +151,9 @@ public class TouchRouter {
         return false;
     }
 
+    // Variable para guardar el último MotionEvent para escenas multi-touch
+    private MotionEvent lastMotionEvent;
+
     /**
      * Maneja toques en WALLPAPER_MODE
      */
@@ -180,10 +186,10 @@ public class TouchRouter {
             }
         }
 
-        // Prioridad 3: Escena actual
+        // Prioridad 3: Escena actual - usar método raw para multi-touch
         if (currentScene != null) {
-            if (listener != null) {
-                return listener.onSceneTouched(nx, ny, action);
+            if (lastMotionEvent != null) {
+                return currentScene.onTouchEventRaw(lastMotionEvent);
             }
             return currentScene.onTouchEvent(nx, ny, action);
         }

@@ -72,6 +72,9 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
     private boolean waitingForWallpaperResult = false;
     private FrameLayout rootContainer;
 
+    // 🛡️ Memory leak fix: guardar referencia al bitmap para reciclar
+    private Bitmap previewBitmap = null;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         // 🔧 FIX Android 15: Habilitar Edge-to-Edge ANTES de super.onCreate()
@@ -97,9 +100,15 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
 
         // Imagen de fondo (del wallpaper seleccionado)
         // ⚡ FIX: Cargar con inSampleSize para evitar OutOfMemoryError en dispositivos con poca RAM
+        // 🛡️ FIX: Guardar referencia para reciclar en onDestroy()
         ImageView backgroundImage = new ImageView(this);
         try {
-            Bitmap previewBitmap = decodeSampledBitmapFromResource(getResources(), previewResourceId, 1080, 1920);
+            // Reciclar bitmap anterior si existe (por si se recrea la actividad)
+            if (previewBitmap != null && !previewBitmap.isRecycled()) {
+                previewBitmap.recycle();
+                previewBitmap = null;
+            }
+            previewBitmap = decodeSampledBitmapFromResource(getResources(), previewResourceId, 1080, 1920);
             backgroundImage.setImageBitmap(previewBitmap);
         } catch (OutOfMemoryError e) {
             Log.e(TAG, "⚠️ OutOfMemory cargando preview, usando placeholder");
@@ -813,20 +822,14 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
 
     /**
      * Procede a establecer el wallpaper después del anuncio
+     *
+     * 🛡️ CONSOLIDADO: Una sola escritura via WallpaperPreferences
+     * (antes había escritura doble: directa + WallpaperPreferences)
      */
     private void proceedToSetWallpaper() {
-        // Guardar directamente en SharedPreferences (sincrono)
-        getSharedPreferences("blackholeglow_prefs", MODE_PRIVATE)
-            .edit()
-            .putString("selected_wallpaper", nombre_wallpaper)
-            .commit();
-
-        Log.d(TAG, "✅ Wallpaper guardado directamente: " + nombre_wallpaper);
-
-        // Verificar que se guardo
-        String saved = getSharedPreferences("blackholeglow_prefs", MODE_PRIVATE)
-            .getString("selected_wallpaper", "NONE");
-        Log.d(TAG, "✅ Verificacion - valor guardado: " + saved);
+        // 🛡️ CONSOLIDADO: Solo usar WallpaperPreferences (maneja SharedPrefs + Firebase)
+        WallpaperPreferences.getInstance(this).setSelectedWallpaper(nombre_wallpaper, null);
+        Log.d(TAG, "✅ Wallpaper guardado via WallpaperPreferences: " + nombre_wallpaper);
 
         waitingForWallpaperResult = true;
 
@@ -839,9 +842,6 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
                 new android.content.ComponentName(this, LiveWallpaperService.class));
 
         startActivity(intent);
-
-        // Guardar tambien via WallpaperPreferences (para Firebase)
-        WallpaperPreferences.getInstance(this).setSelectedWallpaper(nombre_wallpaper, null);
     }
 
     // ════════════════════════════════════════
@@ -997,5 +997,20 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
                    " → inSampleSize=" + options.inSampleSize);
 
         return BitmapFactory.decodeResource(res, resId, options);
+    }
+
+    // ════════════════════════════════════════
+    // 🛡️ MEMORY LEAK FIX: Reciclar bitmap al destruir
+    // ════════════════════════════════════════
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        // Reciclar bitmap para liberar memoria
+        if (previewBitmap != null && !previewBitmap.isRecycled()) {
+            previewBitmap.recycle();
+            previewBitmap = null;
+            Log.d(TAG, "🛡️ Preview bitmap reciclado");
+        }
     }
 }

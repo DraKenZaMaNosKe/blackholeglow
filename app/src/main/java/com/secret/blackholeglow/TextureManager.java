@@ -22,6 +22,10 @@ public class TextureManager implements TextureLoader {
     private final Map<String, Integer> fileTextureCache = new HashMap<>();
     private boolean initialized = false;
 
+    // 🛡️ FALLBACK: Textura de error (1x1 pixel magenta para debugging)
+    private int fallbackTextureId = 0;
+    private static final int FALLBACK_COLOR = 0xFFFF00FF;  // Magenta para detectar fácilmente
+
     public TextureManager(Context ctx) {
         // Usamos el contexto de aplicación para evitar fugas
         this.context = ctx.getApplicationContext();
@@ -34,8 +38,54 @@ public class TextureManager implements TextureLoader {
     public boolean initialize() {
         if (initialized) return true;
         initialized = true;
-        Log.d("TextureManager", "Inicializado sin texturas precargadas.");
+
+        // 🛡️ Crear textura de fallback para errores
+        createFallbackTexture();
+
+        Log.d("TextureManager", "Inicializado con textura de fallback.");
         return true;
+    }
+
+    /**
+     * 🛡️ Crea una textura de 1x1 pixel como fallback para errores.
+     * Evita que errores de carga dejen el GL en estado corrupto.
+     */
+    private void createFallbackTexture() {
+        if (fallbackTextureId != 0) return;
+
+        try {
+            // Crear bitmap 2x2 (algunos drivers tienen problemas con 1x1)
+            Bitmap fallbackBitmap = Bitmap.createBitmap(2, 2, Bitmap.Config.ARGB_8888);
+            fallbackBitmap.eraseColor(FALLBACK_COLOR);
+
+            int[] textureIds = new int[1];
+            GLES30.glGenTextures(1, textureIds, 0);
+            fallbackTextureId = textureIds[0];
+
+            if (fallbackTextureId != 0) {
+                GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, fallbackTextureId);
+                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_NEAREST);
+                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_NEAREST);
+                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_REPEAT);
+                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_REPEAT);
+                GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, fallbackBitmap, 0);
+                Log.d("TextureManager", "🛡️ Textura de fallback creada (ID=" + fallbackTextureId + ")");
+            }
+
+            fallbackBitmap.recycle();
+        } catch (Exception e) {
+            Log.e("TextureManager", "Error creando textura de fallback: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 🛡️ Obtiene la textura de fallback para usar cuando hay errores.
+     */
+    public int getFallbackTexture() {
+        if (fallbackTextureId == 0) {
+            createFallbackTexture();
+        }
+        return fallbackTextureId;
     }
 
     /**
@@ -106,9 +156,10 @@ public class TextureManager implements TextureLoader {
     /**
      * Carga una textura desde un archivo en disco (para recursos descargados de Supabase).
      * Cachea la textura usando el path como clave.
+     * 🛡️ Si falla, retorna la textura de fallback en vez de 0.
      *
      * @param filePath Ruta absoluta al archivo de imagen
-     * @return ID de textura OpenGL, o 0 si falla
+     * @return ID de textura OpenGL, o fallback si falla
      */
     public int loadTextureFromFile(String filePath) {
         if (!initialized) initialize();
@@ -119,6 +170,21 @@ public class TextureManager implements TextureLoader {
             return cached;
         }
 
+        // 🛡️ VERIFICACIÓN: El archivo existe y es legible?
+        java.io.File file = new java.io.File(filePath);
+        if (!file.exists()) {
+            Log.e("TextureManager", "🛡️ Archivo no existe: " + filePath);
+            return getFallbackTexture();
+        }
+        if (!file.canRead()) {
+            Log.e("TextureManager", "🛡️ Sin permiso de lectura: " + filePath);
+            return getFallbackTexture();
+        }
+        if (file.length() == 0) {
+            Log.e("TextureManager", "🛡️ Archivo vacío: " + filePath);
+            return getFallbackTexture();
+        }
+
         try {
             // Cargar bitmap desde archivo
             BitmapFactory.Options options = new BitmapFactory.Options();
@@ -126,8 +192,8 @@ public class TextureManager implements TextureLoader {
             Bitmap bitmap = BitmapFactory.decodeFile(filePath, options);
 
             if (bitmap == null) {
-                Log.e("TextureManager", "No se pudo cargar bitmap desde: " + filePath);
-                return 0;
+                Log.e("TextureManager", "🛡️ No se pudo decodificar: " + filePath);
+                return getFallbackTexture();
             }
 
             // Crear textura OpenGL
@@ -163,8 +229,18 @@ public class TextureManager implements TextureLoader {
             return texId;
 
         } catch (Exception e) {
-            Log.e("TextureManager", "Error cargando textura desde archivo: " + filePath, e);
-            return 0;
+            Log.e("TextureManager", "🛡️ Error cargando textura: " + filePath + " - " + e.getMessage());
+            return getFallbackTexture();
         }
+    }
+
+    /**
+     * 🛡️ Verifica si un archivo está listo para ser cargado como textura.
+     * Útil para verificar antes de intentar cargar.
+     */
+    public static boolean isFileReadable(String filePath) {
+        if (filePath == null || filePath.isEmpty()) return false;
+        java.io.File file = new java.io.File(filePath);
+        return file.exists() && file.canRead() && file.length() > 0;
     }
 }

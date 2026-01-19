@@ -75,10 +75,17 @@ public class ModelDownloadManager {
     /**
      * Verifica si un modelo ya está descargado Y es la versión correcta.
      * Si la versión en ModelConfig es mayor que la descargada, elimina y retorna false.
+     * 🛡️ También verifica permisos de lectura.
      */
     public boolean isModelAvailable(String fileName) {
         File modelFile = new File(modelDir, fileName);
         if (!modelFile.exists()) {
+            return false;
+        }
+
+        // 🛡️ VERIFICAR PERMISOS DE LECTURA
+        if (!modelFile.canRead()) {
+            Log.e(TAG, "🛡️ Sin permiso de lectura: " + fileName);
             return false;
         }
 

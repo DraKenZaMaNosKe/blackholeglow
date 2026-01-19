@@ -70,10 +70,17 @@ public class VideoDownloadManager {
     /**
      * Verifica si el video ya esta descargado en cache Y es la version correcta
      * Si la version en VideoConfig es mayor que la descargada, elimina y retorna false
+     * 🛡️ También verifica permisos de lectura.
      */
     public boolean isVideoAvailable(String fileName) {
         File videoFile = new File(videoDir, fileName);
         if (!videoFile.exists()) {
+            return false;
+        }
+
+        // 🛡️ VERIFICAR PERMISOS DE LECTURA
+        if (!videoFile.canRead()) {
+            Log.e(TAG, "🛡️ Sin permiso de lectura: " + fileName);
             return false;
         }
 

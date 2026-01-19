@@ -13,6 +13,7 @@ import com.secret.blackholeglow.scenes.SaintSeiyaScene;
 import com.secret.blackholeglow.scenes.OceanFloorScene;
 import com.secret.blackholeglow.scenes.WalkingDeadScene;
 import com.secret.blackholeglow.scenes.WallpaperScene;
+import com.secret.blackholeglow.scenes.ZeldaParallaxScene;
 import com.secret.blackholeglow.systems.EventBus;
 import com.secret.blackholeglow.systems.ResourceManager;
 
@@ -117,6 +118,8 @@ public class SceneFactory {
         // ⭐ Saint Seiya: Cosmos power con caballeros del zodiaco
         registerScene("SAINT_SEIYA", SaintSeiyaScene.class);
         registerScene("WALKING_DEAD", WalkingDeadScene.class);
+        // 🗡️ Zelda BOTW: Parallax con giroscopio estilo Breath of the Wild
+        registerScene("ZELDA_BOTW", ZeldaParallaxScene.class);
 
         Log.d(TAG, "🎭 " + registeredScenes.size() + " escenas registradas");
     }

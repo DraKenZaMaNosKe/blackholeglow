@@ -78,17 +78,19 @@ public class GyroscopeManager implements SensorEventListener {
     public void start() {
         if (isEnabled) return;
 
+        // 🔋 SENSOR_DELAY_UI (~60ms) en vez de SENSOR_DELAY_GAME (~20ms)
+        // Suficiente para efectos de inclinación, ahorra batería
         if (hasAccelerometer) {
             sensorManager.registerListener(this, accelerometer,
-                SensorManager.SENSOR_DELAY_GAME);
+                SensorManager.SENSOR_DELAY_UI);
         }
         if (hasMagnetometer) {
             sensorManager.registerListener(this, magnetometer,
-                SensorManager.SENSOR_DELAY_GAME);
+                SensorManager.SENSOR_DELAY_UI);
         }
 
         isEnabled = true;
-        Log.d(TAG, "▶️ Sensores activados");
+        Log.d(TAG, "▶️ Sensores activados (SENSOR_DELAY_UI - ahorro batería)");
     }
 
     /**

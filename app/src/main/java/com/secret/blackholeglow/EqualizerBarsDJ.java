@@ -36,7 +36,8 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         KAMEHAMEHA,   // Azul → Cyan → Blanco (energía Ki)
         SYNTHWAVE,    // Hot Pink → Cyan → Magenta (retrowave 80s)
         COSMOS,       // Azul → Dorado → Púrpura (Saint Seiya cosmos)
-        WALKING_DEAD  // Verde tóxico → Rojo sangre → Púrpura oscuro (zombie)
+        WALKING_DEAD, // Verde tóxico → Rojo sangre → Púrpura oscuro (zombie)
+        ZELDA         // Verde Hyrule → Azul cielo → Dorado Triforce
     }
 
     private Theme currentTheme = Theme.DEFAULT;
@@ -116,6 +117,15 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     private static final float[] WALKINGDEAD_WAVE_NORMAL = {0.0f, 0.6f, 0.15f};  // Verde putrefacto
     private static final float[] WALKINGDEAD_LIGHTNING_1 = {0.2f, 1.0f, 0.3f};   // Rayo verde tóxico
     private static final float[] WALKINGDEAD_LIGHTNING_2 = {0.9f, 0.2f, 0.2f};   // Rayo rojo sangre
+
+    // === ZELDA (Breath of the Wild - Verde Hyrule → Azul cielo → Dorado) ===
+    private static final float[] ZELDA_BASS = {0.3f, 0.69f, 0.31f};          // Verde Hyrule (#4CAF50)
+    private static final float[] ZELDA_TREBLE = {0.53f, 0.81f, 0.92f};       // Azul cielo BOTW (#87CEEB)
+    private static final float[] ZELDA_PEAK = {1.0f, 0.84f, 0.0f};           // Dorado Triforce (#FFD700)
+    private static final float[] ZELDA_WAVE_STRONG = {0.55f, 0.76f, 0.29f};  // Verde claro (#8BC34A)
+    private static final float[] ZELDA_WAVE_NORMAL = {0.25f, 0.55f, 0.27f};  // Verde bosque (#43A047)
+    private static final float[] ZELDA_LIGHTNING_1 = {1.0f, 0.84f, 0.0f};    // Rayo dorado (Master Sword)
+    private static final float[] ZELDA_LIGHTNING_2 = {0.4f, 0.8f, 0.4f};     // Rayo verde (Koroks)
 
     // Colores activos (se actualizan con setTheme)
     private float[] colorBass = DEFAULT_BASS;
@@ -389,6 +399,17 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
                 colorLightning1 = WALKINGDEAD_LIGHTNING_1;
                 colorLightning2 = WALKINGDEAD_LIGHTNING_2;
                 Log.d(TAG, "🧟 Tema WALKING_DEAD activado - Zombie Apocalypse");
+                break;
+
+            case ZELDA:
+                colorBass = ZELDA_BASS;
+                colorTreble = ZELDA_TREBLE;
+                colorPeak = ZELDA_PEAK;
+                colorWaveStrong = ZELDA_WAVE_STRONG;
+                colorWaveNormal = ZELDA_WAVE_NORMAL;
+                colorLightning1 = ZELDA_LIGHTNING_1;
+                colorLightning2 = ZELDA_LIGHTNING_2;
+                Log.d(TAG, "🗡️ Tema ZELDA activado - Breath of the Wild");
                 break;
 
             default:

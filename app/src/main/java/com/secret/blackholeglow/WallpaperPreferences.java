@@ -72,6 +72,7 @@ public class WallpaperPreferences {
         "NEON_CITY",      // 🚗 Synthwave DeLorean
         "SAINT_SEIYA",    // ⭐ Saint Seiya Cosmos
         "WALKING_DEAD",   // 🧟 The Walking Dead
+        "ZELDA_BOTW",     // 🗡️ Zelda Breath of the Wild Parallax
 
         // ═══════════════════════════════════════════
         // 📦 WALLPAPERS LEGADOS (compatibilidad)

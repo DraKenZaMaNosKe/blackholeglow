@@ -172,7 +172,7 @@ public class MusicVisualizer {
                         processFft(fft);
                     }
                 },
-                Visualizer.getMaxCaptureRate() / 2,  // Tasa de captura (Hz)
+                Visualizer.getMaxCaptureRate() / 4,  // 🔋 Reducido para ahorro de batería (era /2)
                 true,   // Capturar waveform
                 true    // Capturar FFT
             );
@@ -189,15 +189,15 @@ public class MusicVisualizer {
             // 🎵 AUTO-RESUME: Si había música, enviar comandos PLAY con reintentos
             // Samsung puede tardar en responder, así que intentamos varias veces
             // ════════════════════════════════════════════════════════════════════════
-            // 🚫 DISABLED: if (wasMusicPlaying && context != null) {
-                // Log.d(TAG, "[MusicVisualizer] 🎵 Programando auto-resume de música (3 intentos)...");
+            if (wasMusicPlaying && context != null) {
+                Log.d(TAG, "[MusicVisualizer] 🎵 Programando auto-resume de música (3 intentos)...");
                 // Intento 1: después de 800ms
-                // handler.postDelayed(this::sendMediaPlayCommand, 800);
+                handler.postDelayed(this::sendMediaPlayCommand, 800);
                 // Intento 2: después de 1500ms (por si el primero no funcionó)
-                // handler.postDelayed(this::sendMediaPlayCommand, 1500);
+                handler.postDelayed(this::sendMediaPlayCommand, 1500);
                 // Intento 3: después de 2500ms (último intento)
-                // handler.postDelayed(this::sendMediaPlayCommand, 2500);
-            // }
+                handler.postDelayed(this::sendMediaPlayCommand, 2500);
+            }
 
             isInitializing = false;  // 🔒 Reset flag
             return true;
@@ -638,7 +638,7 @@ public class MusicVisualizer {
                         processFft(fft);
                     }
                 },
-                Visualizer.getMaxCaptureRate() / 2,
+                Visualizer.getMaxCaptureRate() / 4,  // 🔋 Ahorro batería
                 true,
                 true
             );
@@ -649,12 +649,12 @@ public class MusicVisualizer {
             Log.d(TAG, "[MusicVisualizer] ✓ Inicializado correctamente (internal)");
 
             // 🎵 AUTO-RESUME con reintentos
-            // 🚫 DISABLED: if (wasMusicPlaying && context != null) {
-                // Log.d(TAG, "[MusicVisualizer] 🎵 Programando auto-resume de música (3 intentos)...");
-                // handler.postDelayed(this::sendMediaPlayCommand, 800);
-                // handler.postDelayed(this::sendMediaPlayCommand, 1500);
-                // handler.postDelayed(this::sendMediaPlayCommand, 2500);
-            // }
+            if (wasMusicPlaying && context != null) {
+                Log.d(TAG, "[MusicVisualizer] 🎵 Programando auto-resume de música (3 intentos)...");
+                handler.postDelayed(this::sendMediaPlayCommand, 800);
+                handler.postDelayed(this::sendMediaPlayCommand, 1500);
+                handler.postDelayed(this::sendMediaPlayCommand, 2500);
+            }
 
             isInitializing = false;  // 🔒 Reset flag
             return true;

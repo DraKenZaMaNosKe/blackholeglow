@@ -17,6 +17,7 @@ import com.secret.blackholeglow.scenes.AdventureTimeScene;
 import com.secret.blackholeglow.scenes.NeonCityScene;
 import com.secret.blackholeglow.scenes.SaintSeiyaScene;
 import com.secret.blackholeglow.scenes.WalkingDeadScene;
+import com.secret.blackholeglow.scenes.ZeldaParallaxScene;
 import com.secret.blackholeglow.sharing.LikeButton;
 import com.secret.blackholeglow.scenes.WallpaperScene;
 import com.secret.blackholeglow.systems.AspectRatioManager;
@@ -74,6 +75,10 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     private String pendingSceneName = "";
     private boolean pendingPreviewMode = false; // Para guardar preview mode antes de inicializar
 
+    // 🔧 FIX MEMORY LEAK: Destruir escenas en GL thread, no en UI thread
+    private volatile boolean pendingSceneDestroy = false;
+    private volatile boolean pendingReturnToPanel = false;
+
 
     // TIMING (deltaTime y FPS manejados por GLStateManager)
     private static final float TIME_WRAP = 3600f;  // Reset cada hora para evitar overflow
@@ -103,6 +108,8 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             Log.d(TAG, "PREVIEW MODE - cargando escena directamente: " + pendingSceneName);
             modeController.goDirectToWallpaper();
             sceneFactory.createScene(pendingSceneName);
+            // 🔧 OPTIMIZACIÓN: Liberar recursos del panel en preview mode también
+            panelRenderer.onWallpaperActivated();
         }
         // Modo normal: PANEL_MODE → usuario presiona botón → WALLPAPER_MODE
 
@@ -144,6 +151,23 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
         if (!initialized) {
             return;
+        }
+
+        // 🔧 FIX MEMORY LEAK: Procesar destrucción de escenas pendientes EN el GL thread
+        // Esto garantiza que glDeleteTextures/glDeleteProgram funcionen correctamente
+        if (pendingSceneDestroy) {
+            pendingSceneDestroy = false;
+            Log.d(TAG, "🗑️ [GL Thread] Destruyendo escena pendiente...");
+            if (sceneFactory != null) {
+                sceneFactory.destroyCurrentScene();
+            }
+            if (pendingReturnToPanel) {
+                pendingReturnToPanel = false;
+                if (panelRenderer != null) {
+                    panelRenderer.onReturnToPanel();
+                }
+            }
+            Log.d(TAG, "✅ [GL Thread] Escena destruida - memoria GPU liberada");
         }
 
         // Actualizar tiempo total para animaciones
@@ -217,6 +241,9 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             } else if (scene instanceof WalkingDeadScene) {
                 // 🧟 Walking Dead tiene ecualizador WALKING_DEAD
                 ((WalkingDeadScene) scene).updateMusicBands(bands);
+            } else if (scene instanceof ZeldaParallaxScene) {
+                // 🗡️ Zelda BOTW tiene ecualizador ZELDA
+                ((ZeldaParallaxScene) scene).updateMusicBands(bands);
             }
         }
         sceneFactory.updateCurrentScene(deltaTime);
@@ -292,8 +319,10 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
     public void switchToPanelMode() {
         if (modeController.stopWallpaper()) {
-            panelRenderer.onReturnToPanel();
-            sceneFactory.destroyCurrentScene();
+            // 🔧 FIX MEMORY LEAK: Programar destrucción en GL thread
+            pendingSceneDestroy = true;
+            pendingReturnToPanel = true;
+            Log.d(TAG, "🔧 switchToPanelMode: destrucción programada en GL thread");
         }
     }
 
@@ -495,14 +524,13 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         // ⚡ FIX: Si estamos en WALLPAPER_MODE con una escena activa,
         // forzar retorno al panel para que el usuario presione PLAY de nuevo
         if (modeController != null && modeController.isWallpaperMode() && sceneFactory != null) {
-            Log.d(TAG, "⚡ Escena activa detectada (" + previousScene + "), forzando retorno a PANEL_MODE");
-            // Destruir escena actual y volver al panel
-            sceneFactory.destroyCurrentScene();
+            Log.d(TAG, "⚡ Escena activa detectada (" + previousScene + "), programando destrucción en GL thread");
+            // 🔧 FIX MEMORY LEAK: Marcar para destruir en GL thread, NO destruir aquí (UI thread)
+            // Esto evita que glDeleteTextures/glDeleteProgram fallen silenciosamente
+            pendingSceneDestroy = true;
+            pendingReturnToPanel = true;
             modeController.stopWallpaper();
-            if (panelRenderer != null) {
-                panelRenderer.onReturnToPanel();
-            }
-            Log.d(TAG, "✅ Ahora en PANEL_MODE - Usuario debe presionar PLAY para: " + sceneName);
+            Log.d(TAG, "✅ Destrucción programada - Usuario debe presionar PLAY para: " + sceneName);
         } else if (panelRenderer != null) {
             Log.d(TAG, "📱 Modo ESTÁNDAR para: " + sceneName);
         } else {
@@ -512,6 +540,10 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
     public void release() {
         Log.d(TAG, "Liberando WallpaperDirector...");
+        // NOTA: release() se llama durante la destrucción del servicio.
+        // Aunque esto no es en el GL thread, el proceso terminará pronto
+        // y todos los recursos GPU se liberarán con el contexto GL.
+        // El fix de memory leak principal es para scene switches en runtime.
         if (sceneFactory != null) sceneFactory.destroyCurrentScene();
         if (songSharing != null) songSharing.release();
         if (musicVisualizer != null) musicVisualizer.release();

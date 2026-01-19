@@ -332,6 +332,20 @@ public class WallpaperCatalog {
                 .featured()
                 .build());
 
+        // ═══════════════════════════════════════════════════════════════════
+        // 🗡️ ZELDA BOTW - Parallax Breath of the Wild
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("🗡️ ZELDA BOTW 🗡️")
+                .descripcion("Link contempla el reino de Hyrule desde lo alto. " +
+                        "Efecto parallax con giroscopio estilo Breath of the Wild.")
+                .preview(R.drawable.preview_zelda)
+                .sceneName("ZELDA_BOTW")
+                .tier(WallpaperTier.FREE)
+                .badge("🛡️ PARALLAX")
+                .glow(0xFF4CAF50)  // Zelda green
+                .featured()
+                .build());
+
         Log.d(TAG, "📚 Catálogo inicializado: " + catalog.size() + " wallpapers");
     }
 }

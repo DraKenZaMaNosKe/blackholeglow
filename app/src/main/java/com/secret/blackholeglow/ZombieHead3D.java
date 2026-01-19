@@ -78,7 +78,7 @@ public class ZombieHead3D implements SceneObject, CameraAware, SensorEventListen
     private static final float SWING_ANGLE_Z = 8f;
 
     // ═══════════════════════════════════════════════════════════════════════
-    // 📱 GIROSCOPIO - Movimiento sutil al inclinar el celular
+    // 📱 GIROSCOPIO - Efecto PÉNDULO/LLAVERO orgánico
     // ═══════════════════════════════════════════════════════════════════════
 
     private SensorManager sensorManager;
@@ -89,10 +89,25 @@ public class ZombieHead3D implements SceneObject, CameraAware, SensorEventListen
     private float gyroX = 0f;  // Inclinación adelante/atrás
     private float gyroY = 0f;  // Inclinación izquierda/derecha
 
-    // Configuración del giroscopio
-    private static final float GYRO_MAX_ANGLE = 8f;      // Máximo ±8 grados
-    private static final float GYRO_SMOOTHING = 0.08f;   // Factor de suavizado (0.1 = muy suave)
-    private static final float GYRO_SENSITIVITY = 25f;   // Sensibilidad del sensor
+    // 🔗 EFECTO PÉNDULO - Rotación sobre ejes (como cabeza colgando)
+    private float pendulumRotX = 0f;      // Inclinación arriba/abajo (asentir)
+    private float pendulumRotY = 0f;      // Giro izquierda/derecha (decir "no")
+    private float pendulumRotZ = 0f;      // Ladeo lateral
+    private float pendulumVelRotX = 0f;   // Velocidad rotación X
+    private float pendulumVelRotY = 0f;   // Velocidad rotación Y
+    private float pendulumRotVelZ = 0f;   // Velocidad rotación Z
+
+    // Configuración del giroscopio - ULTRA RÁPIDO
+    private static final float GYRO_MAX_ANGLE = 40f;      // Máximo ±40 grados
+    private static final float GYRO_SMOOTHING = 0.6f;     // Casi sin suavizado
+    private static final float GYRO_SENSITIVITY = 80f;    // Ultra sensible
+
+    // 🔗 Configuración del GIRO LIBRE - Como trompo
+    private static final float SPIN_FRICTION = 0.985f;     // Muy poca fricción (gira mucho tiempo)
+    private static final float SPIN_SLOWDOWN = 2.0f;       // Desaceleración gradual
+
+    // 👆 Configuración del TOUCH - Hacer girar la cabeza
+    private static final float TOUCH_SPIN_FORCE = 1500.0f; // Fuerza de giro (muy fuerte)
 
     // Valores crudos del sensor (para suavizado)
     private float rawGyroX = 0f;
@@ -310,8 +325,9 @@ public class ZombieHead3D implements SceneObject, CameraAware, SensorEventListen
                     rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR);
                 }
                 if (rotationSensor != null) {
+                    // ⚡ SENSOR_DELAY_GAME (~20ms/50Hz) para respuesta rápida
                     sensorManager.registerListener(this, rotationSensor, SensorManager.SENSOR_DELAY_GAME);
-                    Log.d(TAG, "📱 Giroscopio activado: " + rotationSensor.getName());
+                    Log.d(TAG, "📱 Giroscopio activado (GAME): " + rotationSensor.getName());
                 } else {
                     gyroEnabled = false;
                     Log.w(TAG, "⚠️ Giroscopio no disponible en este dispositivo");
@@ -474,10 +490,32 @@ public class ZombieHead3D implements SceneObject, CameraAware, SensorEventListen
             swingPhase -= TIME_CYCLE;
         }
 
-        // 📱 Suavizar valores del giroscopio (low-pass filter)
+        // 📱 Suavizar valores del giroscopio (si está disponible)
         if (gyroEnabled) {
             gyroX += (rawGyroX - gyroX) * GYRO_SMOOTHING;
             gyroY += (rawGyroY - gyroY) * GYRO_SMOOTHING;
+
+            // El giroscopio también puede hacer girar la cabeza
+            pendulumVelRotY += gyroY * 2.0f;
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // 🔗 FÍSICA DE GIRO LIBRE - Como trompo (sin límites)
+        // ═══════════════════════════════════════════════════════════════
+
+        // Aplicar velocidad a la rotación (GIRO LIBRE - puede dar vueltas completas)
+        pendulumRotY += pendulumVelRotY * deltaTime;
+
+        // Mantener el ángulo en rango 0-360 para evitar overflow
+        if (pendulumRotY > 360f) pendulumRotY -= 360f;
+        if (pendulumRotY < -360f) pendulumRotY += 360f;
+
+        // Fricción gradual (la cabeza va frenando poco a poco)
+        pendulumVelRotY *= SPIN_FRICTION;
+
+        // Si la velocidad es muy baja, detener completamente
+        if (Math.abs(pendulumVelRotY) < 0.1f) {
+            pendulumVelRotY = 0f;
         }
     }
 
@@ -489,20 +527,23 @@ public class ZombieHead3D implements SceneObject, CameraAware, SensorEventListen
 
         GLES30.glUseProgram(shaderProgram);
 
-        // Calcular balanceo (animación automática)
+        // Calcular balanceo suave (animación automática)
         float swingX = (float) Math.sin(swingPhase) * SWING_ANGLE_X;
         float swingZ = (float) Math.sin(swingPhase * 0.7f) * SWING_ANGLE_Z;
 
-        // 📱 Añadir movimiento del giroscopio (muy sutil)
-        float totalSwingX = swingX + gyroX;
-        float totalSwingZ = swingZ + gyroY;
-
-        // Model matrix
+        // Model matrix con GIRO LIBRE por touch
         Matrix.setIdentityM(modelMatrix, 0);
+
+        // Posición fija
         Matrix.translateM(modelMatrix, 0, x, y, z);
-        Matrix.rotateM(modelMatrix, 0, rotationY, 0f, 1f, 0f);
-        Matrix.rotateM(modelMatrix, 0, rotationX + totalSwingX, 1f, 0f, 0f);
-        Matrix.rotateM(modelMatrix, 0, rotationZ + totalSwingZ, 0f, 0f, 1f);
+
+        // 🔄 ROTACIÓN PRINCIPAL: base + giro del touch (puede dar vueltas completas)
+        Matrix.rotateM(modelMatrix, 0, rotationY + pendulumRotY, 0f, 1f, 0f);
+
+        // Balanceo suave automático (como si colgara)
+        Matrix.rotateM(modelMatrix, 0, rotationX + swingX, 1f, 0f, 0f);
+        Matrix.rotateM(modelMatrix, 0, rotationZ + swingZ, 0f, 0f, 1f);
+
         Matrix.scaleM(modelMatrix, 0, scale, scale, scale);
 
         // MVP matrix (usar nuestra propia proyección)
@@ -541,7 +582,8 @@ public class ZombieHead3D implements SceneObject, CameraAware, SensorEventListen
     // ═══════════════════════════════════════════════════════════════════════
 
     public boolean onTouchEvent(float normalizedX, float normalizedY, int action) {
-        if (!calibrationEnabled) return false;
+        // 👆 SIEMPRE procesar touch para empujar la cabeza
+        Log.d(TAG, "👆 TOUCH recibido: nx=" + normalizedX + " ny=" + normalizedY + " action=" + action);
 
         switch (action) {
             case android.view.MotionEvent.ACTION_DOWN:
@@ -553,21 +595,23 @@ public class ZombieHead3D implements SceneObject, CameraAware, SensorEventListen
 
             case android.view.MotionEvent.ACTION_MOVE:
                 float deltaX = normalizedX - lastTouchX;
-                float deltaY = normalizedY - lastTouchY;
 
-                if (Math.abs(deltaX) > DRAG_THRESHOLD || Math.abs(deltaY) > DRAG_THRESHOLD) {
+                // 👆 GIRAR LA CABEZA con el deslizamiento horizontal
+                if (Math.abs(deltaX) > 0.001f) {
+                    // Deslizar a la derecha = girar a la derecha (positivo)
+                    // Deslizar a la izquierda = girar a la izquierda (negativo)
+                    pendulumVelRotY += deltaX * TOUCH_SPIN_FORCE;
+
+                    Log.d(TAG, "🔄 GIRO: velRotY=" + pendulumVelRotY + " rotY=" + pendulumRotY);
+
                     isDragging = true;
-                    applyAdjustment(deltaX, deltaY);
                     lastTouchX = normalizedX;
                     lastTouchY = normalizedY;
                 }
                 return true;
 
             case android.view.MotionEvent.ACTION_UP:
-                long touchDuration = System.currentTimeMillis() - touchStartTime;
-                if (!isDragging && touchDuration < TAP_TIMEOUT) {
-                    cycleMode();
-                }
+                // Al soltar, la cabeza sigue con momentum
                 return true;
         }
         return false;
@@ -688,8 +732,9 @@ public class ZombieHead3D implements SceneObject, CameraAware, SensorEventListen
      */
     public void resumeGyroscope() {
         if (sensorManager != null && rotationSensor != null && gyroEnabled) {
+            // ⚡ SENSOR_DELAY_GAME para respuesta rápida
             sensorManager.registerListener(this, rotationSensor, SensorManager.SENSOR_DELAY_GAME);
-            Log.d(TAG, "📱 Giroscopio reanudado");
+            Log.d(TAG, "📱 Giroscopio reanudado (SENSOR_DELAY_GAME)");
         }
     }
 

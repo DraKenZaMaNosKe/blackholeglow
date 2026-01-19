@@ -24,6 +24,11 @@ import com.secret.blackholeglow.systems.WallpaperCatalog;
 import com.secret.blackholeglow.video.VideoDownloadManager;
 
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Fragment que muestra la lista de wallpapers disponibles.
@@ -62,6 +67,14 @@ public class AnimatedWallpaperListFragment extends Fragment {
     private int totalResources;
     private int downloadedResources;
     private boolean isDownloading = false;
+
+    // ⏱️ TIMEOUT PROTECTION
+    private static final int DOWNLOAD_TIMEOUT_SECONDS = 60;  // 1 minuto por recurso
+    private static final int MAX_RETRY_ATTEMPTS = 2;
+    private ExecutorService downloadExecutor;
+    private Future<?> downloadTask;
+    private int retryCount = 0;
+    private boolean downloadFailed = false;
 
     @Nullable
     @Override
@@ -164,61 +177,185 @@ public class AnimatedWallpaperListFragment extends Fragment {
      * Inicia la descarga de TODOS los recursos del panel en background.
      * Descarga secuencialmente: video → modelo → imágenes
      * Cuando termina, actualiza el adapter para habilitar los botones.
+     *
+     * ⏱️ PROTECCIÓN: Timeout de 60 segundos por recurso + retry automático
      */
     private void startPanelResourcesDownload() {
         if (isDownloading) return;
         isDownloading = true;
+        downloadFailed = false;
 
         totalResources = 1 + 1 + PANEL_IMAGES.length; // video + model + images
         downloadedResources = 0;
 
         Log.d(TAG, "📥 Iniciando descarga de " + countMissingResources() + " recursos del panel...");
 
-        new Thread(() -> {
-            // 1. VIDEO
-            if (!videoManager.isVideoAvailable(PANEL_VIDEO)) {
-                Log.d(TAG, "📥 Descargando video: " + PANEL_VIDEO);
-                updateProgress("Descargando video...");
-                videoManager.downloadVideoSync(PANEL_VIDEO, percent -> {
-                    int globalPercent = calculateGlobalProgress(downloadedResources, percent);
-                    updateAdapterProgress(globalPercent);
-                });
-            }
-            downloadedResources++;
+        // 🛡️ Usar ExecutorService para poder cancelar/timeout
+        if (downloadExecutor != null) {
+            downloadExecutor.shutdownNow();
+        }
+        downloadExecutor = Executors.newSingleThreadExecutor();
 
-            // 2. MODELO
-            if (!modelManager.isModelAvailable(PANEL_MODEL)) {
-                Log.d(TAG, "📥 Descargando modelo: " + PANEL_MODEL);
-                updateProgress("Descargando modelo...");
-                modelManager.downloadModelSync(PANEL_MODEL, percent -> {
-                    int globalPercent = calculateGlobalProgress(downloadedResources, percent);
-                    updateAdapterProgress(globalPercent);
-                });
-            }
-            downloadedResources++;
-
-            // 3. IMÁGENES
-            for (String img : PANEL_IMAGES) {
-                if (!imageManager.isImageAvailable(img)) {
-                    Log.d(TAG, "📥 Descargando imagen: " + img);
-                    updateProgress("Descargando texturas...");
-                    imageManager.downloadImageSync(img, percent -> {
-                        int globalPercent = calculateGlobalProgress(downloadedResources, percent);
-                        updateAdapterProgress(globalPercent);
-                    });
+        downloadTask = downloadExecutor.submit(() -> {
+            try {
+                // 1. VIDEO (con timeout)
+                if (!downloadResourceWithTimeout("video", PANEL_VIDEO, () -> {
+                    if (!videoManager.isVideoAvailable(PANEL_VIDEO)) {
+                        Log.d(TAG, "📥 Descargando video: " + PANEL_VIDEO);
+                        updateProgress("Descargando video...");
+                        return videoManager.downloadVideoSync(PANEL_VIDEO, percent -> {
+                            int globalPercent = calculateGlobalProgress(downloadedResources, percent);
+                            updateAdapterProgress(globalPercent);
+                        });
+                    }
+                    return true;
+                })) {
+                    handleDownloadFailure("video: " + PANEL_VIDEO);
+                    return;
                 }
                 downloadedResources++;
-            }
 
-            // Todo listo
-            Log.d(TAG, "✅ Todos los recursos del panel descargados");
-            mainHandler.post(() -> {
-                isDownloading = false;
-                if (adapter != null && isAdded()) {
-                    adapter.setPanelVideoReady(true);
+                // 2. MODELO (con timeout)
+                if (!downloadResourceWithTimeout("modelo", PANEL_MODEL, () -> {
+                    if (!modelManager.isModelAvailable(PANEL_MODEL)) {
+                        Log.d(TAG, "📥 Descargando modelo: " + PANEL_MODEL);
+                        updateProgress("Descargando modelo...");
+                        return modelManager.downloadModelSync(PANEL_MODEL, percent -> {
+                            int globalPercent = calculateGlobalProgress(downloadedResources, percent);
+                            updateAdapterProgress(globalPercent);
+                        });
+                    }
+                    return true;
+                })) {
+                    handleDownloadFailure("modelo: " + PANEL_MODEL);
+                    return;
                 }
-            });
-        }).start();
+                downloadedResources++;
+
+                // 3. IMÁGENES (con timeout cada una)
+                for (String img : PANEL_IMAGES) {
+                    final String currentImg = img;
+                    if (!downloadResourceWithTimeout("imagen", img, () -> {
+                        if (!imageManager.isImageAvailable(currentImg)) {
+                            Log.d(TAG, "📥 Descargando imagen: " + currentImg);
+                            updateProgress("Descargando texturas...");
+                            return imageManager.downloadImageSync(currentImg, percent -> {
+                                int globalPercent = calculateGlobalProgress(downloadedResources, percent);
+                                updateAdapterProgress(globalPercent);
+                            });
+                        }
+                        return true;
+                    })) {
+                        handleDownloadFailure("imagen: " + img);
+                        return;
+                    }
+                    downloadedResources++;
+                }
+
+                // ✅ Todo listo
+                Log.d(TAG, "✅ Todos los recursos del panel descargados");
+                mainHandler.post(() -> {
+                    isDownloading = false;
+                    retryCount = 0;
+                    if (adapter != null && isAdded()) {
+                        adapter.setPanelVideoReady(true);
+                    }
+                });
+
+            } catch (InterruptedException e) {
+                Log.w(TAG, "⚠️ Descarga interrumpida");
+                Thread.currentThread().interrupt();
+            } catch (Exception e) {
+                Log.e(TAG, "❌ Error en descarga: " + e.getMessage());
+                handleDownloadFailure(e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * ⏱️ Ejecuta una descarga con timeout.
+     * @return true si la descarga fue exitosa, false si timeout o error
+     */
+    private boolean downloadResourceWithTimeout(String type, String name, DownloadTask task)
+            throws InterruptedException {
+        ExecutorService singleTask = Executors.newSingleThreadExecutor();
+        Future<Boolean> future = singleTask.submit(task::execute);
+
+        try {
+            Boolean result = future.get(DOWNLOAD_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            return result != null && result;
+        } catch (TimeoutException e) {
+            Log.e(TAG, "⏱️ TIMEOUT descargando " + type + ": " + name);
+            future.cancel(true);
+            return false;
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error descargando " + type + ": " + e.getMessage());
+            return false;
+        } finally {
+            singleTask.shutdownNow();
+        }
+    }
+
+    /**
+     * 🔄 Maneja el fallo de descarga con retry automático.
+     */
+    private void handleDownloadFailure(String failedResource) {
+        downloadFailed = true;
+        isDownloading = false;
+
+        mainHandler.post(() -> {
+            if (!isAdded()) return;
+
+            if (retryCount < MAX_RETRY_ATTEMPTS) {
+                retryCount++;
+                Log.w(TAG, "🔄 Reintentando descarga (intento " + retryCount + "/" + MAX_RETRY_ATTEMPTS + ")");
+
+                // Esperar 2 segundos y reintentar
+                mainHandler.postDelayed(() -> {
+                    if (isAdded()) {
+                        startPanelResourcesDownload();
+                    }
+                }, 2000);
+            } else {
+                Log.e(TAG, "❌ Descarga fallida después de " + MAX_RETRY_ATTEMPTS + " intentos: " + failedResource);
+                // Notificar al adapter para mostrar botón de retry manual
+                if (adapter != null) {
+                    adapter.setDownloadFailed(true);
+                }
+            }
+        });
+    }
+
+    /**
+     * 🔄 Permite reintentar la descarga manualmente (llamado desde adapter).
+     */
+    public void retryDownload() {
+        retryCount = 0;
+        downloadFailed = false;
+        if (adapter != null) {
+            adapter.setDownloadFailed(false);
+        }
+        startPanelResourcesDownload();
+    }
+
+    /**
+     * Interface funcional para las tareas de descarga.
+     */
+    @FunctionalInterface
+    private interface DownloadTask {
+        boolean execute();
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // 🛡️ Cancelar descargas pendientes al destruir el fragment
+        if (downloadTask != null) {
+            downloadTask.cancel(true);
+        }
+        if (downloadExecutor != null) {
+            downloadExecutor.shutdownNow();
+        }
     }
 
     /**

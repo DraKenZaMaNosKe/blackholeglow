@@ -101,6 +101,14 @@ public class ModelConfig {
             "Cabeza Zombi",
             1
         ));
+
+        // Zombie cuerpo completo (Meshy AI) - Asomando desde abajo
+        MODELS.put("zombie_body.obj", new ResourceInfo(
+            SUPABASE_MODELS_URL + "zombie_body.obj",
+            274_000L,  // ~273.55 KB
+            "Zombie Cuerpo",
+            1
+        ));
     }
 
     // ═══════════════════════════════════════════════════════════════════════

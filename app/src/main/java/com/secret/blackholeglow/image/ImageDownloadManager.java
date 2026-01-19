@@ -70,10 +70,17 @@ public class ImageDownloadManager {
     /**
      * Verifica si una imagen ya está descargada Y es la versión correcta.
      * Si la versión en ImageConfig es mayor que la descargada, elimina y retorna false.
+     * 🛡️ También verifica permisos de lectura.
      */
     public boolean isImageAvailable(String fileName) {
         File imageFile = new File(imageDir, fileName);
         if (!imageFile.exists()) {
+            return false;
+        }
+
+        // 🛡️ VERIFICAR PERMISOS DE LECTURA
+        if (!imageFile.canRead()) {
+            Log.e(TAG, "🛡️ Sin permiso de lectura: " + fileName);
             return false;
         }
 
@@ -156,6 +163,8 @@ public class ImageDownloadManager {
             connection = (HttpURLConnection) url.openConnection();
             connection.setConnectTimeout(15000);
             connection.setReadTimeout(30000);
+            // User-Agent para evitar bloqueos de Supabase
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10) BlackHoleGlow/1.0");
             connection.connect();
 
             int responseCode = connection.getResponseCode();
@@ -282,6 +291,8 @@ public class ImageDownloadManager {
             connection = (HttpURLConnection) url.openConnection();
             connection.setConnectTimeout(15000);
             connection.setReadTimeout(30000);
+            // User-Agent para evitar bloqueos de Supabase
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10) BlackHoleGlow/1.0");
             connection.connect();
 
             int responseCode = connection.getResponseCode();
