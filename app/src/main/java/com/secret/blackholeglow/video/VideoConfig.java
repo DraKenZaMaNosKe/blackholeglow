@@ -1,44 +1,35 @@
 package com.secret.blackholeglow.video;
 
+import com.secret.blackholeglow.download.ResourceInfo;
+
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * ╔══════════════════════════════════════════════════════════════════╗
- * ║                         VideoConfig                              ║
- * ║        Configuración de videos remotos en Supabase Storage       ║
- * ╠══════════════════════════════════════════════════════════════════╣
- * ║  RESPONSABILIDADES:                                              ║
- * ║  • Mapear nombres de archivo a URLs de Supabase                  ║
- * ║  • Almacenar tamaños esperados para validación                   ║
- * ║  • Gestionar versiones para auto-actualización                   ║
- * ╠══════════════════════════════════════════════════════════════════╣
- * ║  PARA AGREGAR NUEVOS VIDEOS:                                     ║
- * ║  1. Subir video a Supabase (bucket: wallpaper-videos)            ║
- * ║  2. Agregar entrada en el bloque static con:                     ║
- * ║     - nombre de archivo                                          ║
- * ║     - URL completa                                               ║
- * ║     - tamaño en bytes                                            ║
- * ║     - descripción                                                ║
- * ║     - versión (incrementar si reemplazas el video)               ║
- * ╠══════════════════════════════════════════════════════════════════╣
- * ║  NOTA: Para imágenes usar ImageConfig                            ║
- * ╚══════════════════════════════════════════════════════════════════╝
+ * ============================================================================
+ *                           VideoConfig
+ *          Configuración de videos remotos en Supabase Storage
+ * ============================================================================
+ *
+ * PARA AGREGAR NUEVOS VIDEOS:
+ *   1. Subir video a Supabase (bucket: wallpaper-videos)
+ *   2. Agregar entrada en el bloque static con:
+ *      - nombre de archivo
+ *      - URL completa (usar SUPABASE_VIDEOS_URL + nombre)
+ *      - tamaño en bytes
+ *      - descripción
+ *      - versión (incrementar si reemplazas el video)
+ *
+ * ============================================================================
  */
 public class VideoConfig {
 
-    // Base URL de Supabase Storage para videos
     private static final String SUPABASE_VIDEOS_URL =
         "https://vzuwvsmlyigjtsearxym.supabase.co/storage/v1/object/public/wallpaper-videos/";
 
-    // Mapeo: nombre de archivo -> información del recurso
     private static final Map<String, ResourceInfo> VIDEOS = new HashMap<>();
 
     static {
-        // ═══════════════════════════════════════════════════════════════
-        // VIDEOS - Escenas de Wallpaper
-        // ═══════════════════════════════════════════════════════════════
-
         // LabScene - Portal cósmico con nubes de fuego
         VIDEOS.put("cielovolando.mp4", new ResourceInfo(
             SUPABASE_VIDEOS_URL + "cielovolando.mp4",
@@ -96,72 +87,31 @@ public class VideoConfig {
         ));
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
+    // =========================================================================
     // MÉTODOS PÚBLICOS
-    // ═══════════════════════════════════════════════════════════════════════
+    // =========================================================================
 
-    /**
-     * Obtiene la URL remota para un video.
-     */
     public static String getRemoteUrl(String fileName) {
         ResourceInfo info = VIDEOS.get(fileName);
         return info != null ? info.url : null;
     }
 
-    /**
-     * Obtiene el tamaño esperado del video en bytes.
-     */
     public static long getExpectedSize(String fileName) {
         ResourceInfo info = VIDEOS.get(fileName);
         return info != null ? info.sizeBytes : 0;
     }
 
-    /**
-     * Obtiene el nombre descriptivo del video.
-     */
     public static String getDisplayName(String fileName) {
         ResourceInfo info = VIDEOS.get(fileName);
         return info != null ? info.displayName : fileName;
     }
 
-    /**
-     * Verifica si un video está configurado para descarga remota.
-     */
     public static boolean isRemoteVideo(String fileName) {
         return VIDEOS.containsKey(fileName);
     }
 
-    /**
-     * Obtiene la versión de un video.
-     * Incrementar cuando se reemplaza el video en Supabase.
-     */
     public static int getVideoVersion(String fileName) {
         ResourceInfo info = VIDEOS.get(fileName);
         return info != null ? info.version : 1;
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // CLASE INTERNA - ResourceInfo
-    // ═══════════════════════════════════════════════════════════════════════
-
-    /**
-     * Información de un recurso de video remoto.
-     */
-    public static class ResourceInfo {
-        public final String url;
-        public final long sizeBytes;
-        public final String displayName;
-        public final int version;
-
-        ResourceInfo(String url, long sizeBytes, String displayName) {
-            this(url, sizeBytes, displayName, 1);
-        }
-
-        ResourceInfo(String url, long sizeBytes, String displayName, int version) {
-            this.url = url;
-            this.sizeBytes = sizeBytes;
-            this.displayName = displayName;
-            this.version = version;
-        }
     }
 }

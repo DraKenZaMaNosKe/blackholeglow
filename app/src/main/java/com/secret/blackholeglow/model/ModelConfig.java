@@ -1,5 +1,7 @@
 package com.secret.blackholeglow.model;
 
+import com.secret.blackholeglow.download.ResourceInfo;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -153,30 +155,5 @@ public class ModelConfig {
     public static int getModelVersion(String fileName) {
         ResourceInfo info = MODELS.get(fileName);
         return info != null ? info.version : 1;
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // CLASE INTERNA - ResourceInfo
-    // ═══════════════════════════════════════════════════════════════════════
-
-    /**
-     * Información de un recurso de modelo remoto.
-     */
-    public static class ResourceInfo {
-        public final String url;
-        public final long sizeBytes;
-        public final String displayName;
-        public final int version;
-
-        ResourceInfo(String url, long sizeBytes, String displayName) {
-            this(url, sizeBytes, displayName, 1);
-        }
-
-        ResourceInfo(String url, long sizeBytes, String displayName, int version) {
-            this.url = url;
-            this.sizeBytes = sizeBytes;
-            this.displayName = displayName;
-            this.version = version;
-        }
     }
 }

@@ -1,5 +1,7 @@
 package com.secret.blackholeglow.image;
 
+import com.secret.blackholeglow.download.ResourceInfo;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -311,30 +313,5 @@ public class ImageConfig {
     public static int getImageVersion(String fileName) {
         ResourceInfo info = IMAGES.get(fileName);
         return info != null ? info.version : 1;
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // CLASE INTERNA - ResourceInfo
-    // ═══════════════════════════════════════════════════════════════════════
-
-    /**
-     * Información de un recurso de imagen remoto.
-     */
-    public static class ResourceInfo {
-        public final String url;
-        public final long sizeBytes;
-        public final String displayName;
-        public final int version;
-
-        ResourceInfo(String url, long sizeBytes, String displayName) {
-            this(url, sizeBytes, displayName, 1);
-        }
-
-        ResourceInfo(String url, long sizeBytes, String displayName, int version) {
-            this.url = url;
-            this.sizeBytes = sizeBytes;
-            this.displayName = displayName;
-            this.version = version;
-        }
     }
 }
