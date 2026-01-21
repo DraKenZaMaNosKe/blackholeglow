@@ -205,9 +205,9 @@ public class ImageConfig {
         // Textura zombie cuerpo completo (WebP optimizado)
         IMAGES.put("zombie_body_texture.webp", new ResourceInfo(
             "https://vzuwvsmlyigjtsearxym.supabase.co/storage/v1/object/public/wallpaper-models/zombie_body_texture.webp",
-            356_000L,  // ~355.84 KB (optimizado de 3.3MB PNG)
+            351_000L,  // ~350.47 KB (v2: más oscuro, tono verdoso)
             "Textura Zombie Cuerpo",
-            1
+            2  // v2: ajuste de colores para integración con escena
         ));
 
         // ═══════════════════════════════════════════════════════════════
