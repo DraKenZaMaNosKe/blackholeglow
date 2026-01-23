@@ -1,18 +1,12 @@
 package com.secret.blackholeglow.scenes;
 
-import android.content.Context;
-import android.opengl.GLES30;
 import android.util.Log;
 
-import com.secret.blackholeglow.R;
-import com.secret.blackholeglow.Battery3D;
-import com.secret.blackholeglow.Clock3D;
 import com.secret.blackholeglow.EqualizerBarsDJ;
+import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.TextureManager;
-import com.secret.blackholeglow.ZombieHead3D;
 import com.secret.blackholeglow.ZombieBody3D;
-import com.secret.blackholeglow.video.MediaCodecVideoRenderer;
-import com.secret.blackholeglow.video.VideoDownloadManager;
+import com.secret.blackholeglow.ZombieHead3D;
 
 /**
  * ╔══════════════════════════════════════════════════════════════════════════╗
@@ -20,20 +14,64 @@ import com.secret.blackholeglow.video.VideoDownloadManager;
  * ╠══════════════════════════════════════════════════════════════════════════╣
  * ║  Video de cementerio con manos zombie emergiendo bajo la luna llena.     ║
  * ║  Niebla verde/morada, atmósfera apocalíptica y terror gótico.            ║
+ * ╠══════════════════════════════════════════════════════════════════════════╣
+ * ║                                                                          ║
+ * ║  📖 EJEMPLO DE ESCENA COMPLEJA CON MÚLTIPLES OBJETOS 3D:                 ║
+ * ║  Esta escena demuestra cómo manejar múltiples objetos 3D                 ║
+ * ║  con diferentes comportamientos (touch vs automático).                   ║
+ * ║                                                                          ║
+ * ║  ✅ Video: walkingdeathscene.mp4                                         ║
+ * ║  ✅ Tema: WALKING_DEAD (verde tóxico/rojo sangre)                        ║
+ * ║  ✅ Objetos 3D:                                                          ║
+ * ║     • ZombieHead3D - Cabeza colgante con giro 360° por touch             ║
+ * ║     • ZombieBody3D - Cuerpo asomándose con movimiento orgánico           ║
+ * ║  ✅ Clock + Battery incluidos automáticamente                            ║
+ * ║                                                                          ║
+ * ║  🎮 INTERACCIÓN:                                                         ║
+ * ║  - Deslizar horizontalmente: Gira la cabeza zombie 360°                  ║
+ * ║  - El cuerpo tiene movimiento automático (respiración, temblor)          ║
+ * ║                                                                          ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
+ *
+ * @see BaseVideoScene para documentación completa de la clase base
+ * @see ZombieHead3D para la cabeza con giroscopio y touch
+ * @see ZombieBody3D para el cuerpo con movimiento orgánico
  */
-public class WalkingDeadScene extends WallpaperScene {
+public class WalkingDeadScene extends BaseVideoScene {
     private static final String TAG = "WalkingDeadScene";
-    private static final String VIDEO_FILE = "walkingdeathscene.mp4";
 
-    private MediaCodecVideoRenderer videoBackground;
-    private VideoDownloadManager downloadManager;
-    private EqualizerBarsDJ equalizerDJ;
-    private Clock3D clock;
-    private Battery3D battery;
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🧟 OBJETOS 3D ESPECÍFICOS DE ESTA ESCENA
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Cabeza zombie colgante.
+     *
+     * CARACTERÍSTICAS:
+     * - Gira 360° con deslizamiento horizontal (touch)
+     * - Efecto péndulo con giroscopio
+     * - Shader con efectos de sangre, ojos brillantes, niebla
+     * - Posición calibrada: x=-0.44, y=2.21, z=-1.94, scale=0.77
+     */
     private ZombieHead3D zombieHead;
+
+    /**
+     * Cuerpo zombie asomándose desde abajo.
+     *
+     * CARACTERÍSTICAS:
+     * - Movimiento orgánico automático (respiración, temblor, reaching)
+     * - Shader con oscurecimiento y ojos brillantes
+     * - NO responde al touch (solo la cabeza gira)
+     * - Posición calibrada: x=0.63, y=-2.29, z=-0.32, scale=2.38
+     */
     private ZombieBody3D zombieBody;
-    private TextureManager textureManager;
+
+    /** TextureManager propio para los modelos 3D de esta escena */
+    private TextureManager localTextureManager;
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🎯 MÉTODOS OBLIGATORIOS - Configuración básica de la escena
+    // ═══════════════════════════════════════════════════════════════════════════
 
     @Override
     public String getName() {
@@ -51,107 +89,80 @@ public class WalkingDeadScene extends WallpaperScene {
     }
 
     @Override
-    protected void setupScene() {
-        Log.d(TAG, "🧟 Configurando The Walking Dead Scene...");
+    protected String getVideoFileName() {
+        return "walkingdeathscene.mp4";
+    }
 
-        downloadManager = VideoDownloadManager.getInstance(context);
+    @Override
+    protected EqualizerBarsDJ.Theme getTheme() {
+        return EqualizerBarsDJ.Theme.WALKING_DEAD;  // 🧟 Verde tóxico / Rojo sangre
+    }
 
-        // Video de fondo - Descargar si no existe
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔧 HOOKS PARA OBJETOS 3D (ZombieHead + ZombieBody)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Configura los zombies 3D.
+     *
+     * 📖 ORDEN DE CARGA:
+     * 1. TextureManager local para los modelos
+     * 2. ZombieHead3D (cabeza colgante interactiva)
+     * 3. ZombieBody3D (cuerpo con movimiento automático)
+     *
+     * Los modelos y texturas se cargan desde Supabase (cache local).
+     */
+    @Override
+    protected void setupSceneSpecific() {
+        // TextureManager local para los modelos 3D
+        localTextureManager = new TextureManager(context);
+
+        // 🧟 Cabeza zombie - GIRO 360° POR TOUCH
         try {
-            String localPath = downloadManager.getVideoPath(VIDEO_FILE);
-
-            if (localPath == null) {
-                Log.d(TAG, "📥 Descargando video: " + VIDEO_FILE);
-                boolean success = downloadManager.downloadVideoSync(VIDEO_FILE, percent -> {
-                    Log.d(TAG, "📥 Descarga: " + percent + "%");
-                });
-                if (success) {
-                    localPath = downloadManager.getVideoPath(VIDEO_FILE);
-                    Log.d(TAG, "✅ Video descargado: " + localPath);
-                } else {
-                    Log.e(TAG, "❌ Error descargando video");
-                    return;
-                }
-            }
-
-            if (localPath != null) {
-                Log.d(TAG, "📦 Usando video: " + localPath);
-                videoBackground = new MediaCodecVideoRenderer(context, VIDEO_FILE, localPath);
-                videoBackground.initialize();
-                Log.d(TAG, "✅ Video Walking Dead activado");
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Error Video: " + e.getMessage());
-        }
-
-        // 🎵 Ecualizador con tema WALKING_DEAD (verde tóxico/rojo sangre)
-        try {
-            equalizerDJ = new EqualizerBarsDJ();
-            equalizerDJ.initialize();
-            equalizerDJ.setTheme(EqualizerBarsDJ.Theme.WALKING_DEAD);
-            equalizerDJ.setScreenSize(screenWidth, screenHeight);
-            Log.d(TAG, "✅ Ecualizador ZOMBIE activado");
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Error EqualizerBarsDJ: " + e.getMessage());
-        }
-
-        // ⏰ Reloj con tema WALKING_DEAD (verde tóxico)
-        try {
-            clock = new Clock3D(context, Clock3D.THEME_WALKING_DEAD, 0f, 0.75f);
-            clock.setShowMilliseconds(true);
-            Log.d(TAG, "✅ Reloj ZOMBIE activado");
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Error Clock3D: " + e.getMessage());
-        }
-
-        // 🔋 Batería con tema WALKING_DEAD (verde tóxico)
-        try {
-            battery = new Battery3D(context, Battery3D.THEME_WALKING_DEAD, 0.81f, -0.34f);
-            Log.d(TAG, "✅ Batería ZOMBIE activada");
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Error Battery3D: " + e.getMessage());
-        }
-
-        // 🧟 Cabeza zombi colgante - CON CALIBRACIÓN POR TOUCH
-        try {
-            textureManager = new TextureManager(context);
-            zombieHead = new ZombieHead3D(context, textureManager);
+            zombieHead = new ZombieHead3D(context, localTextureManager);
             zombieHead.setScreenSize(screenWidth, screenHeight);
-            Log.d(TAG, "✅ Cabeza Zombi activada - GIRO 360° POR TOUCH");
+            Log.d(TAG, "✅ ZombieHead3D cargado - GIRO 360° POR TOUCH");
         } catch (Exception e) {
             Log.e(TAG, "❌ Error ZombieHead3D: " + e.getMessage());
         }
 
-        // 🧟 Zombie cuerpo completo - asomándose desde abajo (carga desde Supabase)
+        // 🧟 Cuerpo zombie - MOVIMIENTO ORGÁNICO AUTOMÁTICO
         try {
-            zombieBody = new ZombieBody3D(context, textureManager);
+            zombieBody = new ZombieBody3D(context, localTextureManager);
             zombieBody.setScreenSize(screenWidth, screenHeight);
-            Log.d(TAG, "✅ Zombie Body activado - MOVIMIENTO ORGÁNICO AUTOMÁTICO");
+            Log.d(TAG, "✅ ZombieBody3D cargado - MOVIMIENTO ORGÁNICO AUTOMÁTICO");
         } catch (Exception e) {
             Log.e(TAG, "❌ Error ZombieBody3D: " + e.getMessage());
         }
-
-        Log.d(TAG, "🧟 The Walking Dead Scene lista!");
     }
 
+    /**
+     * Actualiza los zombies cada frame.
+     */
     @Override
-    protected void releaseSceneResources() {
-        if (videoBackground != null) {
-            videoBackground.release();
-            videoBackground = null;
-        }
-        if (clock != null) {
-            clock.dispose();
-            clock = null;
-        }
-        if (battery != null) {
-            battery.dispose();
-            battery = null;
-        }
-        if (equalizerDJ != null) {
-            equalizerDJ.release();
-            equalizerDJ = null;
-        }
+    protected void updateSceneSpecific(float deltaTime) {
+        if (zombieHead != null) zombieHead.update(deltaTime);
+        if (zombieBody != null) zombieBody.update(deltaTime);
+    }
+
+    /**
+     * Dibuja los zombies sobre el video pero debajo de la UI.
+     *
+     * 📖 ORDEN DE DIBUJADO (importante para profundidad):
+     * 1. ZombieHead (cabeza colgante arriba)
+     * 2. ZombieBody (cuerpo asomándose abajo)
+     */
+    @Override
+    protected void drawSceneSpecific() {
+        if (zombieHead != null) zombieHead.draw();
+        if (zombieBody != null) zombieBody.draw();
+    }
+
+    /**
+     * Libera recursos de los zombies.
+     */
+    @Override
+    protected void releaseSceneSpecificResources() {
         if (zombieHead != null) {
             zombieHead.dispose();
             zombieHead = null;
@@ -160,124 +171,64 @@ public class WalkingDeadScene extends WallpaperScene {
             zombieBody.dispose();
             zombieBody = null;
         }
-        if (textureManager != null) {
-            textureManager.release();
-            textureManager = null;
+        if (localTextureManager != null) {
+            localTextureManager.release();
+            localTextureManager = null;
         }
     }
 
-    // 🔄 Auto-recovery para video
-    private float videoCheckTimer = 0f;
-    private static final float VIDEO_CHECK_INTERVAL = 2.0f;
-    private boolean sceneIsActive = true;
-
-    @Override
-    public void update(float deltaTime) {
-        if (!sceneIsActive) {
-            sceneIsActive = true;
-        }
-
-        videoCheckTimer += deltaTime;
-        if (videoCheckTimer >= VIDEO_CHECK_INTERVAL) {
-            videoCheckTimer = 0f;
-            if (videoBackground != null && !videoBackground.isPlaying()) {
-                videoBackground.resume();
-            }
-        }
-
-        if (equalizerDJ != null) equalizerDJ.update(deltaTime);
-        if (clock != null) clock.update(deltaTime);
-        if (battery != null) battery.update(deltaTime);
-        if (zombieHead != null) zombieHead.update(deltaTime);
-        if (zombieBody != null) zombieBody.update(deltaTime);
-        super.update(deltaTime);
-    }
-
-    @Override
-    public void draw() {
-        if (isDisposed) return;
-
-        GLES30.glClearColor(0f, 0f, 0f, 1.0f);
-        GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
-
-        // 1. Video de fondo
-        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
-        if (videoBackground != null) videoBackground.draw();
-
-        // 2. Zombies 3D
-        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
-        GLES30.glEnable(GLES30.GL_BLEND);
-        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
-        if (zombieHead != null) zombieHead.draw();
-        if (zombieBody != null) zombieBody.draw();
-
-        // 3. Elementos UI
-        // 4. Ecualizador
-        if (equalizerDJ != null) equalizerDJ.draw();
-
-        // 5. Reloj
-        if (clock != null) clock.draw();
-
-        // 6. Batería
-        if (battery != null) battery.draw();
-
-        super.draw();
-    }
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 📐 SCREEN SIZE - Actualizar dimensiones de los zombies
+    // ═══════════════════════════════════════════════════════════════════════════
 
     @Override
     public void setScreenSize(int width, int height) {
         super.setScreenSize(width, height);
-        if (equalizerDJ != null) equalizerDJ.setScreenSize(width, height);
         if (zombieHead != null) zombieHead.setScreenSize(width, height);
         if (zombieBody != null) zombieBody.setScreenSize(width, height);
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 👆 TOUCH - Solo la cabeza responde (giro 360°)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Maneja eventos de touch para girar la cabeza zombie.
+     *
+     * 📖 INTERACCIÓN:
+     * - Deslizar horizontalmente: Gira la cabeza 360° con momentum
+     * - La cabeza sigue girando después de soltar (inercia)
+     * - El cuerpo NO responde al touch
+     *
+     * El giroscopio también afecta sutilmente el movimiento.
+     */
     @Override
     public boolean onTouchEvent(float normalizedX, float normalizedY, int action) {
-        // 🧟 Solo la CABEZA responde al touch (giro 360°)
         if (zombieHead != null) {
             return zombieHead.onTouchEvent(normalizedX, normalizedY, action);
         }
         return false;
     }
 
-    public void updateMusicBands(float[] bands) {
-        if (equalizerDJ != null && bands != null && bands.length > 0) {
-            float sum = 0;
-            for (float b : bands) sum += b;
-            if (sum > 0.1f) {
-                Log.d(TAG, "🎵 Datos música: sum=" + sum);
-            }
-            equalizerDJ.updateFromBands(bands);
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // ⏸️▶️ PAUSE/RESUME
-    // ═══════════════════════════════════════════════════════════════════════
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        sceneIsActive = false;
-        videoCheckTimer = 0f;
-
-        if (videoBackground != null) {
-            videoBackground.pause();
-            Log.d(TAG, "⏸️ Video Walking Dead PAUSADO");
-        }
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        sceneIsActive = true;
-        videoCheckTimer = 0f;
-
-        if (videoBackground != null) {
-            videoBackground.resume();
-            Log.d(TAG, "▶️ Video Walking Dead REANUDADO");
-        }
-    }
-
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 📝 NOTA PARA CLAUDE CODE:
+    // ═══════════════════════════════════════════════════════════════════════════
+    //
+    // Esta escena es un EJEMPLO COMPLEJO de BaseVideoScene con múltiples objetos.
+    //
+    // PATRÓN PARA MÚLTIPLES OBJETOS 3D:
+    // 1. Declararlos como campos separados
+    // 2. Crear TextureManager local si comparten texturas
+    // 3. Inicializarlos en setupSceneSpecific() en orden de carga
+    // 4. Actualizarlos todos en updateSceneSpecific()
+    // 5. Dibujarlos en el orden correcto de profundidad
+    // 6. Decidir cuáles responden al touch y cuáles no
+    //
+    // CALIBRACIÓN DE POSICIÓN:
+    // Los valores de x, y, z, scale están en los archivos:
+    // - ZombieHead3D.java línea 60-64
+    // - ZombieBody3D.java línea 59-67
+    //
+    // Para recalibrar, habilitar calibrationEnabled = true y usar touch.
+    // ═══════════════════════════════════════════════════════════════════════════
 }

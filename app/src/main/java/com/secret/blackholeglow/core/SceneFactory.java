@@ -107,7 +107,7 @@ public class SceneFactory {
     public void registerDefaultScenes() {
         // 🌊 Fondo del Mar: Video wallpaper alienígena con efectos shader
         registerScene("ABYSSIA", OceanFloorScene.class);
-        // 🧪 Laboratorio: Portal cósmico con nubes de fuego
+        // 🔥 Pyralis: Portal cósmico con nubes de fuego y nave Enterprise
         registerScene("PYRALIS", LabScene.class);
         // 🐉 Dragon Ball: Goku Kamehameha con energía Ki
         registerScene("GOKU", GokuScene.class);

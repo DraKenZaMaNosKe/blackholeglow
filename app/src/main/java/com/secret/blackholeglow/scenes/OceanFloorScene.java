@@ -3,120 +3,185 @@ package com.secret.blackholeglow.scenes;
 import android.opengl.GLES20;
 import android.util.Log;
 
-import com.secret.blackholeglow.R;
-import com.secret.blackholeglow.Battery3D;
-import com.secret.blackholeglow.Clock3D;
 import com.secret.blackholeglow.EqualizerBarsDJ;
-import com.secret.blackholeglow.video.MediaCodecVideoRenderer;
-import com.secret.blackholeglow.video.VideoDownloadManager;
-import com.secret.blackholeglow.video.VideoConfig;
+import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.video.AbyssalLurker3D;
 import com.secret.blackholeglow.video.AbyssalLeviathan3D;
 import com.secret.blackholeglow.video.BubbleSystem;
 
 /**
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║              OceanFloorScene - Fondo del Mar Alienígena                  ║
+ * ║              🌊 ABYSSIA - Fondo del Mar Alienígena                       ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  Video (MediaCodec) + Pez 3D + Máscara + Ecualizador                     ║
+ * ║  Video de fondo con plantas bioluminiscentes + peces 3D interactivos.    ║
  * ║                                                                          ║
- * ║  INTERACTIVIDAD:                                                         ║
- * ║  • Toca la pantalla → El pez nada hacia donde tocaste                    ║
+ * ║  CARACTERÍSTICAS ÚNICAS:                                                 ║
+ * ║  • AbyssalLurker3D - Pez pequeño que sigue el dedo del usuario           ║
+ * ║  • AbyssalLeviathan3D - Bestia colosal del fondo oceánico                ║
+ * ║  • BubbleSystem - Burbujas que emergen de los peces al "respirar"        ║
+ * ║  • Interacción: El Lurker HUYE del Leviathan                             ║
+ * ║                                                                          ║
+ * ║  🎮 INTERACCIÓN:                                                         ║
+ * ║  • Toca la pantalla → El pez pequeño nada hacia donde tocaste            ║
+ * ║  • El pez huye automáticamente si el Leviathan se acerca                 ║
+ * ║                                                                          ║
+ * ╠══════════════════════════════════════════════════════════════════════════╣
+ * ║                                                                          ║
+ * ║  📖 EJEMPLO DE ESCENA CON MÚLTIPLES OBJETOS 3D INTERACTUANDO:            ║
+ * ║  Esta escena demuestra cómo hacer que objetos 3D interactúen             ║
+ * ║  entre sí (el Lurker conoce la posición del Leviathan).                  ║
+ * ║                                                                          ║
+ * ║  ✅ Video: marZerg.mp4                                                   ║
+ * ║  ✅ Tema: ABYSSIA (púrpura/turquesa bioluminiscente)                     ║
+ * ║  ✅ Objetos 3D: AbyssalLurker3D, AbyssalLeviathan3D, BubbleSystem        ║
+ * ║  ✅ Clock + Battery incluidos automáticamente                            ║
+ * ║                                                                          ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
+ *
+ * @see BaseVideoScene para documentación completa de la clase base
+ * @see AbyssalLurker3D para el pez pequeño interactivo
+ * @see AbyssalLeviathan3D para la bestia del fondo
+ * @see BubbleSystem para el sistema de partículas de burbujas
  */
-public class OceanFloorScene extends WallpaperScene {
+public class OceanFloorScene extends BaseVideoScene {
     private static final String TAG = "OceanScene";
 
-    private MediaCodecVideoRenderer videoRenderer;
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🐟 CRIATURAS MARINAS 3D
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Pez pequeño que sigue el dedo del usuario.
+     * Huye automáticamente cuando el Leviathan se acerca.
+     */
     private AbyssalLurker3D abyssalLurker;
+
+    /**
+     * Bestia colosal del fondo oceánico.
+     * Se mueve de forma autónoma por la escena.
+     */
     private AbyssalLeviathan3D abyssalLeviathan;
-    private EqualizerBarsDJ equalizerDJ;
+
+    /**
+     * Sistema de partículas de burbujas.
+     * Las burbujas emergen de la "boca" de los peces al respirar.
+     */
     private BubbleSystem bubbleSystem;
-    private Clock3D clock;
-    private Battery3D battery;
-    private VideoDownloadManager downloadManager;
 
-    private static final String VIDEO_FILE = "marZerg.mp4";
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🫧 TIMERS PARA RESPIRACIÓN (spawn de burbujas)
+    // ═══════════════════════════════════════════════════════════════════════════
 
-    // 🫧 Timers para spawn de burbujas (sincronizado con respiración)
     private float lurkerBubbleTimer = 0f;
     private float leviathanBubbleTimer = 0f;
-    private static final float LURKER_BUBBLE_INTERVAL = 1.8f;     // Respiración lenta
-    private static final float LEVIATHAN_BUBBLE_INTERVAL = 1.2f;  // Respiración del grande
 
-    private int screenWidth = 1080;
-    private int screenHeight = 1920;
+    /** Intervalo de respiración del pez pequeño (más lento) */
+    private static final float LURKER_BUBBLE_INTERVAL = 1.8f;
 
-    // 🔄 Auto-recovery para video
-    private float videoCheckTimer = 0f;
-    private static final float VIDEO_CHECK_INTERVAL = 2.0f;
-    private boolean sceneIsActive = true;
+    /** Intervalo de respiración del Leviathan (más rápido, es más grande) */
+    private static final float LEVIATHAN_BUBBLE_INTERVAL = 1.2f;
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🎛️ SISTEMA DE CALIBRACIÓN
+    // 🎛️ SISTEMA DE CALIBRACIÓN (para ajustar posiciones en desarrollo)
     // ═══════════════════════════════════════════════════════════════════════════
-    private static final boolean CALIBRATION_MODE = false;  // Calibración completada ✓
+
+    /**
+     * Activar para entrar en modo calibración.
+     * - Double-tap: Cambiar pez seleccionado (Lurker ↔ Leviathan)
+     * - Tap esquina superior izquierda: Cambiar modo (PosXY/PosZ/RotXY/RotZ/Scale)
+     * - Arrastrar: Ajustar valor según modo activo
+     */
+    private static final boolean CALIBRATION_MODE = false;  // ✓ Calibración completada
+
     private int selectedFish = 0;  // 0 = Lurker, 1 = Leviathan
     private int adjustMode = 0;    // 0=PosXY, 1=PosZ, 2=RotXY, 3=RotZ, 4=Scale
     private float lastTouchX = 0f;
     private float lastTouchY = 0f;
     private long lastTapTime = 0;
+    private static final String[] MODE_NAMES = {"PosXY", "PosZ", "RotXY", "RotZ", "Scale"};
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🎯 MÉTODOS OBLIGATORIOS - Configuración básica de la escena
+    // ═══════════════════════════════════════════════════════════════════════════
 
     @Override
-    public String getName() { return "ABYSSIA"; }
-
-    @Override
-    public String getDescription() {
-        return "Océano alienígena con plantas bioluminescentes";
+    public String getName() {
+        return "ABYSSIA";
     }
 
     @Override
-    public int getPreviewResourceId() { return R.drawable.preview_oceano_sc; }
+    public String getDescription() {
+        return "Océano alienígena con plantas bioluminiscentes";
+    }
 
     @Override
-    protected void setupScene() {
-        Log.d(TAG, "Configurando escena");
+    public int getPreviewResourceId() {
+        return R.drawable.preview_oceano_sc;
+    }
 
-        downloadManager = VideoDownloadManager.getInstance(context);
+    @Override
+    protected String getVideoFileName() {
+        return "marZerg.mp4";
+    }
 
-        // Video de fondo - El preloader ya lo descargo de Supabase
-        String localPath = downloadManager.getVideoPath(VIDEO_FILE);
+    @Override
+    protected EqualizerBarsDJ.Theme getTheme() {
+        return EqualizerBarsDJ.Theme.ABYSSIA;  // 🌊 Púrpura/Turquesa bioluminiscente
+    }
 
-        // Si no existe, descarga on-demand (Preview mode bypass)
-        if (localPath == null) {
-            Log.d(TAG, "📥 Descargando video on-demand: " + VIDEO_FILE);
-            boolean success = downloadManager.downloadVideoSync(VIDEO_FILE, progress -> {
-                Log.d(TAG, "📥 Descarga: " + progress + "%");
-            });
-            if (success) {
-                localPath = downloadManager.getVideoPath(VIDEO_FILE);
-                Log.d(TAG, "✅ Video descargado: " + localPath);
-            } else {
-                Log.e(TAG, "❌ Error descargando video");
-                return;
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔧 HOOKS PARA CRIATURAS MARINAS + BURBUJAS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Configura los peces 3D y el sistema de burbujas.
+     *
+     * 📖 ORDEN DE CARGA:
+     * 1. AbyssalLurker3D (pez pequeño interactivo)
+     * 2. AbyssalLeviathan3D (bestia grande autónoma)
+     * 3. BubbleSystem (partículas de burbujas)
+     */
+    @Override
+    protected void setupSceneSpecific() {
+        // 🐟 Lurker - pez pequeño que sigue el dedo
+        try {
+            abyssalLurker = new AbyssalLurker3D(context);
+            abyssalLurker.initialize();
+
+            if (CALIBRATION_MODE) {
+                abyssalLurker.setCalibrationMode(true);
             }
-        }
 
-        if (localPath != null) {
-            Log.d(TAG, "📦 Usando video: " + localPath);
-            videoRenderer = new MediaCodecVideoRenderer(context, VIDEO_FILE, localPath);
-        } else {
-            Log.e(TAG, "❌ Video no disponible: " + VIDEO_FILE);
-            return;
+            Log.d(TAG, "✅ AbyssalLurker3D cargado - SIGUE EL DEDO");
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error AbyssalLurker3D: " + e.getMessage());
         }
-        videoRenderer.initialize();
-
-        abyssalLurker = new AbyssalLurker3D(context);
-        abyssalLurker.initialize();
 
         // 🐉 Leviathan - bestia colosal del fondo
-        abyssalLeviathan = new AbyssalLeviathan3D(context);
-        abyssalLeviathan.initialize();
+        try {
+            abyssalLeviathan = new AbyssalLeviathan3D(context);
+            abyssalLeviathan.initialize();
 
-        // 🎛️ Activar calibración si está habilitada
+            if (CALIBRATION_MODE) {
+                abyssalLeviathan.setCalibrationMode(true);
+            }
+
+            Log.d(TAG, "✅ AbyssalLeviathan3D cargado - MOVIMIENTO AUTÓNOMO");
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error AbyssalLeviathan3D: " + e.getMessage());
+        }
+
+        // 🫧 Sistema de burbujas
+        try {
+            bubbleSystem = new BubbleSystem();
+            bubbleSystem.initialize();
+            Log.d(TAG, "✅ BubbleSystem activado - RESPIRACIÓN DE PECES");
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error BubbleSystem: " + e.getMessage());
+        }
+
+        // Log de calibración si está activo
         if (CALIBRATION_MODE) {
-            abyssalLurker.setCalibrationMode(true);
-            abyssalLeviathan.setCalibrationMode(true);
             Log.d("CALIBRATE", "════════════════════════════════════════════════");
             Log.d("CALIBRATE", "🎛️ MODO CALIBRACIÓN ACTIVADO");
             Log.d("CALIBRATE", "   Double-tap: Cambiar pez (Lurker↔Leviathan)");
@@ -124,52 +189,102 @@ public class OceanFloorScene extends WallpaperScene {
             Log.d("CALIBRATE", "   Arrastrar: Ajusta valor según modo");
             Log.d("CALIBRATE", "════════════════════════════════════════════════");
         }
+    }
 
-        // 🎵 Ecualizador con tema ABYSSIA (océano profundo)
-        try {
-            equalizerDJ = new EqualizerBarsDJ();
-            equalizerDJ.initialize();
-            equalizerDJ.setTheme(EqualizerBarsDJ.Theme.ABYSSIA);  // 🌊 Tema océano
-            equalizerDJ.setScreenSize(screenWidth, screenHeight);
-        } catch (Exception e) {
-            Log.e(TAG, "Error EqualizerBarsDJ: " + e.getMessage());
+    /**
+     * Actualiza los peces y el sistema de burbujas.
+     *
+     * 📖 FLUJO DE ACTUALIZACIÓN:
+     * 1. Actualizar Leviathan primero (se mueve independientemente)
+     * 2. Pasar posición del Leviathan al Lurker (para que huya)
+     * 3. Actualizar Lurker (con info del Leviathan)
+     * 4. Actualizar burbujas y spawn desde bocas de los peces
+     */
+    @Override
+    protected void updateSceneSpecific(float deltaTime) {
+        // 1. Actualizar Leviathan primero (movimiento autónomo)
+        if (abyssalLeviathan != null) {
+            abyssalLeviathan.update(deltaTime);
         }
 
-        // 🫧 Sistema de burbujas
-        try {
-            bubbleSystem = new BubbleSystem();
-            bubbleSystem.initialize();
-            Log.d(TAG, "✅ Sistema de burbujas activado");
-        } catch (Exception e) {
-            Log.e(TAG, "Error BubbleSystem: " + e.getMessage());
+        // 2. Pasar posición del Leviathan al Lurker (para IA de huida)
+        if (abyssalLurker != null && abyssalLeviathan != null) {
+            abyssalLurker.setLeviathanPosition(
+                abyssalLeviathan.getPosX(),
+                abyssalLeviathan.getPosY()
+            );
         }
 
-        // ⏰ Reloj con tema ABYSSIA (cyan bioluminiscente)
-        try {
-            clock = new Clock3D(context, Clock3D.THEME_ABYSSIA, 0f, 0.75f);
-            clock.setShowMilliseconds(true);
-            Log.d(TAG, "✅ Reloj ABYSSIA activado");
-        } catch (Exception e) {
-            Log.e(TAG, "Error Clock3D: " + e.getMessage());
+        // 3. Actualizar Lurker (con info del Leviathan)
+        if (abyssalLurker != null) {
+            abyssalLurker.update(deltaTime);
         }
 
-        // 🔋 Batería con tema ABYSSIA (orbe bioluminiscente)
-        try {
-            battery = new Battery3D(context, Battery3D.THEME_ABYSSIA, 0.81f, -0.34f);
-            Log.d(TAG, "✅ Batería ABYSSIA activada");
-        } catch (Exception e) {
-            Log.e(TAG, "Error Battery3D: " + e.getMessage());
+        // 4. Actualizar sistema de burbujas
+        if (bubbleSystem != null) {
+            bubbleSystem.update(deltaTime);
+
+            // 🫧 Spawn burbujas del Lurker (respiración lenta)
+            if (abyssalLurker != null) {
+                lurkerBubbleTimer += deltaTime;
+                if (lurkerBubbleTimer >= LURKER_BUBBLE_INTERVAL) {
+                    lurkerBubbleTimer = 0f;
+                    float depth = abyssalLurker.getPosY();
+                    bubbleSystem.spawn(
+                        abyssalLurker.getMouthX(),
+                        abyssalLurker.getMouthY(),
+                        depth
+                    );
+                }
+            }
+
+            // 🫧 Spawn burbujas del Leviathan (respiración más frecuente)
+            if (abyssalLeviathan != null) {
+                leviathanBubbleTimer += deltaTime;
+                if (leviathanBubbleTimer >= LEVIATHAN_BUBBLE_INTERVAL) {
+                    leviathanBubbleTimer = 0f;
+                    float depth = abyssalLeviathan.getPosY();
+                    bubbleSystem.spawn(
+                        abyssalLeviathan.getMouthX(),
+                        abyssalLeviathan.getMouthY(),
+                        depth
+                    );
+                }
+            }
         }
     }
 
+    /**
+     * Dibuja los peces y burbujas.
+     *
+     * 📖 ORDEN DE DIBUJADO (importante para profundidad):
+     * 1. Leviathan (grande, más atrás)
+     * 2. Lurker (pequeño, más adelante)
+     * 3. Burbujas (sobre los peces, debajo de UI)
+     *
+     * NOTA: Esta escena usa GLES20 por compatibilidad con los shaders de los peces.
+     */
     @Override
-    protected void releaseSceneResources() {
-        Log.d(TAG, "Liberando escena");
+    protected void drawSceneSpecific() {
+        // Dibujar peces con depth test habilitado
+        if (abyssalLeviathan != null) abyssalLeviathan.draw();  // Grande, fondo
+        if (abyssalLurker != null) abyssalLurker.draw();        // Pequeño, frente
 
-        if (videoRenderer != null) {
-            videoRenderer.release();
-            videoRenderer = null;
+        // Deshabilitar depth test para burbujas (son 2D)
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+
+        // 🫧 Burbujas
+        if (bubbleSystem != null && screenHeight > 0) {
+            float aspectRatio = (float) screenWidth / screenHeight;
+            bubbleSystem.draw(aspectRatio);
         }
+    }
+
+    /**
+     * Libera recursos de los peces y burbujas.
+     */
+    @Override
+    protected void releaseSceneSpecificResources() {
         if (abyssalLurker != null) {
             abyssalLurker.release();
             abyssalLurker = null;
@@ -178,148 +293,26 @@ public class OceanFloorScene extends WallpaperScene {
             abyssalLeviathan.release();
             abyssalLeviathan = null;
         }
-        if (equalizerDJ != null) {
-            equalizerDJ = null;
-        }
-        if (clock != null) {
-            clock.dispose();
-            clock = null;
-        }
-        if (battery != null) {
-            battery.dispose();
-            battery = null;
-        }
         if (bubbleSystem != null) {
             bubbleSystem = null;
         }
     }
 
-    @Override
-    public void update(float deltaTime) {
-        // 🔄 AUTO-RECOVERY (sin logs para mejor rendimiento)
-        if (!sceneIsActive) {
-            sceneIsActive = true;
-        }
-
-        videoCheckTimer += deltaTime;
-        if (videoCheckTimer >= VIDEO_CHECK_INTERVAL) {
-            videoCheckTimer = 0f;
-            if (videoRenderer != null && !videoRenderer.isPlaying()) {
-                videoRenderer.resume();
-            }
-        }
-
-        // Actualizar Leviathan primero
-        if (abyssalLeviathan != null) abyssalLeviathan.update(deltaTime);
-
-        // Pasar posición del Leviathan al Lurker (para que huya)
-        if (abyssalLurker != null && abyssalLeviathan != null) {
-            abyssalLurker.setLeviathanPosition(
-                abyssalLeviathan.getPosX(),
-                abyssalLeviathan.getPosY()
-            );
-        }
-
-        // Actualizar Lurker (con info del Leviathan)
-        if (abyssalLurker != null) abyssalLurker.update(deltaTime);
-
-        if (equalizerDJ != null) equalizerDJ.update(deltaTime);
-        if (clock != null) clock.update(deltaTime);
-        if (battery != null) battery.update(deltaTime);
-
-        // 🫧 Actualizar sistema de burbujas
-        if (bubbleSystem != null) {
-            bubbleSystem.update(deltaTime);
-
-            // Spawn burbujas del Lurker (pez pequeño)
-            if (abyssalLurker != null) {
-                lurkerBubbleTimer += deltaTime;
-                if (lurkerBubbleTimer >= LURKER_BUBBLE_INTERVAL) {
-                    lurkerBubbleTimer = 0f;
-                    // Usar posición calculada de la boca + Y como profundidad
-                    float depth = abyssalLurker.getPosY();  // Y alto = lejos = burbujas pequeñas
-                    bubbleSystem.spawn(abyssalLurker.getMouthX(), abyssalLurker.getMouthY(), depth);
-                }
-            }
-
-            // Spawn burbujas del Leviathan (bestia grande)
-            if (abyssalLeviathan != null) {
-                leviathanBubbleTimer += deltaTime;
-                if (leviathanBubbleTimer >= LEVIATHAN_BUBBLE_INTERVAL) {
-                    leviathanBubbleTimer = 0f;
-                    // Usar posición calculada de la boca + Y como profundidad
-                    float depth = abyssalLeviathan.getPosY();
-                    bubbleSystem.spawn(abyssalLeviathan.getMouthX(), abyssalLeviathan.getMouthY(), depth);
-                }
-            }
-        }
-
-        super.update(deltaTime);
-    }
-
-    @Override
-    public void draw() {
-        if (isDisposed || videoRenderer == null) return;
-
-        GLES20.glClearColor(0.02f, 0.0f, 0.05f, 1.0f);
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
-
-        // Orden: Video → Leviathan → Lurker → Burbujas → Ecualizador
-        videoRenderer.draw();
-        if (abyssalLeviathan != null) abyssalLeviathan.draw();  // Grande, fondo
-        if (abyssalLurker != null) abyssalLurker.draw();        // Pequeño, frente
-
-        // 🎨 Deshabilitar depth test para elementos 2D
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
-
-        // 🫧 Burbujas (después de peces, antes de ecualizador)
-        if (bubbleSystem != null && screenHeight > 0) {
-            float aspectRatio = (float)screenWidth / screenHeight;
-            bubbleSystem.draw(aspectRatio);
-        }
-
-        if (equalizerDJ != null) equalizerDJ.draw();
-        if (clock != null) clock.draw();
-
-        // 🔋 Batería ABYSSIA
-        if (battery != null) battery.draw();
-
-        super.draw();
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        sceneIsActive = false;
-        if (videoRenderer != null) {
-            videoRenderer.pause();
-            Log.d(TAG, "⏸️ Video de fondo PAUSADO");
-        }
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        sceneIsActive = true;
-        if (videoRenderer != null) {
-            videoRenderer.resume();
-            Log.d(TAG, "▶️ Video de fondo REANUDADO");
-        }
-    }
-
-    @Override
-    public void setScreenSize(int width, int height) {
-        super.setScreenSize(width, height);
-        this.screenWidth = width;
-        this.screenHeight = height;
-
-        if (equalizerDJ != null) equalizerDJ.setScreenSize(width, height);
-    }
-
     // ═══════════════════════════════════════════════════════════════════════════
-    // 👆 TOUCH - Calibración o seguimiento normal
+    // 👆 TOUCH - El Lurker sigue el dedo (o calibración)
     // ═══════════════════════════════════════════════════════════════════════════
 
+    /**
+     * Maneja eventos de touch.
+     *
+     * MODO NORMAL:
+     * - Tocar/arrastrar: El Lurker nada hacia donde tocaste
+     *
+     * MODO CALIBRACIÓN (CALIBRATION_MODE = true):
+     * - Double-tap: Cambiar pez seleccionado
+     * - Tap esquina superior izquierda: Cambiar modo de ajuste
+     * - Arrastrar: Ajustar valor según modo
+     */
     @Override
     public boolean onTouchEvent(float normalizedX, float normalizedY, int action) {
         if (CALIBRATION_MODE) {
@@ -331,12 +324,9 @@ public class OceanFloorScene extends WallpaperScene {
             action == android.view.MotionEvent.ACTION_MOVE) {
 
             if (abyssalLurker != null) {
-                // Convertir coordenadas normalizadas (-1 a 1) a espacio mundo del Lurker
-                // La pantalla tiene normalizedX de -1 (izq) a 1 (der)
-                // normalizedY de -1 (abajo) a 1 (arriba)
-                float worldX = normalizedX * 0.8f;  // Escalar para zona del pez
-                float worldY = normalizedY * 0.9f;  // Escalar para zona del pez
-
+                // Convertir coordenadas normalizadas (-1 a 1) a espacio mundo
+                float worldX = normalizedX * 0.8f;
+                float worldY = normalizedY * 0.9f;
                 abyssalLurker.setTouchTarget(worldX, worldY);
                 return true;
             }
@@ -346,9 +336,8 @@ public class OceanFloorScene extends WallpaperScene {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🎛️ CALIBRACIÓN - Sistema de ajuste por touch
+    // 🎛️ CALIBRACIÓN - Sistema de ajuste por touch (para desarrollo)
     // ═══════════════════════════════════════════════════════════════════════════
-    private static final String[] MODE_NAMES = {"PosXY", "PosZ", "RotXY", "RotZ", "Scale"};
 
     private boolean handleCalibrationTouch(float x, float y, int action) {
         switch (action) {
@@ -389,7 +378,6 @@ public class OceanFloorScene extends WallpaperScene {
     }
 
     private void applyCalibrationDelta(float dx, float dy) {
-        // Sensibilidad diferente por modo
         float posSens = 0.5f;
         float rotSens = 50f;
         float scaleSens = 0.3f;
@@ -422,12 +410,29 @@ public class OceanFloorScene extends WallpaperScene {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🎵 MÚSICA
+    // 📝 NOTA PARA CLAUDE CODE:
     // ═══════════════════════════════════════════════════════════════════════════
-
-    public void updateMusicBands(float[] bands) {
-        if (equalizerDJ != null) {
-            equalizerDJ.updateFromBands(bands);
-        }
-    }
+    //
+    // Esta escena es un EJEMPLO AVANZADO de interacción entre objetos 3D:
+    //
+    // PATRÓN DE INTERACCIÓN ENTRE OBJETOS:
+    // 1. Actualizar el objeto "dominante" primero (Leviathan)
+    // 2. Pasar su posición al objeto "dependiente" (Lurker)
+    // 3. El objeto dependiente reacciona (huye del Leviathan)
+    //
+    // PATRÓN DE SISTEMA DE PARTÍCULAS SINCRONIZADO:
+    // 1. Crear sistema de partículas (BubbleSystem)
+    // 2. En update(), usar timers para spawn periódico
+    // 3. Obtener posición de origen del objeto 3D (getMouthX/Y)
+    // 4. Spawn partículas desde esa posición
+    //
+    // SISTEMA DE CALIBRACIÓN:
+    // Para recalibrar posiciones de los peces:
+    // 1. Cambiar CALIBRATION_MODE = true
+    // 2. Compilar e instalar
+    // 3. Usar gestos de touch para ajustar
+    // 4. Ver LogCat con tag "CALIBRATE" para valores
+    // 5. Copiar valores al código de AbyssalLurker3D/AbyssalLeviathan3D
+    // 6. Cambiar CALIBRATION_MODE = false
+    // ═══════════════════════════════════════════════════════════════════════════
 }

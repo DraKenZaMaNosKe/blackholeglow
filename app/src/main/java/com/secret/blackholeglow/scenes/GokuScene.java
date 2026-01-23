@@ -1,15 +1,7 @@
 package com.secret.blackholeglow.scenes;
 
-import android.content.Context;
-import android.opengl.GLES30;
-import android.util.Log;
-
-import com.secret.blackholeglow.R;
-import com.secret.blackholeglow.Battery3D;
-import com.secret.blackholeglow.Clock3D;
 import com.secret.blackholeglow.EqualizerBarsDJ;
-import com.secret.blackholeglow.video.MediaCodecVideoRenderer;
-import com.secret.blackholeglow.video.VideoDownloadManager;
+import com.secret.blackholeglow.R;
 
 /**
  * ╔══════════════════════════════════════════════════════════════════════════╗
@@ -17,17 +9,25 @@ import com.secret.blackholeglow.video.VideoDownloadManager;
  * ╠══════════════════════════════════════════════════════════════════════════╣
  * ║  Video de Goku lanzando Kamehameha con ecualizador azul energía Ki.      ║
  * ║  Estilo Dragon Ball FighterZ - visual espectacular.                      ║
+ * ╠══════════════════════════════════════════════════════════════════════════╣
+ * ║                                                                          ║
+ * ║  📖 EJEMPLO DE ESCENA SIMPLE:                                            ║
+ * ║  Esta escena demuestra el uso mínimo de BaseVideoScene.                  ║
+ * ║  Solo necesita implementar 5 métodos abstractos.                         ║
+ * ║                                                                          ║
+ * ║  ✅ Video: gokufinalkamehamehaHD.mp4                                     ║
+ * ║  ✅ Tema: KAMEHAMEHA (azul/cyan/blanco - energía Ki)                     ║
+ * ║  ✅ Clock + Battery incluidos automáticamente                            ║
+ * ║                                                                          ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
+ *
+ * @see BaseVideoScene para documentación completa de la clase base
  */
-public class GokuScene extends WallpaperScene {
-    private static final String TAG = "GokuScene";
-    private static final String VIDEO_FILE = "gokufinalkamehamehaHD.mp4";
+public class GokuScene extends BaseVideoScene {
 
-    private MediaCodecVideoRenderer videoBackground;
-    private VideoDownloadManager downloadManager;
-    private EqualizerBarsDJ equalizerDJ;
-    private Clock3D clock;
-    private Battery3D battery;
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🎯 MÉTODOS OBLIGATORIOS - Configuración básica de la escena
+    // ═══════════════════════════════════════════════════════════════════════════
 
     @Override
     public String getName() {
@@ -45,192 +45,29 @@ public class GokuScene extends WallpaperScene {
     }
 
     @Override
-    protected void setupScene() {
-        Log.d(TAG, "🐉 Configurando Goku Kamehameha...");
-
-        downloadManager = VideoDownloadManager.getInstance(context);
-
-        // Video de fondo - Descargar si no existe
-        try {
-            String localPath = downloadManager.getVideoPath(VIDEO_FILE);
-
-            if (localPath == null) {
-                // Video no descargado - descargar ahora
-                Log.d(TAG, "📥 Descargando video: " + VIDEO_FILE);
-                boolean success = downloadManager.downloadVideoSync(VIDEO_FILE, percent -> {
-                    Log.d(TAG, "📥 Descarga: " + percent + "%");
-                });
-                if (success) {
-                    localPath = downloadManager.getVideoPath(VIDEO_FILE);
-                    Log.d(TAG, "✅ Video descargado: " + localPath);
-                } else {
-                    Log.e(TAG, "❌ Error descargando video");
-                    return;
-                }
-            }
-
-            if (localPath != null) {
-                Log.d(TAG, "📦 Usando video: " + localPath);
-                videoBackground = new MediaCodecVideoRenderer(context, VIDEO_FILE, localPath);
-                videoBackground.initialize();
-                Log.d(TAG, "✅ Video de Goku activado");
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Error Video: " + e.getMessage());
-        }
-
-        // 🎵 Ecualizador con tema KAMEHAMEHA (azul/cyan/blanco)
-        try {
-            equalizerDJ = new EqualizerBarsDJ();
-            equalizerDJ.initialize();
-            equalizerDJ.setTheme(EqualizerBarsDJ.Theme.KAMEHAMEHA);  // 🐉 Tema energía Ki
-            equalizerDJ.setScreenSize(screenWidth, screenHeight);
-            Log.d(TAG, "✅ Ecualizador KAMEHAMEHA activado");
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Error EqualizerBarsDJ: " + e.getMessage());
-        }
-
-        // ⏰ Reloj con tema KAMEHAMEHA (azul energía)
-        try {
-            clock = new Clock3D(context, Clock3D.THEME_KAMEHAMEHA, 0f, 0.75f);
-            clock.setShowMilliseconds(true);
-            Log.d(TAG, "✅ Reloj KAMEHAMEHA activado");
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Error Clock3D: " + e.getMessage());
-        }
-
-        // 🔋 Batería con tema KAMEHAMEHA (energía Ki)
-        try {
-            battery = new Battery3D(context, Battery3D.THEME_KAMEHAMEHA, 0.81f, -0.34f);
-            Log.d(TAG, "✅ Batería KAMEHAMEHA activada");
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Error Battery3D: " + e.getMessage());
-        }
-
-        Log.d(TAG, "🐉 Goku Kamehameha listo!");
+    protected String getVideoFileName() {
+        return "gokufinalkamehamehaHD.mp4";
     }
 
     @Override
-    protected void releaseSceneResources() {
-        if (videoBackground != null) {
-            videoBackground.release();
-            videoBackground = null;
-        }
-        if (clock != null) {
-            clock.dispose();
-            clock = null;
-        }
-        if (battery != null) {
-            battery.dispose();
-            battery = null;
-        }
-        if (equalizerDJ != null) {
-            equalizerDJ.release();
-            equalizerDJ = null;
-        }
+    protected EqualizerBarsDJ.Theme getTheme() {
+        return EqualizerBarsDJ.Theme.KAMEHAMEHA;
     }
 
-    // 🔄 Auto-recovery para video
-    private float videoCheckTimer = 0f;
-    private static final float VIDEO_CHECK_INTERVAL = 2.0f;
-    private boolean sceneIsActive = true;
-
-    @Override
-    public void update(float deltaTime) {
-        // 🔄 AUTO-RECOVERY (sin logs para mejor rendimiento)
-        if (!sceneIsActive) {
-            sceneIsActive = true;
-        }
-
-        videoCheckTimer += deltaTime;
-        if (videoCheckTimer >= VIDEO_CHECK_INTERVAL) {
-            videoCheckTimer = 0f;
-            if (videoBackground != null && !videoBackground.isPlaying()) {
-                videoBackground.resume();
-            }
-        }
-
-        if (equalizerDJ != null) equalizerDJ.update(deltaTime);
-        if (clock != null) clock.update(deltaTime);
-        if (battery != null) battery.update(deltaTime);
-        super.update(deltaTime);
-    }
-
-    @Override
-    public void draw() {
-        if (isDisposed) return;
-
-        GLES30.glClearColor(0f, 0f, 0f, 1.0f);
-        GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
-
-        // 1. Video de fondo
-        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
-        if (videoBackground != null) videoBackground.draw();
-
-        // 2. Elementos UI
-        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
-        GLES30.glEnable(GLES30.GL_BLEND);
-        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
-
-        // 4. 🎵 Ecualizador KAMEHAMEHA
-        if (equalizerDJ != null) equalizerDJ.draw();
-
-        // 4. ⏰ Reloj KAMEHAMEHA
-        if (clock != null) clock.draw();
-
-        // 5. 🔋 Batería KAMEHAMEHA
-        if (battery != null) battery.draw();
-
-        super.draw();
-    }
-
-    @Override
-    public void setScreenSize(int width, int height) {
-        super.setScreenSize(width, height);
-        if (equalizerDJ != null) equalizerDJ.setScreenSize(width, height);
-    }
-
-    public void updateMusicBands(float[] bands) {
-        if (equalizerDJ != null && bands != null && bands.length > 0) {
-            float sum = 0;
-            for (float b : bands) sum += b;
-            if (sum > 0.1f) {
-                Log.d(TAG, "🎵 Datos música: sum=" + sum);
-            }
-            equalizerDJ.updateFromBands(bands);
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // ⏸️▶️ PAUSE/RESUME
-    // ═══════════════════════════════════════════════════════════════════════
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        sceneIsActive = false;
-        videoCheckTimer = 0f;
-
-        if (videoBackground != null) {
-            videoBackground.pause();
-            Log.d(TAG, "⏸️ Video de Goku PAUSADO");
-        }
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        sceneIsActive = true;
-        videoCheckTimer = 0f;
-
-        if (videoBackground != null) {
-            videoBackground.resume();
-            Log.d(TAG, "▶️ Video de Goku REANUDADO");
-        }
-    }
-
-    @Override
-    public boolean onTouchEvent(float normalizedX, float normalizedY, int action) {
-        return false;
-    }
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 📝 NOTA PARA CLAUDE CODE:
+    // ═══════════════════════════════════════════════════════════════════════════
+    //
+    // Esta escena es un ejemplo MINIMALISTA de BaseVideoScene.
+    // Todo lo demás (video, ecualizador, clock, battery, pause/resume,
+    // auto-recovery, liberación de recursos) se hereda automáticamente.
+    //
+    // Si necesitas agregar objetos 3D adicionales, usa los hooks:
+    // - setupSceneSpecific()
+    // - updateSceneSpecific(float deltaTime)
+    // - drawSceneSpecific()
+    // - releaseSceneSpecificResources()
+    //
+    // Ver WalkingDeadScene para un ejemplo con objetos 3D adicionales.
+    // ═══════════════════════════════════════════════════════════════════════════
 }
