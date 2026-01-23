@@ -601,6 +601,12 @@ public class DeLorean3D implements SceneObject, CameraAware {
             GLES30.glDeleteProgram(shaderProgram);
             shaderProgram = 0;
         }
+        // 🔧 FIX: Liberar textura
+        if (textureId != 0) {
+            int[] textures = {textureId};
+            GLES30.glDeleteTextures(1, textures, 0);
+            textureId = 0;
+        }
         // Imprimir valores finales al liberar
         if (adjustEnabled) {
             printFinalValues();

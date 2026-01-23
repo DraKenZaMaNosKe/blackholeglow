@@ -142,6 +142,15 @@ public class TextureManager implements TextureLoader {
 
         textureCache.clear();
         fileTextureCache.clear();
+
+        // 🛡️ Liberar textura de fallback
+        if (fallbackTextureId != 0) {
+            int[] textures = {fallbackTextureId};
+            GLES30.glDeleteTextures(1, textures, 0);
+            fallbackTextureId = 0;
+            Log.d("TextureManager", "🛡️ Textura de fallback liberada");
+        }
+
         initialized = false;
         Log.d("TextureManager", "✅ Todas las texturas liberadas");
     }

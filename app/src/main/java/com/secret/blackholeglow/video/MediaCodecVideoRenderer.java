@@ -47,8 +47,8 @@ public class MediaCodecVideoRenderer {
     private Surface surface;
     private int videoTextureId = -1;
 
-    // Estado
-    private boolean isInitialized = false;
+    // Estado (volatile para thread-safety)
+    private volatile boolean isInitialized = false;
     private volatile boolean isRunning = false;
     private Thread decoderThread;
 

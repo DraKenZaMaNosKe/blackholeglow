@@ -457,4 +457,125 @@ public final class SceneConstants {
         /** Alpha cuando está en respawn (semi-transparente) */
         public static final float RESPAWN_ALPHA = 0.3f;
     }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 🧟 ZOMBIE HEAD 3D - Cabeza zombi colgante (Walking Dead Scene)
+    // ═══════════════════════════════════════════════════════════════════
+
+    public static final class ZombieHead {
+        /** Posición X (izquierda del centro) */
+        public static final float POSITION_X = -0.44f;
+        /** Posición Y (arriba, colgando) */
+        public static final float POSITION_Y = 2.21f;
+        /** Posición Z (profundidad) */
+        public static final float POSITION_Z = -1.94f;
+        /** Escala del modelo */
+        public static final float SCALE = 0.77f;
+
+        /** Rotación base X */
+        public static final float ROTATION_X = 0f;
+        /** Rotación base Y (casi de frente) */
+        public static final float ROTATION_Y = 1f;
+        /** Rotación base Z */
+        public static final float ROTATION_Z = 0f;
+
+        /** Velocidad de balanceo */
+        public static final float SWING_SPEED = 0.8f;
+        /** Ángulo de balanceo X (grados) */
+        public static final float SWING_ANGLE_X = 5f;
+        /** Ángulo de balanceo Z (grados) */
+        public static final float SWING_ANGLE_Z = 8f;
+
+        /** Sensibilidad del giroscopio */
+        public static final float GYRO_SENSITIVITY = 80f;
+        /** Ángulo máximo del giroscopio */
+        public static final float GYRO_MAX_ANGLE = 40f;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 🧟 ZOMBIE BODY 3D - Cuerpo zombi trepando (Walking Dead Scene)
+    // ═══════════════════════════════════════════════════════════════════
+
+    public static final class ZombieBody {
+        /** Posición X (ligeramente a la derecha) */
+        public static final float POSITION_X = 0.63f;
+        /** Posición Y (asomando desde abajo) */
+        public static final float POSITION_Y = -2.29f;
+        /** Posición Z (cerca de cámara) */
+        public static final float POSITION_Z = -0.32f;
+        /** Escala del modelo (grande) */
+        public static final float SCALE = 2.38f;
+
+        /** Rotación base X */
+        public static final float ROTATION_X = 7.5f;
+        /** Rotación base Y (girado hacia la izquierda) */
+        public static final float ROTATION_Y = -14.0f;
+        /** Rotación base Z */
+        public static final float ROTATION_Z = 3.4f;
+
+        /** Velocidad de respiración */
+        public static final float BREATH_SPEED = 0.4f;
+        /** Escala de respiración */
+        public static final float BREATH_SCALE = 0.008f;
+        /** Velocidad de temblor */
+        public static final float TREMBLE_SPEED = 2.0f;
+        /** Cantidad de temblor */
+        public static final float TREMBLE_AMOUNT = 0.15f;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 🗡️ LINK 3D - Modelo de Link (Zelda BOTW Scene)
+    // ═══════════════════════════════════════════════════════════════════
+
+    public static final class Link {
+        /** Posición X (centro) */
+        public static final float POSITION_X = 0f;
+        /** Posición Y (hacia abajo) */
+        public static final float POSITION_Y = -0.5f;
+        /** Posición Z */
+        public static final float POSITION_Z = 0f;
+        /** Escala del modelo */
+        public static final float SCALE = 1.5f;
+
+        /** Rotación Y (mirando hacia la cámara) */
+        public static final float ROTATION_Y = 180f;
+        /** Velocidad de rotación automática (0 = sin rotación) */
+        public static final float ROTATION_SPEED = 0f;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 🚗 DELOREAN 3D - DeLorean en la carretera (NeonCity Scene)
+    // ═══════════════════════════════════════════════════════════════════
+
+    public static final class DeLorean {
+        /** Posición X */
+        public static final float POSITION_X = -0.52f;
+        /** Posición Y (sobre la carretera, abajo) */
+        public static final float POSITION_Y = -4.98f;
+        /** Posición Z (profundidad) */
+        public static final float POSITION_Z = 0.21f;
+        /** Escala del modelo */
+        public static final float SCALE = 0.77f;
+
+        /** Rotación base X (inclinación) */
+        public static final float ROTATION_X = 0.8f;
+        /** Rotación base Y (orientación horizontal) */
+        public static final float ROTATION_Y = -55.3f;
+        /** Rotación base Z (rotación volante) */
+        public static final float ROTATION_Z = 36.0f;
+
+        /** Velocidad del wobble (micro-movimientos) */
+        public static final float WOBBLE_SPEED = 1.5f;
+        /** Cantidad de wobble X */
+        public static final float WOBBLE_X = 0.015f;
+        /** Cantidad de wobble Y */
+        public static final float WOBBLE_Y = 0.008f;
+        /** Cantidad de wobble rotación */
+        public static final float WOBBLE_ROT = 0.8f;
+
+        /** Velocidad de balanceo */
+        public static final float BOB_SPEED = 2.0f;
+        /** Cantidad de balanceo */
+        public static final float BOB_AMOUNT = 0.02f;
+    }
 }
