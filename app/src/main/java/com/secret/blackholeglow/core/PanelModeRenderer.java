@@ -1,14 +1,23 @@
 package com.secret.blackholeglow.core;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.opengl.GLES30;
+import android.opengl.GLUtils;
 import android.util.Log;
 
 import com.secret.blackholeglow.ArcaneGrimoire;
 import com.secret.blackholeglow.LoadingBar;
 import com.secret.blackholeglow.OrbixGreeting;
-import com.secret.blackholeglow.video.MediaCodecVideoRenderer;
-import com.secret.blackholeglow.video.VideoDownloadManager;
+import com.secret.blackholeglow.R;
+import com.secret.blackholeglow.WallpaperPreferences;
+import com.secret.blackholeglow.models.WallpaperItem;
+import com.secret.blackholeglow.systems.WallpaperCatalog;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
 
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
@@ -16,24 +25,58 @@ import com.secret.blackholeglow.video.VideoDownloadManager;
  * ║            Renderizador de UI del Panel de Control               ║
  * ╠══════════════════════════════════════════════════════════════════╣
  * ║  COMPONENTES:                                                    ║
- * ║  • Video de fondo: The House (cabaña acogedora con chimenea)     ║
+ * ║  • Imagen de fondo: Preview del wallpaper seleccionado           ║
  * ║  • ArcaneGrimoire: Libro mágico 3D flotante (toca para iniciar)  ║
  * ║  • OrbixGreeting: Saludo + reloj + cuenta regresiva              ║
  * ║  • LoadingBar: Barra de carga                                    ║
+ * ╠══════════════════════════════════════════════════════════════════╣
+ * ║  OPTIMIZACIÓN v5.0.7:                                            ║
+ * ║  • Eliminado video de fondo (thehouse.mp4)                       ║
+ * ║  • Reemplazado por imagen estática del preview                   ║
+ * ║  • Ahorro: ~30MB GPU, ~20% CPU, mejor batería                    ║
  * ╚══════════════════════════════════════════════════════════════════╝
  */
 public class PanelModeRenderer {
     private static final String TAG = "PanelModeRenderer";
 
-    // Video de fondo del panel
-    private static final String PANEL_VIDEO_FILE = "thehouse.mp4";
-    private MediaCodecVideoRenderer videoBackground;
-    private VideoDownloadManager videoDownloadManager;
-    private boolean videoReady = false;
-    private boolean videoDownloading = false;
-    private int downloadProgress = 0;
+    // ═══════════════════════════════════════════════════════════════
+    // 🖼️ FONDO ESTÁTICO (Preview del wallpaper seleccionado)
+    // ═══════════════════════════════════════════════════════════════
+    private int bgShaderProgram = 0;
+    private int bgTextureId = 0;
+    private int bgAPositionLoc = -1;
+    private int bgATexCoordLoc = -1;
+    private int bgUTextureLoc = -1;
+    private int bgUAlphaLoc = -1;
+    private int bgUDarkenLoc = -1;
+    private FloatBuffer bgVertexBuffer;
+    private boolean backgroundLoaded = false;
+    private int currentPreviewResourceId = 0;
+    private float bgDarkenAmount = 0.25f;  // Oscurecer 25% para que el libro resalte
 
-    // Componentes UI estándar
+    // Shaders para el fondo
+    private static final String BG_VERTEX_SHADER =
+        "attribute vec2 a_Position;\n" +
+        "attribute vec2 a_TexCoord;\n" +
+        "varying vec2 v_TexCoord;\n" +
+        "void main() {\n" +
+        "    v_TexCoord = a_TexCoord;\n" +
+        "    gl_Position = vec4(a_Position, 0.0, 1.0);\n" +
+        "}\n";
+
+    private static final String BG_FRAGMENT_SHADER =
+        "precision mediump float;\n" +
+        "varying vec2 v_TexCoord;\n" +
+        "uniform sampler2D u_Texture;\n" +
+        "uniform float u_Alpha;\n" +
+        "uniform float u_Darken;\n" +
+        "void main() {\n" +
+        "    vec4 texColor = texture2D(u_Texture, v_TexCoord);\n" +
+        "    vec3 darkened = texColor.rgb * (1.0 - u_Darken);\n" +
+        "    gl_FragColor = vec4(darkened, texColor.a * u_Alpha);\n" +
+        "}\n";
+
+    // Componentes UI
     private ArcaneGrimoire grimoire;
     private OrbixGreeting orbixGreeting;
     private LoadingBar loadingBar;
@@ -43,6 +86,7 @@ public class PanelModeRenderer {
     private final Context context;
     private boolean greetingEnabled = true;
     private int screenWidth, screenHeight;
+    private float backgroundAlpha = 1.0f;
 
     // Listener para eventos de carga
     public interface LoadingCompleteListener {
@@ -62,17 +106,8 @@ public class PanelModeRenderer {
 
         Log.d(TAG, "🎛️ Inicializando Panel de Control...");
 
-        // VideoDownloadManager
-        videoDownloadManager = VideoDownloadManager.getInstance(context);
-
-        // Verificar si el video ya está descargado
-        if (videoDownloadManager.isVideoAvailable(PANEL_VIDEO_FILE)) {
-            Log.d(TAG, "🎬 Video de panel ya disponible");
-            initializeVideoBackground();
-        } else {
-            Log.d(TAG, "📥 Descargando video de panel...");
-            startVideoDownload();
-        }
+        // Cargar preview del wallpaper seleccionado como fondo
+        loadSelectedWallpaperPreview();
 
         // ArcaneGrimoire - Libro mágico 3D
         grimoire = new ArcaneGrimoire(context);
@@ -94,121 +129,140 @@ public class PanelModeRenderer {
         Log.d(TAG, "📊 LoadingBar inicializado");
 
         initialized = true;
-        Log.d(TAG, "✅ Panel de Control inicializado");
-    }
-
-    // ⚡ Retry para video que falla al cargar
-    private int videoRetryCount = 0;
-    private static final int MAX_VIDEO_RETRIES = 3;
-    private static final long VIDEO_RETRY_DELAY_MS = 500;
-
-    /**
-     * Inicializa el video de fondo una vez descargado
-     */
-    private void initializeVideoBackground() {
-        String videoPath = videoDownloadManager.getVideoPath(PANEL_VIDEO_FILE);
-        if (videoPath == null) {
-            Log.e(TAG, "❌ Video path es null");
-            // ⚡ RETRY: Si el path es null pero el archivo debería existir, reintentar
-            if (videoRetryCount < MAX_VIDEO_RETRIES) {
-                videoRetryCount++;
-                Log.w(TAG, "⚡ Reintentando cargar video en " + VIDEO_RETRY_DELAY_MS + "ms (intento " + videoRetryCount + "/" + MAX_VIDEO_RETRIES + ")");
-                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                    pendingVideoInit = true;  // Reintentar en siguiente frame GL
-                }, VIDEO_RETRY_DELAY_MS);
-            }
-            return;
-        }
-
-        try {
-            videoBackground = new MediaCodecVideoRenderer(context, PANEL_VIDEO_FILE, videoPath);
-            videoBackground.initialize();
-            if (screenWidth > 0 && screenHeight > 0) {
-                videoBackground.setScreenSize(screenWidth, screenHeight);
-            }
-            videoReady = true;
-            videoRetryCount = 0;  // Reset retry counter on success
-            Log.d(TAG, "🎬 Video de fondo inicializado: " + videoPath);
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Error inicializando video: " + e.getMessage());
-            // ⚡ RETRY: Si falla la inicialización, reintentar
-            if (videoRetryCount < MAX_VIDEO_RETRIES) {
-                videoRetryCount++;
-                Log.w(TAG, "⚡ Reintentando cargar video en " + VIDEO_RETRY_DELAY_MS + "ms (intento " + videoRetryCount + "/" + MAX_VIDEO_RETRIES + ")");
-                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                    pendingVideoInit = true;
-                }, VIDEO_RETRY_DELAY_MS);
-            }
-        }
+        Log.d(TAG, "✅ Panel de Control inicializado (sin video, con preview estático)");
     }
 
     /**
-     * Inicia la descarga del video de fondo
+     * 🖼️ Carga el preview del wallpaper actualmente seleccionado
      */
-    private void startVideoDownload() {
-        videoDownloading = true;
-        downloadProgress = 0;
+    private void loadSelectedWallpaperPreview() {
+        String selectedScene = WallpaperPreferences.getInstance(context).getSelectedWallpaperSync();
 
-        videoDownloadManager.downloadVideo(PANEL_VIDEO_FILE, new VideoDownloadManager.DownloadCallback() {
-            @Override
-            public void onProgress(int percent, long downloadedBytes, long totalBytes) {
-                downloadProgress = percent;
-                Log.d(TAG, "📥 Descargando video: " + percent + "%");
-            }
+        if (selectedScene == null || selectedScene.isEmpty()) {
+            selectedScene = "ABYSSIA"; // Default
+        }
 
-            @Override
-            public void onComplete(String filePath) {
-                Log.d(TAG, "✅ Video descargado: " + filePath);
-                videoDownloading = false;
-                // Inicializar video en el siguiente frame (desde GL thread)
-                pendingVideoInit = true;
-            }
+        WallpaperItem item = WallpaperCatalog.get().getBySceneName(selectedScene);
 
-            @Override
-            public void onError(String message) {
-                Log.e(TAG, "❌ Error descargando video: " + message);
-                videoDownloading = false;
-            }
-        });
+        if (item != null) {
+            currentPreviewResourceId = item.getResourceIdPreview();
+            Log.d(TAG, "🖼️ Preview seleccionado: " + selectedScene + " -> " + currentPreviewResourceId);
+        } else {
+            currentPreviewResourceId = R.drawable.preview_oceano_sc; // Fallback
+            Log.w(TAG, "⚠️ Wallpaper no encontrado, usando fallback");
+        }
+
+        backgroundLoaded = false; // Forzar recarga en GL thread
     }
 
-    // Flag para inicializar video desde GL thread
-    private volatile boolean pendingVideoInit = false;
+    /**
+     * 🖼️ Actualiza el fondo cuando cambia el wallpaper seleccionado
+     */
+    public void updateBackgroundForSelectedWallpaper() {
+        loadSelectedWallpaperPreview();
+    }
+
+    /**
+     * 🖼️ Inicializa los recursos OpenGL del fondo (llamar desde GL thread)
+     */
+    private void initBackgroundOpenGL() {
+        if (currentPreviewResourceId == 0 || backgroundLoaded) return;
+
+        // Liberar textura anterior si existe
+        if (bgTextureId != 0) {
+            int[] textures = {bgTextureId};
+            GLES30.glDeleteTextures(1, textures, 0);
+            bgTextureId = 0;
+        }
+
+        // Crear shader program (solo la primera vez)
+        if (bgShaderProgram == 0) {
+            int vs = compileShader(GLES30.GL_VERTEX_SHADER, BG_VERTEX_SHADER);
+            int fs = compileShader(GLES30.GL_FRAGMENT_SHADER, BG_FRAGMENT_SHADER);
+            if (vs == 0 || fs == 0) {
+                Log.e(TAG, "Error compilando shaders de fondo");
+                return;
+            }
+
+            bgShaderProgram = GLES30.glCreateProgram();
+            GLES30.glAttachShader(bgShaderProgram, vs);
+            GLES30.glAttachShader(bgShaderProgram, fs);
+            GLES30.glLinkProgram(bgShaderProgram);
+
+            bgAPositionLoc = GLES30.glGetAttribLocation(bgShaderProgram, "a_Position");
+            bgATexCoordLoc = GLES30.glGetAttribLocation(bgShaderProgram, "a_TexCoord");
+            bgUTextureLoc = GLES30.glGetUniformLocation(bgShaderProgram, "u_Texture");
+            bgUAlphaLoc = GLES30.glGetUniformLocation(bgShaderProgram, "u_Alpha");
+            bgUDarkenLoc = GLES30.glGetUniformLocation(bgShaderProgram, "u_Darken");
+
+            // Vertex buffer para fullscreen quad
+            float[] vertices = {
+                -1f, -1f,  0f, 1f,   // Bottom-left
+                 1f, -1f,  1f, 1f,   // Bottom-right
+                -1f,  1f,  0f, 0f,   // Top-left
+                 1f,  1f,  1f, 0f    // Top-right
+            };
+
+            ByteBuffer bb = ByteBuffer.allocateDirect(vertices.length * 4);
+            bb.order(ByteOrder.nativeOrder());
+            bgVertexBuffer = bb.asFloatBuffer();
+            bgVertexBuffer.put(vertices);
+            bgVertexBuffer.position(0);
+
+            GLES30.glDeleteShader(vs);
+            GLES30.glDeleteShader(fs);
+        }
+
+        // Cargar textura del preview
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inScaled = false;
+        Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), currentPreviewResourceId, options);
+
+        if (bitmap != null) {
+            int[] textures = new int[1];
+            GLES30.glGenTextures(1, textures, 0);
+            bgTextureId = textures[0];
+
+            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, bgTextureId);
+            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
+            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
+            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
+            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
+
+            GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0);
+            bitmap.recycle();
+
+            Log.d(TAG, "✅ Fondo cargado: textureId=" + bgTextureId);
+        } else {
+            Log.e(TAG, "❌ Error cargando bitmap del preview");
+        }
+
+        backgroundLoaded = true;
+    }
+
+    private int compileShader(int type, String source) {
+        int shader = GLES30.glCreateShader(type);
+        GLES30.glShaderSource(shader, source);
+        GLES30.glCompileShader(shader);
+
+        int[] compiled = new int[1];
+        GLES30.glGetShaderiv(shader, GLES30.GL_COMPILE_STATUS, compiled, 0);
+        if (compiled[0] == 0) {
+            Log.e(TAG, "Error compilando shader: " + GLES30.glGetShaderInfoLog(shader));
+            GLES30.glDeleteShader(shader);
+            return 0;
+        }
+        return shader;
+    }
 
     // ═══════════════════════════════════════════════════════════════
     // 🔄 UPDATE
     // ═══════════════════════════════════════════════════════════════
 
-    // 🔧 Auto-recovery para video del panel (Android visibility callbacks son unreliable)
-    private boolean panelIsActive = true;
-    private float videoCheckTimer = 0f;
-    private static final float VIDEO_CHECK_INTERVAL = 2.0f; // Revisar cada 2 segundos
-
     public void updatePanelMode(float deltaTime) {
-        // Inicializar video si está pendiente (debe hacerse en GL thread)
-        if (pendingVideoInit) {
-            pendingVideoInit = false;
-            initializeVideoBackground();
-        }
-
-        // 🔧 AUTO-FIX: Si updatePanelMode() se llama, el panel ESTÁ activo
-        // Android a veces no llama onResume correctamente
-        if (!panelIsActive) {
-            Log.w(TAG, "🔧 Auto-fix: updatePanelMode() llamado pero panelIsActive=false, corrigiendo...");
-            panelIsActive = true;
-        }
-
-        // 🔧 AUTO-RECOVERY: Verificar periódicamente si video está reproduciendo
-        if (panelIsActive && videoBackground != null && videoReady) {
-            videoCheckTimer += deltaTime;
-            if (videoCheckTimer >= VIDEO_CHECK_INTERVAL) {
-                videoCheckTimer = 0f;
-                // Si el video no está reproduciendo pero debería, reanudarlo
-                if (!videoBackground.isPlaying()) {
-                    Log.w(TAG, "🔧 Auto-recovery: Video del panel detenido, reanudando...");
-                    videoBackground.resume();
-                }
-            }
+        // Inicializar fondo si está pendiente (debe hacerse en GL thread)
+        if (!backgroundLoaded && currentPreviewResourceId != 0) {
+            initBackgroundOpenGL();
         }
 
         if (grimoire != null) {
@@ -236,15 +290,42 @@ public class PanelModeRenderer {
     // 🎨 DRAW
     // ═══════════════════════════════════════════════════════════════
 
-    public void drawPanelMode() {
-        // 1. Dibujar video de fondo (si está listo)
-        if (videoReady && videoBackground != null) {
-            GLES30.glDisable(GLES30.GL_DEPTH_TEST);
-            GLES30.glDisable(GLES30.GL_BLEND);
-            videoBackground.draw();
-        }
+    /**
+     * 🖼️ Dibuja el fondo (preview del wallpaper)
+     */
+    private void drawBackground() {
+        if (!backgroundLoaded || bgShaderProgram == 0 || bgTextureId == 0) return;
 
-        // 2. Dibujar UI encima del video
+        GLES30.glUseProgram(bgShaderProgram);
+
+        GLES30.glUniform1f(bgUAlphaLoc, backgroundAlpha);
+        GLES30.glUniform1f(bgUDarkenLoc, bgDarkenAmount);
+
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, bgTextureId);
+        GLES30.glUniform1i(bgUTextureLoc, 0);
+
+        GLES30.glEnableVertexAttribArray(bgAPositionLoc);
+        GLES30.glEnableVertexAttribArray(bgATexCoordLoc);
+
+        bgVertexBuffer.position(0);
+        GLES30.glVertexAttribPointer(bgAPositionLoc, 2, GLES30.GL_FLOAT, false, 16, bgVertexBuffer);
+        bgVertexBuffer.position(2);
+        GLES30.glVertexAttribPointer(bgATexCoordLoc, 2, GLES30.GL_FLOAT, false, 16, bgVertexBuffer);
+
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
+
+        GLES30.glDisableVertexAttribArray(bgAPositionLoc);
+        GLES30.glDisableVertexAttribArray(bgATexCoordLoc);
+    }
+
+    public void drawPanelMode() {
+        // 1. Dibujar fondo (preview del wallpaper)
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+        GLES30.glDisable(GLES30.GL_BLEND);
+        drawBackground();
+
+        // 2. Dibujar UI encima del fondo
         GLES30.glDisable(GLES30.GL_DEPTH_TEST);
         GLES30.glEnable(GLES30.GL_BLEND);
         GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
@@ -280,17 +361,7 @@ public class PanelModeRenderer {
     // 🔄 TRANSICIONES
     // ═══════════════════════════════════════════════════════════════
 
-    /**
-     * Inicia la pantalla de carga con el tema del wallpaper
-     * @param sceneName ID de la escena (para SceneFactory)
-     * @param displayName Nombre bonito del wallpaper (ej: "ABYSSIA")
-     * @param glowColor Color glow del wallpaper
-     */
     public void onStartLoading(String sceneName, String displayName, int glowColor) {
-        // 🔴 CRÍTICO: Pausar video del panel ANTES de iniciar carga
-        // Esto libera CPU para la descarga/inicialización del wallpaper
-        pause();
-
         if (orbixGreeting != null) {
             orbixGreeting.hide();
         }
@@ -305,7 +376,6 @@ public class PanelModeRenderer {
     }
 
     public void onStartLoading(String sceneName) {
-        // Fallback con colores por defecto
         onStartLoading(sceneName, sceneName, 0xFF00D4FF);
     }
 
@@ -317,26 +387,21 @@ public class PanelModeRenderer {
         Log.d(TAG, "🎬 Wallpaper activado");
         if (orbixGreeting != null) orbixGreeting.hide();
 
-        // 🔴 OPTIMIZACIÓN: Liberar recursos del panel para ahorrar ~40-50 MB GPU
-        // El panel no se necesita mientras el wallpaper está activo
+        // Liberar recursos del panel para ahorrar memoria
         releaseForWallpaperMode();
     }
 
-    /**
-     * 🔧 OPTIMIZACIÓN MEMORIA: Libera recursos GPU del panel cuando wallpaper está activo.
-     * Ahorra ~40-50 MB de memoria GPU que no se necesitan durante reproducción.
-     * Los recursos se recargan automáticamente al volver al panel.
-     */
     private void releaseForWallpaperMode() {
         Log.d(TAG, "🧹 Liberando recursos del panel para wallpaper mode...");
 
-        // Liberar video de fondo (~20-30 MB GPU)
-        if (videoBackground != null) {
-            videoBackground.release();
-            videoBackground = null;
-            Log.d(TAG, "  ✓ Video de panel liberado");
+        // Liberar textura de fondo (~5-10 MB GPU)
+        if (bgTextureId != 0) {
+            int[] textures = {bgTextureId};
+            GLES30.glDeleteTextures(1, textures, 0);
+            bgTextureId = 0;
+            Log.d(TAG, "  ✓ Textura de fondo liberada");
         }
-        videoReady = false;
+        backgroundLoaded = false;
 
         // Liberar grimoire (~20 MB GPU)
         if (grimoire != null) {
@@ -345,8 +410,7 @@ public class PanelModeRenderer {
             Log.d(TAG, "  ✓ Grimoire liberado");
         }
 
-        panelIsActive = false;
-        Log.d(TAG, "✅ Recursos del panel liberados - ~40-50 MB GPU recuperados");
+        Log.d(TAG, "✅ Recursos del panel liberados - ~25-30 MB GPU recuperados");
     }
 
     public void onReturnToPanel() {
@@ -355,24 +419,15 @@ public class PanelModeRenderer {
             orbixGreeting.show();
         }
 
-        // 🔴 OPTIMIZACIÓN: Recargar recursos del panel que fueron liberados
+        // Recargar recursos del panel
         reloadForPanelMode();
     }
 
-    /**
-     * 🔧 OPTIMIZACIÓN MEMORIA: Recarga recursos GPU del panel al volver de wallpaper.
-     * Solo se ejecuta si los recursos fueron previamente liberados.
-     */
     private void reloadForPanelMode() {
         Log.d(TAG, "🔄 Recargando recursos del panel...");
 
-        // Recargar video de fondo
-        if (videoBackground == null && videoDownloadManager != null) {
-            if (videoDownloadManager.isVideoAvailable(PANEL_VIDEO_FILE)) {
-                Log.d(TAG, "  🎬 Recargando video de panel...");
-                initializeVideoBackground();
-            }
-        }
+        // Recargar preview del wallpaper seleccionado (puede haber cambiado)
+        loadSelectedWallpaperPreview();
 
         // Recargar grimoire
         if (grimoire == null) {
@@ -385,14 +440,6 @@ public class PanelModeRenderer {
             }
         }
 
-        panelIsActive = true;
-        videoCheckTimer = 0f;
-
-        // Reanudar video si está listo
-        if (videoBackground != null && videoReady) {
-            videoBackground.resume();
-        }
-
         Log.d(TAG, "✅ Recursos del panel recargados");
     }
 
@@ -401,11 +448,10 @@ public class PanelModeRenderer {
     // ═══════════════════════════════════════════════════════════════
 
     public boolean isPlayButtonTouched(float nx, float ny) {
-        // Grimoire touch detection - toca el libro para activar
         if (grimoire != null) {
             return grimoire.isInside(nx, ny);
         }
-        return true;  // Fallback: cualquier toque
+        return true;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -417,12 +463,6 @@ public class PanelModeRenderer {
         this.screenHeight = height;
         float aspectRatio = (float) width / height;
 
-        // Video de fondo
-        if (videoBackground != null) {
-            videoBackground.setScreenSize(width, height);
-        }
-
-        // Grimoire
         if (grimoire != null) {
             grimoire.setScreenSize(width, height);
             grimoire.setAspectRatio(aspectRatio);
@@ -465,40 +505,32 @@ public class PanelModeRenderer {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // ⏸️ PAUSE / RESUME - Ahorra batería cuando app en background
+    // ⏸️ PAUSE / RESUME - Ya no hay video, métodos simplificados
     // ═══════════════════════════════════════════════════════════════
 
-    /**
-     * Pausa el video de fondo cuando el wallpaper no es visible
-     * Importante para ahorrar batería y CPU cuando el usuario cambia de app
-     */
     public void pause() {
-        panelIsActive = false;
-        if (videoBackground != null && videoReady) {
-            videoBackground.pause();
-            Log.d(TAG, "⏸️ Video de panel pausado");
-        }
+        // Sin video, no hay nada que pausar
+        Log.d(TAG, "⏸️ Panel pausado (sin video)");
     }
 
-    /**
-     * Reanuda el video de fondo cuando el wallpaper vuelve a ser visible
-     */
     public void resume() {
-        panelIsActive = true;
-        videoCheckTimer = 0f; // Reset timer para check inmediato
-        if (videoBackground != null && videoReady) {
-            videoBackground.resume();
-            Log.d(TAG, "▶️ Video de panel reanudado");
-        }
+        // Sin video, no hay nada que reanudar
+        Log.d(TAG, "▶️ Panel reanudado (sin video)");
     }
 
     public void release() {
-        // Liberar video de fondo
-        if (videoBackground != null) {
-            videoBackground.release();
-            videoBackground = null;
+        // Liberar textura de fondo
+        if (bgTextureId != 0) {
+            int[] textures = {bgTextureId};
+            GLES30.glDeleteTextures(1, textures, 0);
+            bgTextureId = 0;
         }
-        videoReady = false;
+
+        // Liberar shader
+        if (bgShaderProgram != 0) {
+            GLES30.glDeleteProgram(bgShaderProgram);
+            bgShaderProgram = 0;
+        }
 
         if (grimoire != null) {
             grimoire.release();
@@ -514,23 +546,23 @@ public class PanelModeRenderer {
     }
 
     /**
-     * @return true si el video de fondo está listo para reproducir
+     * @return true siempre (ya no hay video que esperar)
      */
     public boolean isVideoReady() {
-        return videoReady;
+        return true; // Imagen siempre lista
     }
 
     /**
-     * @return progreso de descarga del video (0-100)
+     * @return 100 siempre (ya no hay descarga de video)
      */
     public int getDownloadProgress() {
-        return downloadProgress;
+        return 100;
     }
 
     /**
-     * @return true si el video se está descargando
+     * @return false siempre (ya no hay descarga de video)
      */
     public boolean isVideoDownloading() {
-        return videoDownloading;
+        return false;
     }
 }

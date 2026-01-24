@@ -46,14 +46,6 @@ public class VideoConfig {
             1
         ));
 
-        // Panel de Control - The House (cabaña acogedora con chimenea)
-        VIDEOS.put("thehouse.mp4", new ResourceInfo(
-            SUPABASE_VIDEOS_URL + "thehouse.mp4",
-            10_235_904L,  // 9.76 MB
-            "The House",
-            1
-        ));
-
         // GokuScene - Kamehameha Final HD
         VIDEOS.put("gokufinalkamehamehaHD.mp4", new ResourceInfo(
             SUPABASE_VIDEOS_URL + "gokufinalkamehamehaHD.mp4",

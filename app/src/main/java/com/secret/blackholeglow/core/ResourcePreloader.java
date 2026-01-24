@@ -34,9 +34,8 @@ public class ResourcePreloader {
     // ═══════════════════════════════════════════════════════════════════════
     // 🏠 RECURSOS DEL PANEL - NUNCA SE ELIMINAN
     // ═══════════════════════════════════════════════════════════════════════
-    private static final List<String> PANEL_VIDEOS = Arrays.asList(
-        "thehouse.mp4"  // Video de fondo del panel
-    );
+    // NOTA: Video del panel (thehouse.mp4) eliminado en v5.0.7
+    // Ahora se usa imagen estática del preview del wallpaper seleccionado
 
     private static final List<String> PANEL_IMAGES = Arrays.asList(
         "grimoire_texture.png",  // Textura del grimorio
@@ -160,16 +159,13 @@ public class ResourcePreloader {
     public void preparePanelTasks() {
         tasks.clear();
 
-        // 1. VIDEO - Fondo del panel (thehouse.mp4)
-        addVideoDownloadTask("Video Panel", "thehouse.mp4", 8);
-
-        // 2. Modelo 3D del Grimorio (libro mágico)
+        // 1. Modelo 3D del Grimorio (libro mágico)
         addModelDownloadTask("Modelo Grimorio", "grimoire.obj", 3);
 
-        // 3. Textura del Grimorio
+        // 2. Textura del Grimorio
         addImageDownloadTask("Textura Grimorio", "grimoire_texture.png", 5);
 
-        // 4. Texturas del LikeButton (usadas en todas las escenas)
+        // 3. Texturas del LikeButton (usadas en todas las escenas)
         addImageDownloadTask("Huevo Zerg", "huevo_zerg.png", 1);
         addImageDownloadTask("Orbe de Fuego", "fire_orb.png", 1);
 
@@ -198,8 +194,8 @@ public class ResourcePreloader {
         List<String> sceneModels = getSceneModels(currentScene);
 
         // Combinar con recursos del panel (siempre se mantienen)
-        List<String> keepVideos = new ArrayList<>(PANEL_VIDEOS);
-        keepVideos.addAll(sceneVideos);
+        // NOTA: Ya no hay video del panel (thehouse.mp4 eliminado en v5.0.7)
+        List<String> keepVideos = new ArrayList<>(sceneVideos);
 
         List<String> keepImages = new ArrayList<>(PANEL_IMAGES);
         keepImages.addAll(sceneImages);

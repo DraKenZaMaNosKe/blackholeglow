@@ -53,10 +53,11 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
     private final OnWallpaperClickListener listener; // callback al aplicar fondo
 
     // ╔═════════════════════════════════════════════════════════════════╗
-    // ║  📹 Estado del video del panel de control                       ║
-    // ║  Los botones están DESHABILITADOS hasta que el video esté listo ║
+    // ║  📦 Estado de recursos del panel de control                     ║
+    // ║  Botones DESHABILITADOS hasta que los recursos estén listos     ║
+    // ║  (grimoire.obj, texturas) - Video eliminado en v5.0.7           ║
     // ╚═════════════════════════════════════════════════════════════════╝
-    private boolean isPanelVideoReady = false;
+    private boolean isPanelResourcesReady = false;
     private int downloadProgress = 0;
     private boolean downloadFailed = false;  // ⚠️ Estado de error en descarga
 
@@ -85,30 +86,30 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
     }
 
     /**
-     * Constructor con estado del video del panel.
-     * @param isPanelVideoReady true si el video del panel ya está descargado
+     * Constructor con estado de recursos del panel.
+     * @param isPanelResourcesReady true si los recursos del panel están listos (grimoire, texturas)
      */
     public WallpaperAdapter(Context context, List<WallpaperItem> wallpapers,
-                            OnWallpaperClickListener listener, boolean isPanelVideoReady) {
+                            OnWallpaperClickListener listener, boolean isPanelResourcesReady) {
         this.context = context;
         this.wallpapers = wallpapers;
         this.listener = listener;
-        this.isPanelVideoReady = isPanelVideoReady;
+        this.isPanelResourcesReady = isPanelResourcesReady;
     }
 
     /**
-     * Actualiza el estado del video del panel y refresca la lista.
+     * Actualiza el estado de recursos del panel y refresca la lista.
      */
-    public void setPanelVideoReady(boolean ready) {
-        this.isPanelVideoReady = ready;
+    public void setPanelResourcesReady(boolean ready) {
+        this.isPanelResourcesReady = ready;
         this.downloadProgress = ready ? 100 : 0;
         // ⚡ OPTIMIZACIÓN: Solo actualizar los botones, no reconstruir todo
         notifyItemRangeChanged(0, getItemCount(), "BUTTON_UPDATE");
-        Log.d("WallpaperAdapter", "📹 Panel video ready: " + ready);
+        Log.d("WallpaperAdapter", "📦 Panel resources ready: " + ready);
     }
 
     /**
-     * Actualiza el progreso de descarga del video.
+     * Actualiza el progreso de descarga de recursos.
      * ⚡ OPTIMIZACIÓN: Solo actualiza cada 5% para evitar lag
      */
     private int lastNotifiedProgress = -1;
@@ -191,8 +192,8 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
 
         // ╔═════════════════════════════════════════════════════════╗
         // ║  🎯 BOTÓN "VER WALLPAPER" - Va a preview              ║
-        // ║  IMPORTANTE: Deshabilitado si el video del panel no   ║
-        // ║  está descargado (thehouse.mp4)                       ║
+        // ║  IMPORTANTE: Deshabilitado si los recursos del panel  ║
+        // ║  no están descargados (grimoire.obj, texturas)        ║
         // ╚═════════════════════════════════════════════════════════╝
 
         // ⚠️ ESTADO DE ERROR: Mostrar botón de reintento
@@ -211,9 +212,9 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
                 }
             });
         }
-        // PRIMERO: Verificar si el video del panel está listo
-        else if (!isPanelVideoReady) {
-            // Video del panel NO disponible - botón deshabilitado con progreso
+        // PRIMERO: Verificar si los recursos del panel están listos
+        else if (!isPanelResourcesReady) {
+            // Recursos del panel NO disponibles - botón deshabilitado con progreso
             holder.buttonPreview.setEnabled(false);
             holder.buttonPreview.setAlpha(0.6f);
             if (downloadProgress > 0 && downloadProgress < 100) {
@@ -225,7 +226,7 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         }
         // SEGUNDO: Verificar si el wallpaper está disponible
         else if (item.isAvailable()) {
-            // Wallpaper disponible Y video del panel listo - botón habilitado
+            // Wallpaper disponible Y recursos del panel listos - botón habilitado
             holder.buttonPreview.setEnabled(true);
             holder.buttonPreview.setAlpha(1.0f);
             holder.buttonPreview.setText("✨ VER WALLPAPER");
@@ -296,7 +297,7 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
             });
         }
         // ESTADO NORMAL: Descargando
-        else if (!isPanelVideoReady) {
+        else if (!isPanelResourcesReady) {
             holder.buttonPreview.setEnabled(false);
             holder.buttonPreview.setAlpha(0.6f);
             holder.buttonPreview.setOnClickListener(null);

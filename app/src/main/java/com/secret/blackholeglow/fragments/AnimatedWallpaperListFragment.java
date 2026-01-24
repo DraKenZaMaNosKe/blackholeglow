@@ -35,11 +35,12 @@ import java.util.concurrent.TimeoutException;
  *
  * IMPORTANTE: Los botones "VER WALLPAPER" están DESHABILITADOS hasta que
  * TODOS los recursos del panel de control estén descargados:
- * - thehouse.mp4 (video de fondo)
  * - grimoire.obj (modelo del libro)
  * - grimoire_texture.png (textura del libro)
  * - huevo_zerg.png (LikeButton ABYSSIA)
  * - fire_orb.png (LikeButton PYRALIS)
+ *
+ * NOTA: Video del panel (thehouse.mp4) eliminado en v5.0.7
  */
 public class AnimatedWallpaperListFragment extends Fragment {
     private static final String TAG = "WallpaperListFragment";
@@ -47,8 +48,8 @@ public class AnimatedWallpaperListFragment extends Fragment {
     // ╔═══════════════════════════════════════════════════════════════════════╗
     // ║  📦 RECURSOS DEL PANEL DE CONTROL                                     ║
     // ║  Todos estos deben estar descargados antes de mostrar cualquier scene ║
+    // ║  NOTA: Video del panel (thehouse.mp4) eliminado en v5.0.7             ║
     // ╚═══════════════════════════════════════════════════════════════════════╝
-    private static final String PANEL_VIDEO = "thehouse.mp4";
     private static final String PANEL_MODEL = "grimoire.obj";
     private static final String[] PANEL_IMAGES = {
         "grimoire_texture.png",  // Textura del libro mágico
@@ -134,21 +135,16 @@ public class AnimatedWallpaperListFragment extends Fragment {
 
     /**
      * Verifica si TODOS los recursos del panel están descargados.
+     * NOTA: Video del panel eliminado en v5.0.7
      */
     private boolean arePanelResourcesReady() {
-        // 1. Video
-        if (!videoManager.isVideoAvailable(PANEL_VIDEO)) {
-            Log.d(TAG, "❌ Falta: " + PANEL_VIDEO);
-            return false;
-        }
-
-        // 2. Modelo
+        // 1. Modelo
         if (!modelManager.isModelAvailable(PANEL_MODEL)) {
             Log.d(TAG, "❌ Falta: " + PANEL_MODEL);
             return false;
         }
 
-        // 3. Imágenes
+        // 2. Imágenes
         for (String img : PANEL_IMAGES) {
             if (!imageManager.isImageAvailable(img)) {
                 Log.d(TAG, "❌ Falta: " + img);
@@ -162,10 +158,10 @@ public class AnimatedWallpaperListFragment extends Fragment {
 
     /**
      * Cuenta cuántos recursos faltan por descargar.
+     * NOTA: Video del panel eliminado en v5.0.7
      */
     private int countMissingResources() {
         int missing = 0;
-        if (!videoManager.isVideoAvailable(PANEL_VIDEO)) missing++;
         if (!modelManager.isModelAvailable(PANEL_MODEL)) missing++;
         for (String img : PANEL_IMAGES) {
             if (!imageManager.isImageAvailable(img)) missing++;
@@ -175,17 +171,18 @@ public class AnimatedWallpaperListFragment extends Fragment {
 
     /**
      * Inicia la descarga de TODOS los recursos del panel en background.
-     * Descarga secuencialmente: video → modelo → imágenes
+     * Descarga secuencialmente: modelo → imágenes
      * Cuando termina, actualiza el adapter para habilitar los botones.
      *
      * ⏱️ PROTECCIÓN: Timeout de 60 segundos por recurso + retry automático
+     * NOTA: Video del panel eliminado en v5.0.7
      */
     private void startPanelResourcesDownload() {
         if (isDownloading) return;
         isDownloading = true;
         downloadFailed = false;
 
-        totalResources = 1 + 1 + PANEL_IMAGES.length; // video + model + images
+        totalResources = 1 + PANEL_IMAGES.length; // model + images (sin video)
         downloadedResources = 0;
 
         Log.d(TAG, "📥 Iniciando descarga de " + countMissingResources() + " recursos del panel...");
@@ -198,24 +195,7 @@ public class AnimatedWallpaperListFragment extends Fragment {
 
         downloadTask = downloadExecutor.submit(() -> {
             try {
-                // 1. VIDEO (con timeout)
-                if (!downloadResourceWithTimeout("video", PANEL_VIDEO, () -> {
-                    if (!videoManager.isVideoAvailable(PANEL_VIDEO)) {
-                        Log.d(TAG, "📥 Descargando video: " + PANEL_VIDEO);
-                        updateProgress("Descargando video...");
-                        return videoManager.downloadVideoSync(PANEL_VIDEO, percent -> {
-                            int globalPercent = calculateGlobalProgress(downloadedResources, percent);
-                            updateAdapterProgress(globalPercent);
-                        });
-                    }
-                    return true;
-                })) {
-                    handleDownloadFailure("video: " + PANEL_VIDEO);
-                    return;
-                }
-                downloadedResources++;
-
-                // 2. MODELO (con timeout)
+                // 1. MODELO (con timeout)
                 if (!downloadResourceWithTimeout("modelo", PANEL_MODEL, () -> {
                     if (!modelManager.isModelAvailable(PANEL_MODEL)) {
                         Log.d(TAG, "📥 Descargando modelo: " + PANEL_MODEL);
@@ -232,7 +212,7 @@ public class AnimatedWallpaperListFragment extends Fragment {
                 }
                 downloadedResources++;
 
-                // 3. IMÁGENES (con timeout cada una)
+                // 2. IMÁGENES (con timeout cada una)
                 for (String img : PANEL_IMAGES) {
                     final String currentImg = img;
                     if (!downloadResourceWithTimeout("imagen", img, () -> {
@@ -258,7 +238,7 @@ public class AnimatedWallpaperListFragment extends Fragment {
                     isDownloading = false;
                     retryCount = 0;
                     if (adapter != null && isAdded()) {
-                        adapter.setPanelVideoReady(true);
+                        adapter.setPanelResourcesReady(true);
                     }
                 });
 

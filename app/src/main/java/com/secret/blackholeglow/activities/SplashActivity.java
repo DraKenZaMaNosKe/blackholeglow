@@ -34,16 +34,16 @@ import com.secret.blackholeglow.video.VideoDownloadManager;
 ║                                                                              ║
 ║   FLUJO:                                                                     ║
 ║   1. Mostrar splash con logo                                                ║
-║   2. Verificar si video del panel está descargado                          ║
-║   3. Si no está → descargar con barra de progreso                          ║
-║   4. Cuando esté listo → navegar a siguiente pantalla                      ║
+║   2. Verificar si recursos del panel están descargados                      ║
+║   3. Si no están → descargar con barra de progreso                          ║
+║   4. Cuando estén listos → navegar a siguiente pantalla                     ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 */
 public class SplashActivity extends AppCompatActivity {
 
     private static final String TAG = "SplashActivity";
-    private static final String PANEL_VIDEO_FILE = "thehouse.mp4";
+    // NOTA: Video del panel (thehouse.mp4) eliminado en v5.0.7
     private static final int MIN_SPLASH_DURATION = 2000; // Mínimo 2 segundos
 
     // Recursos del Panel a descargar
@@ -112,11 +112,10 @@ public class SplashActivity extends AppCompatActivity {
      */
     private int countMissingResources() {
         int missing = 0;
-        VideoDownloadManager videoMgr = VideoDownloadManager.getInstance(this);
         ImageDownloadManager imageMgr = ImageDownloadManager.getInstance(this);
         ModelDownloadManager modelMgr = ModelDownloadManager.getInstance(this);
 
-        if (!videoMgr.isVideoAvailable(PANEL_VIDEO_FILE)) missing++;
+        // Ya no hay video del panel (eliminado en v5.0.7)
         for (String img : PANEL_IMAGES) {
             if (!imageMgr.isImageAvailable(img)) missing++;
         }
@@ -132,27 +131,15 @@ public class SplashActivity extends AppCompatActivity {
     private void downloadAllPanelResources() {
         Log.d(TAG, "🚀 Iniciando descarga de recursos del panel...");
         new Thread(() -> {
-            VideoDownloadManager videoMgr = VideoDownloadManager.getInstance(this);
             ImageDownloadManager imageMgr = ImageDownloadManager.getInstance(this);
             ModelDownloadManager modelMgr = ModelDownloadManager.getInstance(this);
 
-            int totalResources = 1 + PANEL_IMAGES.length + PANEL_MODELS.length;
+            // Ya no hay video del panel (eliminado en v5.0.7)
+            int totalResources = PANEL_IMAGES.length + PANEL_MODELS.length;
             int completed = 0;
             Log.d(TAG, "📊 Total recursos: " + totalResources);
 
-            // 1. Video del panel
-            if (!videoMgr.isVideoAvailable(PANEL_VIDEO_FILE)) {
-                final int c0 = completed;
-                Log.d(TAG, "📥 [1/" + totalResources + "] Descargando video: " + PANEL_VIDEO_FILE);
-                updateStatusUI("Descargando video...", c0, totalResources);
-                videoMgr.downloadVideoSync(PANEL_VIDEO_FILE, percent ->
-                    updateProgressUI(percent, c0, totalResources));
-            } else {
-                Log.d(TAG, "✅ Video ya disponible: " + PANEL_VIDEO_FILE);
-            }
-            completed++;
-
-            // 2. Modelo del grimoire
+            // 1. Modelo del grimoire
             for (String model : PANEL_MODELS) {
                 Log.d(TAG, "📥 [" + (completed+1) + "/" + totalResources + "] Verificando modelo: " + model);
                 if (!modelMgr.isModelAvailable(model)) {
@@ -168,7 +155,7 @@ public class SplashActivity extends AppCompatActivity {
                 completed++;
             }
 
-            // 3. Imágenes (grimoire texture, like button textures)
+            // 2. Imágenes (grimoire texture, like button textures)
             for (String img : PANEL_IMAGES) {
                 Log.d(TAG, "📥 [" + (completed+1) + "/" + totalResources + "] Verificando imagen: " + img);
                 if (!imageMgr.isImageAvailable(img)) {
