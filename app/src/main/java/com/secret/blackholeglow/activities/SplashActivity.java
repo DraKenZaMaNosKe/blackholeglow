@@ -24,6 +24,7 @@ import com.secret.blackholeglow.UserManager;
 import com.secret.blackholeglow.image.ImageDownloadManager;
 import com.secret.blackholeglow.model.ModelDownloadManager;
 import com.secret.blackholeglow.video.VideoDownloadManager;
+import com.secret.blackholeglow.core.PanelResources;
 
 /*
 ╔══════════════════════════════════════════════════════════════════════════════╗
@@ -46,15 +47,7 @@ public class SplashActivity extends AppCompatActivity {
     // NOTA: Video del panel (thehouse.mp4) eliminado en v5.0.7
     private static final int MIN_SPLASH_DURATION = 2000; // Mínimo 2 segundos
 
-    // Recursos del Panel a descargar
-    private static final String[] PANEL_IMAGES = {
-        "grimoire_texture.png",  // Textura del libro
-        "huevo_zerg.png",        // LikeButton ABYSSIA
-        "fire_orb.png"           // LikeButton PYRALIS
-    };
-    private static final String[] PANEL_MODELS = {
-        "grimoire.obj"           // Modelo del libro
-    };
+    // Recursos del Panel - Centralizados en PanelResources (v5.0.8)
 
     // UI Elements
     private View downloadContainer;
@@ -116,10 +109,10 @@ public class SplashActivity extends AppCompatActivity {
         ModelDownloadManager modelMgr = ModelDownloadManager.getInstance(this);
 
         // Ya no hay video del panel (eliminado en v5.0.7)
-        for (String img : PANEL_IMAGES) {
+        for (String img : PanelResources.IMAGES_ARRAY) {
             if (!imageMgr.isImageAvailable(img)) missing++;
         }
-        for (String model : PANEL_MODELS) {
+        for (String model : PanelResources.MODELS_ARRAY) {
             if (!modelMgr.isModelAvailable(model)) missing++;
         }
         return missing;
@@ -135,17 +128,17 @@ public class SplashActivity extends AppCompatActivity {
             ModelDownloadManager modelMgr = ModelDownloadManager.getInstance(this);
 
             // Ya no hay video del panel (eliminado en v5.0.7)
-            int totalResources = PANEL_IMAGES.length + PANEL_MODELS.length;
+            int totalResources = PanelResources.getTotalResourceCount();
             int completed = 0;
             Log.d(TAG, "📊 Total recursos: " + totalResources);
 
-            // 1. Modelo del grimoire
-            for (String model : PANEL_MODELS) {
+            // 1. Modelo del controller
+            for (String model : PanelResources.MODELS_ARRAY) {
                 Log.d(TAG, "📥 [" + (completed+1) + "/" + totalResources + "] Verificando modelo: " + model);
                 if (!modelMgr.isModelAvailable(model)) {
                     Log.d(TAG, "⬇️ Descargando modelo: " + model);
                     final int c = completed;
-                    updateStatusUI("Descargando modelo...", c, totalResources);
+                    updateStatusUI("Descargando control...", c, totalResources);
                     modelMgr.downloadModelSync(model, percent ->
                         updateProgressUI(percent, c, totalResources));
                     Log.d(TAG, "✅ Modelo descargado: " + model);
@@ -155,8 +148,8 @@ public class SplashActivity extends AppCompatActivity {
                 completed++;
             }
 
-            // 2. Imágenes (grimoire texture, like button textures)
-            for (String img : PANEL_IMAGES) {
+            // 2. Imágenes (controller texture, like button textures)
+            for (String img : PanelResources.IMAGES_ARRAY) {
                 Log.d(TAG, "📥 [" + (completed+1) + "/" + totalResources + "] Verificando imagen: " + img);
                 if (!imageMgr.isImageAvailable(img)) {
                     Log.d(TAG, "⬇️ Descargando: " + img);

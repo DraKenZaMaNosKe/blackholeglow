@@ -7,7 +7,7 @@ import android.opengl.GLES30;
 import android.opengl.GLUtils;
 import android.util.Log;
 
-import com.secret.blackholeglow.ArcaneGrimoire;
+import com.secret.blackholeglow.GamingController3D;
 import com.secret.blackholeglow.LoadingBar;
 import com.secret.blackholeglow.OrbixGreeting;
 import com.secret.blackholeglow.R;
@@ -26,14 +26,14 @@ import java.nio.FloatBuffer;
  * ╠══════════════════════════════════════════════════════════════════╣
  * ║  COMPONENTES:                                                    ║
  * ║  • Imagen de fondo: Preview del wallpaper seleccionado           ║
- * ║  • ArcaneGrimoire: Libro mágico 3D flotante (toca para iniciar)  ║
+ * ║  • GamingController3D: Control Xbox 3D flotante (toca para play) ║
  * ║  • OrbixGreeting: Saludo + reloj + cuenta regresiva              ║
  * ║  • LoadingBar: Barra de carga                                    ║
  * ╠══════════════════════════════════════════════════════════════════╣
- * ║  OPTIMIZACIÓN v5.0.7:                                            ║
- * ║  • Eliminado video de fondo (thehouse.mp4)                       ║
- * ║  • Reemplazado por imagen estática del preview                   ║
- * ║  • Ahorro: ~30MB GPU, ~20% CPU, mejor batería                    ║
+ * ║  OPTIMIZACIÓN v5.0.8:                                            ║
+ * ║  • Gaming Controller reemplaza ArcaneGrimoire (libro mágico)     ║
+ * ║  • UX intuitiva: control = tap para jugar                        ║
+ * ║  • Shader cyberpunk neón (cyan/magenta glow)                     ║
  * ╚══════════════════════════════════════════════════════════════════╝
  */
 public class PanelModeRenderer {
@@ -77,7 +77,7 @@ public class PanelModeRenderer {
         "}\n";
 
     // Componentes UI
-    private ArcaneGrimoire grimoire;
+    private GamingController3D controller;
     private OrbixGreeting orbixGreeting;
     private LoadingBar loadingBar;
 
@@ -109,10 +109,10 @@ public class PanelModeRenderer {
         // Cargar preview del wallpaper seleccionado como fondo
         loadSelectedWallpaperPreview();
 
-        // ArcaneGrimoire - Libro mágico 3D
-        grimoire = new ArcaneGrimoire(context);
-        grimoire.initialize();
-        Log.d(TAG, "📖 ArcaneGrimoire inicializado");
+        // GamingController3D - Control Xbox 3D cyberpunk
+        controller = new GamingController3D(context);
+        controller.initialize();
+        Log.d(TAG, "🎮 GamingController3D inicializado");
 
         // OrbixGreeting
         orbixGreeting = new OrbixGreeting(context);
@@ -129,7 +129,7 @@ public class PanelModeRenderer {
         Log.d(TAG, "📊 LoadingBar inicializado");
 
         initialized = true;
-        Log.d(TAG, "✅ Panel de Control inicializado (sin video, con preview estático)");
+        Log.d(TAG, "✅ Panel de Control inicializado (Gaming Controller + preview estático)");
     }
 
     /**
@@ -265,8 +265,8 @@ public class PanelModeRenderer {
             initBackgroundOpenGL();
         }
 
-        if (grimoire != null) {
-            grimoire.update(deltaTime);
+        if (controller != null) {
+            controller.update(deltaTime);
         }
         if (orbixGreeting != null) {
             orbixGreeting.update(deltaTime);
@@ -326,13 +326,15 @@ public class PanelModeRenderer {
         drawBackground();
 
         // 2. Dibujar UI encima del fondo
-        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
         GLES30.glEnable(GLES30.GL_BLEND);
         GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
 
-        if (grimoire != null) {
-            grimoire.draw();
+        if (controller != null) {
+            controller.draw();
         }
+
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
         if (orbixGreeting != null) {
             orbixGreeting.draw();
         }
@@ -361,18 +363,49 @@ public class PanelModeRenderer {
     // 🔄 TRANSICIONES
     // ═══════════════════════════════════════════════════════════════
 
-    public void onStartLoading(String sceneName, String displayName, int glowColor) {
+    /**
+     * 🖼️ Inicia la pantalla de carga con preview real del wallpaper
+     * @param sceneName Nombre de la escena
+     * @param displayName Nombre para mostrar
+     * @param glowColor Color del tema
+     * @param previewResourceId ID del drawable del preview (0 si no hay)
+     */
+    public void onStartLoadingWithPreview(String sceneName, String displayName, int glowColor, int previewResourceId) {
         if (orbixGreeting != null) {
             orbixGreeting.hide();
         }
         if (loadingBar != null) {
             loadingBar.reset();
             loadingBar.setWallpaperTheme(displayName, glowColor);
-            loadingBar.setBackgroundForScene(context, sceneName);
+            // 🖼️ Usar preview real del wallpaper como fondo
+            if (previewResourceId != 0) {
+                loadingBar.setBackgroundImage(context, previewResourceId);
+            } else {
+                loadingBar.setBackgroundForScene(context, sceneName);
+            }
             loadingBar.show();
-            loadingBar.setProgress(1.0f);
+            // NO llamar setProgress(1.0f) - el progreso vendrá del ResourcePreloader
         }
-        Log.d(TAG, "Cargando: " + displayName + " (escena: " + sceneName + ")");
+        Log.d(TAG, "📊 Cargando: " + displayName + " (escena: " + sceneName + ", preview: " + previewResourceId + ")");
+    }
+
+    /**
+     * 📊 Actualiza el progreso de carga desde ResourcePreloader
+     * @param progress Progreso 0.0 - 1.0
+     * @param currentTask Nombre de la tarea actual (para mostrar)
+     */
+    public void updateLoadingProgress(float progress, String currentTask) {
+        if (loadingBar != null) {
+            loadingBar.setProgress(progress);
+            if (currentTask != null) {
+                loadingBar.setResourceName(currentTask);
+            }
+        }
+    }
+
+    // Legacy methods (mantener compatibilidad)
+    public void onStartLoading(String sceneName, String displayName, int glowColor) {
+        onStartLoadingWithPreview(sceneName, displayName, glowColor, 0);
     }
 
     public void onStartLoading(String sceneName) {
@@ -403,14 +436,14 @@ public class PanelModeRenderer {
         }
         backgroundLoaded = false;
 
-        // Liberar grimoire (~20 MB GPU)
-        if (grimoire != null) {
-            grimoire.release();
-            grimoire = null;
-            Log.d(TAG, "  ✓ Grimoire liberado");
+        // Liberar controller (~15 MB GPU)
+        if (controller != null) {
+            controller.release();
+            controller = null;
+            Log.d(TAG, "  ✓ Gaming Controller liberado");
         }
 
-        Log.d(TAG, "✅ Recursos del panel liberados - ~25-30 MB GPU recuperados");
+        Log.d(TAG, "✅ Recursos del panel liberados - ~20-25 MB GPU recuperados");
     }
 
     public void onReturnToPanel() {
@@ -429,14 +462,14 @@ public class PanelModeRenderer {
         // Recargar preview del wallpaper seleccionado (puede haber cambiado)
         loadSelectedWallpaperPreview();
 
-        // Recargar grimoire
-        if (grimoire == null) {
-            Log.d(TAG, "  📖 Recargando grimoire...");
-            grimoire = new ArcaneGrimoire(context);
-            grimoire.initialize();
+        // Recargar controller
+        if (controller == null) {
+            Log.d(TAG, "  🎮 Recargando Gaming Controller...");
+            controller = new GamingController3D(context);
+            controller.initialize();
             if (screenWidth > 0 && screenHeight > 0) {
-                grimoire.setScreenSize(screenWidth, screenHeight);
-                grimoire.setAspectRatio((float) screenWidth / screenHeight);
+                controller.setScreenSize(screenWidth, screenHeight);
+                controller.setAspectRatio((float) screenWidth / screenHeight);
             }
         }
 
@@ -448,8 +481,8 @@ public class PanelModeRenderer {
     // ═══════════════════════════════════════════════════════════════
 
     public boolean isPlayButtonTouched(float nx, float ny) {
-        if (grimoire != null) {
-            return grimoire.isInside(nx, ny);
+        if (controller != null) {
+            return controller.isInside(nx, ny);
         }
         return true;
     }
@@ -463,9 +496,9 @@ public class PanelModeRenderer {
         this.screenHeight = height;
         float aspectRatio = (float) width / height;
 
-        if (grimoire != null) {
-            grimoire.setScreenSize(width, height);
-            grimoire.setAspectRatio(aspectRatio);
+        if (controller != null) {
+            controller.setScreenSize(width, height);
+            controller.setAspectRatio(aspectRatio);
         }
 
         if (orbixGreeting != null) {
@@ -532,9 +565,9 @@ public class PanelModeRenderer {
             bgShaderProgram = 0;
         }
 
-        if (grimoire != null) {
-            grimoire.release();
-            grimoire = null;
+        if (controller != null) {
+            controller.release();
+            controller = null;
         }
 
         if (orbixGreeting != null) {

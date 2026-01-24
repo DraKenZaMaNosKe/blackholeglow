@@ -41,6 +41,7 @@ public class LoadingBar implements SceneObject {
     private boolean isComplete = false;
     private float alpha = 0f;
     private float time = 0f;
+    private static final float TIME_CYCLE = 62.83f;  // 2π * 10, evita overflow
 
     // Callback cuando termina la carga
     private OnLoadingCompleteListener completeListener;
@@ -493,8 +494,13 @@ public class LoadingBar implements SceneObject {
             textCanvas.drawText(title, centerX, line1Y, titlePaint);
         }
 
-        // === LINEA 2: "Descargando recursos..." con puntos animados ===
-        String loadingText = "Descargando recursos" + dots.toString();
+        // === LINEA 2: Nombre del recurso actual o "Verificando..." ===
+        String loadingText;
+        if (currentResourceName != null && !currentResourceName.isEmpty()) {
+            loadingText = currentResourceName + dots.toString();
+        } else {
+            loadingText = "Verificando recursos" + dots.toString();
+        }
         if (textGlowPaint != null) {
             textCanvas.drawText(loadingText, centerX, line2Y, textGlowPaint);
         }
@@ -502,8 +508,9 @@ public class LoadingBar implements SceneObject {
             textCanvas.drawText(loadingText, centerX, line2Y, textPaint);
         }
 
-        // === LINEA 3: Texto motivacional ===
-        String motivational = "Preparando tu experiencia...";
+        // === LINEA 3: Porcentaje de progreso ===
+        int percent = (int)(displayProgress * 100);
+        String motivational = percent > 0 ? percent + "% completado" : "Preparando experiencia...";
         if (reassuringPaint != null) {
             textCanvas.drawText(motivational, centerX, line3Y, reassuringPaint);
         }
@@ -531,6 +538,7 @@ public class LoadingBar implements SceneObject {
     @Override
     public void update(float dt) {
         time += dt;
+        if (time > TIME_CYCLE) time -= TIME_CYCLE;  // Evitar overflow
 
         // Animación de fade in/out
         if (isVisible && alpha < 1f) {
@@ -545,14 +553,14 @@ public class LoadingBar implements SceneObject {
         }
 
         // ═══════════════════════════════════════════════════════════════════════════
-        // Animación de los puntos "Loading.", "Loading..", "Loading..."
+        // Animación de los puntos y actualización del texto
         // ═══════════════════════════════════════════════════════════════════════════
         if (isVisible) {
             dotAnimTimer += dt;
             if (dotAnimTimer >= DOT_ANIM_SPEED) {
                 dotAnimTimer = 0f;
                 currentDots = (currentDots + 1) % 4;  // 0, 1, 2, 3, 0, 1, 2, 3...
-                updateTextTexture();
+                updateTextTexture();  // Actualiza puntos y porcentaje
             }
         }
 
@@ -569,11 +577,13 @@ public class LoadingBar implements SceneObject {
     public void draw() {
         if (alpha <= 0.01f || shaderProgram == 0) return;
 
-        // 🖼️ Inicializar y dibujar fondo (si está configurado)
+        // 🖼️ Inicializar y dibujar fondo (preview del wallpaper)
         if (backgroundResourceId != 0 && !backgroundLoaded) {
             initBackgroundOpenGL();
         }
-        // drawBackground(); // DESHABILITADO - fondo negro
+        if (backgroundLoaded) {
+            drawBackground();
+        }
 
         GLES30.glUseProgram(shaderProgram);
 

@@ -22,6 +22,7 @@ import com.secret.blackholeglow.models.WallpaperItem;
 import com.secret.blackholeglow.systems.SubscriptionManager;
 import com.secret.blackholeglow.systems.WallpaperCatalog;
 import com.secret.blackholeglow.video.VideoDownloadManager;
+import com.secret.blackholeglow.core.PanelResources;
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -35,12 +36,12 @@ import java.util.concurrent.TimeoutException;
  *
  * IMPORTANTE: Los botones "VER WALLPAPER" están DESHABILITADOS hasta que
  * TODOS los recursos del panel de control estén descargados:
- * - grimoire.obj (modelo del libro)
- * - grimoire_texture.png (textura del libro)
+ * - controlxbox_texture.obj (modelo del control Xbox)
+ * - controlxbox_texture.png (textura del control)
  * - huevo_zerg.png (LikeButton ABYSSIA)
  * - fire_orb.png (LikeButton PYRALIS)
  *
- * NOTA: Video del panel (thehouse.mp4) eliminado en v5.0.7
+ * v5.0.8: Gaming Controller reemplaza ArcaneGrimoire
  */
 public class AnimatedWallpaperListFragment extends Fragment {
     private static final String TAG = "WallpaperListFragment";
@@ -48,14 +49,9 @@ public class AnimatedWallpaperListFragment extends Fragment {
     // ╔═══════════════════════════════════════════════════════════════════════╗
     // ║  📦 RECURSOS DEL PANEL DE CONTROL                                     ║
     // ║  Todos estos deben estar descargados antes de mostrar cualquier scene ║
-    // ║  NOTA: Video del panel (thehouse.mp4) eliminado en v5.0.7             ║
+    // ║  v5.0.8: Gaming Controller reemplaza ArcaneGrimoire                   ║
+    // ║  Recursos centralizados en PanelResources.java                        ║
     // ╚═══════════════════════════════════════════════════════════════════════╝
-    private static final String PANEL_MODEL = "grimoire.obj";
-    private static final String[] PANEL_IMAGES = {
-        "grimoire_texture.png",  // Textura del libro mágico
-        "huevo_zerg.png",        // LikeButton para ABYSSIA
-        "fire_orb.png"           // LikeButton para PYRALIS
-    };
 
     private List<WallpaperItem> wallpaperItems;
     private WallpaperAdapter adapter;
@@ -139,13 +135,13 @@ public class AnimatedWallpaperListFragment extends Fragment {
      */
     private boolean arePanelResourcesReady() {
         // 1. Modelo
-        if (!modelManager.isModelAvailable(PANEL_MODEL)) {
-            Log.d(TAG, "❌ Falta: " + PANEL_MODEL);
+        if (!modelManager.isModelAvailable(PanelResources.PRIMARY_MODEL)) {
+            Log.d(TAG, "❌ Falta: " + PanelResources.PRIMARY_MODEL);
             return false;
         }
 
         // 2. Imágenes
-        for (String img : PANEL_IMAGES) {
+        for (String img : PanelResources.IMAGES_ARRAY) {
             if (!imageManager.isImageAvailable(img)) {
                 Log.d(TAG, "❌ Falta: " + img);
                 return false;
@@ -162,8 +158,8 @@ public class AnimatedWallpaperListFragment extends Fragment {
      */
     private int countMissingResources() {
         int missing = 0;
-        if (!modelManager.isModelAvailable(PANEL_MODEL)) missing++;
-        for (String img : PANEL_IMAGES) {
+        if (!modelManager.isModelAvailable(PanelResources.PRIMARY_MODEL)) missing++;
+        for (String img : PanelResources.IMAGES_ARRAY) {
             if (!imageManager.isImageAvailable(img)) missing++;
         }
         return missing;
@@ -182,7 +178,7 @@ public class AnimatedWallpaperListFragment extends Fragment {
         isDownloading = true;
         downloadFailed = false;
 
-        totalResources = 1 + PANEL_IMAGES.length; // model + images (sin video)
+        totalResources = 1 + PanelResources.IMAGES_ARRAY.length; // model + images (sin video)
         downloadedResources = 0;
 
         Log.d(TAG, "📥 Iniciando descarga de " + countMissingResources() + " recursos del panel...");
@@ -196,24 +192,24 @@ public class AnimatedWallpaperListFragment extends Fragment {
         downloadTask = downloadExecutor.submit(() -> {
             try {
                 // 1. MODELO (con timeout)
-                if (!downloadResourceWithTimeout("modelo", PANEL_MODEL, () -> {
-                    if (!modelManager.isModelAvailable(PANEL_MODEL)) {
-                        Log.d(TAG, "📥 Descargando modelo: " + PANEL_MODEL);
+                if (!downloadResourceWithTimeout("modelo", PanelResources.PRIMARY_MODEL, () -> {
+                    if (!modelManager.isModelAvailable(PanelResources.PRIMARY_MODEL)) {
+                        Log.d(TAG, "📥 Descargando modelo: " + PanelResources.PRIMARY_MODEL);
                         updateProgress("Descargando modelo...");
-                        return modelManager.downloadModelSync(PANEL_MODEL, percent -> {
+                        return modelManager.downloadModelSync(PanelResources.PRIMARY_MODEL, percent -> {
                             int globalPercent = calculateGlobalProgress(downloadedResources, percent);
                             updateAdapterProgress(globalPercent);
                         });
                     }
                     return true;
                 })) {
-                    handleDownloadFailure("modelo: " + PANEL_MODEL);
+                    handleDownloadFailure("modelo: " + PanelResources.PRIMARY_MODEL);
                     return;
                 }
                 downloadedResources++;
 
                 // 2. IMÁGENES (con timeout cada una)
-                for (String img : PANEL_IMAGES) {
+                for (String img : PanelResources.IMAGES_ARRAY) {
                     final String currentImg = img;
                     if (!downloadResourceWithTimeout("imagen", img, () -> {
                         if (!imageManager.isImageAvailable(currentImg)) {

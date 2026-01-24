@@ -65,6 +65,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     private EventBus eventBus;
     private FirebaseQueueManager firebaseQueue;
     private BloomEffect bloomEffect;
+    private ResourcePreloader resourcePreloader;
 
     // ESTADO
     private final Context context;
@@ -308,13 +309,49 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     }
 
     public void startLoading() {
-        // 🎄 Navideño ahora usa OpenGL ES (Filament deshabilitado temporalmente)
-        // El código de Filament se mantiene para uso futuro en otros wallpapers
-
-        if (modeController.startLoading()) {
-            // 🖼️ Pasar el nombre de la escena para fondo dinámico
-            panelRenderer.onStartLoading(pendingSceneName);
+        if (!modeController.startLoading()) {
+            return;
         }
+
+        // 📊 Obtener info del wallpaper para el tema de la barra
+        WallpaperItem wallpaperItem = WallpaperCatalog.get().getBySceneName(pendingSceneName);
+        String displayName = wallpaperItem != null ? wallpaperItem.getNombre() : pendingSceneName;
+        int glowColor = wallpaperItem != null ? wallpaperItem.getGlowColor() : 0xFF00D4FF;
+        int previewResourceId = wallpaperItem != null ? wallpaperItem.getResourceIdPreview() : 0;
+
+        // 🖼️ Iniciar pantalla de carga con preview del wallpaper
+        panelRenderer.onStartLoadingWithPreview(pendingSceneName, displayName, glowColor, previewResourceId);
+
+        // 📦 Crear ResourcePreloader y preparar tareas para la escena
+        resourcePreloader = new ResourcePreloader(context);
+        resourcePreloader.setListener(new ResourcePreloader.PreloadListener() {
+            @Override
+            public void onProgressUpdate(int progress, int total, String currentTask) {
+                // Actualizar LoadingBar con progreso real
+                float percent = total > 0 ? (float) progress / total : 0f;
+                panelRenderer.updateLoadingProgress(percent, currentTask);
+            }
+
+            @Override
+            public void onPreloadComplete() {
+                Log.d(TAG, "✅ ResourcePreloader completado - recursos listos");
+                // Marcar progreso al 100% y dejar que el sistema detecte la completación
+                panelRenderer.updateLoadingProgress(1.0f, "¡Listo!");
+            }
+
+            @Override
+            public void onPreloadError(String error) {
+                Log.e(TAG, "❌ Error en ResourcePreloader: " + error);
+                // Aún así intentar cargar (los recursos pueden estar parcialmente disponibles)
+                panelRenderer.updateLoadingProgress(1.0f, "Iniciando...");
+            }
+        });
+
+        // Preparar y ejecutar tareas de la escena
+        resourcePreloader.prepareTasksForScene(pendingSceneName);
+        resourcePreloader.startPreloading();
+
+        Log.d(TAG, "📦 ResourcePreloader iniciado para: " + pendingSceneName);
     }
 
     public void switchToPanelMode() {

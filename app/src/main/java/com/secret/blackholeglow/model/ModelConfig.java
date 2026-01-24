@@ -68,7 +68,7 @@ public class ModelConfig {
         ));
 
         // ═══════════════════════════════════════════════════════════════
-        // PANEL MODE (Arcane Grimoire) - Libro mágico
+        // PANEL MODE (Arcane Grimoire) - Libro mágico [LEGACY]
         // ═══════════════════════════════════════════════════════════════
 
         // Grimorio Arcano - Libro místico del panel principal
@@ -76,6 +76,18 @@ public class ModelConfig {
             SUPABASE_MODELS_URL + "grimoire.obj",
             490_000L,  // ~476 KB
             "Grimorio Arcano",
+            1
+        ));
+
+        // ═══════════════════════════════════════════════════════════════
+        // PANEL MODE (Gaming Controller) - Control Xbox v5.0.8
+        // ═══════════════════════════════════════════════════════════════
+
+        // Gaming Controller - Control Xbox para panel principal
+        MODELS.put("controlxbox_texture.obj", new ResourceInfo(
+            SUPABASE_MODELS_URL + "controlxbox_texture.obj",
+            265_000L,  // ~259 KB
+            "Gaming Controller",
             1
         ));
 

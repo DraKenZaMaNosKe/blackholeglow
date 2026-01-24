@@ -31,21 +31,7 @@ import java.util.List;
 public class ResourcePreloader {
     private static final String TAG = "ResourcePreloader";
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🏠 RECURSOS DEL PANEL - NUNCA SE ELIMINAN
-    // ═══════════════════════════════════════════════════════════════════════
-    // NOTA: Video del panel (thehouse.mp4) eliminado en v5.0.7
-    // Ahora se usa imagen estática del preview del wallpaper seleccionado
-
-    private static final List<String> PANEL_IMAGES = Arrays.asList(
-        "grimoire_texture.png",  // Textura del grimorio
-        "huevo_zerg.png",        // Elemento del panel
-        "fire_orb.png"           // Elemento del panel
-    );
-
-    private static final List<String> PANEL_MODELS = Arrays.asList(
-        "grimoire.obj"  // Modelo 3D del grimorio
-    );
+    // 🏠 RECURSOS DEL PANEL - Ver PanelResources.java (v5.0.8)
 
     private final Context context;
     private PreloadListener listener;
@@ -53,10 +39,12 @@ public class ResourcePreloader {
     private Handler backgroundHandler;
     private Handler mainHandler;
 
-    private List<PreloadTask> tasks;
-    private int totalTasks = 0;
-    private int completedTasks = 0;
-    private boolean isCancelled = false;
+    // 🔒 THREAD-SAFE: Sincronizado con tasksLock
+    private final Object tasksLock = new Object();
+    private final List<PreloadTask> tasks = new ArrayList<>();
+    private volatile int totalTasks = 0;
+    private volatile int completedTasks = 0;
+    private volatile boolean isCancelled = false;
 
     /**
      * Listener para reportar progreso de carga
@@ -84,7 +72,6 @@ public class ResourcePreloader {
 
     public ResourcePreloader(Context context) {
         this.context = context.getApplicationContext();
-        this.tasks = new ArrayList<>();
         this.mainHandler = new Handler(context.getMainLooper());
     }
 
@@ -96,7 +83,9 @@ public class ResourcePreloader {
      * Prepara tareas segun el nombre del wallpaper
      */
     public void prepareTasksForScene(String sceneName) {
-        tasks.clear();
+        synchronized (tasksLock) {
+            tasks.clear();
+        }
 
         // 🧹 LIMPIEZA: Eliminar recursos de escenas anteriores
         cleanupOtherSceneResources(sceneName);
@@ -153,17 +142,17 @@ public class ResourcePreloader {
 
     /**
      * Prepara tareas para el Panel de Control (lobby)
-     * Incluye grimoire, video de fondo y texturas del LikeButton
+     * v5.0.8: Gaming Controller (control Xbox) + texturas del LikeButton
      * DEBE ejecutarse ANTES de mostrar el panel
      */
     public void preparePanelTasks() {
         tasks.clear();
 
-        // 1. Modelo 3D del Grimorio (libro mágico)
-        addModelDownloadTask("Modelo Grimorio", "grimoire.obj", 3);
+        // 1. Modelo 3D del Gaming Controller (control Xbox)
+        addModelDownloadTask("Modelo Controller", "controlxbox_texture.obj", 3);
 
-        // 2. Textura del Grimorio
-        addImageDownloadTask("Textura Grimorio", "grimoire_texture.png", 5);
+        // 2. Textura del Gaming Controller
+        addImageDownloadTask("Textura Controller", "controlxbox_texture.png", 5);
 
         // 3. Texturas del LikeButton (usadas en todas las escenas)
         addImageDownloadTask("Huevo Zerg", "huevo_zerg.png", 1);
@@ -197,10 +186,10 @@ public class ResourcePreloader {
         // NOTA: Ya no hay video del panel (thehouse.mp4 eliminado en v5.0.7)
         List<String> keepVideos = new ArrayList<>(sceneVideos);
 
-        List<String> keepImages = new ArrayList<>(PANEL_IMAGES);
+        List<String> keepImages = new ArrayList<>(PanelResources.IMAGES);
         keepImages.addAll(sceneImages);
 
-        List<String> keepModels = new ArrayList<>(PANEL_MODELS);
+        List<String> keepModels = new ArrayList<>(PanelResources.MODELS);
         keepModels.addAll(sceneModels);
 
         // Ejecutar limpieza
@@ -521,16 +510,19 @@ public class ResourcePreloader {
      * Inicia la precarga en background
      */
     public void startPreloading() {
-        if (tasks.isEmpty()) {
-            Log.e(TAG, "No hay tareas preparadas!");
-            if (listener != null) {
-                listener.onPreloadError("No hay tareas de precarga");
+        synchronized (tasksLock) {
+            if (tasks.isEmpty()) {
+                Log.e(TAG, "No hay tareas preparadas!");
+                if (listener != null) {
+                    listener.onPreloadError("No hay tareas de precarga");
+                }
+                return;
             }
-            return;
         }
 
         isCancelled = false;
         completedTasks = 0;
+        currentTaskIndex = 0;
 
         backgroundThread = new HandlerThread("ResourcePreloader");
         backgroundThread.start();
@@ -540,7 +532,7 @@ public class ResourcePreloader {
         backgroundHandler.post(this::executeNextTask);
     }
 
-    private int currentTaskIndex = 0;
+    private volatile int currentTaskIndex = 0;
 
     private void executeNextTask() {
         if (isCancelled) {
@@ -548,14 +540,16 @@ public class ResourcePreloader {
             return;
         }
 
-        if (currentTaskIndex >= tasks.size()) {
-            // Todas las tareas completadas
-            notifyComplete();
-            cleanup();
-            return;
+        PreloadTask task;
+        synchronized (tasksLock) {
+            if (currentTaskIndex >= tasks.size()) {
+                // Todas las tareas completadas
+                notifyComplete();
+                cleanup();
+                return;
+            }
+            task = tasks.get(currentTaskIndex);
         }
-
-        PreloadTask task = tasks.get(currentTaskIndex);
 
         // Notificar progreso
         notifyProgress(task.name);
