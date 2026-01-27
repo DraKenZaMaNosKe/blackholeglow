@@ -31,7 +31,7 @@ import java.nio.FloatBuffer;
 public class LikeButton {
     private static final String TAG = "LikeButton";
 
-    public enum Theme { DEFAULT, ABYSSIA, PYRALIS, ADVENTURE_TIME, GOKU, SYNTHWAVE, COSMOS, WALKING_DEAD }
+    public enum Theme { DEFAULT, ABYSSIA, PYRALIS, ADVENTURE_TIME, GOKU, SYNTHWAVE, COSMOS, WALKING_DEAD, SUPERMAN, AOT }
     private Theme currentTheme = Theme.DEFAULT;
 
     private float x = 0.85f;
@@ -329,6 +329,14 @@ public class LikeButton {
                 break;
             case WALKING_DEAD:
                 drawZombieHeartProcedural(mvpMatrix, pulse);
+                break;
+            case SUPERMAN:
+                // 🦸 Superman usa estilo similar a Dragon Ball (energía heroica)
+                drawDragonBallProcedural(mvpMatrix, pulse);
+                break;
+            case AOT:
+                // ⚔️ Attack on Titan - Corazón con ojos verdes de Eren
+                drawAOTHeartProcedural(mvpMatrix, pulse);
                 break;
         }
     }
@@ -989,6 +997,110 @@ public class LikeButton {
             GLES30.glDrawArrays(GLES30.GL_LINES, 0, 2);
             GLES30.glDisableVertexAttribArray(positionHandleColor);
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ⚔️ CORAZÓN AOT - Attack on Titan (Ojos verdes de Eren)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // Constantes AOT
+    private static final int AOT_GLOW_SEGMENTS = 32;
+    private static final float AOT_GLOW_SCALE_OUTER = 1.9f;
+    private static final float AOT_GLOW_SCALE_INNER = 1.5f;
+    private static final float AOT_BLOOD_PULSE_SPEED = 4.0f;  // Pulso rápido de sangre
+
+    // Colores AOT (con alpha)
+    private static final float[] aotHeartMain = {0.0f, 0.85f, 0.65f, 0.95f};  // Verde/Cyan (ojos de Eren)
+    private static final float[] aotGlow = {0.0f, 1.0f, 0.8f, 1.0f};          // Glow verde brillante
+    private static final float[] aotBlood = {0.85f, 0.15f, 0.15f, 0.8f};      // Rojo sangre
+
+    // Buffer reutilizable para AOT glow (evita memory leak)
+    private FloatBuffer aotGlowBuffer;
+    private boolean aotGlowBufferInitialized = false;
+
+    private void drawAOTHeartProcedural(float[] mvpMatrix, float pulse) {
+        GLES30.glUseProgram(programIdColor);
+        float scale = size * (1.0f + pulse * 0.15f);
+        float currentY = y + floatOffset;
+
+        // 1. Glow verde cyan exterior (ojos de Eren)
+        if (!isOnCooldown) {
+            drawAOTGlow(mvpMatrix, scale * AOT_GLOW_SCALE_OUTER, 0.12f, pulse);
+            drawAOTGlow(mvpMatrix, scale * AOT_GLOW_SCALE_INNER, 0.22f, pulse);
+        }
+
+        // 2. Corazón principal (verde/cyan como ojos de Eren)
+        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
+        android.opengl.Matrix.translateM(modelMatrix, 0, x, currentY, 0);
+        android.opengl.Matrix.scaleM(modelMatrix, 0, scale, scale, 1);
+        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandleColor, 1, false, finalMatrix, 0);
+
+        // Color del corazón AOT (brilla con pulse)
+        float intensity = 0.75f + pulse * 0.25f;
+        colorCache[0] = aotHeartMain[0] * intensity;
+        colorCache[1] = aotHeartMain[1] * intensity;
+        colorCache[2] = aotHeartMain[2] * intensity;
+        colorCache[3] = isOnCooldown ? 0.4f : (isPressed ? 1.0f : aotHeartMain[3]);
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+
+        heartBuffer.position(0);
+        GLES30.glEnableVertexAttribArray(positionHandleColor);
+        GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, heartBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, heartBuffer.capacity() / 2);
+
+        // 3. Borde rojo sangre (sangre de sacrificio)
+        if (!isOnCooldown) {
+            GLES30.glLineWidth(3.0f);
+            float bloodPulse = (float) (Math.sin(pulsePhase * AOT_BLOOD_PULSE_SPEED) * 0.3 + 0.7);
+            colorCache[0] = aotBlood[0] * bloodPulse;
+            colorCache[1] = aotBlood[1];
+            colorCache[2] = aotBlood[2];
+            colorCache[3] = aotBlood[3];
+            GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+            GLES30.glDrawArrays(GLES30.GL_LINE_LOOP, 1, heartBuffer.capacity() / 2 - 1);
+        }
+
+        GLES30.glDisableVertexAttribArray(positionHandleColor);
+    }
+
+    private void drawAOTGlow(float[] mvpMatrix, float glowSize, float alpha, float pulse) {
+        float currentY = y + floatOffset;
+
+        // Inicializar buffer solo una vez (evita memory leak)
+        if (!aotGlowBufferInitialized) {
+            float[] glowVerts = new float[(AOT_GLOW_SEGMENTS + 2) * 2];
+            glowVerts[0] = 0f; glowVerts[1] = 0f;
+            for (int i = 0; i <= AOT_GLOW_SEGMENTS; i++) {
+                float angle = (float) (2.0 * Math.PI * i / AOT_GLOW_SEGMENTS);
+                glowVerts[(i + 1) * 2] = (float) Math.cos(angle);
+                glowVerts[(i + 1) * 2 + 1] = (float) Math.sin(angle);
+            }
+            ByteBuffer bb = ByteBuffer.allocateDirect(glowVerts.length * 4);
+            bb.order(ByteOrder.nativeOrder());
+            aotGlowBuffer = bb.asFloatBuffer();
+            aotGlowBuffer.put(glowVerts);
+            aotGlowBufferInitialized = true;
+        }
+        aotGlowBuffer.position(0);
+
+        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
+        android.opengl.Matrix.translateM(modelMatrix, 0, x, currentY, 0);
+        android.opengl.Matrix.scaleM(modelMatrix, 0, glowSize, glowSize, 1);
+        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandleColor, 1, false, finalMatrix, 0);
+
+        // Glow verde cyan pulsante (ojos de Eren brillando)
+        colorCache[0] = aotGlow[0];
+        colorCache[1] = aotGlow[1];
+        colorCache[2] = aotGlow[2];
+        colorCache[3] = alpha * (0.5f + pulse * 0.5f);
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+
+        GLES30.glEnableVertexAttribArray(positionHandleColor);
+        GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, aotGlowBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, AOT_GLOW_SEGMENTS + 2);
+        GLES30.glDisableVertexAttribArray(positionHandleColor);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

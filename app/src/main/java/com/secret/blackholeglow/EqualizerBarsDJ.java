@@ -37,7 +37,9 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         SYNTHWAVE,    // Hot Pink → Cyan → Magenta (retrowave 80s)
         COSMOS,       // Azul → Dorado → Púrpura (Saint Seiya cosmos)
         WALKING_DEAD, // Verde tóxico → Rojo sangre → Púrpura oscuro (zombie)
-        ZELDA         // Verde Hyrule → Azul cielo → Dorado Triforce
+        ZELDA,        // Verde Hyrule → Azul cielo → Dorado Triforce
+        SUPERMAN,     // Rojo → Azul → Amarillo (Man of Steel)
+        AOT           // Verde neón → Rojo sangre → Naranja titán (Attack on Titan)
     }
 
     private Theme currentTheme = Theme.DEFAULT;
@@ -126,6 +128,24 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     private static final float[] ZELDA_WAVE_NORMAL = {0.25f, 0.55f, 0.27f};  // Verde bosque (#43A047)
     private static final float[] ZELDA_LIGHTNING_1 = {1.0f, 0.84f, 0.0f};    // Rayo dorado (Master Sword)
     private static final float[] ZELDA_LIGHTNING_2 = {0.4f, 0.8f, 0.4f};     // Rayo verde (Koroks)
+
+    // === SUPERMAN (Man of Steel - Rojo → Azul → Amarillo) ===
+    private static final float[] SUPERMAN_BASS = {0.86f, 0.08f, 0.24f};      // Rojo capa Superman (#DC143C)
+    private static final float[] SUPERMAN_TREBLE = {0.0f, 0.47f, 0.95f};     // Azul traje (#0077F2)
+    private static final float[] SUPERMAN_PEAK = {1.0f, 0.84f, 0.0f};        // Amarillo "S" (#FFD700)
+    private static final float[] SUPERMAN_WAVE_STRONG = {1.0f, 0.2f, 0.2f};  // Rojo brillante
+    private static final float[] SUPERMAN_WAVE_NORMAL = {0.1f, 0.4f, 0.9f};  // Azul medio
+    private static final float[] SUPERMAN_LIGHTNING_1 = {1.0f, 0.9f, 0.0f};  // Rayo amarillo (heat vision)
+    private static final float[] SUPERMAN_LIGHTNING_2 = {0.9f, 0.1f, 0.1f};  // Rayo rojo (laser eyes)
+
+    // === AOT (Attack on Titan - Verde neón → Rojo sangre → Naranja titán) ===
+    private static final float[] AOT_BASS = {0.0f, 0.95f, 0.7f};             // Verde/Cyan neón (ojos de Eren)
+    private static final float[] AOT_TREBLE = {0.85f, 0.15f, 0.15f};         // Rojo sangre
+    private static final float[] AOT_PEAK = {1.0f, 0.5f, 0.0f};              // Naranja titán
+    private static final float[] AOT_WAVE_STRONG = {0.9f, 0.2f, 0.1f};       // Rojo intenso (sangre)
+    private static final float[] AOT_WAVE_NORMAL = {0.0f, 0.8f, 0.6f};       // Verde/Cyan (transformación)
+    private static final float[] AOT_LIGHTNING_1 = {0.0f, 1.0f, 0.8f};       // Rayo verde (ojos brillantes)
+    private static final float[] AOT_LIGHTNING_2 = {1.0f, 0.4f, 0.0f};       // Rayo naranja (vapor titán)
 
     // Colores activos (se actualizan con setTheme)
     private float[] colorBass = DEFAULT_BASS;
@@ -410,6 +430,28 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
                 colorLightning1 = ZELDA_LIGHTNING_1;
                 colorLightning2 = ZELDA_LIGHTNING_2;
                 Log.d(TAG, "🗡️ Tema ZELDA activado - Breath of the Wild");
+                break;
+
+            case SUPERMAN:
+                colorBass = SUPERMAN_BASS;
+                colorTreble = SUPERMAN_TREBLE;
+                colorPeak = SUPERMAN_PEAK;
+                colorWaveStrong = SUPERMAN_WAVE_STRONG;
+                colorWaveNormal = SUPERMAN_WAVE_NORMAL;
+                colorLightning1 = SUPERMAN_LIGHTNING_1;
+                colorLightning2 = SUPERMAN_LIGHTNING_2;
+                Log.d(TAG, "🦸 Tema SUPERMAN activado - Man of Steel");
+                break;
+
+            case AOT:
+                colorBass = AOT_BASS;
+                colorTreble = AOT_TREBLE;
+                colorPeak = AOT_PEAK;
+                colorWaveStrong = AOT_WAVE_STRONG;
+                colorWaveNormal = AOT_WAVE_NORMAL;
+                colorLightning1 = AOT_LIGHTNING_1;
+                colorLightning2 = AOT_LIGHTNING_2;
+                Log.d(TAG, "⚔️ Tema AOT activado - Attack on Titan");
                 break;
 
             default:

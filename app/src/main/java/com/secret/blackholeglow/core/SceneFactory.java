@@ -14,6 +14,8 @@ import com.secret.blackholeglow.scenes.OceanFloorScene;
 import com.secret.blackholeglow.scenes.WalkingDeadScene;
 import com.secret.blackholeglow.scenes.WallpaperScene;
 import com.secret.blackholeglow.scenes.ZeldaParallaxScene;
+import com.secret.blackholeglow.scenes.SupermanScene;
+import com.secret.blackholeglow.scenes.AOTScene;
 import com.secret.blackholeglow.systems.EventBus;
 import com.secret.blackholeglow.systems.ResourceManager;
 
@@ -120,6 +122,10 @@ public class SceneFactory {
         registerScene("WALKING_DEAD", WalkingDeadScene.class);
         // 🗡️ Zelda BOTW: Parallax con giroscopio estilo Breath of the Wild
         registerScene("ZELDA_BOTW", ZeldaParallaxScene.class);
+        // 🦸 Superman: Man of Steel volando épicamente
+        registerScene("SUPERMAN", SupermanScene.class);
+        // ⚔️ Attack on Titan: Eren Jaeger con el Titán Colosal
+        registerScene("AOT", AOTScene.class);
 
         Log.d(TAG, "🎭 " + registeredScenes.size() + " escenas registradas");
     }

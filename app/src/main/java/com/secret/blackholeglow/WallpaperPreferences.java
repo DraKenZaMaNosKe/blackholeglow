@@ -73,6 +73,8 @@ public class WallpaperPreferences {
         "SAINT_SEIYA",    // ⭐ Saint Seiya Cosmos
         "WALKING_DEAD",   // 🧟 The Walking Dead
         "ZELDA_BOTW",     // 🗡️ Zelda Breath of the Wild Parallax
+        "SUPERMAN",       // 🦸 Superman Man of Steel
+        "AOT",            // ⚔️ Attack on Titan - Eren Jaeger
 
         // ═══════════════════════════════════════════
         // 📦 WALLPAPERS LEGADOS (compatibilidad)

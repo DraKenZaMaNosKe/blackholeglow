@@ -77,6 +77,22 @@ public class VideoConfig {
             "The Walking Dead",
             2  // v2: Re-encoded 1080p
         ));
+
+        // SupermanScene - Man of Steel (v2: Re-encoded 720p for performance)
+        VIDEOS.put("superman_scene.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "superman_scene_720p.mp4",  // 720p version
+            11_960_117L,  // ~12 MB (720p optimizado)
+            "Superman Man of Steel",
+            2  // v2: Re-encoded 720p (was 1440p causing crashes)
+        ));
+
+        // AOTScene - Attack on Titan (Eren Jaeger)
+        VIDEOS.put("erenEscena01.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "erenEscena01_720p.mp4",  // 720p version
+            3_695_019L,  // ~3.7 MB (720p optimizado)
+            "Attack on Titan - Eren",
+            1
+        ));
     }
 
     // =========================================================================

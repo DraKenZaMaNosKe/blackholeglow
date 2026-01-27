@@ -346,6 +346,34 @@ public class WallpaperCatalog {
                 .featured()
                 .build());
 
+        // ═══════════════════════════════════════════════════════════════════
+        // 🦸 SUPERMAN - Man of Steel
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("🦸 SUPERMAN 🦸")
+                .descripcion("El Hombre de Acero surca los cielos con su capa ondeando. " +
+                        "Poder, esperanza y justicia en cada frame.")
+                .preview(R.drawable.preview_superman)
+                .sceneName("SUPERMAN")
+                .tier(WallpaperTier.FREE)
+                .badge("🦸 HERO")
+                .glow(0xFFDC143C)  // Superman red
+                .featured()
+                .build());
+
+        // ═══════════════════════════════════════════════════════════════════
+        // ⚔️ AOT - Attack on Titan (Eren Jaeger)
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("⚔️ ATTACK ON TITAN ⚔️")
+                .descripcion("Eren Jaeger con el Titán Colosal. " +
+                        "La humanidad contraataca. Shinzou wo Sasageyo!")
+                .preview(R.drawable.preview_aot)
+                .sceneName("AOT")
+                .tier(WallpaperTier.FREE)
+                .badge("⚔️ TITAN")
+                .glow(0xFF00E5B0)  // Eren's green eyes
+                .featured()
+                .build());
+
         Log.d(TAG, "📚 Catálogo inicializado: " + catalog.size() + " wallpapers");
     }
 }

@@ -444,6 +444,8 @@ public class MediaCodecVideoRenderer {
         }
 
         if (surfaceTexture != null) {
+            // ⚡ CRÍTICO: Remover listener ANTES de release para evitar memory leak
+            surfaceTexture.setOnFrameAvailableListener(null);
             surfaceTexture.release();
             surfaceTexture = null;
         }

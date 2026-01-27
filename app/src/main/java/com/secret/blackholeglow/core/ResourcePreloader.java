@@ -133,6 +133,14 @@ public class ResourcePreloader {
                 prepareZeldaSceneTasks();
                 break;
 
+            case "SUPERMAN":
+                prepareSupermanSceneTasks();
+                break;
+
+            case "AOT":
+                prepareAOTSceneTasks();
+                break;
+
             default:
                 // Default: usar Lab
                 prepareLabSceneTasks();
@@ -169,7 +177,7 @@ public class ResourcePreloader {
 
     /**
      * Elimina recursos de escenas anteriores, manteniendo solo:
-     * - Recursos del Panel (thehouse.mp4, grimoire.obj, etc.)
+     * - Recursos del Panel (Gaming Controller, texturas LikeButton)
      * - Recursos de la escena actual
      *
      * Esto evita que el almacenamiento se llene con videos de todas las escenas.
@@ -183,7 +191,7 @@ public class ResourcePreloader {
         List<String> sceneModels = getSceneModels(currentScene);
 
         // Combinar con recursos del panel (siempre se mantienen)
-        // NOTA: Ya no hay video del panel (thehouse.mp4 eliminado en v5.0.7)
+        // Panel usa imagen estática del wallpaper seleccionado (sin video)
         List<String> keepVideos = new ArrayList<>(sceneVideos);
 
         List<String> keepImages = new ArrayList<>(PanelResources.IMAGES);
@@ -237,6 +245,12 @@ public class ResourcePreloader {
 
             case "ZELDA_BOTW":
                 return Arrays.asList();  // Solo usa imágenes, no videos
+
+            case "SUPERMAN":
+                return Arrays.asList("superman_scene.mp4");
+
+            case "AOT":
+                return Arrays.asList("erenEscena01.mp4");
 
             default:
                 return new ArrayList<>();
@@ -497,6 +511,41 @@ public class ResourcePreloader {
         // Calcular total
         calculateTotalWeight();
         Log.d(TAG, "🗡️ ZeldaScene: " + tasks.size() + " recursos (peso: " + totalTasks + ")");
+    }
+
+    /**
+     * Prepara tareas para SupermanScene (Man of Steel)
+     * Video de Superman volando épicamente
+     */
+    public void prepareSupermanSceneTasks() {
+        tasks.clear();
+
+        // 1. VIDEO - Superman Scene desde Supabase
+        addVideoDownloadTask("Video Superman", "superman_scene.mp4", 10);
+
+        // 2. Preview texture
+        addTextureTask("Preparando escena Superman", R.drawable.preview_superman, 2);
+
+        // Calcular total
+        calculateTotalWeight();
+        Log.d(TAG, "🦸 SupermanScene: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    /**
+     * ⚔️ AOT Scene - Attack on Titan (Eren Jaeger)
+     */
+    public void prepareAOTSceneTasks() {
+        tasks.clear();
+
+        // 1. VIDEO - AOT Scene desde Supabase
+        addVideoDownloadTask("Video AOT", "erenEscena01.mp4", 10);
+
+        // 2. Preview texture
+        addTextureTask("Preparando escena AOT", R.drawable.preview_aot, 2);
+
+        // Calcular total
+        calculateTotalWeight();
+        Log.d(TAG, "⚔️ AOTScene: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
     }
 
     private void calculateTotalWeight() {

@@ -205,7 +205,26 @@ public class MusicVisualizer {
         } catch (Exception e) {
             Log.e(TAG, "[MusicVisualizer] ✗ Error inicializando: " + e.getMessage());
             Log.e(TAG, "[MusicVisualizer] Es posible que falten permisos de audio");
-            isInitializing = false;  // 🔒 Reset flag
+
+            // 🧹 Limpiar visualizer parcialmente inicializado
+            if (visualizer != null) {
+                try {
+                    visualizer.release();
+                } catch (Exception ignored) {}
+                visualizer = null;
+            }
+            isEnabled = false;
+            isInitializing = false;
+
+            // 🔄 Si el error es "wrong state", reintentar después de un delay
+            if (e.getMessage() != null && e.getMessage().contains("wrong state")) {
+                Log.d(TAG, "[MusicVisualizer] 🔄 Programando reintento en 500ms...");
+                handler.postDelayed(() -> {
+                    Log.d(TAG, "[MusicVisualizer] 🔄 Reintentando inicialización...");
+                    initialize();
+                }, 500);
+            }
+
             return false;
         }
     }
@@ -672,6 +691,13 @@ public class MusicVisualizer {
      * ⚡ Remueve listener ANTES de liberar para evitar memory leaks
      */
     public void release() {
+        // ⚡ CRÍTICO: Cancelar callbacks pendientes del auto-resume
+        // Evita que sendMediaPlayCommand() se ejecute después de release()
+        if (handler != null) {
+            handler.removeCallbacksAndMessages(null);
+            Log.d(TAG, "[MusicVisualizer] ✓ Callbacks de auto-resume cancelados");
+        }
+
         if (visualizer != null) {
             try {
                 // ⚡ CRÍTICO: Remover listener ANTES de liberar

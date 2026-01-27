@@ -18,6 +18,8 @@ import com.secret.blackholeglow.scenes.NeonCityScene;
 import com.secret.blackholeglow.scenes.SaintSeiyaScene;
 import com.secret.blackholeglow.scenes.WalkingDeadScene;
 import com.secret.blackholeglow.scenes.ZeldaParallaxScene;
+import com.secret.blackholeglow.scenes.SupermanScene;
+import com.secret.blackholeglow.scenes.AOTScene;
 import com.secret.blackholeglow.sharing.LikeButton;
 import com.secret.blackholeglow.scenes.WallpaperScene;
 import com.secret.blackholeglow.systems.AspectRatioManager;
@@ -71,6 +73,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     private final Context context;
     private boolean initialized = false;
     private boolean paused = false;
+    private long lastBandsLogTime = 0;  // Para reducir logging excesivo
     private int screenWidth = 1;
     private int screenHeight = 1;
     private String pendingSceneName = "";
@@ -214,11 +217,13 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             WallpaperScene scene = sceneFactory.getCurrentScene();
             float[] bands = musicVisualizer.getFrequencyBands();
 
-            // Debug: verificar flujo de datos
+            // Debug: verificar flujo de datos (solo log cada 2 segundos para evitar spam)
             float sum = 0;
             if (bands != null) for (float b : bands) sum += b;
-            if (sum > 0.5f) {
+            long now = System.currentTimeMillis();
+            if (sum > 0.5f && (now - lastBandsLogTime) > 2000) {
                 Log.d(TAG, "🎶 Bands OK sum=" + String.format("%.2f", sum) + " scene=" + (scene != null ? scene.getClass().getSimpleName() : "null"));
+                lastBandsLogTime = now;
             }
 
             if (scene instanceof OceanFloorScene) {
@@ -245,6 +250,12 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             } else if (scene instanceof ZeldaParallaxScene) {
                 // 🗡️ Zelda BOTW tiene ecualizador ZELDA
                 ((ZeldaParallaxScene) scene).updateMusicBands(bands);
+            } else if (scene instanceof SupermanScene) {
+                // 🦸 Superman tiene ecualizador SUPERMAN
+                ((SupermanScene) scene).updateMusicBands(bands);
+            } else if (scene instanceof AOTScene) {
+                // ⚔️ AOT tiene ecualizador AOT
+                ((AOTScene) scene).updateMusicBands(bands);
             }
         }
         sceneFactory.updateCurrentScene(deltaTime);
@@ -299,12 +310,15 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         // Habilitar saludos Gemini para todos los wallpapers
         panelRenderer.setGreetingEnabled(true);
 
-        // 🎵 Reconexión del MusicVisualizer para TODAS las escenas
-        // (MusicVisualizer solo ESCUCHA el audio, NO interrumpe Spotify/YouTube Music)
+        // 🎵 Solo reconectar MusicVisualizer si NO está funcionando
+        // ⚠️ Reconectar puede pausar Spotify, así que evitarlo si ya funciona
         if (musicVisualizer != null) {
-            Log.d(TAG, "🎵 Forzando reconexión de MusicVisualizer para WALLPAPER_MODE...");
-            musicVisualizer.reconnect();
-            Log.d(TAG, "🎵 MusicVisualizer reconectado para WALLPAPER_MODE");
+            if (musicVisualizer.isEnabled() && musicVisualizer.isReceivingAudio()) {
+                Log.d(TAG, "🎵 MusicVisualizer ya funcionando, sin reconectar");
+            } else {
+                Log.d(TAG, "🎵 MusicVisualizer no activo, reanudando...");
+                musicVisualizer.resume();  // Usar resume() en vez de reconnect()
+            }
         }
     }
 
@@ -457,6 +471,12 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
                 songSharing.setLikeButtonTheme(LikeButton.Theme.SYNTHWAVE);
             } else if (sceneName.equals("SAINT_SEIYA") || sceneName.toLowerCase().contains("seiya")) {
                 songSharing.setLikeButtonTheme(LikeButton.Theme.COSMOS);
+            } else if (sceneName.equals("SUPERMAN") || sceneName.toLowerCase().contains("superman")) {
+                songSharing.setLikeButtonTheme(LikeButton.Theme.SUPERMAN);
+            } else if (sceneName.equals("WALKING_DEAD") || sceneName.toLowerCase().contains("walking")) {
+                songSharing.setLikeButtonTheme(LikeButton.Theme.WALKING_DEAD);
+            } else if (sceneName.equals("AOT") || sceneName.toLowerCase().contains("aot") || sceneName.toLowerCase().contains("titan")) {
+                songSharing.setLikeButtonTheme(LikeButton.Theme.AOT);
             } else {
                 songSharing.setLikeButtonTheme(LikeButton.Theme.DEFAULT);
             }
