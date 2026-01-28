@@ -141,6 +141,10 @@ public class ResourcePreloader {
                 prepareAOTSceneTasks();
                 break;
 
+            case "SPIDER":
+                prepareSpiderSceneTasks();
+                break;
+
             default:
                 // Default: usar Lab
                 prepareLabSceneTasks();
@@ -251,6 +255,9 @@ public class ResourcePreloader {
 
             case "AOT":
                 return Arrays.asList("erenEscena01.mp4");
+
+            case "SPIDER":
+                return Arrays.asList("spiderscene.mp4");
 
             default:
                 return new ArrayList<>();
@@ -546,6 +553,23 @@ public class ResourcePreloader {
         // Calcular total
         calculateTotalWeight();
         Log.d(TAG, "⚔️ AOTScene: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    /**
+     * 🕷️ Spider Scene - Black Spider Horror
+     */
+    public void prepareSpiderSceneTasks() {
+        tasks.clear();
+
+        // 1. VIDEO - Spider Scene desde Supabase
+        addVideoDownloadTask("Video Spider", "spiderscene.mp4", 10);
+
+        // 2. Preview texture
+        addTextureTask("Preparando escena Spider", R.drawable.preview_spider, 2);
+
+        // Calcular total
+        calculateTotalWeight();
+        Log.d(TAG, "🕷️ SpiderScene: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
     }
 
     private void calculateTotalWeight() {

@@ -93,6 +93,14 @@ public class VideoConfig {
             "Attack on Titan - Eren",
             1
         ));
+
+        // SpiderScene - Black Spider Horror
+        VIDEOS.put("spiderscene.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "spiderscene.mp4",
+            15_378_022L,  // ~14.7 MB (pendiente optimización 720p)
+            "Black Spider",
+            1
+        ));
     }
 
     // =========================================================================

@@ -31,7 +31,7 @@ import java.nio.FloatBuffer;
 public class LikeButton {
     private static final String TAG = "LikeButton";
 
-    public enum Theme { DEFAULT, ABYSSIA, PYRALIS, ADVENTURE_TIME, GOKU, SYNTHWAVE, COSMOS, WALKING_DEAD, SUPERMAN, AOT }
+    public enum Theme { DEFAULT, ABYSSIA, PYRALIS, ADVENTURE_TIME, GOKU, SYNTHWAVE, COSMOS, WALKING_DEAD, SUPERMAN, AOT, SPIDER }
     private Theme currentTheme = Theme.DEFAULT;
 
     private float x = 0.85f;
@@ -85,6 +85,30 @@ public class LikeButton {
     private float[] zombieHeartDark = {0.4f, 0.1f, 0.1f, 0.95f};      // Rojo sangre oscuro
     private float[] zombieGlow = {0.2f, 1.0f, 0.3f};                  // Verde neón glow
     private float[] zombieVein = {0.6f, 0.0f, 0.0f, 0.8f};            // Venas rojas
+
+    // 🕷️ Colores para Spider (Rojo sangre → Negro → Púrpura oscuro)
+    private static final int SPIDER_GLOW_SEGMENTS = 32;
+    private static final float SPIDER_GLOW_SCALE_OUTER = 2.0f;
+    private static final float SPIDER_GLOW_SCALE_INNER = 1.5f;
+    private static final float SPIDER_PULSE_SPEED = 3.5f;
+    private static final float SPIDER_PULSE_MULTIPLIER = 0.12f;   // Multiplicador pulso escala
+    private static final float SPIDER_GLOW_ALPHA_OUTER = 0.1f;    // Alpha glow exterior
+    private static final float SPIDER_GLOW_ALPHA_INNER = 0.2f;    // Alpha glow interior
+    private static final float SPIDER_EYE_PULSE_AMP = 0.3f;       // Amplitud pulso ojos
+    private static final float SPIDER_EYE_PULSE_OFFSET = 0.7f;    // Offset pulso ojos
+    private static final float SPIDER_BORDER_WIDTH = 3.5f;        // Grosor borde
+    private static final float SPIDER_WEB_SCALE = 0.8f;           // Escala telaraña
+    private static final float SPIDER_WEB_DIAGONAL = 0.7f;        // Longitud líneas diagonales
+    private static final float SPIDER_WEB_CROSS = 0.9f;           // Longitud líneas cruz
+    private static final float SPIDER_WEB_PULSE_SPEED = 2.0f;     // Velocidad pulso telaraña
+    private static final float[] spiderHeartMain = {0.85f, 0.1f, 0.1f, 0.95f};     // Rojo sangre (ojos)
+    private static final float[] spiderGlow = {1.0f, 0.15f, 0.15f, 1.0f};          // Glow rojo
+    private static final float[] spiderDark = {0.1f, 0.02f, 0.05f, 0.9f};          // Negro/púrpura oscuro
+    private static final float[] spiderWeb = {0.3f, 0.3f, 0.3f, 0.6f};             // Telaraña gris
+    private FloatBuffer spiderGlowBuffer;
+    private boolean spiderGlowBufferInitialized = false;
+    private FloatBuffer spiderWebBuffer;       // 🔧 FIX: Buffer cacheado para telaraña
+    private boolean spiderWebBufferInitialized = false;
 
     private final float[] modelMatrix = new float[16];
     private final float[] finalMatrix = new float[16];
@@ -337,6 +361,10 @@ public class LikeButton {
             case AOT:
                 // ⚔️ Attack on Titan - Corazón con ojos verdes de Eren
                 drawAOTHeartProcedural(mvpMatrix, pulse);
+                break;
+            case SPIDER:
+                // 🕷️ Black Spider - Corazón con ojos rojos brillantes
+                drawSpiderHeartProcedural(mvpMatrix, pulse);
                 break;
         }
     }
@@ -1100,6 +1128,140 @@ public class LikeButton {
         GLES30.glEnableVertexAttribArray(positionHandleColor);
         GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, aotGlowBuffer);
         GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, AOT_GLOW_SEGMENTS + 2);
+        GLES30.glDisableVertexAttribArray(positionHandleColor);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🕷️ SPIDER HEART - Black Spider Horror (Procedural)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    private void drawSpiderHeartProcedural(float[] mvpMatrix, float pulse) {
+        GLES30.glUseProgram(programIdColor);
+        float scale = size * (1.0f + pulse * SPIDER_PULSE_MULTIPLIER);
+        float currentY = y + floatOffset;
+
+        // 1. Glow rojo sangre exterior (ojos de araña brillando)
+        if (!isOnCooldown) {
+            drawSpiderGlow(mvpMatrix, scale * SPIDER_GLOW_SCALE_OUTER, SPIDER_GLOW_ALPHA_OUTER, pulse);
+            drawSpiderGlow(mvpMatrix, scale * SPIDER_GLOW_SCALE_INNER, SPIDER_GLOW_ALPHA_INNER, pulse);
+        }
+
+        // 2. Corazón principal - Rojo sangre con borde negro
+        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
+        android.opengl.Matrix.translateM(modelMatrix, 0, x, currentY, 0);
+        android.opengl.Matrix.scaleM(modelMatrix, 0, scale, scale, 1);
+        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandleColor, 1, false, finalMatrix, 0);
+
+        // Color rojo sangre (ojos de la araña)
+        float eyePulse = (float) (Math.sin(pulsePhase * SPIDER_PULSE_SPEED) * SPIDER_EYE_PULSE_AMP + SPIDER_EYE_PULSE_OFFSET);
+        colorCache[0] = spiderHeartMain[0] * eyePulse;
+        colorCache[1] = spiderHeartMain[1];
+        colorCache[2] = spiderHeartMain[2];
+        colorCache[3] = isOnCooldown ? 0.4f : (isPressed ? 1.0f : spiderHeartMain[3]);
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+
+        heartBuffer.position(0);
+        GLES30.glEnableVertexAttribArray(positionHandleColor);
+        GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, heartBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, heartBuffer.capacity() / 2);
+
+        // 3. Borde negro/púrpura oscuro (cuerpo de araña)
+        if (!isOnCooldown) {
+            GLES30.glLineWidth(SPIDER_BORDER_WIDTH);
+            colorCache[0] = spiderDark[0];
+            colorCache[1] = spiderDark[1];
+            colorCache[2] = spiderDark[2];
+            colorCache[3] = spiderDark[3];
+            GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+            GLES30.glDrawArrays(GLES30.GL_LINE_LOOP, 1, heartBuffer.capacity() / 2 - 1);
+        }
+
+        // 4. Líneas de telaraña sutiles (efecto decorativo)
+        if (!isOnCooldown) {
+            drawSpiderWebLines(mvpMatrix, scale * SPIDER_WEB_SCALE, pulse);
+        }
+
+        GLES30.glDisableVertexAttribArray(positionHandleColor);
+    }
+
+    private void drawSpiderGlow(float[] mvpMatrix, float glowSize, float alpha, float pulse) {
+        float currentY = y + floatOffset;
+
+        // Inicializar buffer solo una vez (evita memory leak)
+        if (!spiderGlowBufferInitialized) {
+            float[] glowVerts = new float[(SPIDER_GLOW_SEGMENTS + 2) * 2];
+            glowVerts[0] = 0f; glowVerts[1] = 0f;
+            for (int i = 0; i <= SPIDER_GLOW_SEGMENTS; i++) {
+                float angle = (float) (2.0 * Math.PI * i / SPIDER_GLOW_SEGMENTS);
+                glowVerts[(i + 1) * 2] = (float) Math.cos(angle);
+                glowVerts[(i + 1) * 2 + 1] = (float) Math.sin(angle);
+            }
+            ByteBuffer bb = ByteBuffer.allocateDirect(glowVerts.length * 4);
+            bb.order(ByteOrder.nativeOrder());
+            spiderGlowBuffer = bb.asFloatBuffer();
+            spiderGlowBuffer.put(glowVerts);
+            spiderGlowBufferInitialized = true;
+        }
+        spiderGlowBuffer.position(0);
+
+        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
+        android.opengl.Matrix.translateM(modelMatrix, 0, x, currentY, 0);
+        android.opengl.Matrix.scaleM(modelMatrix, 0, glowSize, glowSize, 1);
+        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandleColor, 1, false, finalMatrix, 0);
+
+        // Glow rojo pulsante (ojos de araña brillando en la oscuridad)
+        colorCache[0] = spiderGlow[0];
+        colorCache[1] = spiderGlow[1];
+        colorCache[2] = spiderGlow[2];
+        colorCache[3] = alpha * (0.4f + pulse * 0.6f);
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+
+        GLES30.glEnableVertexAttribArray(positionHandleColor);
+        GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, spiderGlowBuffer);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, SPIDER_GLOW_SEGMENTS + 2);
+        GLES30.glDisableVertexAttribArray(positionHandleColor);
+    }
+
+    private void drawSpiderWebLines(float[] mvpMatrix, float webSize, float pulse) {
+        float currentY = y + floatOffset;
+
+        // 🔧 FIX: Inicializar buffer solo una vez (evita memory leak)
+        if (!spiderWebBufferInitialized) {
+            float[] webLines = {
+                -SPIDER_WEB_DIAGONAL, -SPIDER_WEB_DIAGONAL,  SPIDER_WEB_DIAGONAL, SPIDER_WEB_DIAGONAL,   // Diagonal 1
+                -SPIDER_WEB_DIAGONAL, SPIDER_WEB_DIAGONAL,   SPIDER_WEB_DIAGONAL, -SPIDER_WEB_DIAGONAL,  // Diagonal 2
+                0.0f, -SPIDER_WEB_CROSS,   0.0f, SPIDER_WEB_CROSS,   // Vertical
+                -SPIDER_WEB_CROSS, 0.0f,   SPIDER_WEB_CROSS, 0.0f    // Horizontal
+            };
+            ByteBuffer bb = ByteBuffer.allocateDirect(webLines.length * 4);
+            bb.order(ByteOrder.nativeOrder());
+            spiderWebBuffer = bb.asFloatBuffer();
+            spiderWebBuffer.put(webLines);
+            spiderWebBufferInitialized = true;
+        }
+        spiderWebBuffer.position(0);
+
+        android.opengl.Matrix.setIdentityM(modelMatrix, 0);
+        android.opengl.Matrix.translateM(modelMatrix, 0, x, currentY, 0);
+        android.opengl.Matrix.scaleM(modelMatrix, 0, webSize, webSize, 1);
+        android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
+        GLES30.glUniformMatrix4fv(mvpMatrixHandleColor, 1, false, finalMatrix, 0);
+
+        // Líneas de telaraña gris semi-transparente
+        float webPulse = (float) (Math.sin(pulsePhase * SPIDER_WEB_PULSE_SPEED) * 0.2 + 0.8);
+        colorCache[0] = spiderWeb[0] * webPulse;
+        colorCache[1] = spiderWeb[1] * webPulse;
+        colorCache[2] = spiderWeb[2] * webPulse;
+        colorCache[3] = spiderWeb[3] * (0.3f + pulse * 0.3f);
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
+
+        // Dibujar 4 líneas como telaraña
+        GLES30.glLineWidth(1.0f);
+        GLES30.glEnableVertexAttribArray(positionHandleColor);
+        GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, spiderWebBuffer);
+        GLES30.glDrawArrays(GLES30.GL_LINES, 0, 8);
         GLES30.glDisableVertexAttribArray(positionHandleColor);
     }
 

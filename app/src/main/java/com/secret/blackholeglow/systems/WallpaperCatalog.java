@@ -374,6 +374,20 @@ public class WallpaperCatalog {
                 .featured()
                 .build());
 
+        // ═══════════════════════════════════════════════════════════════════
+        // 🕷️ SPIDER - Black Spider Horror
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("🕷️ BLACK SPIDER 🕷️")
+                .descripcion("Araña gigante con ojos rojos brillantes. " +
+                        "Terror aracnofóbico en la oscuridad más profunda.")
+                .preview(R.drawable.preview_spider)
+                .sceneName("SPIDER")
+                .tier(WallpaperTier.FREE)
+                .badge("🕷️ HORROR")
+                .glow(0xFFDC143C)  // Crimson red (spider eyes)
+                .featured()
+                .build());
+
         Log.d(TAG, "📚 Catálogo inicializado: " + catalog.size() + " wallpapers");
     }
 }

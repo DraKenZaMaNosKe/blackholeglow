@@ -39,7 +39,8 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         WALKING_DEAD, // Verde tóxico → Rojo sangre → Púrpura oscuro (zombie)
         ZELDA,        // Verde Hyrule → Azul cielo → Dorado Triforce
         SUPERMAN,     // Rojo → Azul → Amarillo (Man of Steel)
-        AOT           // Verde neón → Rojo sangre → Naranja titán (Attack on Titan)
+        AOT,          // Verde neón → Rojo sangre → Naranja titán (Attack on Titan)
+        SPIDER        // Rojo sangre → Negro → Carmesí (Black Spider horror)
     }
 
     private Theme currentTheme = Theme.DEFAULT;
@@ -146,6 +147,15 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     private static final float[] AOT_WAVE_NORMAL = {0.0f, 0.8f, 0.6f};       // Verde/Cyan (transformación)
     private static final float[] AOT_LIGHTNING_1 = {0.0f, 1.0f, 0.8f};       // Rayo verde (ojos brillantes)
     private static final float[] AOT_LIGHTNING_2 = {1.0f, 0.4f, 0.0f};       // Rayo naranja (vapor titán)
+
+    // === SPIDER (Black Spider Horror - Rojo sangre → Negro → Carmesí) ===
+    private static final float[] SPIDER_BASS = {0.85f, 0.1f, 0.1f};          // Rojo sangre (ojos araña)
+    private static final float[] SPIDER_TREBLE = {0.15f, 0.05f, 0.05f};      // Negro/Gris muy oscuro
+    private static final float[] SPIDER_PEAK = {1.0f, 0.2f, 0.2f};           // Rojo brillante (ojos encendidos)
+    private static final float[] SPIDER_WAVE_STRONG = {0.7f, 0.0f, 0.0f};    // Rojo oscuro profundo
+    private static final float[] SPIDER_WAVE_NORMAL = {0.3f, 0.0f, 0.1f};    // Carmesí/Púrpura oscuro
+    private static final float[] SPIDER_LIGHTNING_1 = {1.0f, 0.15f, 0.15f};  // Rayo rojo (telaraña eléctrica)
+    private static final float[] SPIDER_LIGHTNING_2 = {0.5f, 0.0f, 0.2f};    // Rayo púrpura oscuro
 
     // Colores activos (se actualizan con setTheme)
     private float[] colorBass = DEFAULT_BASS;
@@ -452,6 +462,17 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
                 colorLightning1 = AOT_LIGHTNING_1;
                 colorLightning2 = AOT_LIGHTNING_2;
                 Log.d(TAG, "⚔️ Tema AOT activado - Attack on Titan");
+                break;
+
+            case SPIDER:
+                colorBass = SPIDER_BASS;
+                colorTreble = SPIDER_TREBLE;
+                colorPeak = SPIDER_PEAK;
+                colorWaveStrong = SPIDER_WAVE_STRONG;
+                colorWaveNormal = SPIDER_WAVE_NORMAL;
+                colorLightning1 = SPIDER_LIGHTNING_1;
+                colorLightning2 = SPIDER_LIGHTNING_2;
+                Log.d(TAG, "🕷️ Tema SPIDER activado - Black Spider Horror");
                 break;
 
             default:

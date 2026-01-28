@@ -75,6 +75,7 @@ public class WallpaperPreferences {
         "ZELDA_BOTW",     // 🗡️ Zelda Breath of the Wild Parallax
         "SUPERMAN",       // 🦸 Superman Man of Steel
         "AOT",            // ⚔️ Attack on Titan - Eren Jaeger
+        "SPIDER",         // 🕷️ Black Spider Horror
 
         // ═══════════════════════════════════════════
         // 📦 WALLPAPERS LEGADOS (compatibilidad)

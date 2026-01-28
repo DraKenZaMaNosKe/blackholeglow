@@ -20,6 +20,7 @@ import com.secret.blackholeglow.scenes.WalkingDeadScene;
 import com.secret.blackholeglow.scenes.ZeldaParallaxScene;
 import com.secret.blackholeglow.scenes.SupermanScene;
 import com.secret.blackholeglow.scenes.AOTScene;
+import com.secret.blackholeglow.scenes.SpiderScene;
 import com.secret.blackholeglow.sharing.LikeButton;
 import com.secret.blackholeglow.scenes.WallpaperScene;
 import com.secret.blackholeglow.systems.AspectRatioManager;
@@ -256,6 +257,9 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             } else if (scene instanceof AOTScene) {
                 // ⚔️ AOT tiene ecualizador AOT
                 ((AOTScene) scene).updateMusicBands(bands);
+            } else if (scene instanceof SpiderScene) {
+                // 🕷️ Spider tiene ecualizador SPIDER
+                ((SpiderScene) scene).updateMusicBands(bands);
             }
         }
         sceneFactory.updateCurrentScene(deltaTime);
@@ -477,6 +481,8 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
                 songSharing.setLikeButtonTheme(LikeButton.Theme.WALKING_DEAD);
             } else if (sceneName.equals("AOT") || sceneName.toLowerCase().contains("aot") || sceneName.toLowerCase().contains("titan")) {
                 songSharing.setLikeButtonTheme(LikeButton.Theme.AOT);
+            } else if (sceneName.equals("SPIDER") || sceneName.toLowerCase().contains("spider") || sceneName.toLowerCase().contains("araña")) {
+                songSharing.setLikeButtonTheme(LikeButton.Theme.SPIDER);
             } else {
                 songSharing.setLikeButtonTheme(LikeButton.Theme.DEFAULT);
             }
