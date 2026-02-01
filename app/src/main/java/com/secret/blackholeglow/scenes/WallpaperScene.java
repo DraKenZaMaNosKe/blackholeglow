@@ -308,6 +308,15 @@ public abstract class WallpaperScene implements Disposable {
         return isLoaded;
     }
 
+    /**
+     * Verifica si la escena está lista para renderizar.
+     * Override en subclases que necesitan verificar recursos (ej: video primer frame).
+     * @return true si todos los recursos están listos
+     */
+    public boolean isReady() {
+        return isLoaded && !isDisposed;
+    }
+
     public boolean isPaused() {
         return isPaused;
     }

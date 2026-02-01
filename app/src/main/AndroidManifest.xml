@@ -56,6 +56,15 @@
 
     <!--
       ╔══════════════════════════════════════════════╗
+      ║    🔔 PERMISO PARA NOTIFICACIONES 🔔         ║
+      ╚══════════════════════════════════════════════╝
+      Android 13+ requiere permiso explícito para mostrar notificaciones.
+      Usado para informar al usuario sobre descargas y estado del wallpaper.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+    <!--
+      ╔══════════════════════════════════════════════╗
       ║     🚀 OPENGL ES 3.0 – PODER MÁXIMO 🚀      ║
       ╚══════════════════════════════════════════════╝
       OpenGL ES 3.0 para: Instancing, VAOs, GLSL 300 es

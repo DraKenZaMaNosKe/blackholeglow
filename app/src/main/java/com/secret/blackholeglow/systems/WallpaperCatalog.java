@@ -388,6 +388,20 @@ public class WallpaperCatalog {
                 .featured()
                 .build());
 
+        // ═══════════════════════════════════════════════════════════════════
+        // 🏛️ LOST ATLANTIS - Ciudad Sumergida
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("🏛️ LOST ATLANTIS 🏛️")
+                .descripcion("Templo ancestral sumergido en aguas turquesa. " +
+                        "Energía mística, pétalos de cerezo y linternas doradas.")
+                .preview(R.drawable.preview_lost_atlantis)
+                .sceneName("LOST_ATLANTIS")
+                .tier(WallpaperTier.FREE)
+                .badge("🌊 NUEVO")
+                .glow(0xFF00CED1)  // Dark Turquoise
+                .featured()
+                .build());
+
         Log.d(TAG, "📚 Catálogo inicializado: " + catalog.size() + " wallpapers");
     }
 }

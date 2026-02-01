@@ -144,22 +144,8 @@ public class GreetingText implements SceneObject {
     }
 
     private void getUserName() {
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (currentUser != null) {
-            String displayName = currentUser.getDisplayName();
-            if (displayName != null && !displayName.isEmpty()) {
-                userName = displayName;
-            } else {
-                String email = currentUser.getEmail();
-                if (email != null) {
-                    userName = email.split("@")[0];  // Usar parte antes del @
-                } else {
-                    userName = "Usuario";
-                }
-            }
-        } else {
-            userName = "Usuario";
-        }
+        // Ya no se usa nombre real por privacidad
+        userName = "Amigo";
         Log.d(TAG, "👤 Nombre de usuario: " + userName);
     }
 

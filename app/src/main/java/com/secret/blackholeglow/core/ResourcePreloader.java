@@ -79,6 +79,18 @@ public class ResourcePreloader {
         this.listener = listener;
     }
 
+    // 🔧 FIX ANR: Guardar sceneName para limpieza diferida en background
+    private String pendingCleanupScene = null;
+    private String activeSceneToProtect = null;  // 🔧 Escena activa que NO debe limpiarse
+
+    /**
+     * 🔧 Establece la escena activa que debe protegerse durante limpieza.
+     * Llamar ANTES de cambiar la preferencia del wallpaper.
+     */
+    public void setActiveSceneToProtect(String sceneName) {
+        this.activeSceneToProtect = sceneName;
+    }
+
     /**
      * Prepara tareas segun el nombre del wallpaper
      */
@@ -87,8 +99,9 @@ public class ResourcePreloader {
             tasks.clear();
         }
 
-        // 🧹 LIMPIEZA: Eliminar recursos de escenas anteriores
-        cleanupOtherSceneResources(sceneName);
+        // 🔧 FIX ANR: NO hacer limpieza aquí (bloquea main thread)
+        // La limpieza se hace en el background thread al inicio de startPreloading()
+        pendingCleanupScene = sceneName;
 
         // Determinar que escena es y preparar tareas apropiadas
         if (sceneName == null) {
@@ -145,6 +158,10 @@ public class ResourcePreloader {
                 prepareSpiderSceneTasks();
                 break;
 
+            case "LOST_ATLANTIS":
+                prepareLostAtlantisSceneTasks();
+                break;
+
             default:
                 // Default: usar Lab
                 prepareLabSceneTasks();
@@ -186,16 +203,25 @@ public class ResourcePreloader {
      *
      * Esto evita que el almacenamiento se llene con videos de todas las escenas.
      */
-    private void cleanupOtherSceneResources(String currentScene) {
+    private void cleanupOtherSceneResources(String newScene) {
         Log.d(TAG, "🧹 Limpiando recursos de escenas anteriores...");
 
-        // Obtener recursos de la escena actual
-        List<String> sceneVideos = getSceneVideos(currentScene);
-        List<String> sceneImages = getSceneImages(currentScene);
-        List<String> sceneModels = getSceneModels(currentScene);
+        // 🔧 FIX CRASH: Arrays.asList() retorna lista de tamaño fijo que NO soporta addAll().
+        // Envolver en new ArrayList<>() para hacerla mutable.
+        List<String> sceneVideos = new ArrayList<>(getSceneVideos(newScene));
+        List<String> sceneImages = new ArrayList<>(getSceneImages(newScene));
+        List<String> sceneModels = new ArrayList<>(getSceneModels(newScene));
+
+        // 🔧 FIX FREEZE: También mantener recursos del wallpaper ACTUALMENTE CORRIENDO
+        // El wallpaper activo sigue necesitando sus recursos hasta que sea reemplazado
+        if (activeSceneToProtect != null && !activeSceneToProtect.equals(newScene)) {
+            Log.d(TAG, "🛡️ Manteniendo recursos del wallpaper activo: " + activeSceneToProtect);
+            sceneVideos.addAll(getSceneVideos(activeSceneToProtect));
+            sceneImages.addAll(getSceneImages(activeSceneToProtect));
+            sceneModels.addAll(getSceneModels(activeSceneToProtect));
+        }
 
         // Combinar con recursos del panel (siempre se mantienen)
-        // Panel usa imagen estática del wallpaper seleccionado (sin video)
         List<String> keepVideos = new ArrayList<>(sceneVideos);
 
         List<String> keepImages = new ArrayList<>(PanelResources.IMAGES);
@@ -239,7 +265,7 @@ public class ResourcePreloader {
                 return Arrays.asList("escenaHDA.mp4");
 
             case "NEON_CITY":
-                return Arrays.asList("neonCityDeLorean.mp4");
+                return Arrays.asList("neoncityScene.mp4");
 
             case "SAINT_SEIYA":
                 return Arrays.asList();  // Solo usa imágenes
@@ -258,6 +284,9 @@ public class ResourcePreloader {
 
             case "SPIDER":
                 return Arrays.asList("spiderscene.mp4");
+
+            case "LOST_ATLANTIS":
+                return Arrays.asList("lostatlanstis.mp4");
 
             default:
                 return new ArrayList<>();
@@ -572,10 +601,97 @@ public class ResourcePreloader {
         Log.d(TAG, "🕷️ SpiderScene: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
     }
 
+    /**
+     * 🏛️ Lost Atlantis Scene - Templo sumergido
+     */
+    public void prepareLostAtlantisSceneTasks() {
+        tasks.clear();
+
+        // 1. VIDEO - Lost Atlantis Scene desde Supabase
+        addVideoDownloadTask("Video Lost Atlantis", "lostatlanstis.mp4", 10);
+
+        // 2. Preview texture
+        addTextureTask("Preparando escena Lost Atlantis", R.drawable.preview_lost_atlantis, 2);
+
+        // Calcular total
+        calculateTotalWeight();
+        Log.d(TAG, "🏛️ LostAtlantisScene: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
     private void calculateTotalWeight() {
         totalTasks = 0;
         for (PreloadTask task : tasks) {
             totalTasks += task.weight;
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🛡️ VERIFICACIÓN DE RECURSOS - Safety net para el engine
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Verifica si los recursos CRÍTICOS de una escena están disponibles en disco.
+     * Solo verifica videos (son los recursos más grandes y obligatorios).
+     * Imágenes y modelos pueden faltar sin causar pantalla negra.
+     *
+     * @return true si todos los videos requeridos existen en disco
+     */
+    public static boolean areSceneResourcesReady(Context context, String sceneName) {
+        if (sceneName == null) return true;
+
+        // Obtener videos requeridos para esta escena
+        List<String> requiredVideos = getSceneVideosStatic(sceneName);
+
+        if (requiredVideos.isEmpty()) {
+            // Escenas sin video (Saint Seiya, Zelda) siempre están listas
+            return true;
+        }
+
+        VideoDownloadManager downloader = VideoDownloadManager.getInstance(context);
+        for (String videoFile : requiredVideos) {
+            if (!downloader.isVideoAvailable(videoFile)) {
+                Log.d(TAG, "🛡️ Recurso NO disponible: " + videoFile + " para " + sceneName);
+                return false;
+            }
+        }
+
+        Log.d(TAG, "🛡️ Recursos verificados OK para: " + sceneName);
+        return true;
+    }
+
+    /**
+     * Versión estática de getSceneVideos para uso desde otros componentes
+     */
+    private static List<String> getSceneVideosStatic(String sceneName) {
+        if (sceneName == null) return new ArrayList<>();
+
+        switch (sceneName) {
+            case "Portal Cosmico":
+            case "PYRALIS":
+            case "LabScene":
+                return Arrays.asList("cielovolando.mp4");
+            case "ABYSSIA":
+            case "Oceano":
+            case "OceanFloorScene":
+                return Arrays.asList("marZerg.mp4");
+            case "GOKU":
+                return Arrays.asList("gokufinalkamehamehaHD.mp4");
+            case "ADVENTURE_TIME":
+                return Arrays.asList("escenaHDA.mp4");
+            case "NEON_CITY":
+                return Arrays.asList("neoncityScene.mp4");
+            case "WALKING_DEAD":
+                return Arrays.asList("walkingdeathscene.mp4");
+            case "SUPERMAN":
+                return Arrays.asList("superman_scene.mp4");
+            case "AOT":
+                return Arrays.asList("erenEscena01.mp4");
+            case "SPIDER":
+                return Arrays.asList("spiderscene.mp4");
+            case "LOST_ATLANTIS":
+                return Arrays.asList("lostatlanstis.mp4");
+            default:
+                return new ArrayList<>();
         }
     }
 
@@ -601,8 +717,17 @@ public class ResourcePreloader {
         backgroundThread.start();
         backgroundHandler = new Handler(backgroundThread.getLooper());
 
-        // Ejecutar tareas secuencialmente para mejor control
-        backgroundHandler.post(this::executeNextTask);
+        // 🔧 FIX ANR: Ejecutar limpieza en background thread PRIMERO
+        backgroundHandler.post(() -> {
+            // Limpieza de recursos de otras escenas (ahora en background, no bloquea main thread)
+            if (pendingCleanupScene != null) {
+                cleanupOtherSceneResources(pendingCleanupScene);
+                pendingCleanupScene = null;
+            }
+
+            // Luego ejecutar tareas de descarga
+            executeNextTask();
+        });
     }
 
     private volatile int currentTaskIndex = 0;
@@ -800,5 +925,47 @@ public class ResourcePreloader {
                 Log.e(TAG, "❌ Error descargando modelo: " + modelFileName);
             }
         }, weight));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 📋 CONSULTAS ESTÁTICAS DE RECURSOS POR ESCENA
+    // Usadas por WallpaperNotificationManager para reportes
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public static List<String> getRequiredVideos(String sceneName) {
+        return getSceneVideosStatic(sceneName);
+    }
+
+    public static List<String> getRequiredImages(String sceneName) {
+        if (sceneName == null) return new ArrayList<>();
+        switch (sceneName) {
+            case "ABYSSIA":
+                return Arrays.asList("abyssal_leviathan_texture.png", "abyssal_lurker_texture.png", "huevo_zerg.png");
+            case "NEON_CITY":
+                return Arrays.asList("delorean_texture.png");
+            case "SAINT_SEIYA":
+                return Arrays.asList("fondouniverso.png", "fondouniverso3d.png", "seiya_solo.png", "seiya_depth.png");
+            case "WALKING_DEAD":
+                return Arrays.asList("zombie_head_texture.png", "zombie_body_texture.webp");
+            case "ZELDA_BOTW":
+                return Arrays.asList("zelda_fondo.png", "zelda_fondo_depth.png", "zelda_paisaje.png",
+                        "zelda_piedra.png", "zelda_link.png", "link_3d_texture.webp");
+            default:
+                return new ArrayList<>();
+        }
+    }
+
+    public static List<String> getRequiredModels(String sceneName) {
+        if (sceneName == null) return new ArrayList<>();
+        switch (sceneName) {
+            case "ABYSSIA":
+                return Arrays.asList("abyssal_leviathan.obj", "abyssal_lurker.obj");
+            case "NEON_CITY":
+                return Arrays.asList("delorean.obj");
+            case "WALKING_DEAD":
+                return Arrays.asList("zombie_head.obj", "zombie_body.obj");
+            default:
+                return new ArrayList<>();
+        }
     }
 }

@@ -194,6 +194,10 @@ public abstract class BaseVideoScene extends WallpaperScene {
     /** Flag para saber si la escena está activa */
     private boolean sceneIsActive = true;
 
+    /** 🔧 FIX FREEZE: Timer para logging de estado de carga del video */
+    private float videoLoadingLogTimer = 0f;
+    private static final float VIDEO_LOADING_LOG_INTERVAL = 1.0f;
+
     // ═══════════════════════════════════════════════════════════════════════════
     // 🎯 MÉTODOS ABSTRACTOS - OBLIGATORIO IMPLEMENTAR
     // ═══════════════════════════════════════════════════════════════════════════
@@ -337,7 +341,11 @@ public abstract class BaseVideoScene extends WallpaperScene {
     }
 
     /**
-     * Configura el video de fondo con descarga automática.
+     * Configura el video de fondo.
+     *
+     * ⚠️ IMPORTANTE: Este método NO descarga videos.
+     * El video DEBE estar pre-descargado por ResourcePreloader.
+     * Si el video no existe, la escena funcionará sin video de fondo.
      */
     private void setupVideoBackground(String videoFile) {
         downloadManager = VideoDownloadManager.getInstance(context);
@@ -345,29 +353,38 @@ public abstract class BaseVideoScene extends WallpaperScene {
         try {
             String localPath = downloadManager.getVideoPath(videoFile);
 
-            // Si el video no está descargado, descargarlo
+            // ⚠️ NO descargar aquí - esto bloquea el GL thread y causa ANR
+            // El video debe estar pre-descargado por ResourcePreloader
             if (localPath == null) {
-                Log.d(TAG, "📥 Descargando video: " + videoFile);
-                boolean success = downloadManager.downloadVideoSync(videoFile, percent -> {
-                    Log.d(TAG, "📥 Descarga: " + percent + "%");
-                });
+                Log.e(TAG, "❌ Video no disponible: " + videoFile);
+                Log.e(TAG, "❌ ResourcePreloader debería haberlo descargado antes.");
+                Log.e(TAG, "❌ La escena funcionará sin video de fondo.");
 
-                if (success) {
-                    localPath = downloadManager.getVideoPath(videoFile);
-                    Log.d(TAG, "✅ Video descargado: " + localPath);
-                } else {
-                    Log.e(TAG, "❌ Error descargando video: " + videoFile);
-                    return;
-                }
+                // 🔧 Intentar descarga en background para la próxima vez
+                // (NO bloquea el thread actual)
+                downloadManager.downloadVideo(videoFile, new VideoDownloadManager.DownloadCallback() {
+                    @Override
+                    public void onProgress(int percent, long downloadedBytes, long totalBytes) {
+                        Log.d(TAG, "📥 Descarga background: " + percent + "%");
+                    }
+                    @Override
+                    public void onComplete(String filePath) {
+                        Log.d(TAG, "✅ Video descargado en background: " + filePath);
+                        // TODO: Podríamos reiniciar el video aquí si queremos
+                    }
+                    @Override
+                    public void onError(String message) {
+                        Log.e(TAG, "❌ Error descarga background: " + message);
+                    }
+                });
+                return;
             }
 
             // Crear el renderer de video
-            if (localPath != null) {
-                Log.d(TAG, "📦 Usando video: " + localPath);
-                videoBackground = new MediaCodecVideoRenderer(context, videoFile, localPath);
-                videoBackground.initialize();
-                Log.d(TAG, "✅ Video inicializado correctamente");
-            }
+            Log.d(TAG, "📦 Usando video: " + localPath);
+            videoBackground = new MediaCodecVideoRenderer(context, videoFile, localPath);
+            videoBackground.initialize();
+            Log.d(TAG, "✅ Video inicializado correctamente");
 
         } catch (Exception e) {
             Log.e(TAG, "❌ Error configurando video: " + e.getMessage());
@@ -461,6 +478,15 @@ public abstract class BaseVideoScene extends WallpaperScene {
             sceneIsActive = true;
         }
 
+        // 🔧 FIX FREEZE: Log del estado de carga del video (solo mientras carga)
+        if (videoBackground != null && !videoBackground.hasFirstFrame()) {
+            videoLoadingLogTimer += deltaTime;
+            if (videoLoadingLogTimer >= VIDEO_LOADING_LOG_INTERVAL) {
+                videoLoadingLogTimer = 0f;
+                Log.d(TAG, "⏳ " + getName() + " - Video cargando... (UI activa)");
+            }
+        }
+
         videoCheckTimer += deltaTime;
         if (videoCheckTimer >= VIDEO_CHECK_INTERVAL) {
             videoCheckTimer = 0f;
@@ -488,30 +514,67 @@ public abstract class BaseVideoScene extends WallpaperScene {
     public void draw() {
         if (isDisposed) return;
 
-        // Limpiar buffer
-        GLES30.glClearColor(0f, 0f, 0f, 1.0f);
-        GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
+        try {
+            // Limpiar buffer - SIEMPRE limpiar para que el reloj/batería se muestren
+            GLES30.glClearColor(0f, 0f, 0f, 1.0f);
+            GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
 
-        // 1. Video de fondo (sin depth test para cubrir toda la pantalla)
-        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
-        if (videoBackground != null) {
-            videoBackground.draw();
+            // 1. Video de fondo (sin depth test para cubrir toda la pantalla)
+            GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+            if (videoBackground != null) {
+                // 🔧 FIX FREEZE: El video.draw() retorna inmediatamente si no hay frames
+                // Esto permite que el reloj y batería sigan animándose mientras carga
+                try {
+                    videoBackground.draw();
+                } catch (Exception e) {
+                    Log.e(TAG, "⚠️ Error dibujando video (recuperable): " + e.getMessage());
+                    // Intentar reiniciar el video
+                    try {
+                        videoBackground.resume();
+                    } catch (Exception ignored) {}
+                }
+            }
+
+            // 2. Objetos 3D específicos de la escena (con depth test y blending)
+            GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+            GLES30.glEnable(GLES30.GL_BLEND);
+            GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
+
+            // Hook para dibujar objetos específicos de la subclase
+            try {
+                drawSceneSpecific();
+            } catch (Exception e) {
+                Log.e(TAG, "⚠️ Error en drawSceneSpecific: " + e.getMessage());
+            }
+
+            // 3. UI (ecualizador, reloj, batería) - siempre encima de todo
+            try {
+                if (equalizerDJ != null) equalizerDJ.draw();
+            } catch (Exception e) {
+                Log.e(TAG, "⚠️ Error dibujando ecualizador: " + e.getMessage());
+            }
+
+            try {
+                if (clock != null) clock.draw();
+            } catch (Exception e) {
+                Log.e(TAG, "⚠️ Error dibujando reloj: " + e.getMessage());
+            }
+
+            try {
+                if (battery != null) battery.draw();
+            } catch (Exception e) {
+                Log.e(TAG, "⚠️ Error dibujando batería: " + e.getMessage());
+            }
+
+            super.draw();
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error crítico en draw(): " + e.getMessage(), e);
+            // Limpiar pantalla con color negro como fallback
+            try {
+                GLES30.glClearColor(0f, 0f, 0f, 1.0f);
+                GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT);
+            } catch (Exception ignored) {}
         }
-
-        // 2. Objetos 3D específicos de la escena (con depth test y blending)
-        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
-        GLES30.glEnable(GLES30.GL_BLEND);
-        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
-
-        // Hook para dibujar objetos específicos de la subclase
-        drawSceneSpecific();
-
-        // 3. UI (ecualizador, reloj, batería) - siempre encima de todo
-        if (equalizerDJ != null) equalizerDJ.draw();
-        if (clock != null) clock.draw();
-        if (battery != null) battery.draw();
-
-        super.draw();
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -574,6 +637,21 @@ public abstract class BaseVideoScene extends WallpaperScene {
 
         // Hook para reanudar recursos específicos de la subclase (ej: giroscopio)
         onResumeSceneSpecific();
+    }
+
+    /**
+     * 🛡️ Verifica si la escena está completamente lista para renderizar.
+     * Para escenas de video, requiere que el primer frame haya sido recibido.
+     */
+    @Override
+    public boolean isReady() {
+        if (!super.isReady()) return false;
+        // Si tiene video, requiere primer frame recibido
+        if (videoBackground != null) {
+            return videoBackground.isReadyToRender();
+        }
+        // Sin video (escena solo con overlays), siempre lista
+        return true;
     }
 
     /**

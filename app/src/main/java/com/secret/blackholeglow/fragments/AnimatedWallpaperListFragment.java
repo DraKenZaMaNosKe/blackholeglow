@@ -21,6 +21,7 @@ import com.secret.blackholeglow.model.ModelDownloadManager;
 import com.secret.blackholeglow.models.WallpaperItem;
 import com.secret.blackholeglow.systems.SubscriptionManager;
 import com.secret.blackholeglow.systems.WallpaperCatalog;
+import com.secret.blackholeglow.systems.WallpaperNotificationManager;
 import com.secret.blackholeglow.video.VideoDownloadManager;
 import com.secret.blackholeglow.core.PanelResources;
 
@@ -320,6 +321,28 @@ public class AnimatedWallpaperListFragment extends Fragment {
     @FunctionalInterface
     private interface DownloadTask {
         boolean execute();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Verificar qué wallpaper está activo en el sistema y actualizar badge
+        if (adapter != null && isAdded()) {
+            try {
+                WallpaperNotificationManager.InstalledWallpaperInfo info =
+                        WallpaperNotificationManager.getInstance(requireContext())
+                                .verifyInstalledWallpaper();
+                if (info.isOurWallpaperActive) {
+                    adapter.setInstalledWallpaper(info.sceneName);
+                    Log.d(TAG, "🏷️ Badge INSTALADO actualizado: " + info.sceneName);
+                } else {
+                    adapter.setInstalledWallpaper(null);
+                    Log.d(TAG, "🏷️ Ningún wallpaper nuestro activo - sin badge");
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Error verificando wallpaper activo: " + e.getMessage());
+            }
+        }
     }
 
     @Override

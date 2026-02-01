@@ -23,7 +23,6 @@ import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -40,6 +39,7 @@ import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.WallpaperPreferences;
 import com.secret.blackholeglow.systems.AdsManager;
 import com.secret.blackholeglow.systems.EventBus;
+import com.secret.blackholeglow.systems.WallpaperNotificationManager;
 
 /**
  * ╔═════════════════════════════════════════════════════════════════╗
@@ -85,6 +85,8 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         nombre_wallpaper = getIntent().getStringExtra("WALLPAPER_ID");
         if (nombre_wallpaper == null) nombre_wallpaper = "Batalla Cósmica";
         previewResourceId = getIntent().getIntExtra("WALLPAPER_PREVIEW_ID", R.drawable.preview_space);
+        String displayName = getIntent().getStringExtra("WALLPAPER_DISPLAY_NAME");
+        if (displayName == null) displayName = nombre_wallpaper;
         Log.d(TAG, "🌀 Wallpaper elegido: " + nombre_wallpaper + ", preview: " + previewResourceId);
 
         // 2️⃣ Construir layout
@@ -136,17 +138,9 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         buttonContainer.setPadding(dpToPx(30), dpToPx(20), dpToPx(30), dpToPx(40));
         buttonContainer.setGravity(Gravity.CENTER);
 
-        // Boton principal
+        // Boton principal (Instalar)
         View mainButton = createMainButton();
         buttonContainer.addView(mainButton);
-
-        // Boton desinstalar
-        View uninstallButton = createUninstallButton();
-        LinearLayout.LayoutParams uninstallParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
-        uninstallParams.setMargins(0, dpToPx(15), 0, 0);
-        buttonContainer.addView(uninstallButton, uninstallParams);
 
         FrameLayout.LayoutParams buttonContainerParams = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -421,308 +415,13 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         // Animación de pulso para el glow
         animateGlow(glowView);
 
-        // ════════════════════════════════════════
-        // 🗑️ Botón Desinstalar (siempre visible)
-        // ════════════════════════════════════════
-        View uninstallButton = createUninstallButton();
-        LinearLayout.LayoutParams uninstallParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
-        uninstallParams.setMargins(0, dpToPx(15), 0, 0);
-        container.addView(uninstallButton, uninstallParams);
-
         return container;
     }
 
-    /**
-     * Crea el botón de desinstalar wallpaper
-     */
-    private View createUninstallButton() {
-        TextView button = new TextView(this);
-        button.setText("Desinstalar");
-        button.setTextColor(Color.parseColor("#AAAAAA"));
-        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        button.setGravity(Gravity.CENTER);
-        button.setPadding(dpToPx(20), dpToPx(8), dpToPx(20), dpToPx(8));
-
-        button.setOnClickListener(v -> showUninstallConfirmation());
-
-        button.setOnTouchListener((v, event) -> {
-            switch (event.getAction()) {
-                case android.view.MotionEvent.ACTION_DOWN:
-                    ((TextView) v).setTextColor(COLOR_RED);
-                    break;
-                case android.view.MotionEvent.ACTION_UP:
-                case android.view.MotionEvent.ACTION_CANCEL:
-                    ((TextView) v).setTextColor(Color.parseColor("#AAAAAA"));
-                    break;
-            }
-            return false;
-        });
-
-        return button;
-    }
-
-    /**
-     * Muestra confirmación antes de desinstalar
-     */
-    private void showUninstallConfirmation() {
-        LinearLayout overlay = new LinearLayout(this);
-        overlay.setOrientation(LinearLayout.VERTICAL);
-        overlay.setGravity(Gravity.CENTER);
-        overlay.setBackgroundColor(Color.parseColor("#CC000000"));
-
-        LinearLayout messageContainer = new LinearLayout(this);
-        messageContainer.setOrientation(LinearLayout.VERTICAL);
-        messageContainer.setGravity(Gravity.CENTER);
-        messageContainer.setPadding(60, 50, 60, 40);
-
-        GradientDrawable background = new GradientDrawable();
-        background.setShape(GradientDrawable.RECTANGLE);
-        background.setCornerRadius(40f);
-        background.setColor(COLOR_CARD_BG);
-        background.setStroke(3, COLOR_RED);
-        messageContainer.setBackground(background);
-
-        // Icono
-        TextView iconView = new TextView(this);
-        iconView.setText("🗑️");
-        iconView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 45);
-        iconView.setGravity(Gravity.CENTER);
-        messageContainer.addView(iconView);
-
-        // Título
-        TextView titleView = new TextView(this);
-        titleView.setText("¿Desinstalar wallpaper?");
-        titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
-        titleView.setTextColor(Color.WHITE);
-        titleView.setTypeface(null, Typeface.BOLD);
-        titleView.setGravity(Gravity.CENTER);
-        titleView.setPadding(0, 20, 0, 10);
-        messageContainer.addView(titleView);
-
-        // Descripción
-        TextView descView = new TextView(this);
-        descView.setText("Se restaurará tu fondo de\npantalla anterior");
-        descView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        descView.setTextColor(Color.parseColor("#AAAAAA"));
-        descView.setGravity(Gravity.CENTER);
-        messageContainer.addView(descView);
-
-        // Contenedor de botones
-        LinearLayout buttonsRow = new LinearLayout(this);
-        buttonsRow.setOrientation(LinearLayout.HORIZONTAL);
-        buttonsRow.setGravity(Gravity.CENTER);
-        buttonsRow.setPadding(0, 30, 0, 0);
-
-        // Botón Cancelar
-        TextView cancelBtn = new TextView(this);
-        cancelBtn.setText("Cancelar");
-        cancelBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        cancelBtn.setTextColor(Color.parseColor("#888888"));
-        cancelBtn.setPadding(dpToPx(25), dpToPx(12), dpToPx(25), dpToPx(12));
-        cancelBtn.setOnClickListener(v -> rootContainer.removeView(overlay));
-        buttonsRow.addView(cancelBtn);
-
-        // Espacio
-        View spacer = new View(this);
-        spacer.setLayoutParams(new LinearLayout.LayoutParams(dpToPx(20), 1));
-        buttonsRow.addView(spacer);
-
-        // Botón Confirmar
-        TextView confirmBtn = new TextView(this);
-        confirmBtn.setText("Desinstalar");
-        confirmBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        confirmBtn.setTextColor(COLOR_RED);
-        confirmBtn.setTypeface(null, Typeface.BOLD);
-        confirmBtn.setPadding(dpToPx(25), dpToPx(12), dpToPx(25), dpToPx(12));
-
-        GradientDrawable confirmBg = new GradientDrawable();
-        confirmBg.setShape(GradientDrawable.RECTANGLE);
-        confirmBg.setCornerRadius(dpToPx(20));
-        confirmBg.setColor(Color.parseColor("#331111"));
-        confirmBg.setStroke(2, COLOR_RED);
-        confirmBtn.setBackground(confirmBg);
-
-        confirmBtn.setOnClickListener(v -> {
-            rootContainer.removeView(overlay);
-            uninstallWallpaper();
-        });
-        buttonsRow.addView(confirmBtn);
-
-        messageContainer.addView(buttonsRow);
-
-        LinearLayout.LayoutParams containerParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
-        overlay.addView(messageContainer, containerParams);
-
-        FrameLayout.LayoutParams overlayParams = new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT);
-
-        overlay.setAlpha(0f);
-        rootContainer.addView(overlay, overlayParams);
-        overlay.animate().alpha(1f).setDuration(200).start();
-    }
-
-    /**
-     * Desinstala el wallpaper estableciendo un fondo negro sólido
-     */
-    private void uninstallWallpaper() {
-        new Thread(() -> {
-            try {
-                WallpaperManager wm = WallpaperManager.getInstance(this);
-
-                // Crear un bitmap negro de 1x1 pixel (se expandirá automáticamente)
-                Bitmap blackBitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888);
-                blackBitmap.eraseColor(Color.BLACK);
-
-                // Establecer como wallpaper (esto reemplaza el live wallpaper)
-                wm.setBitmap(blackBitmap);
-
-                blackBitmap.recycle();
-
-                Log.d(TAG, "✅ Wallpaper desinstalado - fondo negro establecido");
-
-                // Mostrar mensaje de éxito en UI thread
-                runOnUiThread(this::showUninstallSuccess);
-
-            } catch (Exception e) {
-                Log.e(TAG, "Error al desinstalar wallpaper: " + e.getMessage());
-                runOnUiThread(() -> showUninstallError(e.getMessage()));
-            }
-        }).start();
-    }
-
-    /**
-     * Muestra mensaje de éxito al desinstalar
-     */
-    private void showUninstallSuccess() {
-        LinearLayout messageContainer = new LinearLayout(this);
-        messageContainer.setOrientation(LinearLayout.VERTICAL);
-        messageContainer.setGravity(Gravity.CENTER);
-        messageContainer.setPadding(60, 50, 60, 50);
-
-        GradientDrawable background = new GradientDrawable();
-        background.setShape(GradientDrawable.RECTANGLE);
-        background.setCornerRadius(40f);
-        background.setColor(COLOR_CARD_BG);
-        background.setStroke(3, COLOR_GREEN);
-        messageContainer.setBackground(background);
-
-        // Icono
-        TextView iconView = new TextView(this);
-        iconView.setText("✅");
-        iconView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 45);
-        iconView.setGravity(Gravity.CENTER);
-        messageContainer.addView(iconView);
-
-        // Título
-        TextView titleView = new TextView(this);
-        titleView.setText("Wallpaper desinstalado");
-        titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
-        titleView.setTextColor(Color.WHITE);
-        titleView.setTypeface(null, Typeface.BOLD);
-        titleView.setGravity(Gravity.CENTER);
-        titleView.setPadding(0, 20, 0, 10);
-        messageContainer.addView(titleView);
-
-        // Descripción
-        TextView descView = new TextView(this);
-        descView.setText("Tu fondo de pantalla ha sido\nrestaurado a negro");
-        descView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        descView.setTextColor(Color.parseColor("#AAAAAA"));
-        descView.setGravity(Gravity.CENTER);
-        messageContainer.addView(descView);
-
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT);
-        params.gravity = Gravity.CENTER;
-        messageContainer.setLayoutParams(params);
-
-        messageContainer.setAlpha(0f);
-        rootContainer.addView(messageContainer);
-        messageContainer.animate().alpha(1f).setDuration(300).start();
-
-        // Auto cerrar y volver después de 2 segundos
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            messageContainer.animate()
-                    .alpha(0f)
-                    .setDuration(300)
-                    .withEndAction(() -> {
-                        // Actualizar UI para reflejar que ya no está instalado
-                        recreate();
-                    })
-                    .start();
-        }, 2000);
-    }
-
-    /**
-     * Muestra mensaje de error al desinstalar
-     */
-    private void showUninstallError(String errorMessage) {
-        LinearLayout messageContainer = new LinearLayout(this);
-        messageContainer.setOrientation(LinearLayout.VERTICAL);
-        messageContainer.setGravity(Gravity.CENTER);
-        messageContainer.setPadding(60, 50, 60, 50);
-
-        GradientDrawable background = new GradientDrawable();
-        background.setShape(GradientDrawable.RECTANGLE);
-        background.setCornerRadius(40f);
-        background.setColor(COLOR_CARD_BG);
-        background.setStroke(3, COLOR_RED);
-        messageContainer.setBackground(background);
-
-        // Icono
-        TextView iconView = new TextView(this);
-        iconView.setText("⚠️");
-        iconView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 45);
-        iconView.setGravity(Gravity.CENTER);
-        messageContainer.addView(iconView);
-
-        // Título
-        TextView titleView = new TextView(this);
-        titleView.setText("No se pudo desinstalar");
-        titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
-        titleView.setTextColor(Color.WHITE);
-        titleView.setTypeface(null, Typeface.BOLD);
-        titleView.setGravity(Gravity.CENTER);
-        titleView.setPadding(0, 20, 0, 10);
-        messageContainer.addView(titleView);
-
-        // Descripción
-        TextView descView = new TextView(this);
-        descView.setText("Ve a Ajustes > Pantalla >\nFondo de pantalla");
-        descView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        descView.setTextColor(Color.parseColor("#AAAAAA"));
-        descView.setGravity(Gravity.CENTER);
-        messageContainer.addView(descView);
-
-        // Botón OK
-        TextView okBtn = new TextView(this);
-        okBtn.setText("Entendido");
-        okBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        okBtn.setTextColor(COLOR_CYAN);
-        okBtn.setTypeface(null, Typeface.BOLD);
-        okBtn.setGravity(Gravity.CENTER);
-        okBtn.setPadding(40, 30, 40, 10);
-        okBtn.setOnClickListener(v -> {
-            rootContainer.removeView(messageContainer);
-        });
-        messageContainer.addView(okBtn);
-
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT);
-        params.gravity = Gravity.CENTER;
-        messageContainer.setLayoutParams(params);
-
-        messageContainer.setAlpha(0f);
-        rootContainer.addView(messageContainer);
-        messageContainer.animate().alpha(1f).setDuration(300).start();
-    }
+    // ════════════════════════════════════════
+    // 🧹 Código de desinstalar ELIMINADO
+    // El usuario no necesita desinstalar - simplemente cambia a otro wallpaper
+    // ════════════════════════════════════════
 
     /**
      * Animación de pulso para el glow del botón
@@ -745,79 +444,9 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
      * Maneja el click en el botón de establecer wallpaper
      */
     private void onSetWallpaperClicked() {
-        // ✅ Siempre permitir cambiar/reinstalar wallpaper
-        // (El usuario puede querer cambiar de Batalla Cósmica a Bosque Navideño)
-
-        // Mostrar anuncio y proceder
-        AdsManager.get().showInterstitialAd(this, shown -> {
-            Log.d(TAG, "Ad completado: " + shown);
-            proceedToSetWallpaper();
-        });
-    }
-
-    /**
-     * Muestra mensaje de que el wallpaper ya está instalado
-     */
-    private void showAlreadyInstalledMessage() {
-        LinearLayout messageContainer = new LinearLayout(this);
-        messageContainer.setOrientation(LinearLayout.VERTICAL);
-        messageContainer.setGravity(Gravity.CENTER);
-        messageContainer.setPadding(60, 50, 60, 50);
-
-        GradientDrawable background = new GradientDrawable();
-        background.setShape(GradientDrawable.RECTANGLE);
-        background.setCornerRadius(40f);
-        background.setColor(COLOR_CARD_BG);
-        background.setStroke(3, COLOR_CYAN);
-        messageContainer.setBackground(background);
-
-        // Icono
-        TextView iconView = new TextView(this);
-        iconView.setText("✓");
-        iconView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 50);
-        iconView.setTextColor(COLOR_GREEN);
-        iconView.setGravity(Gravity.CENTER);
-        messageContainer.addView(iconView);
-
-        // Título
-        TextView titleView = new TextView(this);
-        titleView.setText("Wallpaper ya instalado");
-        titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-        titleView.setTextColor(Color.WHITE);
-        titleView.setGravity(Gravity.CENTER);
-        titleView.setPadding(0, 20, 0, 10);
-        messageContainer.addView(titleView);
-
-        // Subtítulo
-        TextView subtitleView = new TextView(this);
-        subtitleView.setText("Ve a tu pantalla de inicio y\npresiona ▶ PLAY para iniciarlo");
-        subtitleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        subtitleView.setTextColor(Color.parseColor("#AAAAAA"));
-        subtitleView.setGravity(Gravity.CENTER);
-        messageContainer.addView(subtitleView);
-
-        // Botón OK
-        TextView okBtn = new TextView(this);
-        okBtn.setText("Entendido");
-        okBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        okBtn.setTextColor(COLOR_CYAN);
-        okBtn.setTypeface(null, Typeface.BOLD);
-        okBtn.setGravity(Gravity.CENTER);
-        okBtn.setPadding(40, 30, 40, 10);
-        okBtn.setOnClickListener(v -> {
-            ((ViewGroup) messageContainer.getParent()).removeView(messageContainer);
-        });
-        messageContainer.addView(okBtn);
-
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT);
-        params.gravity = Gravity.CENTER;
-        messageContainer.setLayoutParams(params);
-
-        messageContainer.setAlpha(0f);
-        rootContainer.addView(messageContainer);
-        messageContainer.animate().alpha(1f).setDuration(200).start();
+        // 🚀 Instalación INSTANTÁNEA - sin ads ni delays
+        // El ad ya se mostró en WallpaperAdapter al presionar "VER WALLPAPER"
+        proceedToSetWallpaper();
     }
 
     /**
@@ -831,17 +460,30 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         WallpaperPreferences.getInstance(this).setSelectedWallpaper(nombre_wallpaper, null);
         Log.d(TAG, "✅ Wallpaper guardado via WallpaperPreferences: " + nombre_wallpaper);
 
-        waitingForWallpaperResult = true;
-
         EventBus.get().publish("wallpaper_set",
                 new EventBus.EventData().put("wallpaper_id", nombre_wallpaper));
 
-        Intent intent = new Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER);
-        intent.putExtra(
-                WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
-                new android.content.ComponentName(this, LiveWallpaperService.class));
+        // 🔧 FIX: Si nuestro wallpaper YA está activo, NO abrir el system picker.
+        // El system picker crea un engine nuevo de preview que causa congelamiento.
+        // En su lugar, el engine existente detectará el cambio en el próximo ciclo
+        // de visibilidad (cuando el usuario regrese al home screen).
+        if (isOurWallpaperActive()) {
+            Log.d(TAG, "🔧 Wallpaper ya activo - cambio directo sin system picker");
+            // Mostrar éxito directamente - el cambio se aplicará al volver al home
+            showSuccessMessage();
+        } else {
+            // Primera instalación: necesitamos el system picker para que Android
+            // registre nuestro servicio como el wallpaper activo
+            Log.d(TAG, "🆕 Primera instalación - abriendo system picker");
+            waitingForWallpaperResult = true;
 
-        startActivity(intent);
+            Intent intent = new Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER);
+            intent.putExtra(
+                    WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
+                    new android.content.ComponentName(this, LiveWallpaperService.class));
+
+            startActivity(intent);
+        }
     }
 
     // ════════════════════════════════════════
@@ -855,6 +497,17 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
             waitingForWallpaperResult = false;
             if (isOurWallpaperActive()) {
                 showSuccessMessage();
+            } else {
+                // 🛡️ Usuario canceló el system picker - revertir preferencia
+                // para que el catálogo no muestre "INSTALADO" incorrectamente
+                String previousWallpaper = getIntent().getStringExtra("PREVIOUS_WALLPAPER_ID");
+                Log.d(TAG, "🔙 System picker cancelado - revirtiendo preferencia a: " + previousWallpaper);
+                if (previousWallpaper != null && !previousWallpaper.isEmpty()) {
+                    WallpaperPreferences.getInstance(this).setSelectedWallpaper(previousWallpaper, null);
+                } else {
+                    // No había wallpaper anterior - limpiar preferencia
+                    WallpaperPreferences.getInstance(this).setSelectedWallpaper("", null);
+                }
             }
         }
     }
@@ -942,6 +595,16 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         messageContainer.setAlpha(0f);
         rootContainer.addView(messageContainer);
         messageContainer.animate().alpha(1f).setDuration(300).start();
+
+        // Enviar notificación de wallpaper instalado (verificada contra el sistema)
+        try {
+            String displayName = getIntent().getStringExtra("WALLPAPER_DISPLAY_NAME");
+            if (displayName == null) displayName = nombre_wallpaper;
+            WallpaperNotificationManager.getInstance(this)
+                    .notifyWallpaperInstalled(nombre_wallpaper, displayName);
+        } catch (Exception e) {
+            Log.w(TAG, "Error enviando notificación de instalación: " + e.getMessage());
+        }
 
         // Auto cerrar
         new Handler(Looper.getMainLooper()).postDelayed(() -> {

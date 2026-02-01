@@ -14,11 +14,8 @@ import android.opengl.GLSurfaceView;
 
 
 import com.secret.blackholeglow.core.WallpaperDirector;
-import com.secret.blackholeglow.systems.UsageTracker;
-import com.secret.blackholeglow.systems.RewardsManager;
-import com.secret.blackholeglow.systems.RemoteConfigManager;
-import com.secret.blackholeglow.systems.MissionsManager;
-import com.secret.blackholeglow.systems.AdsManager;
+// 🔧 FIX ANR: Sistemas de monetización REMOVIDOS del WallpaperService
+// Se inicializan en MainActivity donde realmente se necesitan
 
 /**
  * ╔═══════════════════════════════════════════════════════════════════╗
@@ -74,12 +71,17 @@ public class LiveWallpaperService extends WallpaperService {
             this.context = context;
             wallpaperPrefs = WallpaperPreferences.getInstance(context);
 
-            // 🏆 Inicializar sistema de recompensas y monetización
-            UsageTracker.init(context);
-            RewardsManager.init(context);
-            RemoteConfigManager.init(context);
-            MissionsManager.init(context);
-            AdsManager.init(context);
+            // 🔧 FIX ANR: NO inicializar sistemas de monetización aquí
+            // Estos sistemas (Ads, Rewards, Missions) son pesados y NO son necesarios
+            // para que el wallpaper funcione. Se inicializan en MainActivity.
+            //
+            // ELIMINADOS del WallpaperService:
+            // - UsageTracker.init()
+            // - RewardsManager.init()
+            // - RemoteConfigManager.init()
+            // - MissionsManager.init()
+            // - AdsManager.init() ← Este era el principal culpable (MobileAds.initialize es MUY lento)
+            Log.d(TAG, "🚀 WallpaperService ligero - sin sistemas de monetización");
 
             // Inicializar BackgroundWorker
             BackgroundWorker.initialize();
@@ -160,16 +162,14 @@ public class LiveWallpaperService extends WallpaperService {
         }
 
         /**
-         * ⚡ Fuerza el wallpaper a PANEL_MODE inmediatamente
-         * Este es el método clave anti-flickering: siempre vuelve al Panel de Control
+         * ⚡ Home/Recents pressed - NO pausar aquí
+         * onVisibilityChanged(false) se encargará de pausar correctamente.
+         * Pausar aquí sin un resume() correspondiente causa congelamiento
+         * porque currentState sigue RUNNING y startRendering() no llama resume().
          */
         private void forceStopAnimation() {
-            synchronized (stateLock) {
-                if (wallpaperDirector != null) {
-                    wallpaperDirector.pause();
-                }
-            }
-            Log.d(TAG, "⚡ Animación forzada a parar");
+            // NO-OP: onVisibilityChanged maneja pause/resume correctamente
+            Log.d(TAG, "⚡ Home/Recents - delegando a onVisibilityChanged");
         }
 
         @Override
@@ -216,12 +216,13 @@ public class LiveWallpaperService extends WallpaperService {
 
                 glSurfaceView.setRenderer(wallpaperDirector);
 
-                // CRÍTICO: Empezar DETENIDO - el modo preview se configura en onSurfaceCreated
-                glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+                // 🔧 FIX GL FREEZE: Siempre CONTINUOUSLY - el Director maneja pausa via Thread.sleep
+                // RENDERMODE_WHEN_DIRTY → CONTINUOUSLY no despierta el GL thread confiablemente
+                glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
                 synchronized (stateLock) {
-                    currentState = RenderState.STOPPED;
+                    currentState = RenderState.RUNNING;
                 }
-                Log.d(TAG, "✓ OpenGL inicializado en modo STOPPED");
+                Log.d(TAG, "✓ OpenGL inicializado en modo CONTINUOUSLY");
 
             } catch (Exception e) {
                 Log.e(TAG, "Error inicializando renderer", e);
@@ -250,14 +251,13 @@ public class LiveWallpaperService extends WallpaperService {
 
                 if (visible) {
                     startRendering();
-                    UsageTracker.get().onWallpaperVisible();
                 } else {
-                    UsageTracker.get().onWallpaperHidden();
-
-                    // 🎬 En preview del sistema, NO forzar panel
+                    // 🎬 En preview del sistema, NO parar rendering
+                    // El toggle rápido VISIBLE→HIDDEN→VISIBLE del system picker
+                    // mata el GL thread si pausamos aquí
                     if (isSystemPreviewMode) {
-                        Log.d(TAG, "🎬 Preview del sistema: Manteniendo wallpaper visible");
-                        stopRendering();
+                        Log.d(TAG, "🎬 Preview del sistema: Ignorando HIDDEN - render sigue activo");
+                        // NO stopRendering() - el preview necesita seguir renderizando
                     } else {
                         stopRendering();
                         if (wallpaperDirector != null) {
@@ -271,11 +271,26 @@ public class LiveWallpaperService extends WallpaperService {
 
         /**
          * 🟢 INICIAR RENDERIZADO - Solo si está en STOPPED
+         * 🔧 SIEMPRE verifica cambio de wallpaper (incluso si ya está corriendo)
          */
         private void startRendering() {
-            // Ya dentro de synchronized(stateLock)
+            // 🔧 FIX: SIEMPRE verificar cambio de wallpaper
+            // Si el usuario instaló un wallpaper nuevo mientras otro estaba corriendo,
+            // changeScene() detecta la diferencia y auto-switch (sin recrear GL)
+            String wallpaperName = wallpaperPrefs.getSelectedWallpaperSync();
+            if (wallpaperDirector != null) {
+                wallpaperDirector.changeScene(wallpaperName);
+                Log.d(TAG, "🎬 Escena verificada: " + wallpaperName);
+            }
+
             if (currentState == RenderState.RUNNING) {
-                Log.d(TAG, "Ya está corriendo, ignorando");
+                // 🔧 FIX FREEZE: Siempre llamar resume() incluso si GL ya está corriendo.
+                // Si algo pausó el director (ej: forceStopAnimation) sin cambiar currentState,
+                // el director quedaría pausado indefinidamente sin este resume().
+                if (wallpaperDirector != null) {
+                    wallpaperDirector.resume();
+                }
+                Log.d(TAG, "GL ya corriendo, se verificó escena y se aseguró resume");
                 return;
             }
 
@@ -284,25 +299,23 @@ public class LiveWallpaperService extends WallpaperService {
                 return;
             }
 
-            // 🔧 FIX: Cargar wallpaper SINCRÓNICAMENTE ANTES de reanudar
-            // Esto asegura que arcadeModeEnabled esté correcto antes del primer frame
-            String wallpaperName = wallpaperPrefs.getSelectedWallpaperSync();
+            // 🔧 FIX GL FREEZE: NO cambiar render mode - ya es CONTINUOUSLY permanente.
+            // Solo necesitamos llamar resume() para que el Director deje de idle/sleep.
+
+            // PASO 1: Reanudar lógica
             if (wallpaperDirector != null) {
-                wallpaperDirector.changeScene(wallpaperName);
-                Log.d(TAG, "🎬 Escena cargada síncronamente: " + wallpaperName);
+                Log.d(TAG, "🎬 Reanudando WallpaperDirector...");
+                try {
+                    wallpaperDirector.resume();
+                    Log.d(TAG, "🎬 WallpaperDirector reanudado");
+                } catch (Exception e) {
+                    Log.e(TAG, "❌ Error reanudando Director: " + e.getMessage());
+                }
+            } else {
+                Log.e(TAG, "❌ WallpaperDirector es NULL!");
             }
 
-            // PASO 1: Cambiar modo de render
-            if (glSurfaceView != null) {
-                glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
-            }
-
-            // PASO 2: Reanudar lógica
-            if (wallpaperDirector != null) {
-                wallpaperDirector.resume();
-            }
-
-            // PASO 3: Actualizar estado
+            // PASO 2: Actualizar estado
             currentState = RenderState.RUNNING;
 
             Log.d(TAG, "🟢 RUNNING");
@@ -323,20 +336,19 @@ public class LiveWallpaperService extends WallpaperService {
                 return;
             }
 
-            // PASO 1: Pausar lógica PRIMERO
+            // PASO 1: Pausar lógica (el GL thread sigue corriendo pero idle via Thread.sleep)
             if (wallpaperDirector != null) {
                 wallpaperDirector.pause();
             }
 
-            // PASO 2: Cambiar modo de render
-            if (glSurfaceView != null) {
-                glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
-            }
+            // 🔧 FIX GL FREEZE: NO cambiar render mode - el GL thread siempre corre.
+            // WallpaperDirector.onDrawFrame() detecta paused=true y duerme 100ms (idle).
+            // Esto evita el bug donde WHEN_DIRTY → CONTINUOUSLY no despierta el GL thread.
 
-            // PASO 3: Actualizar estado
+            // PASO 2: Actualizar estado
             currentState = RenderState.STOPPED;
 
-            Log.d(TAG, "🔴 STOPPED");
+            Log.d(TAG, "🔴 STOPPED (GL thread idle)");
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -356,11 +368,7 @@ public class LiveWallpaperService extends WallpaperService {
                     Log.d(TAG, "🎬 MODO PREVIEW DEL SISTEMA - Activando wallpaper directo");
                     wallpaperDirector.setPreviewMode(true);
                     isSystemPreviewMode = true;
-
-                    // Cambiar a modo continuo para preview
-                    if (glSurfaceView != null) {
-                        glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
-                    }
+                    // 🔧 FIX GL FREEZE: Ya es CONTINUOUSLY permanente, solo asegurar estado
                     synchronized (stateLock) {
                         currentState = RenderState.RUNNING;
                     }
@@ -397,9 +405,7 @@ public class LiveWallpaperService extends WallpaperService {
                     if (wallpaperDirector != null) {
                         wallpaperDirector.pause();
                     }
-                    if (glSurfaceView != null) {
-                        glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
-                    }
+                    // 🔧 FIX GL FREEZE: No cambiar render mode, solo pausar lógica
                     currentState = RenderState.STOPPED;
                 }
 
@@ -422,8 +428,7 @@ public class LiveWallpaperService extends WallpaperService {
             Log.d(TAG, "║   🧹 DESTRUYENDO ENGINE                ║");
             Log.d(TAG, "╚════════════════════════════════════════╝");
 
-            // ⏱️ Detener tracking de uso
-            UsageTracker.get().onWallpaperHidden();
+            // UsageTracker removido - no se usa
 
             synchronized (stateLock) {
                 currentState = RenderState.UNINITIALIZED;

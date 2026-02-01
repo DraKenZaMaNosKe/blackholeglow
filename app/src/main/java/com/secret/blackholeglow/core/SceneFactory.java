@@ -17,6 +17,7 @@ import com.secret.blackholeglow.scenes.ZeldaParallaxScene;
 import com.secret.blackholeglow.scenes.SupermanScene;
 import com.secret.blackholeglow.scenes.AOTScene;
 import com.secret.blackholeglow.scenes.SpiderScene;
+import com.secret.blackholeglow.scenes.LostAtlantisScene;
 import com.secret.blackholeglow.systems.EventBus;
 import com.secret.blackholeglow.systems.ResourceManager;
 
@@ -129,6 +130,8 @@ public class SceneFactory {
         registerScene("AOT", AOTScene.class);
         // 🕷️ Spider: Black Spider Horror con ojos rojos brillantes
         registerScene("SPIDER", SpiderScene.class);
+        // 🏛️ Lost Atlantis: Templo sumergido con energía mística
+        registerScene("LOST_ATLANTIS", LostAtlantisScene.class);
 
         Log.d(TAG, "🎭 " + registeredScenes.size() + " escenas registradas");
     }
@@ -291,6 +294,14 @@ public class SceneFactory {
 
     public boolean hasCurrentScene() {
         return currentScene != null;
+    }
+
+    /**
+     * ¿La escena actual está completamente lista para renderizar?
+     * Para escenas de video, requiere primer frame recibido.
+     */
+    public boolean isCurrentSceneReady() {
+        return currentScene != null && currentScene.isReady();
     }
 
     public String getDefaultSceneName() {

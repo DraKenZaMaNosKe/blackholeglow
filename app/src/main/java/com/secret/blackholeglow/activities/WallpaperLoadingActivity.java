@@ -56,6 +56,7 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
     // Data
     private String wallpaperName = "";      // Nombre bonito para UI
     private String sceneId = "";            // ID interno para SceneFactory
+    private String previousWallpaperId = null;  // 🔧 Wallpaper anterior a proteger
     private int wallpaperPreviewId = 0;
     private ResourcePreloader preloader;
     private Handler handler;
@@ -83,6 +84,7 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         sceneId = getIntent().getStringExtra("WALLPAPER_ID");
         wallpaperName = getIntent().getStringExtra("WALLPAPER_DISPLAY_NAME");
         wallpaperPreviewId = getIntent().getIntExtra("WALLPAPER_PREVIEW_ID", R.drawable.ic_launcher_background);
+        previousWallpaperId = getIntent().getStringExtra("PREVIOUS_WALLPAPER_ID");
 
         if (sceneId == null) sceneId = "Universo";
         if (wallpaperName == null) wallpaperName = sceneId;
@@ -311,6 +313,12 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         preloader = new ResourcePreloader(this);
         preloader.setListener(this);
 
+        // 🔧 FIX FREEZE: Proteger recursos del wallpaper actualmente corriendo
+        // para que no se borren mientras está en uso en el home screen
+        if (previousWallpaperId != null) {
+            preloader.setActiveSceneToProtect(previousWallpaperId);
+        }
+
         // Preparar tareas segun el wallpaper seleccionado
         // Esto incluye descarga de videos de Supabase si es necesario
         preloader.prepareTasksForScene(sceneId);
@@ -377,6 +385,9 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
                 }
                 preloader = new ResourcePreloader(this);
                 preloader.setListener(this);
+                if (previousWallpaperId != null) {
+                    preloader.setActiveSceneToProtect(previousWallpaperId);
+                }
                 preloader.prepareTasksForScene(sceneId);
                 preloader.startPreloading();
             }, 1500);
@@ -449,7 +460,9 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         // Ir a WallpaperPreviewActivity
         Intent intent = new Intent(this, WallpaperPreviewActivity.class);
         intent.putExtra("WALLPAPER_PREVIEW_ID", wallpaperPreviewId);
-        intent.putExtra("WALLPAPER_ID", sceneId);  // ID interno para SceneFactory
+        intent.putExtra("WALLPAPER_ID", sceneId);
+        intent.putExtra("WALLPAPER_DISPLAY_NAME", wallpaperName);
+        intent.putExtra("PREVIOUS_WALLPAPER_ID", previousWallpaperId);
         startActivity(intent);
 
         // Cerrar esta activity con transicion

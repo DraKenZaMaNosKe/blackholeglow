@@ -21,16 +21,9 @@ public class UserManager {
 
     // Claves para SharedPreferences
     private static final String KEY_USER_ID = "user_id";
-    private static final String KEY_USER_NAME = "user_name";
     private static final String KEY_USER_EMAIL = "user_email";
     private static final String KEY_USER_PHOTO_URL = "user_photo_url";
     private static final String KEY_IS_LOGGED_IN = "is_logged_in";
-
-    // 🎂 Fecha de nacimiento
-    private static final String KEY_BIRTH_YEAR = "birth_year";
-    private static final String KEY_BIRTH_MONTH = "birth_month";
-    private static final String KEY_BIRTH_DAY = "birth_day";
-    private static final String KEY_HAS_BIRTH_DATE = "has_birth_date";
 
     private final SharedPreferences prefs;
     private static UserManager instance;
@@ -58,13 +51,12 @@ public class UserManager {
     public void saveUserData(String userId, String userName, String userEmail, String photoUrl) {
         SharedPreferences.Editor editor = prefs.edit();
         editor.putString(KEY_USER_ID, userId);
-        editor.putString(KEY_USER_NAME, userName);
         editor.putString(KEY_USER_EMAIL, userEmail);
         editor.putString(KEY_USER_PHOTO_URL, photoUrl);
         editor.putBoolean(KEY_IS_LOGGED_IN, true);
         editor.apply();
 
-        Log.d(TAG, "✓ Datos de usuario guardados: " + userName + " (" + userEmail + ")");
+        Log.d(TAG, "✓ Datos de usuario guardados (email: " + userEmail + ")");
     }
 
     /**
@@ -82,10 +74,10 @@ public class UserManager {
     }
 
     /**
-     * Obtiene el nombre del usuario
+     * Nombre genérico (ya no se almacena nombre real por privacidad)
      */
     public String getUserName() {
-        return prefs.getString(KEY_USER_NAME, "Usuario");
+        return "Usuario";
     }
 
     /**
@@ -120,89 +112,17 @@ public class UserManager {
         if (isLoggedIn()) {
             Log.d(TAG, "=== INFORMACIÓN DEL USUARIO ===");
             Log.d(TAG, "  ID: " + getUserId());
-            Log.d(TAG, "  Nombre: " + getUserName());
             Log.d(TAG, "  Email: " + getUserEmail());
             Log.d(TAG, "  Foto URL: " + getUserPhotoUrl());
-            if (hasBirthDate()) {
-                Log.d(TAG, "  Fecha de nacimiento: " + getBirthDay() + "/" + getBirthMonth() + "/" + getBirthYear());
-            }
         } else {
             Log.d(TAG, "No hay usuario con sesión iniciada");
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // 🎂 FECHA DE NACIMIENTO
-    // ════════════════════════════════════════════════════════════════════════
-
     /**
-     * Guarda la fecha de nacimiento del usuario
-     * @param year Año de nacimiento (ej: 1990)
-     * @param month Mes de nacimiento (1-12)
-     * @param day Día de nacimiento (1-31)
-     */
-    public void saveBirthDate(int year, int month, int day) {
-        SharedPreferences.Editor editor = prefs.edit();
-        editor.putInt(KEY_BIRTH_YEAR, year);
-        editor.putInt(KEY_BIRTH_MONTH, month);
-        editor.putInt(KEY_BIRTH_DAY, day);
-        editor.putBoolean(KEY_HAS_BIRTH_DATE, true);
-        editor.apply();
-
-        Log.d(TAG, "🎂 Fecha de nacimiento guardada: " + day + "/" + month + "/" + year);
-    }
-
-    /**
-     * Verifica si el usuario ha proporcionado su fecha de nacimiento
-     */
-    public boolean hasBirthDate() {
-        return prefs.getBoolean(KEY_HAS_BIRTH_DATE, false);
-    }
-
-    /**
-     * Obtiene el año de nacimiento
-     */
-    public int getBirthYear() {
-        return prefs.getInt(KEY_BIRTH_YEAR, 2000);
-    }
-
-    /**
-     * Obtiene el mes de nacimiento (1-12)
-     */
-    public int getBirthMonth() {
-        return prefs.getInt(KEY_BIRTH_MONTH, 1);
-    }
-
-    /**
-     * Obtiene el día de nacimiento (1-31)
-     */
-    public int getBirthDay() {
-        return prefs.getInt(KEY_BIRTH_DAY, 1);
-    }
-
-    /**
-     * Obtiene la fecha de nacimiento en milisegundos desde epoch
-     * Útil para calcular tiempo de vida
-     */
-    public long getBirthDateMillis() {
-        if (!hasBirthDate()) {
-            return 0;
-        }
-        java.util.Calendar cal = java.util.Calendar.getInstance();
-        cal.set(getBirthYear(), getBirthMonth() - 1, getBirthDay(), 0, 0, 0);
-        cal.set(java.util.Calendar.MILLISECOND, 0);
-        return cal.getTimeInMillis();
-    }
-
-    /**
-     * Obtiene solo el primer nombre del usuario (para saludos cortos)
+     * Nombre genérico para saludos (ya no se almacena nombre real)
      */
     public String getFirstName() {
-        String fullName = getUserName();
-        if (fullName != null && !fullName.isEmpty()) {
-            String[] parts = fullName.split(" ");
-            return parts[0];
-        }
         return "Amigo";
     }
 }

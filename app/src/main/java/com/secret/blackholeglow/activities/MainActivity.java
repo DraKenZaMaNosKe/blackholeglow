@@ -17,6 +17,7 @@ import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.activity.EdgeToEdge;
 import androidx.core.view.GravityCompat;
@@ -42,9 +43,8 @@ import com.secret.blackholeglow.MusicPermissionActivity;
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.UserManager;
 import com.secret.blackholeglow.fragments.AnimatedWallpaperListFragment;
+import com.secret.blackholeglow.systems.AdsManager;
 
-import android.app.DatePickerDialog;
-import java.util.Calendar;
 
 /*
 ╔══════════════════════════════════════════════════════════════════════════════════╗
@@ -118,6 +118,12 @@ public class MainActivity extends AppCompatActivity
                 .requestEmail()
                 .build();
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
+
+        // 💰 Inicializar AdsManager (MobileAds) - en background para no bloquear UI
+        new Thread(() -> {
+            AdsManager.init(this);
+            Log.d(TAG, "💰 AdsManager inicializado en background");
+        }, "AdsInit").start();
 
         // 1️⃣ Configurar Toolbar como ActionBar
         //    ┌───────────────────────────────────────────┐
@@ -194,11 +200,8 @@ public class MainActivity extends AppCompatActivity
         //    └────────────────────────────────────────────────────────────────────┘
         checkAudioPermission();
 
-        // 6️⃣ Verificar si necesitamos pedir la fecha de nacimiento
-        //    ┌────────────────────────────────────────────────────────────────────┐
-        //    │ Solo se pide UNA vez - se guarda en UserManager                   │
-        //    └────────────────────────────────────────────────────────────────────┘
-        checkBirthDateNeeded();
+        // 6️⃣ Pedir permiso de notificaciones (Android 13+)
+        checkNotificationPermission();
     }
 
     /**
@@ -215,100 +218,17 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    // ╔═════════════════════════════════════════════════════════════════════╗
-    // ║ 🎂 Verificar y pedir fecha de nacimiento                            ║
-    // ╚═════════════════════════════════════════════════════════════════════╝
     /**
-     * Verifica si el usuario ya proporcionó su fecha de nacimiento.
-     * Si no, muestra un diálogo amigable para pedirla.
-     * Solo se pide UNA vez en la vida de la app.
+     * 🔔 Pide permiso de notificaciones (requerido en Android 13+)
      */
-    private void checkBirthDateNeeded() {
-        UserManager userManager = UserManager.getInstance(this);
-
-        // Si ya tiene fecha de nacimiento, no hacer nada
-        if (userManager.hasBirthDate()) {
-            Log.d(TAG, "🎂 Usuario ya tiene fecha de nacimiento configurada");
-            return;
+    private void checkNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1001);
+            }
         }
-
-        // Si no está logueado, no pedir fecha (no tiene sentido)
-        if (!userManager.isLoggedIn()) {
-            Log.d(TAG, "👤 Usuario no logueado, no se pide fecha de nacimiento");
-            return;
-        }
-
-        // Mostrar diálogo amigable pidiendo la fecha
-        showBirthDateDialog(userManager);
-    }
-
-    /**
-     * Muestra un diálogo amigable para pedir la fecha de nacimiento.
-     * Diseñado para ser no intrusivo y explicar por qué se pide.
-     */
-    private void showBirthDateDialog(UserManager userManager) {
-        String firstName = userManager.getFirstName();
-
-        new AlertDialog.Builder(this)
-                .setTitle("🎂 ¡Hola " + firstName + "!")
-                .setMessage("Para personalizar tu experiencia, nos gustaría saber tu fecha de nacimiento.\n\n" +
-                        "✨ Con esto podremos:\n" +
-                        "• Mostrarte un reloj de vida único\n" +
-                        "• Recordarte tu próximo cumpleaños\n" +
-                        "• Enviarte un saludo especial ese día\n\n" +
-                        "Tu información está segura y solo se guarda en tu dispositivo.")
-                .setPositiveButton("Configurar", (dialog, which) -> {
-                    showDatePicker(userManager);
-                })
-                .setNegativeButton("Ahora no", (dialog, which) -> {
-                    Toast.makeText(this, "Puedes configurarlo más tarde desde tu perfil", Toast.LENGTH_SHORT).show();
-                })
-                .setCancelable(true)
-                .show();
-    }
-
-    /**
-     * Muestra el DatePicker para seleccionar la fecha de nacimiento
-     */
-    private void showDatePicker(UserManager userManager) {
-        // Fecha por defecto: 25 años atrás
-        Calendar defaultDate = Calendar.getInstance();
-        defaultDate.add(Calendar.YEAR, -25);
-
-        DatePickerDialog datePickerDialog = new DatePickerDialog(
-                this,
-                (view, year, month, dayOfMonth) -> {
-                    // month viene 0-indexed (Enero = 0), lo convertimos a 1-indexed
-                    userManager.saveBirthDate(year, month + 1, dayOfMonth);
-
-                    // Calcular edad para el mensaje
-                    Calendar today = Calendar.getInstance();
-                    int age = today.get(Calendar.YEAR) - year;
-                    if (today.get(Calendar.MONTH) < month ||
-                            (today.get(Calendar.MONTH) == month && today.get(Calendar.DAY_OF_MONTH) < dayOfMonth)) {
-                        age--;
-                    }
-
-                    Toast.makeText(this,
-                            "🎉 ¡Perfecto! Tienes " + age + " años\n" +
-                                    "Tu reloj de vida ya está activo en el wallpaper",
-                            Toast.LENGTH_LONG).show();
-
-                    Log.d(TAG, "🎂 Fecha de nacimiento guardada: " + dayOfMonth + "/" + (month + 1) + "/" + year);
-                },
-                defaultDate.get(Calendar.YEAR),
-                defaultDate.get(Calendar.MONTH),
-                defaultDate.get(Calendar.DAY_OF_MONTH)
-        );
-
-        // Límites: mínimo 100 años atrás, máximo hoy
-        Calendar minDate = Calendar.getInstance();
-        minDate.add(Calendar.YEAR, -100);
-        datePickerDialog.getDatePicker().setMinDate(minDate.getTimeInMillis());
-        datePickerDialog.getDatePicker().setMaxDate(System.currentTimeMillis());
-
-        datePickerDialog.setTitle("¿Cuándo naciste?");
-        datePickerDialog.show();
     }
 
     // ╔════════════════════════════════════════════════════════════════════╗

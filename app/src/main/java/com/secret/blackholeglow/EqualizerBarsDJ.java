@@ -40,7 +40,8 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         ZELDA,        // Verde Hyrule → Azul cielo → Dorado Triforce
         SUPERMAN,     // Rojo → Azul → Amarillo (Man of Steel)
         AOT,          // Verde neón → Rojo sangre → Naranja titán (Attack on Titan)
-        SPIDER        // Rojo sangre → Negro → Carmesí (Black Spider horror)
+        SPIDER,       // Rojo sangre → Negro → Carmesí (Black Spider horror)
+        ATLANTIS      // Cyan → Turquesa → Dorado (templo sumergido)
     }
 
     private Theme currentTheme = Theme.DEFAULT;
@@ -156,6 +157,15 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     private static final float[] SPIDER_WAVE_NORMAL = {0.3f, 0.0f, 0.1f};    // Carmesí/Púrpura oscuro
     private static final float[] SPIDER_LIGHTNING_1 = {1.0f, 0.15f, 0.15f};  // Rayo rojo (telaraña eléctrica)
     private static final float[] SPIDER_LIGHTNING_2 = {0.5f, 0.0f, 0.2f};    // Rayo púrpura oscuro
+
+    // === ATLANTIS (Lost Atlantis - Cyan → Turquesa → Dorado) ===
+    private static final float[] ATLANTIS_BASS = {0.0f, 0.8f, 0.85f};          // Cyan brillante (energía del templo)
+    private static final float[] ATLANTIS_TREBLE = {0.85f, 0.65f, 0.2f};       // Dorado (linternas del templo)
+    private static final float[] ATLANTIS_PEAK = {0.0f, 1.0f, 1.0f};           // Cyan puro (pulso de energía)
+    private static final float[] ATLANTIS_WAVE_STRONG = {0.0f, 0.55f, 0.65f};  // Turquesa profundo (agua)
+    private static final float[] ATLANTIS_WAVE_NORMAL = {0.0f, 0.35f, 0.45f};  // Azul oceánico oscuro
+    private static final float[] ATLANTIS_LIGHTNING_1 = {0.0f, 0.9f, 1.0f};    // Rayo cyan (energía mística)
+    private static final float[] ATLANTIS_LIGHTNING_2 = {0.9f, 0.75f, 0.3f};   // Rayo dorado (destellos)
 
     // Colores activos (se actualizan con setTheme)
     private float[] colorBass = DEFAULT_BASS;
@@ -473,6 +483,17 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
                 colorLightning1 = SPIDER_LIGHTNING_1;
                 colorLightning2 = SPIDER_LIGHTNING_2;
                 Log.d(TAG, "🕷️ Tema SPIDER activado - Black Spider Horror");
+                break;
+
+            case ATLANTIS:
+                colorBass = ATLANTIS_BASS;
+                colorTreble = ATLANTIS_TREBLE;
+                colorPeak = ATLANTIS_PEAK;
+                colorWaveStrong = ATLANTIS_WAVE_STRONG;
+                colorWaveNormal = ATLANTIS_WAVE_NORMAL;
+                colorLightning1 = ATLANTIS_LIGHTNING_1;
+                colorLightning2 = ATLANTIS_LIGHTNING_2;
+                Log.d(TAG, "🏛️ Tema ATLANTIS activado - Lost Atlantis");
                 break;
 
             default:

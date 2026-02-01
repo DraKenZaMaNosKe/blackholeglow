@@ -46,7 +46,9 @@ public class RenderModeController {
     // 📦 ESTADO
     // ═══════════════════════════════════════════════════════════════
 
-    private RenderMode currentMode = RenderMode.PANEL_MODE;
+    // 🔧 FIX THREADING: volatile porque GL thread escribe (activateWallpaper)
+    // y main thread lee (changeScene → isWallpaperMode)
+    private volatile RenderMode currentMode = RenderMode.PANEL_MODE;
     private ModeChangeListener listener;
     private boolean isPreviewMode = false;
 

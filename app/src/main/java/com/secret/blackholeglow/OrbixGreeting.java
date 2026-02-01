@@ -73,13 +73,8 @@ public class OrbixGreeting implements SceneObject {
     private float time = 0f;
     private static final float TIME_CYCLE = 62.831853f;  // 10 * TWO_PI - evita overflow
     private String currentGreeting = "";
-    private String userName = "";
     private long lastGreetingChange = 0;
-    private static final long GREETING_CHANGE_INTERVAL = 60000; // 60 segundos (más tiempo para ver saludo Gemini)
-
-    // Fecha de nacimiento
-    private long birthDateMillis = 0;  // 0 = no configurado
-    private boolean hasBirthDate = false;
+    private static final long GREETING_CHANGE_INTERVAL = 60000;
 
     // Texturas
     private int titleTextureId = 0;
@@ -190,9 +185,6 @@ public class OrbixGreeting implements SceneObject {
      */
     private void initGemini() {
         geminiService = GeminiService.getInstance();
-        if (userName != null && !userName.isEmpty()) {
-            geminiService.setUserName(userName);
-        }
         Log.d(TAG, "🤖 Gemini AI inicializado para saludos inteligentes");
     }
 
@@ -207,33 +199,13 @@ public class OrbixGreeting implements SceneObject {
 
     /**
      * Carga datos del usuario desde UserManager
-     * (fecha de nacimiento y nombre)
      */
     private void loadUserData() {
         if (userManager == null) {
-            Log.w(TAG, "UserManager no disponible, sin datos de usuario");
+            Log.w(TAG, "UserManager no disponible");
             return;
         }
-
-        // Cargar fecha de nacimiento
-        if (userManager.hasBirthDate()) {
-            birthDateMillis = userManager.getBirthDateMillis();
-            hasBirthDate = true;
-            Log.d(TAG, "💓 Fecha de nacimiento cargada: " +
-                userManager.getBirthDay() + "/" +
-                userManager.getBirthMonth() + "/" +
-                userManager.getBirthYear());
-        } else {
-            hasBirthDate = false;
-            Log.d(TAG, "📅 Sin fecha de nacimiento configurada");
-        }
-
-        // Cargar nombre del usuario
-        if (userManager.isLoggedIn()) {
-            userName = userManager.getFirstName();
-            needsGreetingUpdate = true;
-            Log.d(TAG, "👤 Usuario cargado: " + userName);
-        }
+        Log.d(TAG, "👤 UserManager disponible, datos cargados");
     }
 
     /**
@@ -555,9 +527,6 @@ public class OrbixGreeting implements SceneObject {
         greetingBitmap.eraseColor(0x00000000);
 
         String greetingText = currentGreeting;
-        if (userName != null && !userName.isEmpty()) {
-            greetingText = currentGreeting + ", " + userName;
-        }
 
         Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         textPaint.setColor(0xFFFFFFFF);
@@ -628,95 +597,9 @@ public class OrbixGreeting implements SceneObject {
         GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, clockBitmap, 0);
     }
 
-    private void updateLifeClockTexture() {
-        if (!hasBirthDate || lifeClockBitmap == null || lifePaintCache == null) return;
-
-        long now = System.currentTimeMillis();
-        long lived = now - birthDateMillis;
-
-        // Calcular tiempo vivido
-        long seconds = lived / 1000;
-        long minutes = seconds / 60;
-        seconds = seconds % 60;
-        long hours = minutes / 60;
-        minutes = minutes % 60;
-        long days = hours / 24;
-        hours = hours % 24;
-        long years = days / 365;
-        days = days % 365;
-
-        // ⚡ OPTIMIZACIÓN: Usar StringBuilder en lugar de String.format
-        lifeStringBuilder.setLength(0);
-        lifeStringBuilder.append(years).append("y ").append(days).append("d ");
-        if (hours < 10) lifeStringBuilder.append('0');
-        lifeStringBuilder.append(hours).append(':');
-        if (minutes < 10) lifeStringBuilder.append('0');
-        lifeStringBuilder.append(minutes).append(':');
-        if (seconds < 10) lifeStringBuilder.append('0');
-        lifeStringBuilder.append(seconds);
-
-        String lifeText = lifeStringBuilder.toString();
-        if (lifeText.equals(lastLifeClockText)) return;
-        lastLifeClockText = lifeText;
-
-        lifeClockBitmap.eraseColor(0x00000000);
-
-        // ⚡ OPTIMIZACIÓN: Usar Paint cacheados
-        float centerX = LIFE_CLOCK_TEX_WIDTH / 2f;
-        float centerY = LIFE_CLOCK_TEX_HEIGHT / 2f + 8;
-
-        lifeClockCanvas.drawText(lifeText, centerX, centerY, lifeGlowPaintCache);
-        lifeClockCanvas.drawText(lifeText, centerX, centerY, lifePaintCache);
-
-        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, lifeClockTextureId);
-        GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, lifeClockBitmap, 0);
-    }
-
-    private void updateBirthdayTexture() {
-        if (!hasBirthDate || birthdayBitmap == null || bdPaintCache == null) return;
-
-        // ⚡ OPTIMIZACIÓN: Reutilizar Calendar caches
-        long nowMillis = System.currentTimeMillis();
-        calendarCache.setTimeInMillis(nowMillis);
-        birthdayCalendarCache.setTimeInMillis(birthDateMillis);
-        birthdayCalendarCache.set(Calendar.YEAR, calendarCache.get(Calendar.YEAR));
-
-        // Si ya pasó este año, siguiente año
-        if (birthdayCalendarCache.before(calendarCache)) {
-            birthdayCalendarCache.add(Calendar.YEAR, 1);
-        }
-
-        long diff = birthdayCalendarCache.getTimeInMillis() - nowMillis;
-        long days = diff / (24 * 60 * 60 * 1000);
-        long hours = (diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000);
-        long minutes = (diff % (60 * 60 * 1000)) / (60 * 1000);
-
-        // ⚡ OPTIMIZACIÓN: Usar StringBuilder en lugar de String.format
-        birthdayStringBuilder.setLength(0);
-        if (days == 0 && hours == 0 && minutes == 0) {
-            birthdayStringBuilder.append("🎂 ¡FELIZ CUMPLEAÑOS! 🎂");
-        } else if (days == 0) {
-            birthdayStringBuilder.append("🎂 ").append(hours).append("h ").append(minutes).append("m");
-        } else {
-            birthdayStringBuilder.append("🎂 ").append(days).append("d ").append(hours).append("h ").append(minutes).append("m");
-        }
-
-        String birthdayText = birthdayStringBuilder.toString();
-        if (birthdayText.equals(lastBirthdayText)) return;
-        lastBirthdayText = birthdayText;
-
-        birthdayBitmap.eraseColor(0x00000000);
-
-        // ⚡ OPTIMIZACIÓN: Usar Paint cacheados
-        float centerX = BIRTHDAY_TEX_WIDTH / 2f;
-        float centerY = BIRTHDAY_TEX_HEIGHT / 2f + 7;
-
-        birthdayCanvas.drawText(birthdayText, centerX, centerY, bdGlowPaintCache);
-        birthdayCanvas.drawText(birthdayText, centerX, centerY, bdPaintCache);
-
-        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, birthdayTextureId);
-        GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, birthdayBitmap, 0);
-    }
+    // Funcionalidad de reloj de vida y cumpleaños eliminada por privacidad
+    private void updateLifeClockTexture() { }
+    private void updateBirthdayTexture() { }
 
     private void updateHeartTexture() {
         if (!needsHeartUpdate || heartBitmap == null) return;
@@ -777,13 +660,6 @@ public class OrbixGreeting implements SceneObject {
 
         // ⚡ OPTIMIZACIÓN: Solo actualizar texturas si es necesario
         updateTitleTexture();
-        // updateGreetingTexture(); // DESHABILITADO
-        // updateClockTexture(); // DESHABILITADO
-        if (hasBirthDate) {
-            // updateLifeClockTexture(); // DESHABILITADO
-            // updateBirthdayTexture(); // DESHABILITADO
-        }
-        // updateHeartTexture(); // DESHABILITADO
 
         // ⚡ OPTIMIZACIÓN: Configurar estado GL una sola vez
         GLES30.glUseProgram(shaderProgram);
@@ -809,17 +685,6 @@ public class OrbixGreeting implements SceneObject {
         // Reloj actual
         // drawTextQuad(clockTextureId, clockY, 0.42f, 0.04f, 2.0f);
 
-        // Si tiene fecha de nacimiento, mostrar reloj de vida
-        if (hasBirthDate) {
-            // Corazón palpitante
-            // drawHeartQuad(heartTextureId, heartY, heartX, 0.06f * heartScale, 5.0f);
-
-            // Reloj de vida
-            // drawTextQuad(lifeClockTextureId, lifeClockY, 0.55f, 0.038f, 3.0f);
-
-            // Countdown al cumpleaños
-            // drawTextQuad(birthdayTextureId, birthdayY, 0.45f, 0.032f, 4.0f);
-        }
 
         // ⚡ OPTIMIZACIÓN: Deshabilitar vertex attribs UNA vez al final
         GLES30.glDisableVertexAttribArray(aPositionLoc);
@@ -902,19 +767,8 @@ public class OrbixGreeting implements SceneObject {
         this.aspectRatio = aspect;
     }
 
-    public void setUserName(String name) {
-        if (name != null && !name.equals(this.userName)) {
-            this.userName = name;
-            needsGreetingUpdate = true;
-        }
-    }
-
     public boolean isVisible() {
         return isVisible && alpha > 0.01f;
-    }
-
-    public boolean hasBirthDateConfigured() {
-        return hasBirthDate;
     }
 
     public void dispose() {

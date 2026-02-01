@@ -183,17 +183,6 @@ public class ImageConfig {
         ));
 
         // ═══════════════════════════════════════════════════════════════
-        // PANEL MODE (Arcane Grimoire) - Texturas [LEGACY]
-        // ═══════════════════════════════════════════════════════════════
-
-        IMAGES.put("grimoire_texture.png", new ResourceInfo(
-            SUPABASE_VIDEOS_URL + "grimoire_texture.png",
-            6_400_000L,  // ~6.23 MB
-            "Textura Grimorio",
-            1
-        ));
-
-        // ═══════════════════════════════════════════════════════════════
         // PANEL MODE (Gaming Controller) - Textura v5.0.8
         // ═══════════════════════════════════════════════════════════════
 

@@ -34,11 +34,14 @@ public class LoadingBar implements SceneObject {
     private static final String TAG = "LoadingBar";
 
     // Estado
+    // 🔧 FIX THREADING: volatile porque background thread escribe (setProgress desde ResourcePreloader)
+    // y GL thread lee (update en onDrawFrame). Sin volatile, GL thread puede cachear el valor
+    // y nunca ver el progreso actualizado → loading bar nunca completa.
     private float currentProgress = 0f;      // 0.0 - 1.0
-    private float targetProgress = 0f;       // Progreso objetivo (para animación suave)
-    private float displayProgress = 0f;      // Progreso mostrado (animado)
-    private boolean isVisible = false;
-    private boolean isComplete = false;
+    private volatile float targetProgress = 0f;       // Progreso objetivo (para animación suave)
+    private float displayProgress = 0f;      // Progreso mostrado (animado) - solo GL thread
+    private volatile boolean isVisible = false;
+    private volatile boolean isComplete = false;
     private float alpha = 0f;
     private float time = 0f;
     private static final float TIME_CYCLE = 62.83f;  // 2π * 10, evita overflow

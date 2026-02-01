@@ -1,6 +1,5 @@
 package com.secret.blackholeglow.adapters;
 
-import android.app.WallpaperManager;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -55,7 +54,7 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
     // ╔═════════════════════════════════════════════════════════════════╗
     // ║  📦 Estado de recursos del panel de control                     ║
     // ║  Botones DESHABILITADOS hasta que los recursos estén listos     ║
-    // ║  (grimoire.obj, texturas) - Video eliminado en v5.0.7           ║
+    // ║  (Gaming Controller + texturas LikeButton)                      ║
     // ╚═════════════════════════════════════════════════════════════════╝
     private boolean isPanelResourcesReady = false;
     private int downloadProgress = 0;
@@ -64,6 +63,9 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
     // ⚡ DEBOUNCE: Prevenir doble-click en botones
     private long lastClickTime = 0;
     private static final long CLICK_DEBOUNCE_MS = 800; // 800ms entre clicks
+
+    // 🏷️ Badge "INSTALADO" - solo el wallpaper activo en el sistema
+    private String installedSceneName = null;
 
     /**
      * Interface para notificar evento "aplicar wallpaper".
@@ -87,7 +89,7 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
 
     /**
      * Constructor con estado de recursos del panel.
-     * @param isPanelResourcesReady true si los recursos del panel están listos (grimoire, texturas)
+     * @param isPanelResourcesReady true si los recursos del panel están listos (controller, texturas)
      */
     public WallpaperAdapter(Context context, List<WallpaperItem> wallpapers,
                             OnWallpaperClickListener listener, boolean isPanelResourcesReady) {
@@ -132,6 +134,21 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
     }
 
     /**
+     * Establece el wallpaper actualmente instalado en el sistema.
+     * Solo ese item mostrará el badge "INSTALADO".
+     * @param sceneName sceneName del wallpaper activo, o null si ninguno
+     */
+    public void setInstalledWallpaper(String sceneName) {
+        if ((installedSceneName == null && sceneName == null) ||
+            (installedSceneName != null && installedSceneName.equals(sceneName))) {
+            return; // Sin cambios
+        }
+        this.installedSceneName = sceneName;
+        notifyItemRangeChanged(0, getItemCount(), "INSTALLED_UPDATE");
+        Log.d("WallpaperAdapter", "🏷️ Wallpaper instalado actualizado: " + sceneName);
+    }
+
+    /**
      * ╔═════════════════════════════════╗
      * ║  📐 onCreateViewHolder           ║
      * ╚═════════════════════════════════╝
@@ -173,14 +190,9 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         loadPreviewImage(holder.imagePreview, item);
 
         // ╔═════════════════════════════════════════════════════════╗
-        // ║  🏷️ BADGE - Mostrar etiqueta si tiene                 ║
+        // ║  🏷️ BADGE - Prioridad: INSTALADO > badge propio       ║
         // ╚═════════════════════════════════════════════════════════╝
-        if (item.hasBadge() && holder.textBadge != null) {
-            holder.textBadge.setText(item.getBadge());
-            holder.textBadge.setVisibility(View.VISIBLE);
-        } else if (holder.textBadge != null) {
-            holder.textBadge.setVisibility(View.GONE);
-        }
+        updateBadge(holder, item);
 
         // ╔═════════════════════════════════════════════════════════╗
         // ║  🔒 OVERLAY COMING SOON - Para wallpapers en desarrollo ║
@@ -193,7 +205,7 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         // ╔═════════════════════════════════════════════════════════╗
         // ║  🎯 BOTÓN "VER WALLPAPER" - Va a preview              ║
         // ║  IMPORTANTE: Deshabilitado si los recursos del panel  ║
-        // ║  no están descargados (grimoire.obj, texturas)        ║
+        // ║  no están descargados (controller, texturas)          ║
         // ╚═════════════════════════════════════════════════════════╝
 
         // ⚠️ ESTADO DE ERROR: Mostrar botón de reintento
@@ -212,9 +224,8 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
                 }
             });
         }
-        // PRIMERO: Verificar si los recursos del panel están listos
+        // Verificar si los recursos del panel están listos
         else if (!isPanelResourcesReady) {
-            // Recursos del panel NO disponibles - botón deshabilitado con progreso
             holder.buttonPreview.setEnabled(false);
             holder.buttonPreview.setAlpha(0.6f);
             if (downloadProgress > 0 && downloadProgress < 100) {
@@ -224,32 +235,27 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
             }
             holder.buttonPreview.setOnClickListener(null);
         }
-        // SEGUNDO: Verificar si el wallpaper está disponible
+        // Wallpaper disponible - botón habilitado
         else if (item.isAvailable()) {
-            // Wallpaper disponible Y recursos del panel listos - botón habilitado
             holder.buttonPreview.setEnabled(true);
             holder.buttonPreview.setAlpha(1.0f);
             holder.buttonPreview.setText("✨ VER WALLPAPER");
             holder.buttonPreview.setOnClickListener(v -> {
-                // 🧹 LIMPIEZA AUTOMÁTICA: Limpiar wallpaper anterior antes de cargar nuevo
-                // Esto evita conflictos de estado entre escenas (ej: Christmas → Arcade)
-                clearCurrentWallpaperAsync(() -> {
-                    // ✅ Guardar preferencia INMEDIATAMENTE al seleccionar
-                    WallpaperPreferences.getInstance(context).setSelectedWallpaper(item.getSceneName());
-                    Log.d("WallpaperAdapter", "💾 Wallpaper seleccionado: " + item.getSceneName());
+                String previousWallpaper = WallpaperPreferences.getInstance(context).getSelectedWallpaperSync();
 
-                    // Ir a WallpaperLoadingActivity para precarga de recursos
+                // 🎬 Mostrar ad ANTES de ir a loading (no durante instalación)
+                com.secret.blackholeglow.systems.AdsManager.get().showInterstitialAd(
+                        (android.app.Activity) context, shown -> {
+                    Log.d("WallpaperAdapter", "Ad completado: " + shown + ", abriendo loading...");
                     Intent intent = new Intent(context, com.secret.blackholeglow.activities.WallpaperLoadingActivity.class);
-
-                    // Pasar datos del wallpaper (sceneName para SceneFactory)
                     intent.putExtra("WALLPAPER_PREVIEW_ID", item.getResourceIdPreview());
-                    intent.putExtra("WALLPAPER_ID", item.getSceneName());  // Nombre interno para SceneFactory
-                    intent.putExtra("WALLPAPER_DISPLAY_NAME", item.getNombre());  // Nombre bonito para UI
+                    intent.putExtra("WALLPAPER_ID", item.getSceneName());
+                    intent.putExtra("WALLPAPER_DISPLAY_NAME", item.getNombre());
+                    intent.putExtra("PREVIOUS_WALLPAPER_ID", previousWallpaper);
                     context.startActivity(intent);
                 });
             });
         } else {
-            // Wallpaper NO disponible - botón deshabilitado con texto especial
             holder.buttonPreview.setEnabled(false);
             holder.buttonPreview.setAlpha(0.6f);
             holder.buttonPreview.setText("🔒 PRÓXIMAMENTE");
@@ -269,9 +275,16 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
             // Sin payload = actualización completa
             onBindViewHolder(holder, position);
         } else {
-            // Con payload = actualización parcial (solo botón)
             WallpaperItem item = wallpapers.get(position);
-            updateButtonState(holder, item);
+            for (Object payload : payloads) {
+                if ("INSTALLED_UPDATE".equals(payload)) {
+                    // Solo actualizar badge
+                    updateBadge(holder, item);
+                } else {
+                    // BUTTON_UPDATE u otro = actualizar botón
+                    updateButtonState(holder, item);
+                }
+            }
         }
     }
 
@@ -281,11 +294,10 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
     private void updateButtonState(WallpaperViewHolder holder, WallpaperItem item) {
         // ⚠️ ESTADO DE ERROR: Mostrar botón de reintento
         if (downloadFailed) {
-            holder.buttonPreview.setEnabled(true);  // Habilitado para permitir retry
+            holder.buttonPreview.setEnabled(true);
             holder.buttonPreview.setAlpha(1.0f);
             holder.buttonPreview.setText("⚠️ REINTENTAR");
             holder.buttonPreview.setOnClickListener(v -> {
-                // Notificar al fragment para reintentar
                 if (context instanceof FragmentActivity) {
                     androidx.fragment.app.Fragment fragment = ((FragmentActivity) context)
                             .getSupportFragmentManager()
@@ -296,7 +308,7 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
                 }
             });
         }
-        // ESTADO NORMAL: Descargando
+        // Descargando recursos
         else if (!isPanelResourcesReady) {
             holder.buttonPreview.setEnabled(false);
             holder.buttonPreview.setAlpha(0.6f);
@@ -310,15 +322,18 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
             holder.buttonPreview.setEnabled(true);
             holder.buttonPreview.setAlpha(1.0f);
             holder.buttonPreview.setText("✨ VER WALLPAPER");
-            // ⚡ FIX: Asignar click listener en actualización parcial
             holder.buttonPreview.setOnClickListener(v -> {
-                clearCurrentWallpaperAsync(() -> {
-                    WallpaperPreferences.getInstance(context).setSelectedWallpaper(item.getSceneName());
-                    Log.d("WallpaperAdapter", "💾 Wallpaper seleccionado: " + item.getSceneName());
+                String previousWallpaper = WallpaperPreferences.getInstance(context).getSelectedWallpaperSync();
+
+                // 🎬 Mostrar ad ANTES de ir a loading
+                com.secret.blackholeglow.systems.AdsManager.get().showInterstitialAd(
+                        (android.app.Activity) context, shown -> {
+                    Log.d("WallpaperAdapter", "Ad completado: " + shown + ", abriendo loading...");
                     Intent intent = new Intent(context, com.secret.blackholeglow.activities.WallpaperLoadingActivity.class);
                     intent.putExtra("WALLPAPER_PREVIEW_ID", item.getResourceIdPreview());
                     intent.putExtra("WALLPAPER_ID", item.getSceneName());
                     intent.putExtra("WALLPAPER_DISPLAY_NAME", item.getNombre());
+                    intent.putExtra("PREVIOUS_WALLPAPER_ID", previousWallpaper);
                     context.startActivity(intent);
                 });
             });
@@ -327,6 +342,28 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
             holder.buttonPreview.setAlpha(0.6f);
             holder.buttonPreview.setOnClickListener(null);
             holder.buttonPreview.setText("🔒 PRÓXIMAMENTE");
+        }
+    }
+
+    /**
+     * Actualiza el badge del item: prioriza "INSTALADO" sobre el badge propio.
+     */
+    private void updateBadge(WallpaperViewHolder holder, WallpaperItem item) {
+        if (holder.textBadge == null) return;
+
+        boolean isInstalled = installedSceneName != null &&
+                item.getSceneName().equals(installedSceneName);
+
+        if (isInstalled) {
+            holder.textBadge.setText("INSTALADO");
+            holder.textBadge.setBackgroundColor(Color.parseColor("#2E7D32"));
+            holder.textBadge.setVisibility(View.VISIBLE);
+        } else if (item.hasBadge()) {
+            holder.textBadge.setText(item.getBadge());
+            holder.textBadge.setBackgroundResource(R.drawable.badge_background);
+            holder.textBadge.setVisibility(View.VISIBLE);
+        } else {
+            holder.textBadge.setVisibility(View.GONE);
         }
     }
 
@@ -442,58 +479,6 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         b = (int) (b + (255 - b) * factor);
 
         return Color.rgb(r, g, b);
-    }
-
-    // ╔═════════════════════════════════════════════════════════════════╗
-    // ║  🧹 LIMPIEZA AUTOMÁTICA DE WALLPAPER                           ║
-    // ╠═════════════════════════════════════════════════════════════════╣
-    // ║  Limpia el wallpaper actual antes de cargar uno nuevo.          ║
-    // ║  Esto fuerza a Android a destruir el LiveWallpaperService       ║
-    // ║  anterior y evita conflictos de estado entre escenas.           ║
-    // ╚═════════════════════════════════════════════════════════════════╝
-
-    /**
-     * Limpia el wallpaper actual de forma asíncrona y ejecuta el callback al terminar.
-     * Esto evita el bug de conflicto de estado al cambiar entre escenas.
-     *
-     * @param onComplete Callback a ejecutar después de la limpieza
-     */
-    private void clearCurrentWallpaperAsync(Runnable onComplete) {
-        new Thread(() -> {
-            try {
-                WallpaperManager wm = WallpaperManager.getInstance(context);
-
-                // Verificar si hay un live wallpaper activo de nuestra app
-                android.app.WallpaperInfo info = wm.getWallpaperInfo();
-                if (info != null && info.getPackageName().equals(context.getPackageName())) {
-                    Log.d("WallpaperAdapter", "🧹 Limpiando wallpaper anterior: " + info.getServiceName());
-
-                    // Crear un bitmap negro temporal para "resetear" el wallpaper
-                    Bitmap blackBitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888);
-                    blackBitmap.eraseColor(Color.BLACK);
-                    wm.setBitmap(blackBitmap);
-                    blackBitmap.recycle();
-
-                    // Pequeña pausa para que Android destruya el servicio anterior
-                    Thread.sleep(200);
-
-                    Log.d("WallpaperAdapter", "✅ Wallpaper anterior limpiado correctamente");
-                } else {
-                    Log.d("WallpaperAdapter", "ℹ️ No hay live wallpaper activo de nuestra app, continuando...");
-                }
-            } catch (Exception e) {
-                Log.w("WallpaperAdapter", "⚠️ Error limpiando wallpaper (no crítico): " + e.getMessage());
-                // No es crítico, continuamos de todos modos
-            }
-
-            // Ejecutar callback en el UI thread
-            if (context instanceof android.app.Activity) {
-                ((android.app.Activity) context).runOnUiThread(onComplete);
-            } else {
-                // Fallback: ejecutar directamente (podría causar problemas de UI)
-                onComplete.run();
-            }
-        }).start();
     }
 
     // ╔═════════════════════════════════════════════════════════════════╗

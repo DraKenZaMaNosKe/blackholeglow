@@ -44,7 +44,7 @@ import com.secret.blackholeglow.core.PanelResources;
 public class SplashActivity extends AppCompatActivity {
 
     private static final String TAG = "SplashActivity";
-    // NOTA: Video del panel (thehouse.mp4) eliminado en v5.0.7
+    // Panel usa imagen estática del wallpaper seleccionado (sin video)
     private static final int MIN_SPLASH_DURATION = 2000; // Mínimo 2 segundos
 
     // Recursos del Panel - Centralizados en PanelResources (v5.0.8)

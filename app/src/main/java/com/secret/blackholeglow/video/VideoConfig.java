@@ -101,6 +101,14 @@ public class VideoConfig {
             "Black Spider",
             1
         ));
+
+        // LostAtlantisScene - Templo sumergido
+        VIDEOS.put("lostatlanstis.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "lostatlanstis.mp4",
+            15_550_000L,  // ~14.83 MB
+            "Lost Atlantis",
+            1
+        ));
     }
 
     // =========================================================================

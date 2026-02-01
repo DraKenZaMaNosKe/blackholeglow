@@ -76,6 +76,7 @@ public class WallpaperPreferences {
         "SUPERMAN",       // 🦸 Superman Man of Steel
         "AOT",            // ⚔️ Attack on Titan - Eren Jaeger
         "SPIDER",         // 🕷️ Black Spider Horror
+        "LOST_ATLANTIS",  // 🏛️ Lost Atlantis underwater temple
 
         // ═══════════════════════════════════════════
         // 📦 WALLPAPERS LEGADOS (compatibilidad)
@@ -295,11 +296,13 @@ public class WallpaperPreferences {
 
     /**
      * Guarda wallpaper en SharedPreferences (local)
+     * 🔧 FIX ANR: Usar apply() en lugar de commit() para no bloquear main thread
      */
     private boolean saveLocalWallpaper(@NonNull String wallpaperName) {
-        return sharedPrefs.edit()
+        sharedPrefs.edit()
             .putString(KEY_SELECTED_WALLPAPER, wallpaperName)
-            .commit();  // commit() en lugar de apply() para saber si fue exitoso
+            .apply();  // 🔧 FIX ANR: apply() es asíncrono, no bloquea
+        return true;  // apply() siempre tiene éxito (escribe en memoria inmediatamente)
     }
 
     // ============================================

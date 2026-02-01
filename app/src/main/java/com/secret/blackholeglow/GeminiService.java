@@ -35,7 +35,6 @@ public class GeminiService {
 
     private static GeminiService instance;
     private Handler mainHandler;
-    private String userName;
 
     public interface GeminiCallback {
         void onResponse(String response);
@@ -53,12 +52,9 @@ public class GeminiService {
         return instance;
     }
 
-    public void setUserName(String name) {
-        this.userName = name;
-    }
-
     /**
      * Genera un saludo inteligente basado en la hora y contexto
+     * (no envía datos personales a la API)
      */
     public void generateSmartGreeting(GeminiCallback callback) {
         Calendar cal = Calendar.getInstance();
@@ -85,10 +81,8 @@ public class GeminiService {
             default: dayContext = "domingo"; break;
         }
 
-        String nameStr = (userName != null && !userName.isEmpty()) ? userName : "amigo";
-
-        String prompt = "Genera un saludo corto, creativo y cálido (máximo 6 palabras) para " + nameStr +
-                       ". Es " + dayContext + " por la " + timeContext +
+        String prompt = "Genera un saludo corto, creativo y cálido (máximo 6 palabras). " +
+                       "Es " + dayContext + " por la " + timeContext +
                        ". Sé poético o inspirador. Solo responde con el saludo, sin explicaciones ni comillas.";
 
         sendRequest(prompt, callback);
@@ -96,12 +90,10 @@ public class GeminiService {
 
     /**
      * Envía un mensaje de chat y obtiene respuesta
+     * (no envía datos personales)
      */
     public void chat(String userMessage, GeminiCallback callback) {
-        String nameStr = (userName != null && !userName.isEmpty()) ? userName : "amigo";
-
         String prompt = "Eres Orbix, un asistente amigable y conciso dentro de una app de wallpapers espaciales. " +
-                       "El usuario se llama " + nameStr + ". " +
                        "Responde de forma breve (máximo 2 oraciones), amigable y con un toque espacial/cósmico. " +
                        "Mensaje del usuario: " + userMessage;
 
@@ -121,16 +113,13 @@ public class GeminiService {
     /**
      * 🎵 Genera un comentario creativo sobre una canción
      * @param songTitle Título de la canción (puede incluir artista)
-     * @param userName Nombre del usuario
+     * @param userName No se usa (privacidad)
      * @param callback Callback con la respuesta
      */
     public void generateSongComment(String songTitle, String userName, GeminiCallback callback) {
-        String nameStr = (userName != null && !userName.isEmpty()) ? userName : "Alguien";
-
-        String prompt = "Genera un mensaje MUY CORTO (máximo 15 palabras) y creativo sobre que a " + nameStr +
-                       " le gusta la canción '" + songTitle + "'. " +
+        String prompt = "Genera un mensaje MUY CORTO (máximo 15 palabras) y creativo sobre la canción '" + songTitle + "'. " +
                        "Sé entusiasta, usa 1-2 emojis. " +
-                       "Ejemplos de estilo: '🎵 " + nameStr + " vibra con esto!', '♥ " + nameStr + " está disfrutando este temazo', '🔥 Buena elección " + nameStr + "!'. " +
+                       "Ejemplos de estilo: '🎵 Vibrando con esto!', '♥ Disfrutando este temazo', '🔥 Gran elección!'. " +
                        "Solo responde con el mensaje, sin explicaciones ni comillas.";
 
         sendRequest(prompt, callback);

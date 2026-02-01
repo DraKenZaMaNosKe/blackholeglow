@@ -21,6 +21,7 @@ import com.secret.blackholeglow.scenes.ZeldaParallaxScene;
 import com.secret.blackholeglow.scenes.SupermanScene;
 import com.secret.blackholeglow.scenes.AOTScene;
 import com.secret.blackholeglow.scenes.SpiderScene;
+import com.secret.blackholeglow.scenes.LostAtlantisScene;
 import com.secret.blackholeglow.sharing.LikeButton;
 import com.secret.blackholeglow.scenes.WallpaperScene;
 import com.secret.blackholeglow.systems.AspectRatioManager;
@@ -35,6 +36,7 @@ import com.secret.blackholeglow.models.WallpaperItem;
 import com.secret.blackholeglow.systems.UIController;
 import com.secret.blackholeglow.gl3.MatrixPool;
 import com.secret.blackholeglow.effects.BloomEffect;
+import com.secret.blackholeglow.systems.WallpaperNotificationManager;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -73,7 +75,9 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     // ESTADO
     private final Context context;
     private boolean initialized = false;
-    private boolean paused = false;
+    // 🔧 FIX GL FREEZE: volatile porque main thread escribe (pause/resume)
+    // y GL thread lee (onDrawFrame). Sin volatile, GL thread podría cachear el valor.
+    private volatile boolean paused = false;
     private long lastBandsLogTime = 0;  // Para reducir logging excesivo
     private int screenWidth = 1;
     private int screenHeight = 1;
@@ -83,7 +87,16 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     // 🔧 FIX MEMORY LEAK: Destruir escenas en GL thread, no en UI thread
     private volatile boolean pendingSceneDestroy = false;
     private volatile boolean pendingReturnToPanel = false;
+    private volatile boolean pendingSceneAutoLoad = false;  // 🔧 FIX FREEZE: Auto-cargar nueva escena después de destruir
+    private int resourceCheckRetries = 0;  // 🛡️ Contador de reintentos para verificación de recursos
+    private static final int MAX_RESOURCE_CHECK_RETRIES = 300;  // ~10 segundos a 30fps
 
+    // 🔧 FIX LOADING: Fallback de completación de carga
+    // Cuando ResourcePreloader termina, marcamos resourcesReady = true.
+    // Si LoadingBar.isComplete() no responde en 2 segundos, forzamos la activación.
+    private volatile boolean resourcesReady = false;
+    private float resourcesReadyTimer = 0f;
+    private static final float LOADING_FALLBACK_TIMEOUT = 2.0f;  // 2 segundos máximo de animación
 
     // TIMING (deltaTime y FPS manejados por GLStateManager)
     private static final float TIME_WRAP = 3600f;  // Reset cada hora para evitar overflow
@@ -109,14 +122,22 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         initializeActors();
         wireActors();
 
-        if (modeController.isPreviewMode()) {
-            Log.d(TAG, "PREVIEW MODE - cargando escena directamente: " + pendingSceneName);
-            modeController.goDirectToWallpaper();
-            sceneFactory.createScene(pendingSceneName);
-            // 🔧 OPTIMIZACIÓN: Liberar recursos del panel en preview mode también
-            panelRenderer.onWallpaperActivated();
+        // 🔧 FIX ANR: NO cargar escena en onSurfaceCreated (es muy pesado y causa ANR)
+        // En su lugar, marcar para cargar en el primer frame de onDrawFrame()
+        // donde tenemos más control sobre el timing y podemos mostrar loading
+        if (pendingSceneName != null && !pendingSceneName.isEmpty()) {
+            if (modeController.isPreviewMode()) {
+                // 🎬 Preview del sistema: auto-cargar escena directamente (sin panel)
+                Log.d(TAG, "🎬 PREVIEW: Auto-cargando escena: " + pendingSceneName);
+                pendingSceneAutoLoad = true;
+                modeController.goDirectToWallpaper();
+            } else {
+                // 🎮 Modo normal: mostrar PANEL DE CONTROL - usuario presiona PLAY
+                Log.d(TAG, "🎮 PANEL: Esperando PLAY para escena: " + pendingSceneName);
+                pendingSceneAutoLoad = false;
+                // Se queda en PANEL_MODE por defecto
+            }
         }
-        // Modo normal: PANEL_MODE → usuario presiona botón → WALLPAPER_MODE
 
         initialized = true;
         Log.d(TAG, "onSurfaceCreated END");
@@ -146,6 +167,11 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         UIController.get().setScreenSize(width, height);
     }
 
+    // 🛡️ ERROR RECOVERY: Contador de errores consecutivos para auto-recovery
+    private int consecutiveErrors = 0;
+    private static final int MAX_CONSECUTIVE_ERRORS = 3;
+    private long lastErrorTime = 0;
+
     @Override
     public void onDrawFrame(GL10 gl) {
         // Reset pools de matrices para evitar allocations en draw
@@ -158,51 +184,216 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             return;
         }
 
+        // 🔧 FIX GL THREAD FREEZE: Cuando está pausado y no hay operaciones pendientes,
+        // dormir brevemente y retornar. Esto reemplaza RENDERMODE_WHEN_DIRTY que no
+        // despertaba al GL thread de forma confiable al volver a CONTINUOUSLY.
+        // El GL thread SIEMPRE corre, pero idle cuando está pausado → garantiza que
+        // pendingSceneDestroy SIEMPRE se procesa.
+        if (paused && !pendingSceneDestroy && !pendingSceneAutoLoad) {
+            try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+            return;
+        }
+
         // 🔧 FIX MEMORY LEAK: Procesar destrucción de escenas pendientes EN el GL thread
         // Esto garantiza que glDeleteTextures/glDeleteProgram funcionen correctamente
         if (pendingSceneDestroy) {
             pendingSceneDestroy = false;
             Log.d(TAG, "🗑️ [GL Thread] Destruyendo escena pendiente...");
-            if (sceneFactory != null) {
-                sceneFactory.destroyCurrentScene();
+            try {
+                if (sceneFactory != null) {
+                    sceneFactory.destroyCurrentScene();
+                }
+                Log.d(TAG, "✅ [GL Thread] Escena destruida - memoria GPU liberada");
+            } catch (Exception e) {
+                Log.e(TAG, "❌ Error destruyendo escena: " + e.getMessage(), e);
             }
+
+            // 🔧 SIEMPRE volver al panel, incluso si la destrucción falló
             if (pendingReturnToPanel) {
                 pendingReturnToPanel = false;
+                Log.d(TAG, "🔙 [GL Thread] Regresando al panel...");
                 if (panelRenderer != null) {
                     panelRenderer.onReturnToPanel();
+                    panelRenderer.resume();
                 }
             }
-            Log.d(TAG, "✅ [GL Thread] Escena destruida - memoria GPU liberada");
+        }
+
+        // 🔧 FIX ANR: Auto-cargar escena pendiente (después de destrucción O en primera carga)
+        // Esto se ejecuta en onDrawFrame() en lugar de onSurfaceCreated() para evitar ANR
+        if (pendingSceneAutoLoad) {
+            if (sceneFactory != null && pendingSceneName != null && !pendingSceneName.isEmpty()) {
+
+                // 🛡️ FIX BLACK SCREEN: Verificar que los recursos están disponibles ANTES de crear
+                // Si el video no se ha descargado aún, esperar y reintentar en el siguiente frame
+                if (!ResourcePreloader.areSceneResourcesReady(context, pendingSceneName)) {
+                    resourceCheckRetries++;
+                    if (resourceCheckRetries % 30 == 1) {  // Log cada ~1 segundo
+                        Log.d(TAG, "⏳ [GL Thread] Esperando recursos para: " + pendingSceneName
+                                + " (intento " + resourceCheckRetries + "/" + MAX_RESOURCE_CHECK_RETRIES + ")");
+                    }
+                    if (resourceCheckRetries >= MAX_RESOURCE_CHECK_RETRIES) {
+                        // Timeout: cargar de todos modos (la escena manejará el video faltante)
+                        Log.w(TAG, "⚠️ [GL Thread] Timeout esperando recursos, cargando sin verificar: " + pendingSceneName);
+                    } else {
+                        // No está listo, reintentar en el siguiente frame
+                        return;
+                    }
+                }
+
+                pendingSceneAutoLoad = false;
+                resourceCheckRetries = 0;
+                Log.d(TAG, "🎬 [GL Thread] Auto-cargando escena: " + pendingSceneName);
+
+                sceneFactory.createScene(pendingSceneName);
+
+                // 🔧 FIX VIDEO PAUSADO: Resumir la escena INMEDIATAMENTE después de crearla
+                // Antes, resume() se llamaba ANTES de que la escena existiera (en startRendering),
+                // así que scene.onResume() nunca se ejecutaba → video pausado, texturas sin cargar
+                sceneFactory.resumeCurrentScene();
+
+                // Asegurar que estamos en WALLPAPER_MODE
+                modeController.activateWallpaper();
+
+                if (panelRenderer != null) {
+                    panelRenderer.onWallpaperActivated();
+                    panelRenderer.setGreetingEnabled(true);
+                }
+
+                // 🎵 Reconectar MusicVisualizer si no está activo
+                if (musicVisualizer != null) {
+                    if (!musicVisualizer.isEnabled() || !musicVisualizer.isReceivingAudio()) {
+                        Log.d(TAG, "🎵 [GL Thread] Reanudando MusicVisualizer post-autoload");
+                        musicVisualizer.resume();
+                    }
+                }
+
+                // Aplicar tema del Like button según la escena
+                applySceneModeToPanel(pendingSceneName);
+
+                Log.d(TAG, "✅ [GL Thread] Escena cargada y resumida: " + pendingSceneName);
+            }
         }
 
         // Actualizar tiempo total para animaciones
         updateTotalTime(deltaTime);
 
-        RenderModeController.RenderMode mode = modeController.getCurrentMode();
-        switch (mode) {
-            case PANEL_MODE:
-                panelRenderer.updatePanelMode(deltaTime);
-                panelRenderer.drawPanelMode();
-                break;
-            case LOADING_MODE:
-                panelRenderer.updateLoadingMode(deltaTime);
-                panelRenderer.drawLoadingMode();
-                checkLoadingComplete();
-                break;
-            case WALLPAPER_MODE:
-                updateWallpaperMode(deltaTime);
-                drawWallpaperMode();
-                break;
+        // 🛡️ ROBUST ERROR HANDLING: Envolver todo el render en try-catch
+        try {
+            RenderModeController.RenderMode mode = modeController.getCurrentMode();
+            switch (mode) {
+                case PANEL_MODE:
+                    panelRenderer.updatePanelMode(deltaTime);
+                    panelRenderer.drawPanelMode();
+                    break;
+                case LOADING_MODE:
+                    panelRenderer.updateLoadingMode(deltaTime);
+                    panelRenderer.drawLoadingMode();
+                    checkLoadingComplete();
+                    break;
+                case WALLPAPER_MODE:
+                    renderWallpaperModeSafe(deltaTime);
+                    break;
+            }
+
+            // 🔴 STOP BUTTON: Dibujar como LO ÚLTIMO ABSOLUTO (solo en WALLPAPER_MODE)
+            if (mode == RenderModeController.RenderMode.WALLPAPER_MODE) {
+                GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+                GLES30.glDisable(GLES30.GL_CULL_FACE);
+                GLES30.glEnable(GLES30.GL_BLEND);
+                GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
+                GLES30.glViewport(0, 0, screenWidth, screenHeight);
+            }
+
+            // Reset error counter on successful frame
+            consecutiveErrors = 0;
+
+        } catch (Exception e) {
+            handleRenderError(e);
+        }
+    }
+
+    /**
+     * 🛡️ Render wallpaper mode con manejo de errores separado
+     * Si falla, intenta recuperar o volver al panel
+     */
+    private void renderWallpaperModeSafe(float deltaTime) {
+        try {
+            updateWallpaperMode(deltaTime);
+            drawWallpaperMode();
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error en WALLPAPER_MODE: " + e.getMessage(), e);
+            // Intentar recuperar la escena
+            try {
+                if (sceneFactory != null && sceneFactory.hasCurrentScene()) {
+                    Log.d(TAG, "🔧 Intentando recuperar escena...");
+                    sceneFactory.resumeCurrentScene();
+                }
+            } catch (Exception recovery) {
+                Log.e(TAG, "❌ Recuperación fallida, volviendo al panel: " + recovery.getMessage());
+                // Si la recuperación falla, volver al panel de forma segura
+                forceReturnToPanel();
+            }
+            throw e; // Re-throw para que handleRenderError lo procese
+        }
+    }
+
+    /**
+     * 🛡️ Maneja errores de renderizado con auto-recovery
+     */
+    private void handleRenderError(Exception e) {
+        long now = System.currentTimeMillis();
+
+        // Reset contador si pasó más de 5 segundos desde el último error
+        if (now - lastErrorTime > 5000) {
+            consecutiveErrors = 0;
         }
 
-        // 🔴 STOP BUTTON: Dibujar como LO ÚLTIMO ABSOLUTO (solo en WALLPAPER_MODE)
-        if (mode == RenderModeController.RenderMode.WALLPAPER_MODE) {
-            GLES30.glDisable(GLES30.GL_DEPTH_TEST);
-            GLES30.glDisable(GLES30.GL_CULL_FACE);
-            GLES30.glEnable(GLES30.GL_BLEND);
-            GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
-            GLES30.glViewport(0, 0, screenWidth, screenHeight);
+        consecutiveErrors++;
+        lastErrorTime = now;
 
+        Log.e(TAG, "❌ Error en onDrawFrame (#" + consecutiveErrors + "): " + e.getMessage(), e);
+
+        // Si hay muchos errores consecutivos, forzar retorno al panel
+        if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+            Log.e(TAG, "🚨 Demasiados errores consecutivos (" + consecutiveErrors + "), forzando retorno al panel");
+            forceReturnToPanel();
+            consecutiveErrors = 0;
+        }
+
+        // Intentar limpiar estado GL para evitar cascada de errores
+        try {
+            GLES30.glGetError(); // Clear any pending GL errors
+        } catch (Exception ignored) {}
+    }
+
+    /**
+     * 🛡️ Fuerza retorno al panel de forma segura (sin excepciones)
+     */
+    private void forceReturnToPanel() {
+        try {
+            Log.d(TAG, "🛡️ Forzando retorno seguro al panel...");
+
+            // Destruir escena actual
+            if (sceneFactory != null) {
+                try {
+                    sceneFactory.destroyCurrentScene();
+                } catch (Exception ignored) {}
+            }
+
+            // Volver al panel mode
+            if (modeController != null) {
+                modeController.stopWallpaper();
+            }
+
+            // Notificar al panel
+            if (panelRenderer != null) {
+                panelRenderer.onReturnToPanel();
+            }
+
+            Log.d(TAG, "✅ Retorno al panel completado");
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error crítico en forceReturnToPanel: " + e.getMessage());
         }
     }
 
@@ -260,6 +451,9 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             } else if (scene instanceof SpiderScene) {
                 // 🕷️ Spider tiene ecualizador SPIDER
                 ((SpiderScene) scene).updateMusicBands(bands);
+            } else if (scene instanceof LostAtlantisScene) {
+                // 🏛️ Lost Atlantis tiene ecualizador ATLANTIS
+                ((LostAtlantisScene) scene).updateMusicBands(bands);
             }
         }
         sceneFactory.updateCurrentScene(deltaTime);
@@ -301,15 +495,45 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     }
 
     private void checkLoadingComplete() {
-        if (panelRenderer.isLoadingComplete()) onLoadingComplete();
+        if (panelRenderer.isLoadingComplete()) {
+            onLoadingComplete();
+            return;
+        }
+
+        // 🔧 FIX LOADING FALLBACK: Si los recursos están listos pero la animación
+        // del LoadingBar no ha terminado (por threading visibility o timing),
+        // forzar la activación después de un timeout.
+        if (resourcesReady) {
+            resourcesReadyTimer += GLStateManager.get().getDeltaTime();
+            if (resourcesReadyTimer >= LOADING_FALLBACK_TIMEOUT) {
+                Log.w(TAG, "⚠️ Loading fallback: recursos listos pero LoadingBar no completó en "
+                        + LOADING_FALLBACK_TIMEOUT + "s, forzando activación");
+                onLoadingComplete();
+            }
+        }
     }
 
     private void onLoadingComplete() {
         if (modeController.isWallpaperMode()) return;
+
+        // Reset fallback state
+        resourcesReady = false;
+        resourcesReadyTimer = 0f;
+
         Log.d(TAG, "Carga completada - activando wallpaper");
         sceneFactory.createScene(pendingSceneName);
         modeController.activateWallpaper();
         panelRenderer.onWallpaperActivated();
+
+        // 🔔 Notificar al usuario que el wallpaper fue instalado
+        try {
+            WallpaperItem item = WallpaperCatalog.get().getBySceneName(pendingSceneName);
+            String name = item != null ? item.getNombre() : pendingSceneName;
+            WallpaperNotificationManager.getInstance(context)
+                    .notifyWallpaperInstalled(pendingSceneName, name);
+        } catch (Exception e) {
+            Log.w(TAG, "Error enviando notificación de instalación: " + e.getMessage());
+        }
 
         // Habilitar saludos Gemini para todos los wallpapers
         panelRenderer.setGreetingEnabled(true);
@@ -330,6 +554,10 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         if (!modeController.startLoading()) {
             return;
         }
+
+        // Reset fallback state para nueva carga
+        resourcesReady = false;
+        resourcesReadyTimer = 0f;
 
         // 📊 Obtener info del wallpaper para el tema de la barra
         WallpaperItem wallpaperItem = WallpaperCatalog.get().getBySceneName(pendingSceneName);
@@ -355,6 +583,11 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
                 Log.d(TAG, "✅ ResourcePreloader completado - recursos listos");
                 // Marcar progreso al 100% y dejar que el sistema detecte la completación
                 panelRenderer.updateLoadingProgress(1.0f, "¡Listo!");
+                // 🔧 FIX LOADING: Marcar recursos como listos para el fallback timer
+                resourcesReady = true;
+                resourcesReadyTimer = 0f;
+
+                // Notificación movida a WallpaperPreviewActivity
             }
 
             @Override
@@ -362,6 +595,8 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
                 Log.e(TAG, "❌ Error en ResourcePreloader: " + error);
                 // Aún así intentar cargar (los recursos pueden estar parcialmente disponibles)
                 panelRenderer.updateLoadingProgress(1.0f, "Iniciando...");
+                resourcesReady = true;
+                resourcesReadyTimer = 0f;
             }
         });
 
@@ -528,6 +763,16 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     public void resume() {
         paused = false;
 
+        // 🔧 FIX FREEZE: Si hay una destrucción de escena pendiente, NO resumir la escena actual.
+        // La escena actual está a punto de ser destruida y reemplazada por una nueva.
+        // Resumirla causaría que intente abrir recursos que ya fueron limpiados.
+        if (pendingSceneDestroy || pendingSceneAutoLoad) {
+            Log.d(TAG, "▶️ Resume SKIP: Destrucción/auto-load pendiente, la nueva escena se resumirá en onDrawFrame");
+            // Solo asegurar que el panel esté pausado
+            if (panelRenderer != null) panelRenderer.pause();
+            return;
+        }
+
         // 🎯 Solo reanudar el video correspondiente al MODO ACTUAL
         RenderModeController.RenderMode currentMode = modeController != null ?
             modeController.getCurrentMode() : RenderModeController.RenderMode.PANEL_MODE;
@@ -584,18 +829,18 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         String previousScene = pendingSceneName;
         pendingSceneName = sceneName;
 
-        // ⚡ FIX: Si estamos en WALLPAPER_MODE con una escena activa,
-        // forzar retorno al panel para que el usuario presione PLAY de nuevo
-        if (modeController != null && modeController.isWallpaperMode() && sceneFactory != null) {
-            Log.d(TAG, "⚡ Escena activa detectada (" + previousScene + "), programando destrucción en GL thread");
-            // 🔧 FIX MEMORY LEAK: Marcar para destruir en GL thread, NO destruir aquí (UI thread)
-            // Esto evita que glDeleteTextures/glDeleteProgram fallen silenciosamente
-            pendingSceneDestroy = true;
-            pendingReturnToPanel = true;
-            modeController.stopWallpaper();
-            Log.d(TAG, "✅ Destrucción programada - Usuario debe presionar PLAY para: " + sceneName);
+        // 🎮 Si NO estamos en PANEL_MODE, volver al panel para que el usuario presione PLAY
+        // Esto maneja tanto WALLPAPER_MODE (escena activa) como LOADING_MODE (carga en curso)
+        if (modeController != null && !modeController.isPanelMode()) {
+            Log.d(TAG, "🎮 Modo activo detectado (" + modeController.getCurrentMode()
+                    + ", escena: " + previousScene + "), volviendo al panel para: " + sceneName);
+            pendingSceneDestroy = true;    // Destruir escena si existe
+            pendingReturnToPanel = true;   // Volver al panel de control
+            pendingSceneAutoLoad = false;  // NO auto-cargar - el usuario presiona PLAY
+            modeController.stopWallpaper(); // → PANEL_MODE
+            Log.d(TAG, "✅ Panel de control activado - presiona PLAY para iniciar: " + sceneName);
         } else if (panelRenderer != null) {
-            Log.d(TAG, "📱 Modo ESTÁNDAR para: " + sceneName);
+            Log.d(TAG, "📱 Panel listo para: " + sceneName);
         } else {
             Log.d(TAG, "Panel mode pendiente - panelRenderer aún no inicializado");
         }

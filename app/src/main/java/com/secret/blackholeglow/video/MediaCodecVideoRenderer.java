@@ -148,6 +148,11 @@ public class MediaCodecVideoRenderer {
         surfaceTexture.setOnFrameAvailableListener(st -> {
             synchronized (frameLock) {
                 frameAvailable = true;
+                // 🔧 FIX FREEZE: Marcar que ya tenemos al menos un frame
+                if (!hasReceivedFirstFrame) {
+                    hasReceivedFirstFrame = true;
+                    Log.d(TAG, "🎬 ¡Primer frame recibido! Video listo para mostrar");
+                }
             }
         });
         surface = new Surface(surfaceTexture);
@@ -347,34 +352,50 @@ public class MediaCodecVideoRenderer {
     private volatile boolean frameAvailable = false;
     private final Object frameLock = new Object();
 
+    // 🔧 FIX FREEZE: Flag para saber si ya recibimos al menos un frame
+    // Esto evita dibujar texturas vacías que causan congelamiento visual
+    private volatile boolean hasReceivedFirstFrame = false;
+
     public void draw() {
         if (!isInitialized || videoTextureId == -1 || surfaceTexture == null) return;
 
-        // Solo actualizar si hay frame nuevo (evita excepciones)
-        synchronized (frameLock) {
-            if (frameAvailable) {
-                surfaceTexture.updateTexImage();
-                surfaceTexture.getTransformMatrix(stMatrix);
-                frameAvailable = false;
-            }
+        // 🔧 FIX FREEZE: No dibujar si aún no tenemos el primer frame
+        // Esto permite que el resto de la escena (reloj, batería) siga renderizando
+        // mientras el video se inicializa, evitando el "congelamiento visual"
+        if (!hasReceivedFirstFrame) {
+            return; // Retornar rápido - la escena dibujará sus otros elementos
         }
 
-        GLES20.glUseProgram(shaderProgram);
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, videoTextureId);
+        try {
+            // Solo actualizar si hay frame nuevo disponible
+            synchronized (frameLock) {
+                if (frameAvailable) {
+                    surfaceTexture.updateTexImage();
+                    surfaceTexture.getTransformMatrix(stMatrix);
+                    frameAvailable = false;
+                }
+            }
 
-        GLES20.glUniformMatrix4fv(uMVPLoc, 1, false, mvpMatrix, 0);
-        GLES20.glUniformMatrix4fv(uSTLoc, 1, false, stMatrix, 0);
+            GLES20.glUseProgram(shaderProgram);
+            GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+            GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, videoTextureId);
 
-        GLES20.glEnableVertexAttribArray(aPositionLoc);
-        GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
-        GLES20.glEnableVertexAttribArray(aTexCoordLoc);
-        GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
+            GLES20.glUniformMatrix4fv(uMVPLoc, 1, false, mvpMatrix, 0);
+            GLES20.glUniformMatrix4fv(uSTLoc, 1, false, stMatrix, 0);
 
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+            GLES20.glEnableVertexAttribArray(aPositionLoc);
+            GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+            GLES20.glEnableVertexAttribArray(aTexCoordLoc);
+            GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer);
 
-        GLES20.glDisableVertexAttribArray(aPositionLoc);
-        GLES20.glDisableVertexAttribArray(aTexCoordLoc);
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+
+            GLES20.glDisableVertexAttribArray(aPositionLoc);
+            GLES20.glDisableVertexAttribArray(aTexCoordLoc);
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error en draw(): " + e.getMessage());
+            // No propagar la excepción para no crashear el render loop
+        }
     }
 
     /**
@@ -503,4 +524,10 @@ public class MediaCodecVideoRenderer {
 
     public boolean isInitialized() { return isInitialized; }
     public boolean isPlaying() { return isRunning && decoder != null; }
+
+    /** 🔧 FIX FREEZE: Indica si ya tenemos al menos un frame listo para mostrar */
+    public boolean hasFirstFrame() { return hasReceivedFirstFrame; }
+
+    /** 🔧 FIX FREEZE: Indica si el video está listo para renderizar */
+    public boolean isReadyToRender() { return isInitialized && hasReceivedFirstFrame; }
 }

@@ -71,10 +71,6 @@ public class GeminiChatActivity extends AppCompatActivity {
 
         // Inicializar Gemini
         geminiService = GeminiService.getInstance();
-        UserManager userManager = UserManager.getInstance(this);
-        if (userManager.isLoggedIn()) {
-            geminiService.setUserName(userManager.getFirstName());
-        }
 
         // Botón enviar
         btnSend.setOnClickListener(v -> sendMessage());
