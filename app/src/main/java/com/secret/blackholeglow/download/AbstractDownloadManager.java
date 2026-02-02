@@ -518,10 +518,8 @@ public abstract class AbstractDownloadManager {
 
     private void saveVersion(String fileName) {
         int version = getResourceVersion(fileName);
-        boolean saved = versionPrefs.edit().putInt(VERSION_PREFIX + fileName, version).commit();
-        if (!saved) {
-            Log.e(getTag(), "Error guardando versión en preferencias");
-        }
+        // ⚡ FIX ANR: apply() en vez de commit() - no bloquea el thread
+        versionPrefs.edit().putInt(VERSION_PREFIX + fileName, version).apply();
         Log.d(getTag(), "Versión " + version + " guardada para: " + fileName);
     }
 

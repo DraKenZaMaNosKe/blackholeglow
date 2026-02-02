@@ -32,9 +32,9 @@ import java.nio.FloatBuffer;
 public class SongMessageRenderer implements SceneObject {
     private static final String TAG = "SongMessage";
 
-    // Dimensiones del bitmap
-    private static final int TEX_WIDTH = 1024;
-    private static final int TEX_HEIGHT = 200;
+    // Dimensiones del bitmap (512x128 = 256 KB, was 1024x200 = 800 KB → saves ~544 KB GPU)
+    private static final int TEX_WIDTH = 512;
+    private static final int TEX_HEIGHT = 128;
 
     // OpenGL
     private int programId;
@@ -205,13 +205,13 @@ public class SongMessageRenderer implements SceneObject {
             Shader.TileMode.CLAMP
         ));
 
-        RectF bgRect = new RectF(20, 20, TEX_WIDTH - 20, TEX_HEIGHT - 20);
-        canvas.drawRoundRect(bgRect, 30, 30, bgPaint);
+        RectF bgRect = new RectF(10, 10, TEX_WIDTH - 10, TEX_HEIGHT - 10);
+        canvas.drawRoundRect(bgRect, 15, 15, bgPaint);
 
         // Borde brillante
         Paint borderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         borderPaint.setStyle(Paint.Style.STROKE);
-        borderPaint.setStrokeWidth(3f);
+        borderPaint.setStrokeWidth(1.5f);
         borderPaint.setShader(new LinearGradient(
             0, 0, TEX_WIDTH, 0,
             gradientColors,
@@ -231,17 +231,17 @@ public class SongMessageRenderer implements SceneObject {
 
         // Gradiente de colores para el texto
         textPaint.setShader(new LinearGradient(
-            100, 0, TEX_WIDTH - 100, 0,
+            50, 0, TEX_WIDTH - 50, 0,
             gradientColors,
             null,
             Shader.TileMode.CLAMP
         ));
 
         // Sombra para efecto glow
-        textPaint.setShadowLayer(8f, 0, 0, Color.argb(200, 255, 100, 255));
+        textPaint.setShadowLayer(4f, 0, 0, Color.argb(200, 255, 100, 255));
 
         // Dividir texto en líneas si es necesario
-        String[] lines = wrapText(currentText, textPaint, TEX_WIDTH - 80);
+        String[] lines = wrapText(currentText, textPaint, TEX_WIDTH - 40);
 
         // Dibujar cada línea centrada
         float lineHeight = textSize * 1.3f;
@@ -274,11 +274,11 @@ public class SongMessageRenderer implements SceneObject {
      */
     private float calculateTextSize(String text) {
         int length = text.length();
-        if (length < 20) return 56f;
-        if (length < 40) return 48f;
-        if (length < 60) return 40f;
-        if (length < 80) return 34f;
-        return 28f;
+        if (length < 20) return 28f;
+        if (length < 40) return 24f;
+        if (length < 60) return 20f;
+        if (length < 80) return 17f;
+        return 14f;
     }
 
     /**

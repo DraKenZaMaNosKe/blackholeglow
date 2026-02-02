@@ -154,6 +154,15 @@ public abstract class WallpaperScene implements Disposable {
     }
 
     /**
+     * Actualiza las bandas de frecuencia del ecualizador de música.
+     * Las subclases que soporten visualización de música deben sobrescribir este método.
+     * @param bands Array de bandas de frecuencia (puede ser null)
+     */
+    public void updateMusicBands(float[] bands) {
+        // No-op por defecto. Subclases con ecualizador lo sobrescriben.
+    }
+
+    /**
      * Reanuda las animaciones de la escena.
      */
     public void onResume() {

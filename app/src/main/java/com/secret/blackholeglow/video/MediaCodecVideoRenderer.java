@@ -165,6 +165,18 @@ public class MediaCodecVideoRenderer {
     }
 
     private void startDecoder() {
+        // 🔧 FIX THREAD LEAK: Ensure previous thread is fully stopped before starting new one.
+        // Without this, pause() → resume() could leave an orphan thread that sees isRunning=true
+        // and races on the MediaCodec decoder with the new thread.
+        if (decoderThread != null && decoderThread.isAlive()) {
+            Log.w(TAG, "⚠️ Previous decoder thread still alive, waiting...");
+            isRunning = false;
+            decoderThread.interrupt();
+            try { decoderThread.join(2000); } catch (InterruptedException ignored) {}
+            if (decoderThread.isAlive()) {
+                Log.e(TAG, "❌ Decoder thread orphaned after 2s timeout");
+            }
+        }
         isRunning = true;
         decoderThread = new Thread(this::decoderLoop, "MediaCodecDecoder");
         decoderThread.start();
@@ -415,13 +427,126 @@ public class MediaCodecVideoRenderer {
         if (decoderThread != null && decoderThread.isAlive()) {
             decoderThread.interrupt();
             try {
-                decoderThread.join(500); // Máximo 500ms
+                decoderThread.join(1000); // Máximo 1s (was 500ms)
             } catch (InterruptedException ignored) {}
+            if (decoderThread.isAlive()) {
+                Log.w(TAG, "⚠️ Decoder thread still alive after pause join timeout");
+            }
         }
+        decoderThread = null;  // 🔧 FIX: Always null out to prevent orphan on next startDecoder()
 
         // Liberar decoder pero mantener textura/surface
         releaseDecoder();
         Log.d(TAG, "⏸️ Video PAUSADO - recursos liberados");
+    }
+
+    /**
+     * ⏸️🧹 RELEASE FOR PAUSE - Libera Surface, SurfaceTexture, decoder y textura OES
+     * Mantiene shader program y vertex/texCoord buffers (son baratos ~1KB).
+     * Ahorra ~40-60 MB de RAM cuando el wallpaper no es visible.
+     *
+     * Usar reinitializeAfterPause() para recrear los recursos liberados.
+     */
+    public void releaseForPause() {
+        Log.d(TAG, "⏸️🧹 releaseForPause: Liberando Surface+Texture+Decoder...");
+        isRunning = false;
+
+        // Detener thread de decodificación
+        if (decoderThread != null) {
+            decoderThread.interrupt();
+            try { decoderThread.join(500); } catch (InterruptedException ignored) {}
+            decoderThread = null;
+        }
+
+        // Liberar decoder y extractor
+        releaseDecoder();
+
+        // Liberar Surface y SurfaceTexture (los consumidores principales de memoria)
+        if (surface != null) {
+            surface.release();
+            surface = null;
+        }
+        if (surfaceTexture != null) {
+            surfaceTexture.setOnFrameAvailableListener(null);
+            surfaceTexture.release();
+            surfaceTexture = null;
+        }
+
+        // Liberar textura OES de video
+        if (videoTextureId != -1) {
+            GLES20.glDeleteTextures(1, new int[]{videoTextureId}, 0);
+            videoTextureId = -1;
+        }
+
+        // NO liberar shaderProgram ni vertexBuffer/texCoordBuffer (son baratos ~1KB)
+        // NO marcar isInitialized = false (el shader sigue válido)
+
+        hasReceivedFirstFrame = false;
+        frameAvailable = false;
+        Log.d(TAG, "⏸️🧹 releaseForPause: Surface+Texture+Decoder liberados (~40-60 MB ahorrados)");
+    }
+
+    /**
+     * ▶️🔄 REINITIALIZE AFTER PAUSE - Recrea Surface, SurfaceTexture, textura OES y decoder
+     * Reutiliza shader program y buffers existentes para arranque rápido.
+     *
+     * @return true si la reinicialización fue exitosa
+     */
+    public boolean reinitializeAfterPause() {
+        Log.d(TAG, "▶️🔄 reinitializeAfterPause: Recreando recursos de video...");
+
+        // Si no hay shader, hacer initialize() completo
+        if (shaderProgram == 0) {
+            Log.d(TAG, "▶️🔄 Sin shader, haciendo initialize() completo");
+            initialize();
+            return isInitialized;
+        }
+
+        try {
+            // Recrear textura OES para video
+            int[] tex = new int[1];
+            GLES20.glGenTextures(1, tex, 0);
+            videoTextureId = tex[0];
+            GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, videoTextureId);
+            GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+            GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+
+            // Recrear SurfaceTexture + Surface con listener de frame
+            surfaceTexture = new SurfaceTexture(videoTextureId);
+            surfaceTexture.setOnFrameAvailableListener(st -> {
+                synchronized (frameLock) {
+                    frameAvailable = true;
+                    if (!hasReceivedFirstFrame) {
+                        hasReceivedFirstFrame = true;
+                        Log.d(TAG, "🎬 ¡Primer frame recibido! Video listo para mostrar (post-reinit)");
+                    }
+                }
+            });
+            surface = new Surface(surfaceTexture);
+
+            // Reiniciar decoder
+            isInitialized = true;
+            startDecoder();
+
+            Log.d(TAG, "▶️🔄 reinitializeAfterPause: Recursos recreados exitosamente");
+            return true;
+
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error en reinitializeAfterPause: " + e.getMessage(), e);
+            // Limpiar recursos parcialmente creados
+            if (surface != null) { surface.release(); surface = null; }
+            if (surfaceTexture != null) {
+                surfaceTexture.setOnFrameAvailableListener(null);
+                surfaceTexture.release();
+                surfaceTexture = null;
+            }
+            if (videoTextureId != -1) {
+                GLES20.glDeleteTextures(1, new int[]{videoTextureId}, 0);
+                videoTextureId = -1;
+            }
+            isInitialized = false;
+            return false;
+        }
     }
 
     /**

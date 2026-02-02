@@ -105,15 +105,20 @@ public class AdsManager {
             return;
         }
 
-        MobileAds.initialize(context, initializationStatus -> {
+        // 🔧 FIX CONTEXT LEAK: Always use ApplicationContext to prevent Activity leak.
+        // init() is called from a background thread with Activity context — the lambda
+        // captures it, preventing GC if the Activity is destroyed before AdMob finishes.
+        final Context appContext = context.getApplicationContext();
+
+        MobileAds.initialize(appContext, initializationStatus -> {
             instance.isInitialized = true;
             Log.d(TAG, "╔════════════════════════════════════════╗");
             Log.d(TAG, "║   💰 AdsManager Inicializado (AdMob)   ║");
             Log.d(TAG, "╚════════════════════════════════════════╝");
 
             // Pre-cargar anuncios
-            instance.loadInterstitialAd(context);
-            instance.loadRewardedAd(context);
+            instance.loadInterstitialAd(appContext);
+            instance.loadRewardedAd(appContext);
         });
     }
 

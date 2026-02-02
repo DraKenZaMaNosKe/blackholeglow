@@ -113,6 +113,8 @@ public class LikeButton {
     private final float[] modelMatrix = new float[16];
     private final float[] finalMatrix = new float[16];
     private final float[] colorCache = new float[4];
+    // 🔧 FIX GC: Pre-computed circle geometry (was allocating float[68] + ByteBuffer per frame)
+    private final FloatBuffer circleBufferCached;
 
     private static final String TEXTURE_VERTEX_SHADER =
             "attribute vec4 a_Position;\n" +
@@ -156,6 +158,19 @@ public class LikeButton {
 
     public LikeButton(Context context) {
         this.context = context;
+        // Pre-compute circle geometry for drawCircle() (32 segments, never changes)
+        int segments = 32;
+        float[] circleVerts = new float[(segments + 2) * 2];
+        circleVerts[0] = 0f; circleVerts[1] = 0f;
+        for (int i = 0; i <= segments; i++) {
+            float angle = (float) (2.0 * Math.PI * i / segments);
+            circleVerts[(i + 1) * 2] = (float) Math.cos(angle);
+            circleVerts[(i + 1) * 2 + 1] = (float) Math.sin(angle);
+        }
+        ByteBuffer bb = ByteBuffer.allocateDirect(circleVerts.length * 4);
+        bb.order(ByteOrder.nativeOrder());
+        circleBufferCached = bb.asFloatBuffer();
+        circleBufferCached.put(circleVerts).position(0);
     }
 
     public void init() {
@@ -1302,35 +1317,26 @@ public class LikeButton {
         if (isOnCooldown) return;
         GLES30.glUseProgram(programIdColor);
         float currentY = y + floatOffset;
-        float[] glowColor = (currentTheme == Theme.ABYSSIA)
-            ? new float[]{0.4f, 0.8f, 1.0f, 0.25f * pulse}   // Cyan
-            : new float[]{1.0f, 0.5f, 0.1f, 0.3f * pulse};   // Orange fire
+        // 🔧 FIX GC: Reuse colorCache instead of allocating new float[] per frame
+        if (currentTheme == Theme.ABYSSIA) {
+            colorCache[0] = 0.4f; colorCache[1] = 0.8f; colorCache[2] = 1.0f; colorCache[3] = 0.25f * pulse;
+        } else {
+            colorCache[0] = 1.0f; colorCache[1] = 0.5f; colorCache[2] = 0.1f; colorCache[3] = 0.3f * pulse;
+        }
         android.opengl.Matrix.setIdentityM(modelMatrix, 0);
         android.opengl.Matrix.translateM(modelMatrix, 0, x, currentY, 0);
         android.opengl.Matrix.scaleM(modelMatrix, 0, glowSize, glowSize, 1);
         android.opengl.Matrix.multiplyMM(finalMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
         GLES30.glUniformMatrix4fv(mvpMatrixHandleColor, 1, false, finalMatrix, 0);
-        GLES30.glUniform4fv(colorHandle, 1, glowColor, 0);
+        GLES30.glUniform4fv(colorHandle, 1, colorCache, 0);
         drawCircle();
     }
 
     private void drawCircle() {
-        int segments = 32;
-        float[] circleVerts = new float[(segments + 2) * 2];
-        circleVerts[0] = 0f; circleVerts[1] = 0f;
-        for (int i = 0; i <= segments; i++) {
-            float angle = (float) (2.0 * Math.PI * i / segments);
-            circleVerts[(i + 1) * 2] = (float) Math.cos(angle);
-            circleVerts[(i + 1) * 2 + 1] = (float) Math.sin(angle);
-        }
-        ByteBuffer bb = ByteBuffer.allocateDirect(circleVerts.length * 4);
-        bb.order(ByteOrder.nativeOrder());
-        FloatBuffer circleBuffer = bb.asFloatBuffer();
-        circleBuffer.put(circleVerts);
-        circleBuffer.position(0);
+        // 🔧 FIX GC: Use pre-computed circle buffer (was allocating float[68] + ByteBuffer per frame)
         GLES30.glEnableVertexAttribArray(positionHandleColor);
-        GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, circleBuffer);
-        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, segments + 2);
+        GLES30.glVertexAttribPointer(positionHandleColor, 2, GLES30.GL_FLOAT, false, 0, circleBufferCached);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 34); // 32 segments + 2
         GLES30.glDisableVertexAttribArray(positionHandleColor);
     }
 

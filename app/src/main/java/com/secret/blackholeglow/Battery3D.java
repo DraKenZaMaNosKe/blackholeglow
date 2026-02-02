@@ -157,6 +157,20 @@ public class Battery3D implements SceneObject {
     private BroadcastReceiver batteryReceiver;
     private boolean receiverRegistered = false;
 
+    // ⚡ OPTIMIZACIÓN: Paint objects cacheados (NO crear en cada updateTexture)
+    private Paint cachedGlowPaint;
+    private Paint cachedBorderPaint;
+    private Paint cachedBgPaint;
+    private Paint cachedFillPaint;
+    private Paint cachedHighlightPaint;
+    private Paint cachedCorePaint;
+    private Paint cachedTextPaint;
+    private Paint cachedBoltPaint;
+    private final RectF cachedOuterRect = new RectF();
+    private final RectF cachedInnerRect = new RectF();
+    private final RectF cachedFillRect = new RectF();
+    private final RectF cachedHighlightRect = new RectF();
+
     // ═══════════════════════════════════════════════════════════════
     // SHADER CON EFECTOS DINÁMICOS
     // ═══════════════════════════════════════════════════════════════
@@ -413,6 +427,57 @@ public class Battery3D implements SceneObject {
     private void createBitmap() {
         bitmap = Bitmap.createBitmap(TEX_WIDTH, TEX_HEIGHT, Bitmap.Config.ARGB_8888);
         canvas = new Canvas(bitmap);
+        initPaintCaches();
+    }
+
+    /**
+     * ⚡ OPTIMIZACIÓN CRÍTICA: Inicializa todos los Paint objects UNA sola vez.
+     * Antes se creaban ~13 Paint + BlurMaskFilter + LinearGradient POR FRAME.
+     * A 60 FPS = ~780 Paint/segundo de presión en el GC.
+     */
+    private void initPaintCaches() {
+        // 1. Glow exterior
+        cachedGlowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        cachedGlowPaint.setMaskFilter(new BlurMaskFilter(12, BlurMaskFilter.Blur.OUTER));
+
+        // 2. Borde exterior
+        cachedBorderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        cachedBorderPaint.setStyle(Paint.Style.STROKE);
+        cachedBorderPaint.setStrokeWidth(4f);
+        cachedBorderPaint.setColor(Color.argb(200, 100, 100, 100));
+
+        // 3. Fondo interior
+        cachedBgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        cachedBgPaint.setColor(Color.argb(220, 20, 20, 30));
+
+        // 4. Barra de energía (shader se actualiza cuando cambia nivel)
+        cachedFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        // 5. Brillo superior
+        cachedHighlightPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        cachedHighlightPaint.setColor(Color.WHITE);
+        cachedHighlightPaint.setAlpha(60);
+
+        // 6. Núcleo brillante
+        cachedCorePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        cachedCorePaint.setAlpha(150);
+        cachedCorePaint.setMaskFilter(new BlurMaskFilter(8, BlurMaskFilter.Blur.NORMAL));
+
+        // 7. Texto de porcentaje
+        cachedTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        cachedTextPaint.setColor(Color.WHITE);
+        cachedTextPaint.setTextSize(28f);
+        cachedTextPaint.setTextAlign(Paint.Align.CENTER);
+        cachedTextPaint.setFakeBoldText(true);
+        cachedTextPaint.setShadowLayer(4, 0, 0, Color.BLACK);
+
+        // 8. Rayo de carga
+        cachedBoltPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        cachedBoltPaint.setColor(Color.YELLOW);
+        cachedBoltPaint.setAlpha(220);
+        cachedBoltPaint.setTextSize(40f);
+        cachedBoltPaint.setTextAlign(Paint.Align.CENTER);
+        cachedBoltPaint.setMaskFilter(new BlurMaskFilter(6, BlurMaskFilter.Blur.NORMAL));
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -430,7 +495,7 @@ public class Battery3D implements SceneObject {
         float fillPercent = batteryLevel / 100f;
 
         // ═══════════════════════════════════════════════════════════
-        // DIBUJAR REACTOR/ORBE
+        // DIBUJAR REACTOR/ORBE (usando Paint cacheados)
         // ═══════════════════════════════════════════════════════════
 
         float padding = 8f;
@@ -440,118 +505,91 @@ public class Battery3D implements SceneObject {
         float bottom = TEX_HEIGHT - padding;
         float cornerRadius = 16f;
 
-        RectF outerRect = new RectF(left, top, right, bottom);
-        RectF innerRect = new RectF(left + 6, top + 6, right - 6, bottom - 6);
+        // ⚡ Reutilizar RectF cacheados
+        cachedOuterRect.set(left, top, right, bottom);
+        cachedInnerRect.set(left + 6, top + 6, right - 6, bottom - 6);
 
         // 1. GLOW EXTERIOR
-        Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        glowPaint.setColor(glowColor);
-        glowPaint.setAlpha(80);
-        glowPaint.setMaskFilter(new BlurMaskFilter(12, BlurMaskFilter.Blur.OUTER));
-        canvas.drawRoundRect(outerRect, cornerRadius, cornerRadius, glowPaint);
+        cachedGlowPaint.setColor(glowColor);
+        cachedGlowPaint.setAlpha(80);
+        canvas.drawRoundRect(cachedOuterRect, cornerRadius, cornerRadius, cachedGlowPaint);
 
         // 2. BORDE EXTERIOR (marco del reactor)
-        Paint borderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        borderPaint.setStyle(Paint.Style.STROKE);
-        borderPaint.setStrokeWidth(4f);
-        borderPaint.setColor(Color.argb(200, 100, 100, 100));
-        canvas.drawRoundRect(outerRect, cornerRadius, cornerRadius, borderPaint);
+        canvas.drawRoundRect(cachedOuterRect, cornerRadius, cornerRadius, cachedBorderPaint);
 
         // 3. FONDO INTERIOR (oscuro)
-        Paint bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        bgPaint.setColor(Color.argb(220, 20, 20, 30));
-        canvas.drawRoundRect(innerRect, cornerRadius - 4, cornerRadius - 4, bgPaint);
+        canvas.drawRoundRect(cachedInnerRect, cornerRadius - 4, cornerRadius - 4, cachedBgPaint);
 
         // 4. BARRA DE ENERGÍA (llenado)
-        float fillWidth = (innerRect.width() - 8) * fillPercent;
-        RectF fillRect = new RectF(
-            innerRect.left + 4,
-            innerRect.top + 4,
-            innerRect.left + 4 + fillWidth,
-            innerRect.bottom - 4
+        float fillWidth = (cachedInnerRect.width() - 8) * fillPercent;
+        cachedFillRect.set(
+            cachedInnerRect.left + 4,
+            cachedInnerRect.top + 4,
+            cachedInnerRect.left + 4 + fillWidth,
+            cachedInnerRect.bottom - 4
         );
 
-        // Gradiente para la barra de energía
-        Paint fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        // Gradiente para la barra de energía (LinearGradient debe recrearse al cambiar coords/color)
         int gradientEnd = adjustBrightness(levelColor, 0.6f);
         LinearGradient gradient = new LinearGradient(
-            fillRect.left, fillRect.top,
-            fillRect.left, fillRect.bottom,
+            cachedFillRect.left, cachedFillRect.top,
+            cachedFillRect.left, cachedFillRect.bottom,
             levelColor, gradientEnd,
             Shader.TileMode.CLAMP
         );
-        fillPaint.setShader(gradient);
-        canvas.drawRoundRect(fillRect, 8, 8, fillPaint);
+        cachedFillPaint.setShader(gradient);
+        canvas.drawRoundRect(cachedFillRect, 8, 8, cachedFillPaint);
 
         // 5. BRILLO SUPERIOR EN LA BARRA
         if (fillWidth > 10) {
-            Paint highlightPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            highlightPaint.setColor(Color.WHITE);
-            highlightPaint.setAlpha(60);
-            RectF highlightRect = new RectF(
-                fillRect.left + 4,
-                fillRect.top + 2,
-                fillRect.right - 4,
-                fillRect.top + (fillRect.height() * 0.3f)
+            cachedHighlightRect.set(
+                cachedFillRect.left + 4,
+                cachedFillRect.top + 2,
+                cachedFillRect.right - 4,
+                cachedFillRect.top + (cachedFillRect.height() * 0.3f)
             );
-            canvas.drawRoundRect(highlightRect, 4, 4, highlightPaint);
+            canvas.drawRoundRect(cachedHighlightRect, 4, 4, cachedHighlightPaint);
         }
 
         // 6. NÚCLEO BRILLANTE (centro de energía)
         if (fillPercent > 0.1f) {
-            Paint corePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            corePaint.setColor(coreColor);
-            corePaint.setAlpha(150);
-            corePaint.setMaskFilter(new BlurMaskFilter(8, BlurMaskFilter.Blur.NORMAL));
-
-            float coreX = fillRect.left + fillWidth * 0.5f;
-            float coreY = fillRect.centerY();
-            float coreRadius = Math.min(fillRect.height() * 0.3f, fillWidth * 0.2f);
-            canvas.drawCircle(coreX, coreY, coreRadius, corePaint);
+            cachedCorePaint.setColor(coreColor);
+            float coreX = cachedFillRect.left + fillWidth * 0.5f;
+            float coreY = cachedFillRect.centerY();
+            float coreRadius = Math.min(cachedFillRect.height() * 0.3f, fillWidth * 0.2f);
+            canvas.drawCircle(coreX, coreY, coreRadius, cachedCorePaint);
         }
 
-        // 7. ICONO DE CARGA (rayo ⚡)
+        // 7. ICONO DE CARGA (rayo)
         if (isCharging) {
-            drawChargingBolt(canvas, innerRect.centerX(), innerRect.centerY());
+            canvas.drawText("\u26A1", cachedInnerRect.centerX(), cachedInnerRect.centerY() + 14, cachedBoltPaint);
         }
 
         // 8. TEXTO DE PORCENTAJE
-        Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        textPaint.setColor(Color.WHITE);
-        textPaint.setTextSize(28f);
-        textPaint.setTextAlign(Paint.Align.CENTER);
-        textPaint.setFakeBoldText(true);
-        textPaint.setShadowLayer(4, 0, 0, Color.BLACK);
-
         String percentText = batteryLevel + "%";
-        float textX = innerRect.centerX();
-        float textY = innerRect.centerY() + 10;
-        canvas.drawText(percentText, textX, textY, textPaint);
+        float textX = cachedInnerRect.centerX();
+        float textY = cachedInnerRect.centerY() + 10;
+        canvas.drawText(percentText, textX, textY, cachedTextPaint);
 
         // Subir textura a GPU
         if (textureId == -1) {
             int[] textures = new int[1];
             GLES30.glGenTextures(1, textures, 0);
             textureId = textures[0];
+
+            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
+            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
+            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
+            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
+            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
+        } else {
+            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
         }
 
-        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
-        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
-        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
-        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
-        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
         GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0);
     }
 
-    private void drawChargingBolt(Canvas canvas, float cx, float cy) {
-        Paint boltPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        boltPaint.setColor(Color.YELLOW);
-        boltPaint.setAlpha(220);
-        boltPaint.setTextSize(40f);
-        boltPaint.setTextAlign(Paint.Align.CENTER);
-        boltPaint.setMaskFilter(new BlurMaskFilter(6, BlurMaskFilter.Blur.NORMAL));
-        canvas.drawText("⚡", cx, cy + 14, boltPaint);
-    }
+    // drawChargingBolt eliminado - ahora inline en updateTexture() usando cachedBoltPaint
 
     private int adjustBrightness(int color, float factor) {
         int r = (int) (Color.red(color) * factor);

@@ -443,7 +443,21 @@ public class PanelModeRenderer {
             Log.d(TAG, "  ✓ Gaming Controller liberado");
         }
 
-        Log.d(TAG, "✅ Recursos del panel liberados - ~20-25 MB GPU recuperados");
+        // Liberar OrbixGreeting (~1-2 MB GPU + bitmap RAM)
+        if (orbixGreeting != null) {
+            orbixGreeting.dispose();
+            orbixGreeting = null;
+            Log.d(TAG, "  ✓ OrbixGreeting liberado");
+        }
+
+        // Liberar LoadingBar (~5-15 MB GPU: texturas + shaders + fondo)
+        if (loadingBar != null) {
+            loadingBar.release();
+            loadingBar = null;
+            Log.d(TAG, "  ✓ LoadingBar liberado");
+        }
+
+        Log.d(TAG, "✅ Recursos del panel liberados - ~30-40 MB GPU recuperados");
     }
 
     public void onReturnToPanel() {
@@ -471,6 +485,29 @@ public class PanelModeRenderer {
                 controller.setScreenSize(screenWidth, screenHeight);
                 controller.setAspectRatio((float) screenWidth / screenHeight);
             }
+        }
+
+        // Recargar OrbixGreeting
+        if (orbixGreeting == null) {
+            Log.d(TAG, "  🤖 Recargando OrbixGreeting...");
+            orbixGreeting = new OrbixGreeting(context);
+            if (screenWidth > 0 && screenHeight > 0) {
+                orbixGreeting.setAspectRatio((float) screenWidth / screenHeight);
+            }
+            if (greetingEnabled) {
+                orbixGreeting.show();
+            }
+        }
+
+        // Recargar LoadingBar
+        if (loadingBar == null) {
+            Log.d(TAG, "  📊 Recargando LoadingBar...");
+            loadingBar = new LoadingBar();
+            loadingBar.setOnLoadingCompleteListener(() -> {
+                if (loadingListener != null) {
+                    loadingListener.onLoadingComplete();
+                }
+            });
         }
 
         Log.d(TAG, "✅ Recursos del panel recargados");
@@ -573,6 +610,11 @@ public class PanelModeRenderer {
         if (orbixGreeting != null) {
             orbixGreeting.dispose();
             orbixGreeting = null;
+        }
+
+        if (loadingBar != null) {
+            loadingBar.release();
+            loadingBar = null;
         }
 
         Log.d(TAG, "🧹 PanelModeRenderer recursos liberados");

@@ -10,18 +10,6 @@ import android.view.MotionEvent;
 import com.secret.blackholeglow.CameraController;
 import com.secret.blackholeglow.MusicVisualizer;
 import com.secret.blackholeglow.TextureManager;
-import com.secret.blackholeglow.scenes.OceanFloorScene;
-import com.secret.blackholeglow.scenes.LabScene;
-import com.secret.blackholeglow.scenes.GokuScene;
-import com.secret.blackholeglow.scenes.AdventureTimeScene;
-import com.secret.blackholeglow.scenes.NeonCityScene;
-import com.secret.blackholeglow.scenes.SaintSeiyaScene;
-import com.secret.blackholeglow.scenes.WalkingDeadScene;
-import com.secret.blackholeglow.scenes.ZeldaParallaxScene;
-import com.secret.blackholeglow.scenes.SupermanScene;
-import com.secret.blackholeglow.scenes.AOTScene;
-import com.secret.blackholeglow.scenes.SpiderScene;
-import com.secret.blackholeglow.scenes.LostAtlantisScene;
 import com.secret.blackholeglow.sharing.LikeButton;
 import com.secret.blackholeglow.scenes.WallpaperScene;
 import com.secret.blackholeglow.systems.AspectRatioManager;
@@ -78,7 +66,6 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     // 🔧 FIX GL FREEZE: volatile porque main thread escribe (pause/resume)
     // y GL thread lee (onDrawFrame). Sin volatile, GL thread podría cachear el valor.
     private volatile boolean paused = false;
-    private long lastBandsLogTime = 0;  // Para reducir logging excesivo
     private int screenWidth = 1;
     private int screenHeight = 1;
     private String pendingSceneName = "";
@@ -88,6 +75,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     private volatile boolean pendingSceneDestroy = false;
     private volatile boolean pendingReturnToPanel = false;
     private volatile boolean pendingSceneAutoLoad = false;  // 🔧 FIX FREEZE: Auto-cargar nueva escena después de destruir
+    private final Object pendingFlagsLock = new Object();  // 🔧 Lock for atomic multi-flag reads/writes
     private int resourceCheckRetries = 0;  // 🛡️ Contador de reintentos para verificación de recursos
     private static final int MAX_RESOURCE_CHECK_RETRIES = 300;  // ~10 segundos a 30fps
 
@@ -189,15 +177,25 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         // despertaba al GL thread de forma confiable al volver a CONTINUOUSLY.
         // El GL thread SIEMPRE corre, pero idle cuando está pausado → garantiza que
         // pendingSceneDestroy SIEMPRE se procesa.
-        if (paused && !pendingSceneDestroy && !pendingSceneAutoLoad) {
+        // 🔧 FIX RACE CONDITION: Snapshot and clear pending flags atomically.
+        // Main thread writes multiple flags together (e.g., destroy + returnToPanel).
+        // Without lock, GL thread could see destroy=true but returnToPanel=false → black screen.
+        boolean doDestroy, doReturnToPanel;
+        synchronized (pendingFlagsLock) {
+            doDestroy = pendingSceneDestroy;
+            doReturnToPanel = pendingReturnToPanel;
+            if (doDestroy) pendingSceneDestroy = false;
+            if (doReturnToPanel) pendingReturnToPanel = false;
+        }
+
+        if (paused && !doDestroy && !pendingSceneAutoLoad) {
             try { Thread.sleep(100); } catch (InterruptedException ignored) {}
             return;
         }
 
         // 🔧 FIX MEMORY LEAK: Procesar destrucción de escenas pendientes EN el GL thread
         // Esto garantiza que glDeleteTextures/glDeleteProgram funcionen correctamente
-        if (pendingSceneDestroy) {
-            pendingSceneDestroy = false;
+        if (doDestroy) {
             Log.d(TAG, "🗑️ [GL Thread] Destruyendo escena pendiente...");
             try {
                 if (sceneFactory != null) {
@@ -209,8 +207,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             }
 
             // 🔧 SIEMPRE volver al panel, incluso si la destrucción falló
-            if (pendingReturnToPanel) {
-                pendingReturnToPanel = false;
+            if (doReturnToPanel) {
                 Log.d(TAG, "🔙 [GL Thread] Regresando al panel...");
                 if (panelRenderer != null) {
                     panelRenderer.onReturnToPanel();
@@ -409,51 +406,9 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             WallpaperScene scene = sceneFactory.getCurrentScene();
             float[] bands = musicVisualizer.getFrequencyBands();
 
-            // Debug: verificar flujo de datos (solo log cada 2 segundos para evitar spam)
-            float sum = 0;
-            if (bands != null) for (float b : bands) sum += b;
-            long now = System.currentTimeMillis();
-            if (sum > 0.5f && (now - lastBandsLogTime) > 2000) {
-                Log.d(TAG, "🎶 Bands OK sum=" + String.format("%.2f", sum) + " scene=" + (scene != null ? scene.getClass().getSimpleName() : "null"));
-                lastBandsLogTime = now;
-            }
-
-            if (scene instanceof OceanFloorScene) {
-                // 🌊 Abyssia tiene ecualizador
-                ((OceanFloorScene) scene).updateMusicBands(bands);
-            } else if (scene instanceof LabScene) {
-                // 🔥 Pyralis tiene ecualizador
-                ((LabScene) scene).updateMusicBands(bands);
-            } else if (scene instanceof GokuScene) {
-                // 🐉 Goku tiene ecualizador KAMEHAMEHA
-                ((GokuScene) scene).updateMusicBands(bands);
-            } else if (scene instanceof AdventureTimeScene) {
-                // 🌳 Adventure Time tiene ecualizador PYRALIS
-                ((AdventureTimeScene) scene).updateMusicBands(bands);
-            } else if (scene instanceof NeonCityScene) {
-                // 🌆 Neon City tiene ecualizador SYNTHWAVE
-                ((NeonCityScene) scene).updateMusicBands(bands);
-            } else if (scene instanceof SaintSeiyaScene) {
-                // ⭐ Saint Seiya tiene ecualizador COSMOS
-                ((SaintSeiyaScene) scene).updateMusicBands(bands);
-            } else if (scene instanceof WalkingDeadScene) {
-                // 🧟 Walking Dead tiene ecualizador WALKING_DEAD
-                ((WalkingDeadScene) scene).updateMusicBands(bands);
-            } else if (scene instanceof ZeldaParallaxScene) {
-                // 🗡️ Zelda BOTW tiene ecualizador ZELDA
-                ((ZeldaParallaxScene) scene).updateMusicBands(bands);
-            } else if (scene instanceof SupermanScene) {
-                // 🦸 Superman tiene ecualizador SUPERMAN
-                ((SupermanScene) scene).updateMusicBands(bands);
-            } else if (scene instanceof AOTScene) {
-                // ⚔️ AOT tiene ecualizador AOT
-                ((AOTScene) scene).updateMusicBands(bands);
-            } else if (scene instanceof SpiderScene) {
-                // 🕷️ Spider tiene ecualizador SPIDER
-                ((SpiderScene) scene).updateMusicBands(bands);
-            } else if (scene instanceof LostAtlantisScene) {
-                // 🏛️ Lost Atlantis tiene ecualizador ATLANTIS
-                ((LostAtlantisScene) scene).updateMusicBands(bands);
+            // ⚡ OPTIMIZADO: Dispatch polimórfico via WallpaperScene.updateMusicBands()
+            if (scene != null) {
+                scene.updateMusicBands(bands);
             }
         }
         sceneFactory.updateCurrentScene(deltaTime);
@@ -609,9 +564,12 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
     public void switchToPanelMode() {
         if (modeController.stopWallpaper()) {
-            // 🔧 FIX MEMORY LEAK: Programar destrucción en GL thread
-            pendingSceneDestroy = true;
-            pendingReturnToPanel = true;
+            // 🔧 FIX RACE CONDITION: Write both flags atomically so GL thread
+            // always sees them together (avoids destroy without return → black screen)
+            synchronized (pendingFlagsLock) {
+                pendingSceneDestroy = true;
+                pendingReturnToPanel = true;
+            }
             Log.d(TAG, "🔧 switchToPanelMode: destrucción programada en GL thread");
         }
     }
@@ -834,15 +792,36 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         if (modeController != null && !modeController.isPanelMode()) {
             Log.d(TAG, "🎮 Modo activo detectado (" + modeController.getCurrentMode()
                     + ", escena: " + previousScene + "), volviendo al panel para: " + sceneName);
-            pendingSceneDestroy = true;    // Destruir escena si existe
-            pendingReturnToPanel = true;   // Volver al panel de control
-            pendingSceneAutoLoad = false;  // NO auto-cargar - el usuario presiona PLAY
+            // 🔧 FIX RACE CONDITION: Write all flags atomically
+            synchronized (pendingFlagsLock) {
+                pendingSceneDestroy = true;    // Destruir escena si existe
+                pendingReturnToPanel = true;   // Volver al panel de control
+                pendingSceneAutoLoad = false;  // NO auto-cargar - el usuario presiona PLAY
+            }
             modeController.stopWallpaper(); // → PANEL_MODE
             Log.d(TAG, "✅ Panel de control activado - presiona PLAY para iniciar: " + sceneName);
         } else if (panelRenderer != null) {
             Log.d(TAG, "📱 Panel listo para: " + sceneName);
         } else {
             Log.d(TAG, "Panel mode pendiente - panelRenderer aún no inicializado");
+        }
+    }
+
+    /**
+     * 🧠 onTrimMemory - Responde a presión de memoria del sistema
+     * Libera recursos no esenciales para evitar OOM kill.
+     *
+     * @param level Nivel de presión de memoria (ComponentCallbacks2.TRIM_MEMORY_*)
+     */
+    public void onTrimMemory(int level) {
+        Log.w(TAG, "⚠️ onTrimMemory level=" + level);
+
+        // TRIM_MEMORY_RUNNING_CRITICAL (15) o mayor: liberar MusicVisualizer
+        if (level >= 15) {
+            if (musicVisualizer != null && !paused) {
+                musicVisualizer.release();
+                Log.d(TAG, "🎵 MusicVisualizer liberado por presión de memoria (level=" + level + ")");
+            }
         }
     }
 

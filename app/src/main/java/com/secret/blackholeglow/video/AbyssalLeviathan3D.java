@@ -336,6 +336,7 @@ public class AbyssalLeviathan3D {
         Bitmap bitmap = null;
         BitmapFactory.Options opts = new BitmapFactory.Options();
         opts.inScaled = false;
+        opts.inPreferredConfig = Bitmap.Config.RGB_565;  // 🔧 FIX MEMORY: 50% less GPU for opaque 3D texture
 
         // Cargar desde archivos descargados (ResourcePreloader garantiza disponibilidad)
         ImageDownloadManager imageMgr = ImageDownloadManager.getInstance(context);

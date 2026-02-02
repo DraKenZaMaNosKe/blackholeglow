@@ -127,6 +127,10 @@ public class SaintSeiyaScene extends WallpaperScene {
     private float[] particleSize = new float[MAX_PARTICLES];
     private int particleShader = -1;
     private int particlePosLoc, particleColorLoc, particlePointSizeLoc;
+    // 🔧 FIX GC: Pre-allocated buffers for particle drawing (was allocating ~900 ByteBuffers/sec)
+    private final float[] particlePos = new float[2];
+    private final java.nio.FloatBuffer particleFB = java.nio.ByteBuffer.allocateDirect(8)
+            .order(java.nio.ByteOrder.nativeOrder()).asFloatBuffer();
     private java.util.Random random = new java.util.Random();
 
     @Override
@@ -504,30 +508,28 @@ public class SaintSeiyaScene extends WallpaperScene {
         GLES30.glEnable(GLES30.GL_BLEND);
         GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE);  // Additive
 
-        float[] pos = new float[2];
+        GLES30.glEnableVertexAttribArray(particlePosLoc);
 
         for (int i = 0; i < MAX_PARTICLES; i++) {
             if (particleLife[i] > 0) {
-                pos[0] = particleX[i];
-                pos[1] = particleY[i];
+                particlePos[0] = particleX[i];
+                particlePos[1] = particleY[i];
 
                 // Color cyan brillante con fade
                 float alpha = particleLife[i];
                 GLES30.glUniform4f(particleColorLoc, 0.5f, 0.8f, 1.0f, alpha);
                 GLES30.glUniform1f(particlePointSizeLoc, particleSize[i] * alpha);
 
-                // Dibujar punto
-                java.nio.FloatBuffer fb = java.nio.ByteBuffer.allocateDirect(8)
-                    .order(java.nio.ByteOrder.nativeOrder()).asFloatBuffer();
-                fb.put(pos).position(0);
+                // 🔧 Reuse pre-allocated FloatBuffer (was: new ByteBuffer.allocateDirect per particle per frame)
+                particleFB.clear();
+                particleFB.put(particlePos).position(0);
 
-                GLES30.glEnableVertexAttribArray(particlePosLoc);
-                GLES30.glVertexAttribPointer(particlePosLoc, 2, GLES30.GL_FLOAT, false, 0, fb);
+                GLES30.glVertexAttribPointer(particlePosLoc, 2, GLES30.GL_FLOAT, false, 0, particleFB);
                 GLES30.glDrawArrays(GLES30.GL_POINTS, 0, 1);
-                GLES30.glDisableVertexAttribArray(particlePosLoc);
             }
         }
 
+        GLES30.glDisableVertexAttribArray(particlePosLoc);
         GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
     }
 
@@ -556,6 +558,7 @@ public class SaintSeiyaScene extends WallpaperScene {
         try {
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inScaled = false;
+            options.inPreferredConfig = Bitmap.Config.RGB_565;  // 🔧 FIX MEMORY: 50% less GPU per opaque texture
             Bitmap bitmap = BitmapFactory.decodeFile(file.getAbsolutePath(), options);
 
             if (bitmap != null) {

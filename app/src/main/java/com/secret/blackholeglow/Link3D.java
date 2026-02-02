@@ -204,6 +204,7 @@ public class Link3D implements SceneObject {
         // Opciones para reducir uso de RAM (1024x1024 en vez de 2048x2048)
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inSampleSize = 2;  // Carga a mitad de resolución = 75% menos RAM
+        options.inPreferredConfig = Bitmap.Config.RGB_565;  // 🔧 FIX MEMORY: 50% less GPU for opaque 3D texture
 
         // 1. Intentar cargar desde cache (descargado de Supabase)
         File imageDir = ImageDownloadManager.getInstance(context).getImageDirectory();

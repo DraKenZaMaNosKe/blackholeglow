@@ -196,8 +196,12 @@ public class TextureManager implements TextureLoader {
 
         try {
             // Cargar bitmap desde archivo
+            // 🔧 FIX MEMORY: Prefer RGB_565 (16-bit, 2 bytes/pixel) over ARGB_8888 (32-bit, 4 bytes/pixel).
+            // For a 1024x1024 texture: 4 MB → 2 MB on GPU. Halves memory for opaque images.
+            // The decoder automatically upgrades to ARGB_8888 if the image has an alpha channel (PNG with transparency).
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inScaled = false;  // No escalar
+            options.inPreferredConfig = Bitmap.Config.RGB_565;
             Bitmap bitmap = BitmapFactory.decodeFile(filePath, options);
 
             if (bitmap == null) {

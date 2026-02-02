@@ -242,7 +242,9 @@ public class GamingController3D implements SceneObject {
             }
 
             Log.d(TAG, "🌐 Cargando textura desde descarga: " + texturePath);
-            Bitmap bitmap = BitmapFactory.decodeFile(texturePath);
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inPreferredConfig = Bitmap.Config.RGB_565;  // 🔧 FIX MEMORY: 50% less GPU for opaque texture
+            Bitmap bitmap = BitmapFactory.decodeFile(texturePath, opts);
 
             if (bitmap == null) {
                 Log.e(TAG, "❌ Error: bitmap es null");

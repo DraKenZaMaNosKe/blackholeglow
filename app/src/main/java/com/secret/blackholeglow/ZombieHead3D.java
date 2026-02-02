@@ -152,6 +152,10 @@ public class ZombieHead3D implements SceneObject, CameraAware, SensorEventListen
     private final float[] modelMatrix = new float[16];
     private final float[] mvpMatrix = new float[16];
 
+    // ⚡ OPTIMIZACIÓN: Cache de arrays para sensor callback (~100 Hz)
+    private final float[] sensorRotationMatrix = new float[9];
+    private final float[] sensorOrientation = new float[3];
+
     // Cámara (opcional, usamos nuestra propia proyección)
     private CameraController camera;
 
@@ -691,21 +695,17 @@ public class ZombieHead3D implements SceneObject, CameraAware, SensorEventListen
             return;
         }
 
-        // Obtener quaternion de rotación
-        float[] rotationMatrix = new float[9];
-        SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
+        // ⚡ Reutilizar arrays cacheados en vez de crear nuevos (~100 veces/segundo)
+        SensorManager.getRotationMatrixFromVector(sensorRotationMatrix, event.values);
+        SensorManager.getOrientation(sensorRotationMatrix, sensorOrientation);
 
-        // Obtener ángulos de orientación
-        float[] orientation = new float[3];
-        SensorManager.getOrientation(rotationMatrix, orientation);
-
-        // orientation[0] = azimuth (no lo usamos)
-        // orientation[1] = pitch (inclinación adelante/atrás)
-        // orientation[2] = roll (inclinación lateral)
+        // sensorOrientation[0] = azimuth (no lo usamos)
+        // sensorOrientation[1] = pitch (inclinación adelante/atrás)
+        // sensorOrientation[2] = roll (inclinación lateral)
 
         // Convertir a grados y aplicar sensibilidad
-        float pitch = (float) Math.toDegrees(orientation[1]) * (GYRO_SENSITIVITY / 90f);
-        float roll = (float) Math.toDegrees(orientation[2]) * (GYRO_SENSITIVITY / 90f);
+        float pitch = (float) Math.toDegrees(sensorOrientation[1]) * (GYRO_SENSITIVITY / 90f);
+        float roll = (float) Math.toDegrees(sensorOrientation[2]) * (GYRO_SENSITIVITY / 90f);
 
         // Limitar a ángulo máximo
         rawGyroX = Math.max(-GYRO_MAX_ANGLE, Math.min(GYRO_MAX_ANGLE, pitch));

@@ -991,7 +991,9 @@ public abstract class BaseParallaxScene extends WallpaperScene {
 
         try {
             BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+            // 🔧 FIX MEMORY: RGB_565 = 50% less GPU per opaque texture.
+            // Decoder auto-upgrades to ARGB_8888 if image has alpha channel.
+            options.inPreferredConfig = Bitmap.Config.RGB_565;
             Bitmap bitmap = BitmapFactory.decodeFile(path, options);
 
             if (bitmap == null) {
