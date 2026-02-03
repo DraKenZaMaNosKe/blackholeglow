@@ -162,6 +162,10 @@ public class ResourcePreloader {
                 prepareLostAtlantisSceneTasks();
                 break;
 
+            case "THE_HUMAN_PREDATOR":
+                prepareTheHumanPredatorSceneTasks();
+                break;
+
             default:
                 // Default: usar Lab
                 prepareLabSceneTasks();
@@ -287,6 +291,9 @@ public class ResourcePreloader {
 
             case "LOST_ATLANTIS":
                 return Arrays.asList("lostatlanstis.mp4");
+
+            case "THE_HUMAN_PREDATOR":
+                return Arrays.asList("guerrerovsleon.mp4");
 
             default:
                 return new ArrayList<>();
@@ -618,6 +625,23 @@ public class ResourcePreloader {
         Log.d(TAG, "🏛️ LostAtlantisScene: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
     }
 
+    /**
+     * 🦁 The Human Predator Scene - Guerrero vs León
+     */
+    public void prepareTheHumanPredatorSceneTasks() {
+        tasks.clear();
+
+        // 1. VIDEO - Guerrero vs León desde Supabase
+        addVideoDownloadTask("Video Human Predator", "guerrerovsleon.mp4", 10);
+
+        // 2. Preview texture
+        addTextureTask("Preparando escena Human Predator", R.drawable.preview_human_predator, 2);
+
+        // Calcular total
+        calculateTotalWeight();
+        Log.d(TAG, "🦁 TheHumanPredatorScene: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
     private void calculateTotalWeight() {
         totalTasks = 0;
         for (PreloadTask task : tasks) {
@@ -690,6 +714,8 @@ public class ResourcePreloader {
                 return Arrays.asList("spiderscene.mp4");
             case "LOST_ATLANTIS":
                 return Arrays.asList("lostatlanstis.mp4");
+            case "THE_HUMAN_PREDATOR":
+                return Arrays.asList("guerrerovsleon.mp4");
             default:
                 return new ArrayList<>();
         }

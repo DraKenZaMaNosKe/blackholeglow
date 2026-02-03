@@ -77,6 +77,7 @@ public class WallpaperPreferences {
         "AOT",            // ⚔️ Attack on Titan - Eren Jaeger
         "SPIDER",         // 🕷️ Black Spider Horror
         "LOST_ATLANTIS",  // 🏛️ Lost Atlantis underwater temple
+        "THE_HUMAN_PREDATOR", // 🦁 The Human Predator - Guerrero vs León
 
         // ═══════════════════════════════════════════
         // 📦 WALLPAPERS LEGADOS (compatibilidad)

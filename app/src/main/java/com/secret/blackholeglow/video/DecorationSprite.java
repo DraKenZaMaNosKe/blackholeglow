@@ -130,6 +130,17 @@ public class DecorationSprite {
 
         BitmapFactory.Options opts = new BitmapFactory.Options();
         opts.inScaled = false;
+        opts.inPreferredConfig = Bitmap.Config.RGB_565;
+        // 🔧 FIX OOM: Limit sprite texture to 512x512 max
+        opts.inJustDecodeBounds = true;
+        BitmapFactory.decodeResource(context.getResources(), resourceId, opts);
+        int maxSpriteSize = 512;
+        opts.inSampleSize = 1;
+        while (opts.outWidth / opts.inSampleSize > maxSpriteSize ||
+               opts.outHeight / opts.inSampleSize > maxSpriteSize) {
+            opts.inSampleSize *= 2;
+        }
+        opts.inJustDecodeBounds = false;
         Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), resourceId, opts);
 
         if (bitmap != null) {

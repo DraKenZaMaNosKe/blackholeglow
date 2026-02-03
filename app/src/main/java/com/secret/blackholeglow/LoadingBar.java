@@ -403,6 +403,17 @@ public class LoadingBar implements SceneObject {
         // Cargar textura del fondo
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inScaled = false;
+        options.inPreferredConfig = Bitmap.Config.RGB_565;
+        // 🔧 FIX OOM: Limit background texture to 1024x1024 max
+        options.inJustDecodeBounds = true;
+        BitmapFactory.decodeResource(context.getResources(), backgroundResourceId, options);
+        int maxBgSize = 1024;
+        options.inSampleSize = 1;
+        while (options.outWidth / options.inSampleSize > maxBgSize ||
+               options.outHeight / options.inSampleSize > maxBgSize) {
+            options.inSampleSize *= 2;
+        }
+        options.inJustDecodeBounds = false;
         Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), backgroundResourceId, options);
 
         if (bitmap != null) {

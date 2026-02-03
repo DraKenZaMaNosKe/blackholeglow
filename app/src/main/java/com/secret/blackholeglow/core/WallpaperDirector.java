@@ -816,12 +816,27 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     public void onTrimMemory(int level) {
         Log.w(TAG, "⚠️ onTrimMemory level=" + level);
 
-        // TRIM_MEMORY_RUNNING_CRITICAL (15) o mayor: liberar MusicVisualizer
-        if (level >= 15) {
+        // 🔧 FIX: Respuesta progresiva a presión de memoria
+        // Level 5 (RUNNING_MODERATE): Liberar ecualizador
+        if (level >= 5) {
             if (musicVisualizer != null && !paused) {
                 musicVisualizer.release();
-                Log.d(TAG, "🎵 MusicVisualizer liberado por presión de memoria (level=" + level + ")");
+                Log.d(TAG, "🎵 MusicVisualizer liberado (level=" + level + ")");
             }
+        }
+
+        // Level 10 (RUNNING_LOW): Liberar texturas no usadas
+        if (level >= 10) {
+            if (resources != null) {
+                resources.releaseSceneResources();
+                Log.d(TAG, "📦 ResourceManager scene resources released (level=" + level + ")");
+            }
+        }
+
+        // Level 15 (RUNNING_CRITICAL): Forzar GC y log de emergencia
+        if (level >= 15) {
+            Log.e(TAG, "🚨 CRITICAL memory pressure (level=" + level + ")");
+            System.gc();
         }
     }
 

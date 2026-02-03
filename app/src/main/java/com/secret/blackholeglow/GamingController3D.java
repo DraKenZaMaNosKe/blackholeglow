@@ -243,7 +243,21 @@ public class GamingController3D implements SceneObject {
 
             Log.d(TAG, "🌐 Cargando textura desde descarga: " + texturePath);
             BitmapFactory.Options opts = new BitmapFactory.Options();
-            opts.inPreferredConfig = Bitmap.Config.RGB_565;  // 🔧 FIX MEMORY: 50% less GPU for opaque texture
+            opts.inPreferredConfig = Bitmap.Config.RGB_565;
+
+            // 🔧 FIX OOM: Primero obtener dimensiones, luego reducir si es muy grande
+            opts.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(texturePath, opts);
+            int maxTextureSize = 1024;
+            opts.inSampleSize = 1;
+            while (opts.outWidth / opts.inSampleSize > maxTextureSize ||
+                   opts.outHeight / opts.inSampleSize > maxTextureSize) {
+                opts.inSampleSize *= 2;
+            }
+            opts.inJustDecodeBounds = false;
+            Log.d(TAG, "📐 Textura original: " + opts.outWidth + "x" + opts.outHeight +
+                       " → inSampleSize=" + opts.inSampleSize);
+
             Bitmap bitmap = BitmapFactory.decodeFile(texturePath, opts);
 
             if (bitmap == null) {

@@ -1,6 +1,8 @@
 package com.secret.blackholeglow;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.media.AudioManager;
 import android.media.audiofx.Visualizer;
 import android.os.Handler;
@@ -134,6 +136,14 @@ public class MusicVisualizer {
                 isEnabled = false;
             }
 
+            // 🔧 FIX: Verificar permiso RECORD_AUDIO antes de crear Visualizer
+            if (context != null && context.checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+                    != PackageManager.PERMISSION_GRANTED) {
+                Log.w(TAG, "[MusicVisualizer] ⚠️ Sin permiso RECORD_AUDIO, no se puede inicializar");
+                isInitializing = false;
+                return false;
+            }
+
             // Detectar si hay música reproduciéndose ANTES de crear el Visualizer
             // En algunos dispositivos (Samsung), new Visualizer(0) puede interrumpir la sesión de audio
             boolean wasMusicPlaying = audioManager != null && audioManager.isMusicActive();
@@ -141,11 +151,37 @@ public class MusicVisualizer {
                 Log.d(TAG, "[MusicVisualizer] 🎵 Música detectada antes de crear Visualizer");
             }
 
-            // Crear visualizer usando session ID 0 (mezcla de audio del sistema)
-            visualizer = new Visualizer(0);
+            // 🔧 FIX: Intentar múltiples session IDs (0=system mix, fallback con AudioManager)
+            int[] sessionIds = {0};
+            Visualizer tempVisualizer = null;
+            for (int sessionId : sessionIds) {
+                try {
+                    tempVisualizer = new Visualizer(sessionId);
+                    Log.d(TAG, "[MusicVisualizer] ✓ Visualizer creado con sessionId=" + sessionId);
+                    break;
+                } catch (Exception e) {
+                    Log.w(TAG, "[MusicVisualizer] ⚠️ sessionId=" + sessionId + " falló: " + e.getMessage());
+                    if (tempVisualizer != null) {
+                        try { tempVisualizer.release(); } catch (Exception ignored) {}
+                        tempVisualizer = null;
+                    }
+                }
+            }
+            if (tempVisualizer == null) {
+                Log.e(TAG, "[MusicVisualizer] ✗ No se pudo crear Visualizer con ningún sessionId");
+                isInitializing = false;
+                return false;
+            }
+            visualizer = tempVisualizer;
 
-            // Configurar tamaño de captura (debe estar deshabilitado)
-            visualizer.setCaptureSize(CAPTURE_SIZE);
+            // 🔧 FIX: Validar CAPTURE_SIZE soportado por el dispositivo
+            int captureSize = CAPTURE_SIZE;
+            int[] range = Visualizer.getCaptureSizeRange();
+            if (range != null && range.length == 2) {
+                captureSize = Math.max(range[0], Math.min(captureSize, range[1]));
+                Log.d(TAG, "[MusicVisualizer] Capture size range: " + range[0] + "-" + range[1] + ", usando: " + captureSize);
+            }
+            visualizer.setCaptureSize(captureSize);
 
             // Establecer listener para captura de datos
             visualizer.setDataCaptureListener(

@@ -491,7 +491,16 @@ public abstract class BaseVideoScene extends WallpaperScene {
         if (videoCheckTimer >= VIDEO_CHECK_INTERVAL) {
             videoCheckTimer = 0f;
             if (videoBackground != null && !videoBackground.isPlaying()) {
-                videoBackground.resume();
+                // 🔄 Auto-recovery: Si el video se detuvo, intentar reanudar
+                // Primero intenta resume() simple (decoder thread parado pero Surface existe)
+                // Si Surface fue liberada por releaseForPause(), resume() no hará nada
+                // porque isInitialized sigue true pero surface es null → reinitializar
+                if (videoBackground.isInitialized()) {
+                    videoBackground.resume();
+                } else {
+                    Log.d(TAG, "🔄 Auto-recovery: reinitializeAfterPause()");
+                    videoBackground.reinitializeAfterPause();
+                }
             }
         }
 
@@ -616,8 +625,10 @@ public abstract class BaseVideoScene extends WallpaperScene {
         videoCheckTimer = 0f;
 
         if (videoBackground != null) {
-            videoBackground.pause();
-            Log.d(TAG, "⏸️ " + getName() + " video PAUSADO");
+            // 🧹 OPTIMIZACIÓN MEMORIA: Liberar Surface/SurfaceTexture/Decoder completamente
+            // Ahorra ~40-60 MB de RAM cuando el wallpaper no es visible
+            videoBackground.releaseForPause();
+            Log.d(TAG, "⏸️🧹 " + getName() + " video LIBERADO (ahorro de memoria)");
         }
 
         // Hook para pausar recursos específicos de la subclase (ej: giroscopio)
@@ -631,8 +642,14 @@ public abstract class BaseVideoScene extends WallpaperScene {
         videoCheckTimer = 0f;
 
         if (videoBackground != null) {
-            videoBackground.resume();
-            Log.d(TAG, "▶️ " + getName() + " video REANUDADO");
+            // 🔄 OPTIMIZACIÓN MEMORIA: Recrear recursos de video (reutiliza shader/buffers)
+            boolean success = videoBackground.reinitializeAfterPause();
+            if (success) {
+                Log.d(TAG, "▶️🔄 " + getName() + " video REINICIALIZADO");
+            } else {
+                Log.e(TAG, "❌ " + getName() + " falló reinitializar video, intentando initialize() completo");
+                videoBackground.initialize();
+            }
         }
 
         // Hook para reanudar recursos específicos de la subclase (ej: giroscopio)

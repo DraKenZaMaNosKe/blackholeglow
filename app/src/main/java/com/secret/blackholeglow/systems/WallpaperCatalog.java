@@ -402,6 +402,20 @@ public class WallpaperCatalog {
                 .featured()
                 .build());
 
+        // ═══════════════════════════════════════════════════════════════════
+        // 🦁 THE HUMAN PREDATOR - Guerrero vs León
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("🦁 THE HUMAN PREDATOR 🦁")
+                .descripcion("Guerrero prehistórico con garras venenosas vs león gigante. " +
+                        "Jungla volcánica, combate épico a muerte.")
+                .preview(R.drawable.preview_human_predator)
+                .sceneName("THE_HUMAN_PREDATOR")
+                .tier(WallpaperTier.FREE)
+                .badge("🦁 NUEVO")
+                .glow(0xFF8B0000)  // Dark Red (sangre)
+                .featured()
+                .build());
+
         Log.d(TAG, "📚 Catálogo inicializado: " + catalog.size() + " wallpapers");
     }
 }

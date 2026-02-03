@@ -547,6 +547,7 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
 
             // Decodificar con el tamaño reducido
             options.inJustDecodeBounds = false;
+            options.inPreferredConfig = Bitmap.Config.RGB_565;  // 🔧 FIX OOM: 50% less RAM
             return BitmapFactory.decodeResource(context.getResources(), resId, options);
         } catch (Exception e) {
             Log.e("WallpaperAdapter", "Error decodificando recurso: " + e.getMessage());

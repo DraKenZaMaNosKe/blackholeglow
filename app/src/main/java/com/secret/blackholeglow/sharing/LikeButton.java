@@ -319,6 +319,17 @@ public class LikeButton {
         if (texHandle[0] != 0) {
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inScaled = false;
+            options.inPreferredConfig = Bitmap.Config.RGB_565;
+            // 🔧 FIX OOM: Limit texture to 512x512 max
+            options.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(filePath, options);
+            int maxSize = 512;
+            options.inSampleSize = 1;
+            while (options.outWidth / options.inSampleSize > maxSize ||
+                   options.outHeight / options.inSampleSize > maxSize) {
+                options.inSampleSize *= 2;
+            }
+            options.inJustDecodeBounds = false;
             Bitmap bitmap = BitmapFactory.decodeFile(filePath, options);
             if (bitmap != null) {
                 GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, texHandle[0]);

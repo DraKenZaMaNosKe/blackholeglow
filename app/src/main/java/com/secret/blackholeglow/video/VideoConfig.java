@@ -30,84 +30,92 @@ public class VideoConfig {
     private static final Map<String, ResourceInfo> VIDEOS = new HashMap<>();
 
     static {
-        // LabScene - Portal cósmico con nubes de fuego
+        // LabScene - Portal cósmico (v2: 360x360 optimizado, era 480x480)
         VIDEOS.put("cielovolando.mp4", new ResourceInfo(
             SUPABASE_VIDEOS_URL + "cielovolando.mp4",
-            10_199_549L,  // 10.2 MB
+            9_903_257L,  // ~9.9 MB (360x360 @ 1.5Mbps)
             "Portal Cosmico",
-            1
+            2  // v2: Re-encoded 360p para reducir RAM
         ));
 
-        // OceanFloorScene - Abyssia (océano alienígena)
+        // OceanFloorScene - Abyssia (v2: 360x360 optimizado, era 480x480)
         VIDEOS.put("marZerg.mp4", new ResourceInfo(
             SUPABASE_VIDEOS_URL + "marZerg.mp4",
-            9_983_000L,  // ~10 MB
+            9_488_423L,  // ~9.5 MB (360x360 @ 1.5Mbps)
             "Abyssia",
-            1
+            2  // v2: Re-encoded 360p para reducir RAM
         ));
 
-        // GokuScene - Kamehameha Final HD
+        // GokuScene - Kamehameha Final (v2: 540x800 optimizado, era 1080x1602)
         VIDEOS.put("gokufinalkamehamehaHD.mp4", new ResourceInfo(
             SUPABASE_VIDEOS_URL + "gokufinalkamehamehaHD.mp4",
-            53_210_000L,  // 53.21 MB HD
+            11_372_197L,  // ~11.4 MB (540x800 @ 2.5Mbps, antes 55.8 MB!)
             "Goku Kamehameha Final HD",
-            1
+            2  // v2: Re-encoded 540p (-80% tamaño, -20MB RAM decoder)
         ));
 
-        // AdventureTimeScene - Hora de Aventura Fogata
+        // AdventureTimeScene - Hora de Aventura (v2: 360x534, era 480x712)
         VIDEOS.put("escenaHDA.mp4", new ResourceInfo(
             SUPABASE_VIDEOS_URL + "escenaHDA.mp4",
-            13_000_000L,  // ~13 MB
+            11_262_319L,  // ~11.3 MB (360x534 @ 1.5Mbps)
             "Adventure Time Fogata",
-            1
+            2  // v2: Re-encoded 360p para reducir RAM
         ));
 
-        // NeonCityScene - Synthwave Endless Road
+        // NeonCityScene - Synthwave (v2: 360x360, era 480x480)
         VIDEOS.put("neoncityScene.mp4", new ResourceInfo(
             SUPABASE_VIDEOS_URL + "neoncityScene.mp4",
-            13_680_000L,  // 13.05 MB
+            11_447_391L,  // ~11.4 MB (360x360 @ 1.5Mbps)
             "Neon City Synthwave",
-            1
+            2  // v2: Re-encoded 360p para reducir RAM
         ));
 
-        // WalkingDeadScene - Cementerio Zombie Apocalíptico
+        // WalkingDeadScene - Cementerio Zombie (v3: 540x956, era 1080x1912)
         VIDEOS.put("walkingdeathscene.mp4", new ResourceInfo(
             SUPABASE_VIDEOS_URL + "walkingdeathscene.mp4",
-            29_000_000L,  // ~29 MB (1080p)
+            6_036_028L,  // ~6.0 MB (540x956 @ 2.5Mbps, antes 30.4 MB!)
             "The Walking Dead",
-            2  // v2: Re-encoded 1080p
+            3  // v3: Re-encoded 540p (-80% tamaño, -20MB RAM decoder)
         ));
 
-        // SupermanScene - Man of Steel (v2: Re-encoded 720p for performance)
+        // SupermanScene - Man of Steel (v3: 540x800, era 720x1068)
         VIDEOS.put("superman_scene.mp4", new ResourceInfo(
-            SUPABASE_VIDEOS_URL + "superman_scene_720p.mp4",  // 720p version
-            11_960_117L,  // ~12 MB (720p optimizado)
+            SUPABASE_VIDEOS_URL + "superman_scene_720p.mp4",
+            7_548_912L,  // ~7.5 MB (540x800 @ 2.5Mbps, antes 12 MB)
             "Superman Man of Steel",
-            2  // v2: Re-encoded 720p (was 1440p causing crashes)
+            3  // v3: Re-encoded 540p para reducir RAM
         ));
 
-        // AOTScene - Attack on Titan (Eren Jaeger)
+        // AOTScene - Attack on Titan (v2: 540x800, era 720x1068)
         VIDEOS.put("erenEscena01.mp4", new ResourceInfo(
-            SUPABASE_VIDEOS_URL + "erenEscena01_720p.mp4",  // 720p version
-            3_695_019L,  // ~3.7 MB (720p optimizado)
+            SUPABASE_VIDEOS_URL + "erenEscena01_720p.mp4",
+            3_202_424L,  // ~3.2 MB (540x800 @ 2.5Mbps)
             "Attack on Titan - Eren",
-            1
+            2  // v2: Re-encoded 540p para reducir RAM
         ));
 
-        // SpiderScene - Black Spider Horror
+        // SpiderScene - Black Spider (v2: 540x800, era 1080x1600)
         VIDEOS.put("spiderscene.mp4", new ResourceInfo(
             SUPABASE_VIDEOS_URL + "spiderscene.mp4",
-            15_378_022L,  // ~14.7 MB (pendiente optimización 720p)
+            3_183_074L,  // ~3.2 MB (540x800 @ 2.5Mbps, antes 15.4 MB!)
             "Black Spider",
-            1
+            2  // v2: Re-encoded 540p (-79% tamaño, -20MB RAM decoder)
         ));
 
-        // LostAtlantisScene - Templo sumergido
+        // LostAtlantisScene - Templo sumergido (v2: 540x800, era 1080x1600)
         VIDEOS.put("lostatlanstis.mp4", new ResourceInfo(
             SUPABASE_VIDEOS_URL + "lostatlanstis.mp4",
-            15_550_000L,  // ~14.83 MB
+            3_302_401L,  // ~3.1 MB (540x800 @ 2.5Mbps, antes 14.83 MB)
             "Lost Atlantis",
-            1
+            2  // v2: Re-encoded 540p para reducir RAM del decoder
+        ));
+
+        // TheHumanPredatorScene - Guerrero vs León
+        VIDEOS.put("guerrerovsleon.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "guerrerovsleon.mp4",
+            15_672_871L,  // ~15.6 MB
+            "The Human Predator",
+            1  // v1: Initial version
         ));
     }
 

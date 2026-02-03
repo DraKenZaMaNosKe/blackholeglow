@@ -146,7 +146,19 @@ public class CloudFrame {
         GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
         GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
 
-        Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.preview_oceano_sc);
+        // 🔧 FIX OOM: Downsample large resource to 512x512 max
+        BitmapFactory.Options cfOpts = new BitmapFactory.Options();
+        cfOpts.inJustDecodeBounds = true;
+        BitmapFactory.decodeResource(context.getResources(), R.drawable.preview_oceano_sc, cfOpts);
+        int maxCfSize = 512;
+        cfOpts.inSampleSize = 1;
+        while (cfOpts.outWidth / cfOpts.inSampleSize > maxCfSize ||
+               cfOpts.outHeight / cfOpts.inSampleSize > maxCfSize) {
+            cfOpts.inSampleSize *= 2;
+        }
+        cfOpts.inJustDecodeBounds = false;
+        cfOpts.inPreferredConfig = Bitmap.Config.RGB_565;
+        Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.preview_oceano_sc, cfOpts);
         if (bitmap != null) {
             GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0);
             bitmap.recycle();

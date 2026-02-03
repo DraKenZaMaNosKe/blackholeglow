@@ -2,6 +2,7 @@
 package com.secret.blackholeglow;
 
 import android.content.BroadcastReceiver;
+import android.content.ComponentCallbacks2;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
@@ -31,6 +32,9 @@ import com.secret.blackholeglow.core.WallpaperDirector;
 public class LiveWallpaperService extends WallpaperService {
     private static final String TAG = "LiveWallpaperService";
 
+    // Referencia al engine activo para delegar onTrimMemory
+    private GLWallpaperEngine activeEngine;
+
     // ═══════════════════════════════════════════════════════════════
     // 🔒 ESTADO ATÓMICO - Previene condiciones de carrera
     // ═══════════════════════════════════════════════════════════════
@@ -43,7 +47,30 @@ public class LiveWallpaperService extends WallpaperService {
     @Override
     public Engine onCreateEngine() {
         Log.d(TAG, "onCreateEngine llamado");
-        return new GLWallpaperEngine(this);
+        activeEngine = new GLWallpaperEngine(this);
+        return activeEngine;
+    }
+
+    /**
+     * 🧠 onTrimMemory - Android nos pide liberar memoria
+     *
+     * Niveles relevantes:
+     * - TRIM_MEMORY_RUNNING_MODERATE (5): Sistema bajo de memoria
+     * - TRIM_MEMORY_RUNNING_CRITICAL (15): Siguiente paso es OOM kill
+     * - TRIM_MEMORY_UI_HIDDEN (20): UI oculta
+     * - TRIM_MEMORY_MODERATE (60): Proceso en background
+     * - TRIM_MEMORY_COMPLETE (80): Proceso será killeado pronto
+     */
+    @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_MODERATE) {
+            Log.w(TAG, "⚠️ onTrimMemory level=" + level + " - delegando a Engine");
+            if (activeEngine != null) {
+                activeEngine.handleTrimMemory(level);
+            }
+        }
     }
 
     private class GLWallpaperEngine extends Engine {
@@ -57,6 +84,10 @@ public class LiveWallpaperService extends WallpaperService {
         private RenderState currentState = RenderState.UNINITIALIZED;
         private boolean surfaceExists = false;
         private boolean isSystemPreviewMode = false;  // 🎬 Para mantener el wallpaper visible en preview del sistema
+
+        // 🔧 FIX: Debounce para onVisibilityChanged (evita stuttering en Samsung)
+        private long lastVisibilityChangeTime = 0;
+        private static final long VISIBILITY_DEBOUNCE_MS = 300;
 
         // ═══════════════════════════════════════════════════════════════
         // 📱 DETECCIÓN DE EVENTOS DEL SISTEMA
@@ -250,15 +281,21 @@ public class LiveWallpaperService extends WallpaperService {
                 }
 
                 if (visible) {
+                    lastVisibilityChangeTime = System.currentTimeMillis();
                     startRendering();
                 } else {
                     // 🎬 En preview del sistema, NO parar rendering
-                    // El toggle rápido VISIBLE→HIDDEN→VISIBLE del system picker
-                    // mata el GL thread si pausamos aquí
                     if (isSystemPreviewMode) {
                         Log.d(TAG, "🎬 Preview del sistema: Ignorando HIDDEN - render sigue activo");
-                        // NO stopRendering() - el preview necesita seguir renderizando
                     } else {
+                        // 🔧 FIX: Debounce para evitar pause/resume rápidos (Samsung stuttering)
+                        long now = System.currentTimeMillis();
+                        long elapsed = now - lastVisibilityChangeTime;
+                        if (elapsed < VISIBILITY_DEBOUNCE_MS) {
+                            Log.d(TAG, "⏳ Debounce: ignorando HIDDEN (" + elapsed + "ms desde VISIBLE)");
+                            return;
+                        }
+                        lastVisibilityChangeTime = now;
                         stopRendering();
                         if (wallpaperDirector != null) {
                             wallpaperDirector.pause();
@@ -417,6 +454,17 @@ public class LiveWallpaperService extends WallpaperService {
             }
 
             super.onSurfaceDestroyed(holder);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // 🧠 MEMORY PRESSURE - Delegado desde el Service
+        // ═══════════════════════════════════════════════════════════════
+
+        void handleTrimMemory(int level) {
+            Log.w(TAG, "🧠 Engine handleTrimMemory level=" + level);
+            if (wallpaperDirector != null) {
+                wallpaperDirector.onTrimMemory(level);
+            }
         }
 
         // ═══════════════════════════════════════════════════════════════

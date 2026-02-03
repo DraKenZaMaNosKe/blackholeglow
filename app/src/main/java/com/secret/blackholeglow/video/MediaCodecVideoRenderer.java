@@ -4,6 +4,8 @@ import android.content.Context;
 import android.content.res.AssetFileDescriptor;
 import android.graphics.SurfaceTexture;
 import android.media.MediaCodec;
+import android.media.MediaCodecInfo;
+import android.media.MediaCodecList;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.opengl.GLES11Ext;
@@ -172,9 +174,9 @@ public class MediaCodecVideoRenderer {
             Log.w(TAG, "⚠️ Previous decoder thread still alive, waiting...");
             isRunning = false;
             decoderThread.interrupt();
-            try { decoderThread.join(2000); } catch (InterruptedException ignored) {}
+            try { decoderThread.join(5000); } catch (InterruptedException ignored) {}
             if (decoderThread.isAlive()) {
-                Log.e(TAG, "❌ Decoder thread orphaned after 2s timeout");
+                Log.e(TAG, "❌ Decoder thread orphaned after 5s timeout");
             }
         }
         isRunning = true;
@@ -267,12 +269,44 @@ public class MediaCodecVideoRenderer {
                 format.getInteger(MediaFormat.KEY_WIDTH) + "x" +
                 format.getInteger(MediaFormat.KEY_HEIGHT));
 
-            // Crear decoder
-            decoder = MediaCodec.createDecoderByType(mime);
-            decoder.configure(format, surface, null, 0);
-            decoder.start();
-
-            Log.d(TAG, "✅ MediaCodec configurado");
+            // 🔧 FIX: Crear decoder con fallback si el primario falla
+            try {
+                decoder = MediaCodec.createDecoderByType(mime);
+                decoder.configure(format, surface, null, 0);
+                decoder.start();
+                Log.d(TAG, "✅ MediaCodec configurado (by type: " + mime + ")");
+            } catch (Exception codecEx) {
+                Log.w(TAG, "⚠️ Codec por tipo falló: " + codecEx.getMessage() + ", buscando alternativo...");
+                decoder = null;
+                // Fallback: buscar codec específico por nombre
+                int codecCount = MediaCodecList.getCodecCount();
+                for (int ci = 0; ci < codecCount; ci++) {
+                    MediaCodecInfo info = MediaCodecList.getCodecInfoAt(ci);
+                    if (info.isEncoder()) continue;
+                    for (String type : info.getSupportedTypes()) {
+                        if (type.equalsIgnoreCase(mime)) {
+                            try {
+                                decoder = MediaCodec.createByCodecName(info.getName());
+                                decoder.configure(format, surface, null, 0);
+                                decoder.start();
+                                Log.d(TAG, "✅ MediaCodec fallback: " + info.getName());
+                                break;
+                            } catch (Exception e2) {
+                                Log.w(TAG, "⚠️ Codec " + info.getName() + " falló: " + e2.getMessage());
+                                if (decoder != null) {
+                                    try { decoder.release(); } catch (Exception ignored) {}
+                                    decoder = null;
+                                }
+                            }
+                        }
+                    }
+                    if (decoder != null) break;
+                }
+                if (decoder == null) {
+                    Log.e(TAG, "❌ No se encontró ningún codec compatible para " + mime);
+                    return false;
+                }
+            }
             return true;
 
         } catch (IOException e) {
