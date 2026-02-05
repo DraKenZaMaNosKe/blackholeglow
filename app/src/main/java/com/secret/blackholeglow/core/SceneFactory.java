@@ -19,6 +19,7 @@ import com.secret.blackholeglow.scenes.AOTScene;
 import com.secret.blackholeglow.scenes.SpiderScene;
 import com.secret.blackholeglow.scenes.LostAtlantisScene;
 import com.secret.blackholeglow.scenes.TheHumanPredatorScene;
+import com.secret.blackholeglow.scenes.MoonlitCatScene;
 import com.secret.blackholeglow.systems.EventBus;
 import com.secret.blackholeglow.systems.ResourceManager;
 
@@ -135,6 +136,8 @@ public class SceneFactory {
         registerScene("LOST_ATLANTIS", LostAtlantisScene.class);
         // 🦁 The Human Predator: Guerrero prehistórico vs León gigante
         registerScene("THE_HUMAN_PREDATOR", TheHumanPredatorScene.class);
+        // 🌙 Moonlit Cat: Gato negro bajo la luna con cielo shader
+        registerScene("MOONLIT_CAT", MoonlitCatScene.class);
 
         Log.d(TAG, "🎭 " + registeredScenes.size() + " escenas registradas");
     }

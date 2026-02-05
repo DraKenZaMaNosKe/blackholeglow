@@ -78,6 +78,7 @@ public class WallpaperPreferences {
         "SPIDER",         // 🕷️ Black Spider Horror
         "LOST_ATLANTIS",  // 🏛️ Lost Atlantis underwater temple
         "THE_HUMAN_PREDATOR", // 🦁 The Human Predator - Guerrero vs León
+        "MOONLIT_CAT",       // 🌙 Moonlit Cat - Gato bajo la luna
 
         // ═══════════════════════════════════════════
         // 📦 WALLPAPERS LEGADOS (compatibilidad)

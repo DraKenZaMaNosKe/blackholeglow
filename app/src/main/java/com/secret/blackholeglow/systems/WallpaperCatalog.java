@@ -416,6 +416,20 @@ public class WallpaperCatalog {
                 .featured()
                 .build());
 
+        // ═══════════════════════════════════════════════════════════════════
+        // 🌙 MOONLIT CAT - Gato Negro Bajo la Luna
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("🌙 MOONLIT CAT 🌙")
+                .descripcion("Gato negro sentado en una barda contemplando la luna gigante. " +
+                        "Cielo nocturno con estrellas titilantes y siluetas de edificios.")
+                .preview(R.drawable.preview_moonlit_cat)
+                .sceneName("MOONLIT_CAT")
+                .tier(WallpaperTier.FREE)
+                .badge("🌙 NUEVO")
+                .glow(0xFF4169E1)  // Royal Blue (moonlight)
+                .featured()
+                .build());
+
         Log.d(TAG, "📚 Catálogo inicializado: " + catalog.size() + " wallpapers");
     }
 }

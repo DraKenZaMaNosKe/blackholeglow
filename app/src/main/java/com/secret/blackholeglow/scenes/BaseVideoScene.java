@@ -348,6 +348,12 @@ public abstract class BaseVideoScene extends WallpaperScene {
      * Si el video no existe, la escena funcionará sin video de fondo.
      */
     private void setupVideoBackground(String videoFile) {
+        // 🌙 Si no hay video (ej: MoonlitCatScene usa solo shaders), skip completamente
+        if (videoFile == null) {
+            Log.d(TAG, "📭 Sin video para " + getName() + " (escena solo-shader)");
+            return;
+        }
+
         downloadManager = VideoDownloadManager.getInstance(context);
 
         try {

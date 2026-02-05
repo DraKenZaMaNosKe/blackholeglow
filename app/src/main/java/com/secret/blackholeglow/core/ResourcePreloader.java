@@ -166,6 +166,10 @@ public class ResourcePreloader {
                 prepareTheHumanPredatorSceneTasks();
                 break;
 
+            case "MOONLIT_CAT":
+                prepareMoonlitCatSceneTasks();
+                break;
+
             default:
                 // Default: usar Lab
                 prepareLabSceneTasks();
@@ -294,6 +298,9 @@ public class ResourcePreloader {
 
             case "THE_HUMAN_PREDATOR":
                 return Arrays.asList("guerrerovsleon.mp4");
+
+            case "MOONLIT_CAT":
+                return Arrays.asList();  // No video - shader-based sky
 
             default:
                 return new ArrayList<>();
@@ -640,6 +647,32 @@ public class ResourcePreloader {
         // Calcular total
         calculateTotalWeight();
         Log.d(TAG, "🦁 TheHumanPredatorScene: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    /**
+     * 🌙 Moonlit Cat Scene - Gato bajo la luna (shader-only, no video)
+     * Models and textures from Meshy AI via Supabase
+     */
+    public void prepareMoonlitCatSceneTasks() {
+        tasks.clear();
+
+        // No video - scene uses shader-based night sky
+
+        // 1. Modelo 3D del gato negro
+        addModelDownloadTask("Modelo Gato", "black_cat.obj", 3);
+
+        // 2. Textura del gato
+        addImageDownloadTask("Textura Gato", "black_cat_texture.png", 3);
+
+        // 3. Modelo 3D de la barda
+        addModelDownloadTask("Modelo Barda", "brick_wall.obj", 3);
+
+        // 4. Textura de la barda
+        addImageDownloadTask("Textura Barda", "brick_wall_texture.png", 3);
+
+        // Calcular total
+        calculateTotalWeight();
+        Log.d(TAG, "🌙 MoonlitCatScene: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
     }
 
     private void calculateTotalWeight() {
