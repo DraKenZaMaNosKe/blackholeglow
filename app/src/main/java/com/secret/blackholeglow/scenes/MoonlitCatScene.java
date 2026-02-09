@@ -39,35 +39,30 @@ public class MoonlitCatScene extends BaseVideoScene {
     private BrickWall3D wall;
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🎮 TOUCH EDITING SYSTEM - TAP TO CYCLE MODE
+    // 🎮 TOUCH EDITING SYSTEM - TAP TO CYCLE, DRAG TO ADJUST
     // ═══════════════════════════════════════════════════════════════════════════
-    private static final boolean EDIT_MODE = false;  // ✅ Posiciones finales fijadas 2026-02-05
+    private static final boolean EDIT_MODE = true;
 
-    // Modo de edición actual (0-14, tap para cambiar)
-    // 0-4:   Cat (X, Y, Z, Scale, Rot)
-    // 5-9:   Wall (X, Y, Z, Scale, Rot)
-    // 10-12: Moon (X, Y, Radius)
-    // 13-14: Buildings (yOffset, height)
-    private int editMode = 10;  // Empezar en luna
-    private static final int TOTAL_MODES = 15;
+    // Modos de calibración completa del gato
+    // 0: Rotation X    4: Position X
+    // 1: Rotation Y    5: Position Y
+    // 2: Rotation Z    6: Position Z
+    // 3: Scale
+    private int editMode = 1;  // Start on Rotation Y (most common)
+    private static final int TOTAL_MODES = 7;
     private static final String[] MODE_NAMES = {
-        "🐱 CAT X", "🐱 CAT Y", "🐱 CAT Z", "🐱 CAT SCALE", "🐱 CAT ROT",
-        "🧱 WALL X", "🧱 WALL Y", "🧱 WALL Z", "🧱 WALL SCALE", "🧱 WALL ROT",
-        "🌙 MOON X", "🌙 MOON Y", "🌙 MOON RADIUS",
-        "🏘️ BLDG OFFSET", "🏘️ BLDG HEIGHT"
+        "🐱 ROT X",
+        "🐱 ROT Y",
+        "🐱 ROT Z",
+        "🐱 SCALE",
+        "🐱 POS X",
+        "🐱 POS Y",
+        "🐱 POS Z"
     };
 
     // Touch tracking
     private float lastTouchY = 0f;
     private boolean isDragging = false;
-
-    // Sensibilidades (ajustables)
-    private static final float POS_SENSITIVITY = 0.002f;
-    private static final float SCALE_SENSITIVITY = 0.002f;
-    private static final float ROT_SENSITIVITY = 0.3f;
-    private static final float MOON_POS_SENSITIVITY = 0.0005f;
-    private static final float MOON_RADIUS_SENSITIVITY = 0.0002f;
-    private static final float BLDG_SENSITIVITY = 0.001f;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // ABSTRACT METHOD IMPLEMENTATIONS
@@ -205,138 +200,57 @@ public class MoonlitCatScene extends BaseVideoScene {
     }
 
     private void applyDragToCurrentMode(float delta) {
+        if (cat == null) return;
+
         String valueStr = "";
 
         switch (editMode) {
-            // === GATO ===
-            case 0: // Cat X
-                if (cat != null) {
-                    cat.setPosition(cat.getPosX() + delta * POS_SENSITIVITY, cat.getPosY(), cat.getPosZ());
-                    valueStr = String.format("%.3f", cat.getPosX());
-                }
+            case 0: // Rotation X
+                cat.setRotationX(cat.getRotationX() + delta * 0.3f);
+                valueStr = String.format("%.1f°", cat.getRotationX());
                 break;
-            case 1: // Cat Y
-                if (cat != null) {
-                    cat.setPosition(cat.getPosX(), cat.getPosY() + delta * POS_SENSITIVITY, cat.getPosZ());
-                    valueStr = String.format("%.3f", cat.getPosY());
-                }
+            case 1: // Rotation Y
+                cat.setRotationY(cat.getRotationY() + delta * 0.3f);
+                valueStr = String.format("%.1f°", cat.getRotationY());
                 break;
-            case 2: // Cat Z
-                if (cat != null) {
-                    cat.setPosition(cat.getPosX(), cat.getPosY(), cat.getPosZ() + delta * POS_SENSITIVITY);
-                    valueStr = String.format("%.3f", cat.getPosZ());
-                }
+            case 2: // Rotation Z
+                cat.setRotationZ(cat.getRotationZ() + delta * 0.3f);
+                valueStr = String.format("%.1f°", cat.getRotationZ());
                 break;
-            case 3: // Cat Scale
-                if (cat != null) {
-                    float newScale = Math.max(0.01f, cat.getScale() + delta * SCALE_SENSITIVITY);
-                    cat.setScale(newScale);
-                    valueStr = String.format("%.3f", cat.getScale());
-                }
+            case 3: // Scale
+                float newScale = Math.max(0.01f, cat.getScale() + delta * 0.001f);
+                cat.setScale(newScale);
+                valueStr = String.format("%.3f", cat.getScale());
                 break;
-            case 4: // Cat Rotation
-                if (cat != null) {
-                    cat.setRotationY(cat.getRotationY() + delta * ROT_SENSITIVITY);
-                    valueStr = String.format("%.1f°", cat.getRotationY());
-                }
+            case 4: // Position X
+                cat.setPosition(cat.getPosX() + delta * 0.002f, cat.getPosY(), cat.getPosZ());
+                valueStr = String.format("%.3f", cat.getPosX());
                 break;
-
-            // === PARED ===
-            case 5: // Wall X
-                if (wall != null) {
-                    wall.setPosition(wall.getPosX() + delta * POS_SENSITIVITY, wall.getPosY(), wall.getPosZ());
-                    valueStr = String.format("%.3f", wall.getPosX());
-                }
+            case 5: // Position Y
+                cat.setPosition(cat.getPosX(), cat.getPosY() + delta * 0.002f, cat.getPosZ());
+                valueStr = String.format("%.3f", cat.getPosY());
                 break;
-            case 6: // Wall Y
-                if (wall != null) {
-                    wall.setPosition(wall.getPosX(), wall.getPosY() + delta * POS_SENSITIVITY, wall.getPosZ());
-                    valueStr = String.format("%.3f", wall.getPosY());
-                }
-                break;
-            case 7: // Wall Z
-                if (wall != null) {
-                    wall.setPosition(wall.getPosX(), wall.getPosY(), wall.getPosZ() + delta * POS_SENSITIVITY);
-                    valueStr = String.format("%.3f", wall.getPosZ());
-                }
-                break;
-            case 8: // Wall Scale
-                if (wall != null) {
-                    float newScale = Math.max(0.01f, wall.getScale() + delta * SCALE_SENSITIVITY);
-                    wall.setScale(newScale);
-                    valueStr = String.format("%.3f", wall.getScale());
-                }
-                break;
-            case 9: // Wall Rotation
-                if (wall != null) {
-                    wall.setRotationY(wall.getRotationY() + delta * ROT_SENSITIVITY);
-                    valueStr = String.format("%.1f°", wall.getRotationY());
-                }
-                break;
-
-            // === LUNA ===
-            case 10: // Moon X
-                if (nightSky != null) {
-                    nightSky.setMoonPosition(nightSky.getMoonPosX() + delta * MOON_POS_SENSITIVITY, nightSky.getMoonPosY());
-                    valueStr = String.format("%.3f", nightSky.getMoonPosX());
-                }
-                break;
-            case 11: // Moon Y
-                if (nightSky != null) {
-                    nightSky.setMoonPosition(nightSky.getMoonPosX(), nightSky.getMoonPosY() + delta * MOON_POS_SENSITIVITY);
-                    valueStr = String.format("%.3f", nightSky.getMoonPosY());
-                }
-                break;
-            case 12: // Moon Radius
-                if (nightSky != null) {
-                    float newRadius = Math.max(0.02f, nightSky.getMoonRadius() + delta * MOON_RADIUS_SENSITIVITY);
-                    nightSky.setMoonRadius(newRadius);
-                    valueStr = String.format("%.4f", nightSky.getMoonRadius());
-                }
-                break;
-
-            // === EDIFICIOS ===
-            case 13: // Buildings Y Offset
-                if (buildings != null) {
-                    float newOffset = Math.max(0f, Math.min(0.5f, buildings.getYOffset() + delta * BLDG_SENSITIVITY));
-                    buildings.setYOffset(newOffset);
-                    valueStr = String.format("%.3f", buildings.getYOffset());
-                }
-                break;
-            case 14: // Buildings Height
-                if (buildings != null) {
-                    float newHeight = Math.max(0.1f, Math.min(0.9f, buildings.getHeight() + delta * BLDG_SENSITIVITY));
-                    buildings.setHeight(newHeight);
-                    valueStr = String.format("%.3f", buildings.getHeight());
-                }
+            case 6: // Position Z
+                cat.setPosition(cat.getPosX(), cat.getPosY(), cat.getPosZ() + delta * 0.002f);
+                valueStr = String.format("%.3f", cat.getPosZ());
                 break;
         }
 
-        // Log del valor actual mientras arrastras
         Log.d(TAG, "🎮 " + MODE_NAMES[editMode] + " = " + valueStr);
     }
 
     private void logCurrentPositions() {
-        Log.d(TAG, "╔══════════════════════════════════════════════════════════════════════════╗");
-        Log.d(TAG, "║  📍 POSICIONES ACTUALES - Copia estos valores al código:                 ║");
-        Log.d(TAG, "╠══════════════════════════════════════════════════════════════════════════╣");
+        Log.d(TAG, "╔═══════════════════════════════════════════════════════════════════╗");
+        Log.d(TAG, "║  🐱 CALIBRACIÓN DEL GATO                                         ║");
+        Log.d(TAG, "╠═══════════════════════════════════════════════════════════════════╣");
         if (cat != null) {
-            Log.d(TAG, String.format("║  🐱 CAT:  pos(%.3f, %.3f, %.3f) scale=%.3f rot=%.1f",
-                cat.getPosX(), cat.getPosY(), cat.getPosZ(), cat.getScale(), cat.getRotationY()));
+            Log.d(TAG, String.format("║  🔄 ROT:   X=%.1f° Y=%.1f° Z=%.1f°",
+                cat.getRotationX(), cat.getRotationY(), cat.getRotationZ()));
+            Log.d(TAG, String.format("║  📏 SCALE: %.3f", cat.getScale()));
+            Log.d(TAG, String.format("║  📍 POS:   (%.3f, %.3f, %.3f)",
+                cat.getPosX(), cat.getPosY(), cat.getPosZ()));
         }
-        if (wall != null) {
-            Log.d(TAG, String.format("║  🧱 WALL: pos(%.3f, %.3f, %.3f) scale=%.3f rot=%.1f",
-                wall.getPosX(), wall.getPosY(), wall.getPosZ(), wall.getScale(), wall.getRotationY()));
-        }
-        if (nightSky != null) {
-            Log.d(TAG, String.format("║  🌙 MOON: pos(%.3f, %.3f) radius=%.4f",
-                nightSky.getMoonPosX(), nightSky.getMoonPosY(), nightSky.getMoonRadius()));
-        }
-        if (buildings != null) {
-            Log.d(TAG, String.format("║  🏘️ BLDG: yOffset=%.3f height=%.3f",
-                buildings.getYOffset(), buildings.getHeight()));
-        }
-        Log.d(TAG, "╚══════════════════════════════════════════════════════════════════════════╝");
+        Log.d(TAG, "╚═══════════════════════════════════════════════════════════════════╝");
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
