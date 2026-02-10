@@ -658,11 +658,13 @@ public class ResourcePreloader {
 
         // No video - scene uses shader-based night sky
 
-        // 1. Modelo 3D del gato negro
-        addModelDownloadTask("Modelo Gato", "black_cat.obj", 3);
+        // 1. Modelo 3D del gato negro (UV limpio re-bakeado)
+        addModelDownloadTask("Modelo Gato", "black_cat_clean.obj", 3);
 
-        // 2. Textura del gato
-        addImageDownloadTask("Textura Gato", "black_cat_texture.png", 3);
+        // 2. Texturas del gato (atlas blink: open/half/closed)
+        addImageDownloadTask("Textura Gato Open", "cat_open.png", 3);
+        addImageDownloadTask("Textura Gato Half", "cat_half.png", 2);
+        addImageDownloadTask("Textura Gato Closed", "cat_closed.png", 2);
 
         // 3. Modelo 3D de la barda
         addModelDownloadTask("Modelo Barda", "brick_wall.obj", 3);

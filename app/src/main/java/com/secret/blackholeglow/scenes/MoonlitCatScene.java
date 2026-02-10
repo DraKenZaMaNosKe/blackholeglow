@@ -41,7 +41,7 @@ public class MoonlitCatScene extends BaseVideoScene {
     // ═══════════════════════════════════════════════════════════════════════════
     // 🎮 TOUCH EDITING SYSTEM - TAP TO CYCLE, DRAG TO ADJUST
     // ═══════════════════════════════════════════════════════════════════════════
-    private static final boolean EDIT_MODE = true;
+    private static final boolean EDIT_MODE = false;
 
     // Modos de calibración completa del gato
     // 0: Rotation X    4: Position X

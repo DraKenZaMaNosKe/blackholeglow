@@ -111,6 +111,18 @@ public class ModelConfig {
             "Zombie Cuerpo",
             1
         ));
+
+        // ═══════════════════════════════════════════════════════════════
+        // MOONLIT CAT SCENE - Gato bajo la luna
+        // ═══════════════════════════════════════════════════════════════
+
+        // Gato negro con UV limpio re-bakeado (Meshy AI + Blender)
+        MODELS.put("black_cat_clean.obj", new ResourceInfo(
+            SUPABASE_MODELS_URL + "black_cat_clean.obj",
+            260_000L,  // ~253 KB
+            "Gato Negro",
+            1
+        ));
     }
 
     // ═══════════════════════════════════════════════════════════════════════

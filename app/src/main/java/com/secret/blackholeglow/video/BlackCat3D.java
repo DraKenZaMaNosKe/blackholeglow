@@ -16,52 +16,43 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
 /**
- * BlackCat3D - Gato Negro con Parpadeo por Texture Swap
+ * BlackCat3D - Gato Negro con Parpadeo por Atlas Texture Swap
  *
- * Cuerpo y ojos son meshes separados. El parpadeo se logra
- * cambiando la textura de los ojos entre sprites (open/half/closed).
+ * Un solo mesh (el OBJ original). El parpadeo se logra intercambiando
+ * el atlas completo entre versiones con ojos abiertos/medio/cerrados.
  *
  * Assets:
- *   - black_cat_body.obj   (cuerpo estático)
- *   - black_cat_eyes.obj   (iris + esclera, posición relativa correcta)
- *   - black_cat_texture.png (textura del cuerpo)
- *   - eye_open.png, eye_half.png, eye_closed.png (sprites de ojos)
+ *   - black_cat_clean.obj    (modelo con UV limpio re-bakeado)
+ *   - cat_open.png           (atlas ojos abiertos)
+ *   - cat_half.png           (atlas ojos medio cerrados)
+ *   - cat_closed.png         (atlas ojos cerrados)
  */
 public class BlackCat3D {
     private static final String TAG = "BlackCat3D";
 
     private final Context context;
 
-    // Body mesh
-    private FloatBuffer bodyVertexBuffer;
-    private FloatBuffer bodyUvBuffer;
-    private IntBuffer bodyIndexBuffer;
-    private int bodyIndexCount;
-
-    // Eyes mesh
-    private FloatBuffer eyesVertexBuffer;
-    private FloatBuffer eyesUvBuffer;
-    private IntBuffer eyesIndexBuffer;
-    private int eyesIndexCount;
+    // Mesh
+    private FloatBuffer vertexBuffer;
+    private FloatBuffer uvBuffer;
+    private IntBuffer indexBuffer;
+    private int indexCount;
 
     // Shader
     private int shaderProgram = 0;
     private int aPositionLoc, aTexCoordLoc;
     private int uMVPMatrixLoc, uTimeLoc, uTextureLoc;
 
-    // Textures
-    private int bodyTextureId = 0;
-    private int[] eyeTextureIds = new int[3]; // 0=open, 1=half, 2=closed
-    private int currentEyeTexture = 0; // index into eyeTextureIds
-
-    // Blink animation
+    // Atlas textures for blink (same mesh, different atlas)
     private static final int EYE_OPEN = 0;
     private static final int EYE_HALF = 1;
     private static final int EYE_CLOSED = 2;
+    private int[] atlasTextureIds = new int[3];
+    private int currentTexture = 0;
+
+    // Blink animation
     private static final float BLINK_INTERVAL = 4.0f;
     private static final float BLINK_FRAME_DURATION = 0.07f;
-
-    // Blink state machine
     private float blinkTimer = 0f;
     private int blinkState = 0; // 0=idle, 1=closing, 2=opening
     private float blinkFrameTimer = 0f;
@@ -90,7 +81,6 @@ public class BlackCat3D {
     private int screenHeight = 1;
     private boolean modelLoaded = false;
 
-    // Shader - simplified, no morph targets
     private static final String VERTEX_SHADER =
         "precision highp float;\n" +
         "attribute vec3 aPosition;\n" +
@@ -128,44 +118,35 @@ public class BlackCat3D {
 
     private void initialize() {
         compileShader();
-        loadModels();
+        loadModel();
         loadTextures();
     }
 
-    private void loadModels() {
+    private void loadModel() {
         try {
-            // Load body mesh
-            ObjLoader.Mesh bodyMesh = ObjLoader.loadObj(context, "models/black_cat_body.obj", true);
-            bodyVertexBuffer = bodyMesh.vertexBuffer;
-            bodyUvBuffer = bodyMesh.uvBuffer;
-            bodyIndexCount = ObjLoader.countIndices(bodyMesh.faces);
-            bodyIndexBuffer = ObjLoader.buildIndexBuffer(bodyMesh.faces, bodyIndexCount);
-            Log.d(TAG, "Body loaded: " + bodyIndexCount + " indices");
-
-            // Load eyes mesh
-            ObjLoader.Mesh eyesMesh = ObjLoader.loadObj(context, "models/black_cat_eyes.obj", true);
-            eyesVertexBuffer = eyesMesh.vertexBuffer;
-            eyesUvBuffer = eyesMesh.uvBuffer;
-            eyesIndexCount = ObjLoader.countIndices(eyesMesh.faces);
-            eyesIndexBuffer = ObjLoader.buildIndexBuffer(eyesMesh.faces, eyesIndexCount);
-            Log.d(TAG, "Eyes loaded: " + eyesIndexCount + " indices");
-
+            ObjLoader.Mesh mesh = ObjLoader.loadObj(context, "models/black_cat_clean.obj", true);
+            vertexBuffer = mesh.vertexBuffer;
+            uvBuffer = mesh.uvBuffer;
+            indexCount = ObjLoader.countIndices(mesh.faces);
+            indexBuffer = ObjLoader.buildIndexBuffer(mesh.faces, indexCount);
             modelLoaded = true;
+            Log.d(TAG, "Model loaded: " + indexCount + " indices");
         } catch (IOException e) {
-            Log.e(TAG, "Error loading models: " + e.getMessage());
+            Log.e(TAG, "Error loading model: " + e.getMessage());
         }
     }
 
     private void loadTextures() {
-        // Body texture
-        bodyTextureId = loadTextureFromAsset("models/black_cat_texture.png");
+        // Atlas textures - open always exists, half/closed fallback to open
+        atlasTextureIds[EYE_OPEN] = loadTextureFromAsset("models/cat_open.png");
+        atlasTextureIds[EYE_HALF] = loadTextureFromAsset("models/cat_half.png");
+        atlasTextureIds[EYE_CLOSED] = loadTextureFromAsset("models/cat_closed.png");
 
-        // Eye textures for blink animation
-        eyeTextureIds[EYE_OPEN] = loadTextureFromAsset("models/eye_open.png");
-        eyeTextureIds[EYE_HALF] = loadTextureFromAsset("models/eye_half.png");
-        eyeTextureIds[EYE_CLOSED] = loadTextureFromAsset("models/eye_closed.png");
+        // Fallback: if half/closed don't exist yet, use open
+        if (atlasTextureIds[EYE_HALF] == 0) atlasTextureIds[EYE_HALF] = atlasTextureIds[EYE_OPEN];
+        if (atlasTextureIds[EYE_CLOSED] == 0) atlasTextureIds[EYE_CLOSED] = atlasTextureIds[EYE_OPEN];
 
-        currentEyeTexture = eyeTextureIds[EYE_OPEN];
+        currentTexture = atlasTextureIds[EYE_OPEN];
     }
 
     private int loadTextureFromAsset(String path) {
@@ -190,7 +171,7 @@ public class BlackCat3D {
                 return textures[0];
             }
         } catch (IOException e) {
-            Log.e(TAG, "Error loading texture " + path + ": " + e.getMessage());
+            Log.w(TAG, "Texture not found: " + path + " (will use fallback)");
         } finally {
             if (is != null) try { is.close(); } catch (IOException ignored) {}
         }
@@ -257,9 +238,9 @@ public class BlackCat3D {
         blinkTimer += deltaTime;
 
         switch (blinkState) {
-            case 0: // Idle - waiting for next blink
+            case 0: // Idle
                 if (blinkTimer >= BLINK_INTERVAL) {
-                    blinkState = 1; // Start closing
+                    blinkState = 1;
                     blinkFrameTimer = 0f;
                     blinkFrame = EYE_OPEN;
                 }
@@ -272,7 +253,7 @@ public class BlackCat3D {
                     blinkFrame++;
                     if (blinkFrame > EYE_CLOSED) {
                         blinkFrame = EYE_CLOSED;
-                        blinkState = 2; // Start opening
+                        blinkState = 2;
                     }
                 }
                 break;
@@ -284,14 +265,14 @@ public class BlackCat3D {
                     blinkFrame--;
                     if (blinkFrame < EYE_OPEN) {
                         blinkFrame = EYE_OPEN;
-                        blinkState = 0; // Back to idle
+                        blinkState = 0;
                         blinkTimer = 0f;
                     }
                 }
                 break;
         }
 
-        currentEyeTexture = eyeTextureIds[blinkFrame];
+        currentTexture = atlasTextureIds[blinkFrame];
     }
 
     public void draw() {
@@ -317,41 +298,24 @@ public class BlackCat3D {
         GLES20.glUniformMatrix4fv(uMVPMatrixLoc, 1, false, mvpMatrix, 0);
         GLES20.glUniform1f(uTimeLoc, time);
 
-        // === DRAW BODY ===
-        if (bodyVertexBuffer != null && bodyIndexBuffer != null && bodyTextureId != 0) {
-            GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, bodyTextureId);
-            GLES20.glUniform1i(uTextureLoc, 0);
+        // Bind current atlas texture (swapped for blink)
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, currentTexture);
+        GLES20.glUniform1i(uTextureLoc, 0);
 
-            bodyVertexBuffer.position(0);
-            GLES20.glEnableVertexAttribArray(aPositionLoc);
-            GLES20.glVertexAttribPointer(aPositionLoc, 3, GLES20.GL_FLOAT, false, 0, bodyVertexBuffer);
+        // Draw single mesh
+        vertexBuffer.position(0);
+        GLES20.glEnableVertexAttribArray(aPositionLoc);
+        GLES20.glVertexAttribPointer(aPositionLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
 
-            if (bodyUvBuffer != null) {
-                bodyUvBuffer.position(0);
-                GLES20.glEnableVertexAttribArray(aTexCoordLoc);
-                GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 0, bodyUvBuffer);
-            }
-
-            bodyIndexBuffer.position(0);
-            GLES20.glDrawElements(GLES20.GL_TRIANGLES, bodyIndexCount, GLES20.GL_UNSIGNED_INT, bodyIndexBuffer);
+        if (uvBuffer != null) {
+            uvBuffer.position(0);
+            GLES20.glEnableVertexAttribArray(aTexCoordLoc);
+            GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 0, uvBuffer);
         }
 
-        // === DRAW EYES (with swappable texture) ===
-        if (eyesVertexBuffer != null && eyesIndexBuffer != null && currentEyeTexture != 0) {
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, currentEyeTexture);
-
-            eyesVertexBuffer.position(0);
-            GLES20.glVertexAttribPointer(aPositionLoc, 3, GLES20.GL_FLOAT, false, 0, eyesVertexBuffer);
-
-            if (eyesUvBuffer != null) {
-                eyesUvBuffer.position(0);
-                GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 0, eyesUvBuffer);
-            }
-
-            eyesIndexBuffer.position(0);
-            GLES20.glDrawElements(GLES20.GL_TRIANGLES, eyesIndexCount, GLES20.GL_UNSIGNED_INT, eyesIndexBuffer);
-        }
+        indexBuffer.position(0);
+        GLES20.glDrawElements(GLES20.GL_TRIANGLES, indexCount, GLES20.GL_UNSIGNED_INT, indexBuffer);
 
         GLES20.glDisableVertexAttribArray(aPositionLoc);
         GLES20.glDisableVertexAttribArray(aTexCoordLoc);
@@ -378,22 +342,6 @@ public class BlackCat3D {
     public float getRotationY() { return rotationY; }
     public float getRotationZ() { return rotationZ; }
 
-    // Legacy eye getters/setters for MoonlitCatScene compatibility
-    private float eyeLeftX, eyeLeftY, eyeLeftZ;
-    private float eyeRightX, eyeRightY, eyeRightZ;
-    private float eyeRadius = 0.5f;
-
-    public void setEyeLeft(float x, float y, float z) { eyeLeftX = x; eyeLeftY = y; eyeLeftZ = z; }
-    public void setEyeRight(float x, float y, float z) { eyeRightX = x; eyeRightY = y; eyeRightZ = z; }
-    public void setEyeRadius(float r) { eyeRadius = r; }
-    public float getEyeLeftX() { return eyeLeftX; }
-    public float getEyeLeftY() { return eyeLeftY; }
-    public float getEyeLeftZ() { return eyeLeftZ; }
-    public float getEyeRightX() { return eyeRightX; }
-    public float getEyeRightY() { return eyeRightY; }
-    public float getEyeRightZ() { return eyeRightZ; }
-    public float getEyeRadius() { return eyeRadius; }
-
     // ═══════════════════════════════════════════════════════════════
     // RELEASE
     // ═══════════════════════════════════════════════════════════════
@@ -403,14 +351,13 @@ public class BlackCat3D {
             GLES20.glDeleteProgram(shaderProgram);
             shaderProgram = 0;
         }
-        if (bodyTextureId != 0) {
-            GLES20.glDeleteTextures(1, new int[]{bodyTextureId}, 0);
-            bodyTextureId = 0;
-        }
-        for (int i = 0; i < eyeTextureIds.length; i++) {
-            if (eyeTextureIds[i] != 0) {
-                GLES20.glDeleteTextures(1, new int[]{eyeTextureIds[i]}, 0);
-                eyeTextureIds[i] = 0;
+        // Delete unique texture IDs (avoid double-delete if fallback shares ID)
+        int lastDeleted = 0;
+        for (int i = 0; i < atlasTextureIds.length; i++) {
+            if (atlasTextureIds[i] != 0 && atlasTextureIds[i] != lastDeleted) {
+                GLES20.glDeleteTextures(1, new int[]{atlasTextureIds[i]}, 0);
+                lastDeleted = atlasTextureIds[i];
+                atlasTextureIds[i] = 0;
             }
         }
         modelLoaded = false;

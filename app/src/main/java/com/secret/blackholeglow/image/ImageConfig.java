@@ -269,6 +269,31 @@ public class ImageConfig {
             1
         ));
 
+        // ═══════════════════════════════════════════════════════════════
+        // MOONLIT CAT SCENE - Atlas blink (open/half/closed)
+        // ═══════════════════════════════════════════════════════════════
+
+        IMAGES.put("cat_open.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "cat_open.png",
+            890_000L,  // ~869 KB
+            "Gato Ojos Abiertos",
+            1
+        ));
+
+        IMAGES.put("cat_half.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "cat_half.png",
+            763_000L,  // ~745 KB
+            "Gato Ojos Semicerrados",
+            1
+        ));
+
+        IMAGES.put("cat_closed.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "cat_closed.png",
+            693_000L,  // ~677 KB
+            "Gato Ojos Cerrados",
+            1
+        ));
+
     }
 
     // ═══════════════════════════════════════════════════════════════════════
