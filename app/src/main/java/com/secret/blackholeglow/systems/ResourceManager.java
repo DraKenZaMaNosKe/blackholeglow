@@ -74,6 +74,9 @@ public class ResourceManager implements TextureLoader {
     private int programsLinked = 0;
     private long totalTextureMemory = 0;  // Estimado en bytes
 
+    // 🧠 Memory tier: inSampleSize propagado desde TextureManager
+    private int inSampleSize = 1;
+
     // ═══════════════════════════════════════════════════════════════
     // 🔧 INICIALIZACIÓN
     // ═══════════════════════════════════════════════════════════════
@@ -109,6 +112,15 @@ public class ResourceManager implements TextureLoader {
      */
     public boolean isInitialized() {
         return initialized && context != null;
+    }
+
+    /**
+     * 🧠 Configura el inSampleSize para texturas de recursos.
+     * Propagado desde TextureManager según el tier de memoria.
+     */
+    public void setInSampleSize(int inSampleSize) {
+        this.inSampleSize = Math.max(1, inSampleSize);
+        Log.d(TAG, "🧠 inSampleSize configurado: " + this.inSampleSize);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -171,9 +183,10 @@ public class ResourceManager implements TextureLoader {
             return 0;
         }
 
-        // Decodificar bitmap
+        // Decodificar bitmap con inSampleSize según tier de memoria
         BitmapFactory.Options opts = new BitmapFactory.Options();
         opts.inScaled = false;
+        opts.inSampleSize = inSampleSize;
         opts.inPreferredConfig = Bitmap.Config.ARGB_8888;
 
         Bitmap bmp = BitmapFactory.decodeResource(context.getResources(), resourceId, opts);

@@ -1,6 +1,7 @@
 // TextureManager.java
 package com.secret.blackholeglow;
 
+import android.app.ActivityManager;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -8,7 +9,9 @@ import android.opengl.GLES30;
 import android.opengl.GLUtils;
 import android.util.Log;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -17,10 +20,24 @@ import java.util.Map;
  */
 public class TextureManager implements TextureLoader {
 
+    // ═══════════════════════════════════════════════════════════════
+    // 🧠 MEMORY TIER — Adaptación automática según RAM del dispositivo
+    // ═══════════════════════════════════════════════════════════════
+    public enum MemoryTier {
+        LOW,     // < 4 GB RAM → max 1024px, inSampleSize=2
+        MEDIUM,  // 4-6 GB RAM → max 1536px, inSampleSize=1
+        HIGH     // > 6 GB RAM → max 2048px, inSampleSize=1
+    }
+
     private final Context context;
     private final Map<Integer,Integer> textureCache = new HashMap<>();
     private final Map<String, Integer> fileTextureCache = new HashMap<>();
     private boolean initialized = false;
+
+    // Memory tier configuration
+    private MemoryTier memoryTier = MemoryTier.MEDIUM;
+    private int maxTextureDimension = 1536;
+    private int defaultInSampleSize = 1;
 
     // 🛡️ FALLBACK: Textura de error (1x1 pixel magenta para debugging)
     private int fallbackTextureId = 0;
@@ -39,11 +56,51 @@ public class TextureManager implements TextureLoader {
         if (initialized) return true;
         initialized = true;
 
+        // 🧠 Detectar tier de memoria del dispositivo
+        detectMemoryTier();
+
         // 🛡️ Crear textura de fallback para errores
         createFallbackTexture();
 
-        Log.d("TextureManager", "Inicializado con textura de fallback.");
+        Log.d("TextureManager", "Inicializado - Memory tier: " + memoryTier
+                + ", maxDim=" + maxTextureDimension + ", inSampleSize=" + defaultInSampleSize);
         return true;
+    }
+
+    /**
+     * 🧠 Detecta la RAM total del dispositivo y configura límites de textura.
+     * LOW  (<4 GB): cap 1024px, inSampleSize=2 → ~50-75% menos memoria GPU
+     * MEDIUM (4-6 GB): cap 1536px, inSampleSize=1
+     * HIGH (>6 GB): cap 2048px, inSampleSize=1
+     */
+    private void detectMemoryTier() {
+        try {
+            ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+            ActivityManager.MemoryInfo memInfo = new ActivityManager.MemoryInfo();
+            am.getMemoryInfo(memInfo);
+
+            long totalGB = memInfo.totalMem / (1024L * 1024L * 1024L);
+            Log.d("TextureManager", "Device RAM: " + totalGB + " GB (" + memInfo.totalMem + " bytes)");
+
+            if (totalGB < 4) {
+                memoryTier = MemoryTier.LOW;
+                maxTextureDimension = 1024;
+                defaultInSampleSize = 2;
+            } else if (totalGB <= 6) {
+                memoryTier = MemoryTier.MEDIUM;
+                maxTextureDimension = 1536;
+                defaultInSampleSize = 1;
+            } else {
+                memoryTier = MemoryTier.HIGH;
+                maxTextureDimension = 2048;
+                defaultInSampleSize = 1;
+            }
+        } catch (Exception e) {
+            Log.w("TextureManager", "Could not detect memory tier, using MEDIUM: " + e.getMessage());
+            memoryTier = MemoryTier.MEDIUM;
+            maxTextureDimension = 1536;
+            defaultInSampleSize = 1;
+        }
     }
 
     /**
@@ -98,12 +155,12 @@ public class TextureManager implements TextureLoader {
 
         Integer texId = textureCache.get(resourceId);
         if (texId == null) {
-            // Carga bajo demanda
+            // Carga bajo demanda con inSampleSize según tier de memoria
             try {
-                texId = ShaderUtils.loadTexture(context, resourceId);
+                texId = ShaderUtils.loadTexture(context, resourceId, defaultInSampleSize);
                 textureCache.put(resourceId, texId);
                 Log.d("TextureManager", "Textura cargada y cacheada: resId="
-                        + resourceId + " → texId=" + texId);
+                        + resourceId + " → texId=" + texId + " (inSampleSize=" + defaultInSampleSize + ")");
             } catch (RuntimeException e) {
                 Log.e("TextureManager", "Error cargando textura resId=" + resourceId, e);
                 return 0;
@@ -195,14 +252,37 @@ public class TextureManager implements TextureLoader {
         }
 
         try {
-            // Cargar bitmap desde archivo
+            // 🧠 STEP 1: Decode bounds only to determine dimensions
+            BitmapFactory.Options boundsOpts = new BitmapFactory.Options();
+            boundsOpts.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(filePath, boundsOpts);
+
+            int origWidth = boundsOpts.outWidth;
+            int origHeight = boundsOpts.outHeight;
+
+            // 🧠 STEP 2: Calculate inSampleSize to cap at maxTextureDimension
+            int inSampleSize = 1;
+            if (origWidth > maxTextureDimension || origHeight > maxTextureDimension) {
+                int maxDim = Math.max(origWidth, origHeight);
+                while (maxDim / inSampleSize > maxTextureDimension) {
+                    inSampleSize *= 2;
+                }
+            }
+
             // 🔧 FIX MEMORY: Prefer RGB_565 (16-bit, 2 bytes/pixel) over ARGB_8888 (32-bit, 4 bytes/pixel).
             // For a 1024x1024 texture: 4 MB → 2 MB on GPU. Halves memory for opaque images.
             // The decoder automatically upgrades to ARGB_8888 if the image has an alpha channel (PNG with transparency).
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inScaled = false;  // No escalar
+            options.inSampleSize = inSampleSize;
             options.inPreferredConfig = Bitmap.Config.RGB_565;
             Bitmap bitmap = BitmapFactory.decodeFile(filePath, options);
+
+            if (inSampleSize > 1) {
+                Log.d("TextureManager", "File texture downscaled: " + origWidth + "x" + origHeight
+                        + " → " + (bitmap != null ? bitmap.getWidth() + "x" + bitmap.getHeight() : "null")
+                        + " (inSampleSize=" + inSampleSize + ", maxDim=" + maxTextureDimension + ")");
+            }
 
             if (bitmap == null) {
                 Log.e("TextureManager", "🛡️ No se pudo decodificar: " + filePath);
@@ -245,6 +325,43 @@ public class TextureManager implements TextureLoader {
             Log.e("TextureManager", "🛡️ Error cargando textura: " + filePath + " - " + e.getMessage());
             return getFallbackTexture();
         }
+    }
+
+    /**
+     * 🧠 Libera SOLO las texturas cargadas desde archivo (Supabase downloads).
+     * Mantiene las texturas de recursos (drawable) en caché.
+     * Llamar al cambiar de escena o bajo presión de memoria.
+     */
+    public void releaseFileTextures() {
+        if (fileTextureCache.isEmpty()) return;
+
+        int count = 0;
+        List<String> keys = new ArrayList<>(fileTextureCache.keySet());
+        for (String key : keys) {
+            Integer texId = fileTextureCache.remove(key);
+            if (texId != null && texId != 0) {
+                int[] textures = {texId};
+                GLES30.glDeleteTextures(1, textures, 0);
+                count++;
+            }
+        }
+
+        Log.d("TextureManager", "🧠 " + count + " file textures released (resource textures kept)");
+    }
+
+    /**
+     * 🧠 Getters for memory tier configuration
+     */
+    public MemoryTier getMemoryTier() {
+        return memoryTier;
+    }
+
+    public int getMaxTextureDimension() {
+        return maxTextureDimension;
+    }
+
+    public int getDefaultInSampleSize() {
+        return defaultInSampleSize;
     }
 
     /**

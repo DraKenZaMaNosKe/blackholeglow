@@ -75,6 +75,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     private volatile boolean pendingSceneDestroy = false;
     private volatile boolean pendingReturnToPanel = false;
     private volatile boolean pendingSceneAutoLoad = false;  // 🔧 FIX FREEZE: Auto-cargar nueva escena después de destruir
+    private volatile boolean pendingFileTextureRelease = false;  // 🧠 Release file textures on GL thread
     private final Object pendingFlagsLock = new Object();  // 🔧 Lock for atomic multi-flag reads/writes
     private int resourceCheckRetries = 0;  // 🛡️ Contador de reintentos para verificación de recursos
     private static final int MAX_RESOURCE_CHECK_RETRIES = 300;  // ~10 segundos a 30fps
@@ -216,6 +217,15 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             }
         }
 
+        // 🧠 Process pending file texture release on GL thread (from onTrimMemory)
+        if (pendingFileTextureRelease) {
+            pendingFileTextureRelease = false;
+            if (textureManager != null) {
+                textureManager.releaseFileTextures();
+                Log.d(TAG, "🧠 [GL Thread] File textures released due to memory pressure");
+            }
+        }
+
         // 🔧 FIX ANR: Auto-cargar escena pendiente (después de destrucción O en primera carga)
         // Esto se ejecuta en onDrawFrame() en lugar de onSurfaceCreated() para evitar ANR
         if (pendingSceneAutoLoad) {
@@ -230,8 +240,19 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
                                 + " (intento " + resourceCheckRetries + "/" + MAX_RESOURCE_CHECK_RETRIES + ")");
                     }
                     if (resourceCheckRetries >= MAX_RESOURCE_CHECK_RETRIES) {
-                        // Timeout: cargar de todos modos (la escena manejará el video faltante)
-                        Log.w(TAG, "⚠️ [GL Thread] Timeout esperando recursos, cargando sin verificar: " + pendingSceneName);
+                        // 🛡️ FIX BLACK SCREEN: NO cargar escena sin recursos - volver al panel
+                        Log.e(TAG, "🛡️ [GL Thread] Timeout esperando recursos - abortando carga: " + pendingSceneName);
+                        pendingSceneAutoLoad = false;
+                        resourceCheckRetries = 0;
+                        // Volver al panel de forma segura en vez de mostrar pantalla negra
+                        if (modeController != null) {
+                            modeController.stopWallpaper();
+                        }
+                        if (panelRenderer != null) {
+                            panelRenderer.onReturnToPanel();
+                            panelRenderer.resume();
+                        }
+                        return;
                     } else {
                         // No está listo, reintentar en el siguiente frame
                         return;
@@ -548,10 +569,25 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             @Override
             public void onPreloadError(String error) {
                 Log.e(TAG, "❌ Error en ResourcePreloader: " + error);
-                // Aún así intentar cargar (los recursos pueden estar parcialmente disponibles)
-                panelRenderer.updateLoadingProgress(1.0f, "Iniciando...");
-                resourcesReady = true;
-                resourcesReadyTimer = 0f;
+                // 🛡️ FIX BLACK SCREEN: Verificar si los recursos existen a pesar del error
+                if (ResourcePreloader.areSceneResourcesReady(context, pendingSceneName)) {
+                    // Recursos disponibles (descargados previamente) - continuar
+                    Log.d(TAG, "🛡️ Recursos disponibles a pesar de error - continuando");
+                    panelRenderer.updateLoadingProgress(1.0f, "Iniciando...");
+                    resourcesReady = true;
+                    resourcesReadyTimer = 0f;
+                } else {
+                    // 🛡️ Recursos NO disponibles - volver al panel (no cargar escena rota)
+                    Log.e(TAG, "🛡️ Recursos NO disponibles - abortando carga");
+                    panelRenderer.updateLoadingProgress(0f, "Error: " + error);
+                    if (modeController != null) {
+                        modeController.stopWallpaper();
+                    }
+                    if (panelRenderer != null) {
+                        panelRenderer.onReturnToPanel();
+                        panelRenderer.resume();
+                    }
+                }
             }
         });
 
@@ -581,6 +617,11 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         resources = ResourceManager.get();
         resources.init(context);
         textureManager = new TextureManager(context);
+        textureManager.initialize();
+        // 🧠 Propagate memory tier to ResourceManager
+        resources.setInSampleSize(textureManager.getDefaultInSampleSize());
+        Log.d(TAG, "🧠 Memory tier: " + textureManager.getMemoryTier()
+                + ", maxDim=" + textureManager.getMaxTextureDimension());
         // 🎵 Usar constructor con Context para habilitar auto-resume de música
         musicVisualizer = new MusicVisualizer(context);
         musicVisualizer.initialize();
@@ -831,6 +872,9 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
                 resources.releaseSceneResources();
                 Log.d(TAG, "📦 ResourceManager scene resources released (level=" + level + ")");
             }
+            // 🧠 Schedule file texture release on GL thread
+            pendingFileTextureRelease = true;
+            Log.d(TAG, "🧠 File texture release scheduled (level=" + level + ")");
         }
 
         // Level 15 (RUNNING_CRITICAL): Forzar GC y log de emergencia

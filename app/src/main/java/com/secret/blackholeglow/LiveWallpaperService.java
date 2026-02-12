@@ -65,7 +65,10 @@ public class LiveWallpaperService extends WallpaperService {
     public void onTrimMemory(int level) {
         super.onTrimMemory(level);
 
-        if (level >= ComponentCallbacks2.TRIM_MEMORY_MODERATE) {
+        // 🔧 FIX: Was TRIM_MEMORY_MODERATE (60), which blocked WallpaperDirector's
+        // level 5/10/15 handlers from ever executing. Changed to RUNNING_MODERATE (5)
+        // so progressive memory release works as designed.
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_MODERATE) {
             Log.w(TAG, "⚠️ onTrimMemory level=" + level + " - delegando a Engine");
             if (activeEngine != null) {
                 activeEngine.handleTrimMemory(level);

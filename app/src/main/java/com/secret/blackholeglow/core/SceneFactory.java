@@ -233,6 +233,12 @@ public class SceneFactory {
             currentScene.onDestroy();
             currentScene = null;
             currentSceneName = "";
+
+            // 🧠 Liberar texturas de archivo (Supabase downloads) inmediatamente.
+            // Las texturas de recursos (drawable) se mantienen en caché.
+            if (textureManager != null) {
+                textureManager.releaseFileTextures();
+            }
         }
     }
 

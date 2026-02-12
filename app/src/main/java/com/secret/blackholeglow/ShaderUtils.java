@@ -118,10 +118,21 @@ public class ShaderUtils {
     }
 
     /**
-     * Carga una textura desde resourceId, genera mipmaps,
-     * aplica wrap REPEAT y filtros apropiados. NO habilita blending.
+     * Carga una textura desde resourceId con inSampleSize=1.
+     * Delegates to the overload with explicit inSampleSize.
      */
     public static int loadTexture(Context context, int resourceId) {
+        return loadTexture(context, resourceId, 1);
+    }
+
+    /**
+     * Carga una textura desde resourceId con inSampleSize configurable.
+     * Genera mipmaps, aplica wrap REPEAT y filtros apropiados. NO habilita blending.
+     *
+     * @param inSampleSize Factor de sub-muestreo (1=original, 2=mitad, 4=cuarto).
+     *                     Usado por TextureManager en dispositivos LOW RAM.
+     */
+    public static int loadTexture(Context context, int resourceId, int inSampleSize) {
         // Generar handle
         final int[] handle = new int[1];
         GLES30.glGenTextures(1, handle, 0);
@@ -133,6 +144,7 @@ public class ShaderUtils {
         // Decodificar bitmap sin escalado y con formato ARGB_8888 (canal alpha)
         BitmapFactory.Options opts = new BitmapFactory.Options();
         opts.inScaled = false;
+        opts.inSampleSize = inSampleSize;
         opts.inPreferredConfig = Bitmap.Config.ARGB_8888; // FORZAR ALPHA CHANNEL
         Bitmap bmp = BitmapFactory.decodeResource(
                 context.getResources(), resourceId, opts
@@ -150,6 +162,12 @@ public class ShaderUtils {
             bmp.recycle();
             bmp = converted;
             Log.d(TAG, "Bitmap convertido a ARGB_8888 para soporte de transparencia");
+        }
+
+        if (inSampleSize > 1) {
+            Log.d(TAG, "Resource texture downscaled: resId=" + resourceId
+                    + " → " + bmp.getWidth() + "x" + bmp.getHeight()
+                    + " (inSampleSize=" + inSampleSize + ")");
         }
 
         // Bind y subir a GPU
