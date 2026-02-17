@@ -6,6 +6,8 @@ import android.content.ComponentCallbacks2;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.service.wallpaper.WallpaperService;
 import android.util.Log;
 import android.view.SurfaceHolder;
@@ -91,6 +93,16 @@ public class LiveWallpaperService extends WallpaperService {
         // 🔧 FIX: Debounce para onVisibilityChanged (evita stuttering en Samsung)
         private long lastVisibilityChangeTime = 0;
         private static final long VISIBILITY_DEBOUNCE_MS = 300;
+
+        // 🎬 Auto-play: arranca wallpaper automáticamente al volver al home
+        private final Handler autoPlayHandler = new Handler(Looper.getMainLooper());
+        private static final long AUTO_PLAY_DELAY_MS = 500;
+        private final Runnable autoPlayRunnable = () -> {
+            if (wallpaperDirector != null) {
+                Log.d(TAG, "▶️ Auto-play: iniciando wallpaper automáticamente");
+                wallpaperDirector.startLoading();
+            }
+        };
 
         // ═══════════════════════════════════════════════════════════════
         // 📱 DETECCIÓN DE EVENTOS DEL SISTEMA
@@ -299,6 +311,7 @@ public class LiveWallpaperService extends WallpaperService {
                             return;
                         }
                         lastVisibilityChangeTime = now;
+                        autoPlayHandler.removeCallbacks(autoPlayRunnable);  // Cancelar auto-play pendiente
                         stopRendering();
                         if (wallpaperDirector != null) {
                             wallpaperDirector.pause();
@@ -321,6 +334,15 @@ public class LiveWallpaperService extends WallpaperService {
             if (wallpaperDirector != null) {
                 wallpaperDirector.changeScene(wallpaperName);
                 Log.d(TAG, "🎬 Escena verificada: " + wallpaperName);
+
+                // 🔋 AUTO-PANEL + AUTO-PLAY: Al volver al home, forzar panel mode
+                // y programar auto-play tras 500ms (evita escena pesada en app-switching rápido)
+                // En preview del sistema (wallpaper picker), NO forzar panel
+                if (!isSystemPreviewMode) {
+                    wallpaperDirector.switchToPanelMode();
+                    autoPlayHandler.removeCallbacks(autoPlayRunnable);
+                    autoPlayHandler.postDelayed(autoPlayRunnable, AUTO_PLAY_DELAY_MS);
+                }
             }
 
             if (currentState == RenderState.RUNNING) {

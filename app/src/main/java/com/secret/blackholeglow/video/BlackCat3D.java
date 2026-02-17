@@ -9,7 +9,10 @@ import android.opengl.Matrix;
 import android.util.Log;
 
 import com.secret.blackholeglow.util.ObjLoader;
+import com.secret.blackholeglow.image.ImageDownloadManager;
+import com.secret.blackholeglow.model.ModelDownloadManager;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.FloatBuffer;
@@ -124,7 +127,19 @@ public class BlackCat3D {
 
     private void loadModel() {
         try {
-            ObjLoader.Mesh mesh = ObjLoader.loadObj(context, "models/black_cat_clean.obj", true);
+            ObjLoader.Mesh mesh;
+            // Prioridad: descarga remota > assets locales
+            ModelDownloadManager modelMgr = ModelDownloadManager.getInstance(context);
+            String modelPath = modelMgr.getModelPath("black_cat_clean.obj");
+
+            if (modelPath != null && new File(modelPath).exists()) {
+                Log.d(TAG, "🌐 Modelo desde descarga: " + modelPath);
+                mesh = ObjLoader.loadObjFromFile(modelPath, true);
+            } else {
+                Log.d(TAG, "📂 Modelo desde assets (fallback)");
+                mesh = ObjLoader.loadObj(context, "models/black_cat_clean.obj", true);
+            }
+
             vertexBuffer = mesh.vertexBuffer;
             uvBuffer = mesh.uvBuffer;
             indexCount = ObjLoader.countIndices(mesh.faces);
@@ -137,16 +152,54 @@ public class BlackCat3D {
     }
 
     private void loadTextures() {
-        // Atlas textures - open always exists, half/closed fallback to open
-        atlasTextureIds[EYE_OPEN] = loadTextureFromAsset("models/cat_open.png");
-        atlasTextureIds[EYE_HALF] = loadTextureFromAsset("models/cat_half.png");
-        atlasTextureIds[EYE_CLOSED] = loadTextureFromAsset("models/cat_closed.png");
+        // Prioridad: descarga remota > assets locales
+        atlasTextureIds[EYE_OPEN] = loadTexture("cat_open.png", "models/cat_open.png");
+        atlasTextureIds[EYE_HALF] = loadTexture("cat_half.png", "models/cat_half.png");
+        atlasTextureIds[EYE_CLOSED] = loadTexture("cat_closed.png", "models/cat_closed.png");
 
-        // Fallback: if half/closed don't exist yet, use open
+        // Fallback: si half/closed no existen, usar open
         if (atlasTextureIds[EYE_HALF] == 0) atlasTextureIds[EYE_HALF] = atlasTextureIds[EYE_OPEN];
         if (atlasTextureIds[EYE_CLOSED] == 0) atlasTextureIds[EYE_CLOSED] = atlasTextureIds[EYE_OPEN];
 
         currentTexture = atlasTextureIds[EYE_OPEN];
+    }
+
+    /**
+     * Carga textura: primero intenta desde descarga remota, luego fallback a assets.
+     * Optimizado: downscale 2048→1024 para reducir VRAM.
+     */
+    private int loadTexture(String remoteFileName, String assetPath) {
+        // Intentar desde descarga remota
+        ImageDownloadManager imageMgr = ImageDownloadManager.getInstance(context);
+        String downloadPath = imageMgr.getImagePath(remoteFileName);
+
+        if (downloadPath != null && new File(downloadPath).exists()) {
+            int texId = loadTextureFromFile(downloadPath);
+            if (texId != 0) {
+                Log.d(TAG, "🌐 Textura remota: " + remoteFileName + " id=" + texId);
+                return texId;
+            }
+        }
+
+        // Fallback: assets locales
+        return loadTextureFromAsset(assetPath);
+    }
+
+    private int loadTextureFromFile(String filePath) {
+        try {
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inScaled = false;
+            options.inSampleSize = 2;  // 2048→1024
+            Bitmap bitmap = BitmapFactory.decodeFile(filePath, options);
+            if (bitmap != null) {
+                int texId = uploadBitmapToGL(bitmap);
+                bitmap.recycle();
+                return texId;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error loading texture from file: " + filePath);
+        }
+        return 0;
     }
 
     private int loadTextureFromAsset(String path) {
@@ -155,20 +208,13 @@ public class BlackCat3D {
             is = context.getAssets().open(path);
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inScaled = false;
+            options.inSampleSize = 2;  // 2048→1024
             Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
             if (bitmap != null) {
-                int[] textures = new int[1];
-                GLES20.glGenTextures(1, textures, 0);
-                GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[0]);
-                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR_MIPMAP_LINEAR);
-                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
-                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
-                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
-                GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
-                GLES20.glGenerateMipmap(GLES20.GL_TEXTURE_2D);
+                int texId = uploadBitmapToGL(bitmap);
                 bitmap.recycle();
-                Log.d(TAG, "Texture loaded: " + path + " id=" + textures[0]);
-                return textures[0];
+                Log.d(TAG, "📂 Textura assets: " + path + " id=" + texId);
+                return texId;
             }
         } catch (IOException e) {
             Log.w(TAG, "Texture not found: " + path + " (will use fallback)");
@@ -176,6 +222,19 @@ public class BlackCat3D {
             if (is != null) try { is.close(); } catch (IOException ignored) {}
         }
         return 0;
+    }
+
+    private int uploadBitmapToGL(Bitmap bitmap) {
+        int[] textures = new int[1];
+        GLES20.glGenTextures(1, textures, 0);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[0]);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR_MIPMAP_LINEAR);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
+        GLES20.glGenerateMipmap(GLES20.GL_TEXTURE_2D);
+        return textures[0];
     }
 
     private void compileShader() {

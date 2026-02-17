@@ -294,6 +294,110 @@ public class ImageConfig {
             1
         ));
 
+        // Silueta de edificios (Moonlit Cat - capa 2D)
+        IMAGES.put("buildings_silhouette.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "buildings_silhouette.png",
+            360_000L,  // ~348 KB
+            "Silueta Edificios",
+            1
+        ));
+
+        // Textura luna (Moonlit Cat - NightSkyRenderer)
+        IMAGES.put("moon_texture.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "moon_texture.png",
+            190_000L,  // ~181 KB
+            "Textura Luna",
+            1
+        ));
+
+        // Textura barda de ladrillos (Meshy AI)
+        IMAGES.put("brick_wall_texture.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "brick_wall_texture.png",
+            7_254_000L,  // ~6.9 MB
+            "Textura Barda Ladrillos",
+            1
+        ));
+
+        // ═══════════════════════════════════════════════════════════════
+        // 🏯 JAPANESE GARDEN SCENE - 8 capas parallax 2.5D
+        // ═══════════════════════════════════════════════════════════════
+
+        IMAGES.put("sky_moon.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "sky_moon.png",
+            84_000L,  // ~84 KB
+            "Cielo y Luna",
+            1
+        ));
+
+        IMAGES.put("mountains.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "mountains.png",
+            88_000L,  // ~88 KB
+            "Montañas",
+            1
+        ));
+
+        IMAGES.put("sakura_alpha.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "sakura_alpha.png",
+            302_000L,  // ~302 KB
+            "Cerezos Sakura",
+            1
+        ));
+
+        IMAGES.put("torii_alpha.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "torii_alpha.png",
+            67_000L,  // ~67 KB
+            "Torii Gate",
+            1
+        ));
+
+        IMAGES.put("lantern_alpha.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "lantern_alpha.png",
+            62_000L,  // ~62 KB
+            "Linternas Japonesas",
+            1
+        ));
+
+        IMAGES.put("bridge_alpha.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "bridge_alpha.png",
+            58_000L,  // ~58 KB
+            "Puente de Madera",
+            1
+        ));
+
+        IMAGES.put("bamboo_alpha.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "bamboo_alpha.png",
+            202_000L,  // ~202 KB
+            "Bambú",
+            1
+        ));
+
+        IMAGES.put("foliage_alpha.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "foliage_alpha.png",
+            344_000L,  // ~344 KB
+            "Follaje Frontal",
+            1
+        ));
+
+        // ═══════════════════════════════════════════════════════════════
+        // FRIEZA DEATH BEAM SCENE - Texturas
+        // ═══════════════════════════════════════════════════════════════
+
+        // Textura baked de Frieza (Meshy AI, 2048x2048)
+        IMAGES.put("frieza_texture.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "frieza_texture.png",
+            5_312_000L,  // ~5.1 MB
+            "Textura Frieza",
+            1
+        ));
+
+        // Fondo anime estilo Dragon Ball
+        IMAGES.put("frieza_bg_anime.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "frieza_bg_anime.png",
+            1_472_000L,  // ~1.4 MB
+            "Fondo Anime Frieza",
+            1
+        ));
+
     }
 
     // ═══════════════════════════════════════════════════════════════════════

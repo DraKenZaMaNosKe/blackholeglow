@@ -45,6 +45,8 @@ public class ResourcePreloader {
     private volatile int totalTasks = 0;
     private volatile int completedTasks = 0;
     private volatile boolean isCancelled = false;
+    private volatile int failedTaskCount = 0;
+    private volatile String firstFailureMessage = null;
 
     /**
      * Listener para reportar progreso de carga
@@ -99,9 +101,8 @@ public class ResourcePreloader {
             tasks.clear();
         }
 
-        // 🔧 FIX ANR: NO hacer limpieza aquí (bloquea main thread)
-        // La limpieza se hace en el background thread al inicio de startPreloading()
-        pendingCleanupScene = sceneName;
+        // 🛡️ Limpieza movida a DESPUÉS de instalación exitosa (WallpaperPreviewActivity)
+        // Ya NO se limpian recursos antes de descargar - si falla, el wallpaper anterior sigue
 
         // Determinar que escena es y preparar tareas apropiadas
         if (sceneName == null) {
@@ -170,6 +171,10 @@ public class ResourcePreloader {
                 prepareMoonlitCatSceneTasks();
                 break;
 
+            case "FRIEZA_DEATHBEAM":
+                prepareFriezaDeathBeamSceneTasks();
+                break;
+
             default:
                 // Default: usar Lab
                 prepareLabSceneTasks();
@@ -203,6 +208,24 @@ public class ResourcePreloader {
     // ═══════════════════════════════════════════════════════════════════════
     // 🧹 LIMPIEZA DE RECURSOS - Solo mantiene panel + escena actual
     // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * 🧹 Limpia recursos de escenas anteriores DESPUÉS de una instalación exitosa.
+     * Se ejecuta en un hilo de fondo para no bloquear la UI.
+     * Solo mantiene: recursos del panel + recursos de la escena instalada.
+     *
+     * @param installedScene El sceneName del wallpaper recién instalado
+     */
+    public void cleanupAfterInstallation(String installedScene) {
+        new Thread(() -> {
+            try {
+                Log.d(TAG, "🧹 Limpieza post-instalación para: " + installedScene);
+                cleanupOtherSceneResources(installedScene);
+            } catch (Exception e) {
+                Log.w(TAG, "Error en limpieza post-instalación: " + e.getMessage());
+            }
+        }, "ResourceCleanup").start();
+    }
 
     /**
      * Elimina recursos de escenas anteriores, manteniendo solo:
@@ -302,6 +325,9 @@ public class ResourcePreloader {
             case "MOONLIT_CAT":
                 return Arrays.asList();  // No video - shader-based sky
 
+            case "FRIEZA_DEATHBEAM":
+                return Arrays.asList();  // No video - 3D model + shader effects
+
             default:
                 return new ArrayList<>();
         }
@@ -344,9 +370,16 @@ public class ResourcePreloader {
                     "zelda_paisaje.png",
                     "zelda_piedra.png",
                     "zelda_link.png",
-                    "zelda_fondo_depth.png",    // Solo fondo tiene parallax
-                    "link_3d_texture.webp"      // Textura del modelo 3D de Link (WebP)
+                    "zelda_fondo_depth.png",
+                    "link_3d_texture.webp"
                 );
+
+            case "MOONLIT_CAT":
+                return Arrays.asList("cat_open.png", "cat_half.png", "cat_closed.png",
+                        "brick_wall_texture.png", "buildings_silhouette.png", "moon_texture.png");
+
+            case "FRIEZA_DEATHBEAM":
+                return Arrays.asList("frieza_texture.png", "frieza_bg_anime.png");
 
             // GOKU, ADVENTURE_TIME solo usan videos
             default:
@@ -376,6 +409,15 @@ public class ResourcePreloader {
 
             case "WALKING_DEAD":
                 return Arrays.asList("zombie_head.obj", "zombie_body.obj");
+
+            case "ZELDA_BOTW":
+                return Arrays.asList("link_3d.obj");
+
+            case "MOONLIT_CAT":
+                return Arrays.asList("black_cat_clean.obj", "brick_wall.obj");
+
+            case "FRIEZA_DEATHBEAM":
+                return Arrays.asList("frieza.obj");
 
             // GOKU, ADVENTURE_TIME, SAINT_SEIYA no usan modelos 3D
             default:
@@ -554,8 +596,9 @@ public class ResourcePreloader {
         addImageDownloadTask("Zelda Link 2D", "zelda_link.png", 3);
 
         // ═══════════════════════════════════════════════════════════════
-        // 🗡️ LINK 3D MODEL - Textura del modelo (Meshy AI) - WebP comprimido
+        // 🗡️ LINK 3D MODEL - Modelo + Textura (Meshy AI)
         // ═══════════════════════════════════════════════════════════════
+        addModelDownloadTask("Link 3D Modelo", "link_3d.obj", 2);
         addImageDownloadTask("Link 3D Textura", "link_3d_texture.webp", 2);
 
         // Calcular total
@@ -666,15 +709,35 @@ public class ResourcePreloader {
         addImageDownloadTask("Textura Gato Half", "cat_half.png", 2);
         addImageDownloadTask("Textura Gato Closed", "cat_closed.png", 2);
 
-        // 3. Modelo 3D de la barda
+        // 3. Modelo y textura de la barda
         addModelDownloadTask("Modelo Barda", "brick_wall.obj", 3);
+        addImageDownloadTask("Textura Barda", "brick_wall_texture.png", 5);
 
-        // 4. Textura de la barda
-        addImageDownloadTask("Textura Barda", "brick_wall_texture.png", 3);
+        // 4. Escenario: edificios y luna
+        addImageDownloadTask("Silueta Edificios", "buildings_silhouette.png", 1);
+        addImageDownloadTask("Textura Luna", "moon_texture.png", 1);
 
         // Calcular total
         calculateTotalWeight();
         Log.d(TAG, "🌙 MoonlitCatScene: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    public void prepareFriezaDeathBeamSceneTasks() {
+        tasks.clear();
+
+        // No video - scene uses 3D model + shader effects
+
+        // 1. Modelo 3D de Frieza (Meshy AI, 3K faces)
+        addModelDownloadTask("Modelo Frieza", "frieza.obj", 3);
+
+        // 2. Textura baked de Frieza (2048x2048)
+        addImageDownloadTask("Textura Frieza", "frieza_texture.png", 5);
+
+        // 3. Fondo anime
+        addImageDownloadTask("Fondo Anime", "frieza_bg_anime.png", 2);
+
+        calculateTotalWeight();
+        Log.d(TAG, "💜 FriezaDeathBeam: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
     }
 
     private void calculateTotalWeight() {
@@ -751,6 +814,10 @@ public class ResourcePreloader {
                 return Arrays.asList("lostatlanstis.mp4");
             case "THE_HUMAN_PREDATOR":
                 return Arrays.asList("guerrerovsleon.mp4");
+            case "MOONLIT_CAT":
+                return Arrays.asList();  // No video - shader-based sky
+            case "FRIEZA_DEATHBEAM":
+                return Arrays.asList();  // No video - 3D model + shader effects
             default:
                 return new ArrayList<>();
         }
@@ -773,6 +840,8 @@ public class ResourcePreloader {
         isCancelled = false;
         completedTasks = 0;
         currentTaskIndex = 0;
+        failedTaskCount = 0;
+        firstFailureMessage = null;
 
         backgroundThread = new HandlerThread("ResourcePreloader");
         backgroundThread.start();
@@ -780,13 +849,11 @@ public class ResourcePreloader {
 
         // 🔧 FIX ANR: Ejecutar limpieza en background thread PRIMERO
         backgroundHandler.post(() -> {
-            // Limpieza de recursos de otras escenas (ahora en background, no bloquea main thread)
-            if (pendingCleanupScene != null) {
-                cleanupOtherSceneResources(pendingCleanupScene);
-                pendingCleanupScene = null;
-            }
+            // 🛡️ Limpieza movida a DESPUÉS de instalación exitosa
+            // Ya NO se borran recursos antes de descargar - así el wallpaper anterior
+            // sigue funcionando si la descarga falla (sin datos, batería baja, etc.)
 
-            // Luego ejecutar tareas de descarga
+            // Ejecutar tareas de descarga directamente
             executeNextTask();
         });
     }
@@ -820,7 +887,11 @@ public class ResourcePreloader {
             Log.d(TAG, "✓ " + task.name + " (" + completedTasks + "/" + totalTasks + ")");
         } catch (Exception e) {
             Log.e(TAG, "✗ Error en " + task.name + ": " + e.getMessage());
-            // Continuar con la siguiente tarea aunque falle una
+            failedTaskCount++;
+            if (firstFailureMessage == null) {
+                firstFailureMessage = task.name;
+            }
+            completedTasks += task.weight;  // Avanzar progreso aunque falle
         }
 
         // Pequena pausa para que la UI se actualice
@@ -850,9 +921,14 @@ public class ResourcePreloader {
         } catch (InterruptedException ignored) {}
 
         if (listener != null) {
-            mainHandler.post(() -> {
-                listener.onPreloadComplete();
-            });
+            if (failedTaskCount > 0) {
+                // 🛡️ FIX BLACK SCREEN: Reportar error en vez de éxito si hubo descargas fallidas
+                String errorMsg = failedTaskCount + " recurso(s) no se descargaron: " + firstFailureMessage;
+                Log.e(TAG, "🛡️ Precarga terminó con errores: " + errorMsg);
+                mainHandler.post(() -> listener.onPreloadError(errorMsg));
+            } else {
+                mainHandler.post(() -> listener.onPreloadComplete());
+            }
         }
     }
 
@@ -919,7 +995,7 @@ public class ResourcePreloader {
             });
 
             if (!success) {
-                Log.e(TAG, "Error descargando video: " + videoFileName);
+                throw new RuntimeException("Error descargando video: " + videoFileName);
             }
         }, weight));
     }
@@ -951,7 +1027,7 @@ public class ResourcePreloader {
             });
 
             if (!success) {
-                Log.e(TAG, "❌ Error descargando imagen: " + imageFileName);
+                throw new RuntimeException("Error descargando imagen: " + imageFileName);
             }
         }, weight));
     }
@@ -983,7 +1059,7 @@ public class ResourcePreloader {
             });
 
             if (!success) {
-                Log.e(TAG, "❌ Error descargando modelo: " + modelFileName);
+                throw new RuntimeException("Error descargando modelo: " + modelFileName);
             }
         }, weight));
     }
@@ -1011,6 +1087,9 @@ public class ResourcePreloader {
             case "ZELDA_BOTW":
                 return Arrays.asList("zelda_fondo.png", "zelda_fondo_depth.png", "zelda_paisaje.png",
                         "zelda_piedra.png", "zelda_link.png", "link_3d_texture.webp");
+            case "MOONLIT_CAT":
+                return Arrays.asList("cat_open.png", "cat_half.png", "cat_closed.png",
+                        "brick_wall_texture.png", "buildings_silhouette.png", "moon_texture.png");
             default:
                 return new ArrayList<>();
         }
@@ -1025,6 +1104,10 @@ public class ResourcePreloader {
                 return Arrays.asList("delorean.obj");
             case "WALKING_DEAD":
                 return Arrays.asList("zombie_head.obj", "zombie_body.obj");
+            case "ZELDA_BOTW":
+                return Arrays.asList("link_3d.obj");
+            case "MOONLIT_CAT":
+                return Arrays.asList("black_cat_clean.obj", "brick_wall.obj");
             default:
                 return new ArrayList<>();
         }

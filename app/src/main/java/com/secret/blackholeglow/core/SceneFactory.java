@@ -20,6 +20,7 @@ import com.secret.blackholeglow.scenes.SpiderScene;
 import com.secret.blackholeglow.scenes.LostAtlantisScene;
 import com.secret.blackholeglow.scenes.TheHumanPredatorScene;
 import com.secret.blackholeglow.scenes.MoonlitCatScene;
+import com.secret.blackholeglow.scenes.FriezaDeathBeamScene;
 import com.secret.blackholeglow.systems.EventBus;
 import com.secret.blackholeglow.systems.ResourceManager;
 
@@ -138,6 +139,8 @@ public class SceneFactory {
         registerScene("THE_HUMAN_PREDATOR", TheHumanPredatorScene.class);
         // 🌙 Moonlit Cat: Gato negro bajo la luna con cielo shader
         registerScene("MOONLIT_CAT", MoonlitCatScene.class);
+        // 💜 Frieza Death Beam: Frieza Final Form con Death Beam
+        registerScene("FRIEZA_DEATHBEAM", FriezaDeathBeamScene.class);
 
         Log.d(TAG, "🎭 " + registeredScenes.size() + " escenas registradas");
     }

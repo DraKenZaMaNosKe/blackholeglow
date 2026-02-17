@@ -351,6 +351,13 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
     public void onPreloadComplete() {
         Log.d(TAG, "Precarga completada!");
 
+        // 🛡️ FIX BLACK SCREEN: Verificar que los recursos realmente existen en disco
+        if (!ResourcePreloader.areSceneResourcesReady(WallpaperLoadingActivity.this, sceneId)) {
+            Log.e(TAG, "🛡️ Preload reportó éxito pero recursos NO disponibles: " + sceneId);
+            onPreloadError("Los recursos no se descargaron correctamente");
+            return;
+        }
+
         // Animar a 100%
         animateProgressTo(100);
         textProgress.setText("100%");
@@ -402,26 +409,39 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
      */
     private void showErrorDialog(String error) {
         runOnUiThread(() -> {
-            new android.app.AlertDialog.Builder(this)
-                .setTitle("⚠️ Error de carga")
-                .setMessage("No se pudieron cargar algunos recursos:\n\n" + error + "\n\n¿Qué deseas hacer?")
-                .setPositiveButton("Continuar de todos modos", (dialog, which) -> {
-                    Log.d(TAG, "Usuario eligió continuar con errores");
-                    goToPreview();
-                })
-                .setNegativeButton("Reintentar", (dialog, which) -> {
-                    Log.d(TAG, "Usuario eligió reintentar");
-                    errorRetryCount = 0;
-                    hasPreloadErrors = false;
-                    textCurrentTask.setTextColor(Color.parseColor("#6B7A8F"));
-                    startPreloading();
-                })
-                .setNeutralButton("Cancelar", (dialog, which) -> {
-                    Log.d(TAG, "Usuario canceló");
-                    finish();
-                })
-                .setCancelable(false)
-                .show();
+            // 🛡️ FIX BLACK SCREEN: Verificar si los recursos están disponibles a pesar de errores
+            boolean resourcesAvailable = ResourcePreloader.areSceneResourcesReady(this, sceneId);
+
+            android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this)
+                .setTitle("Error de carga")
+                .setCancelable(false);
+
+            if (resourcesAvailable) {
+                // Recursos existen (descargados previamente) - permitir continuar
+                builder.setMessage("Hubo errores durante la descarga, pero los recursos necesarios ya estaban disponibles.\n\n" + error)
+                    .setPositiveButton("Continuar", (dialog, which) -> {
+                        Log.d(TAG, "🛡️ Continuando con recursos ya disponibles");
+                        goToPreview();
+                    })
+                    .setNegativeButton("Cancelar", (dialog, which) -> finish());
+            } else {
+                // 🛡️ Recursos NO disponibles - NO permitir continuar (evita pantalla negra)
+                builder.setMessage("No se pudieron descargar los recursos necesarios.\n\n" + error +
+                        "\n\nVerifica tu conexión a internet e intenta de nuevo.")
+                    .setPositiveButton("Reintentar", (dialog, which) -> {
+                        Log.d(TAG, "Usuario eligió reintentar");
+                        errorRetryCount = 0;
+                        hasPreloadErrors = false;
+                        textCurrentTask.setTextColor(Color.parseColor("#6B7A8F"));
+                        startPreloading();
+                    })
+                    .setNegativeButton("Volver", (dialog, which) -> {
+                        Log.d(TAG, "🛡️ Recursos no disponibles, volviendo");
+                        finish();
+                    });
+            }
+
+            builder.show();
         });
     }
 

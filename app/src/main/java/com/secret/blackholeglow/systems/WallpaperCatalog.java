@@ -430,6 +430,20 @@ public class WallpaperCatalog {
                 .featured()
                 .build());
 
+        // ═══════════════════════════════════════════════════════════════════
+        // 💜 FRIEZA DEATH BEAM - Dragon Ball Z
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("💜 FRIEZA DEATH BEAM 💜")
+                .descripcion("Frieza Final Form disparando su Death Beam. " +
+                        "Modelo 3D con rayo de energía animado y fondo anime.")
+                .preview(R.drawable.preview_frieza_deathbeam)
+                .sceneName("FRIEZA_DEATHBEAM")
+                .tier(WallpaperTier.FREE)
+                .badge("💜 NUEVO")
+                .glow(0xFF8B00FF)  // Purple (Frieza energy)
+                .featured()
+                .build());
+
         Log.d(TAG, "📚 Catálogo inicializado: " + catalog.size() + " wallpapers");
     }
 }

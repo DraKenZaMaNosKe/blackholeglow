@@ -599,6 +599,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     }
 
     public void switchToPanelMode() {
+        if (modeController == null) return;
         if (modeController.stopWallpaper()) {
             // 🔧 FIX RACE CONDITION: Write both flags atomically so GL thread
             // always sees them together (avoids destroy without return → black screen)
@@ -672,6 +673,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         touchRouter.setModeController(modeController);
         touchRouter.setListener(new TouchRouter.TouchListener() {
             @Override public void onPlayButtonTapped() { startLoading(); }
+            @Override public void onBackButtonTapped() { switchToPanelMode(); }
             @Override public void onLikeButtonPressed() {}
             @Override public void onLikeButtonReleased() {}
             @Override public void onLikeButtonTapped() { songSharing.shareSongWithAI(); }

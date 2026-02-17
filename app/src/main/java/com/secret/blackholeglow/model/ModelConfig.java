@@ -123,6 +123,37 @@ public class ModelConfig {
             "Gato Negro",
             1
         ));
+
+        // ═══════════════════════════════════════════════════════════════
+        // ZELDA BOTW SCENE - Link 3D
+        // ═══════════════════════════════════════════════════════════════
+
+        // Modelo 3D de Link (Meshy AI)
+        MODELS.put("link_3d.obj", new ResourceInfo(
+            SUPABASE_MODELS_URL + "link_3d.obj",
+            285_000L,  // ~275 KB
+            "Link 3D",
+            1
+        ));
+
+        // Barda de ladrillos donde se sienta el gato (Meshy AI)
+        MODELS.put("brick_wall.obj", new ResourceInfo(
+            SUPABASE_MODELS_URL + "brick_wall.obj",
+            289_000L,  // ~282 KB
+            "Barda de Ladrillos",
+            1
+        ));
+
+        // ═══════════════════════════════════════════════════════════════
+        // FRIEZA DEATH BEAM SCENE - Frieza Final Form (Meshy AI)
+        // ═══════════════════════════════════════════════════════════════
+
+        MODELS.put("frieza.obj", new ResourceInfo(
+            SUPABASE_MODELS_URL + "frieza.obj",
+            332_000L,  // ~324 KB
+            "Frieza Final Form",
+            1
+        ));
     }
 
     // ═══════════════════════════════════════════════════════════════════════

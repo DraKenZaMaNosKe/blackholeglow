@@ -48,6 +48,8 @@ public abstract class AbstractDownloadManager {
     protected static final int CONNECTION_TIMEOUT_MS = 15000;  // 15 segundos
     protected static final int READ_TIMEOUT_MS = 30000;        // 30 segundos
     protected static final int BUFFER_SIZE = 8192;             // 8 KB
+    protected static final int MAX_RETRY_ATTEMPTS = 3;         // 🛡️ Reintentos automáticos
+    protected static final long RETRY_BASE_DELAY_MS = 2000;    // 🛡️ Delay base entre reintentos (2s, 4s, 8s)
     protected static final String VERSION_PREFIX = "v_";
     protected static final String USER_AGENT = "Mozilla/5.0 (Linux; Android 10) BlackHoleGlow/1.0";
 
@@ -98,6 +100,8 @@ public abstract class AbstractDownloadManager {
         }
         this.executor = Executors.newSingleThreadExecutor();
         this.versionPrefs = context.getSharedPreferences(getPreferencesName(), Context.MODE_PRIVATE);
+        // 🛡️ Limpiar temporales huérfanos de descargas interrumpidas (apagón, crash, etc.)
+        cleanOrphanedTempFiles();
         Log.d(getTag(), getResourceTypeName() + " storage dir: " + resourceDir.getAbsolutePath());
     }
 
@@ -254,23 +258,38 @@ public abstract class AbstractDownloadManager {
             output.close();
             output = null;
 
-            // Renombrar a archivo final
+            // 🛡️ Verificar tamaño antes de promover archivo temporal
+            long expectedSize = getExpectedSize(fileName);
+            long actualSize = tempFile.length();
+            if (expectedSize > 0 && actualSize < expectedSize * 0.95) {
+                throw new IOException("Descarga incompleta: " + actualSize + "/" + expectedSize +
+                        " bytes (" + (actualSize * 100 / expectedSize) + "%)");
+            }
+
+            // 🛡️ Renombrar a archivo final con fallback a copy+delete
             if (finalFile.exists()) {
                 finalFile.delete();
             }
             if (!tempFile.renameTo(finalFile)) {
-                throw new IOException("Error moviendo archivo temporal");
+                // Fallback: copy + delete (rename falla en algunos filesystems)
+                Log.w(getTag(), "rename() falló, intentando copy+delete...");
+                copyFile(tempFile, finalFile);
+                tempFile.delete();
             }
 
-            // Verificar que el archivo existe y tiene contenido
+            // 🛡️ Verificación final: archivo existe, tiene contenido, tamaño correcto
             if (!finalFile.exists() || finalFile.length() == 0) {
                 throw new IOException("Archivo no disponible después de guardar");
             }
+            if (expectedSize > 0 && finalFile.length() < expectedSize * 0.95) {
+                finalFile.delete();
+                throw new IOException("Archivo corrupto post-rename: " + finalFile.length() + "/" + expectedSize);
+            }
 
-            // Guardar versión con commit() (síncrono)
+            // Guardar versión
             saveVersion(fileName);
 
-            Log.d(getTag(), "Descarga completada: " + fileName);
+            Log.d(getTag(), "✅ Descarga completada: " + fileName + " (" + formatSize(finalFile.length()) + ")");
             if (callback != null) {
                 callback.onComplete(finalFile.getAbsolutePath());
             }
@@ -306,17 +325,31 @@ public abstract class AbstractDownloadManager {
             return false;
         }
 
-        try {
-            downloadSyncInternal(fileName, remoteUrl, callback);
-            saveVersion(fileName);
-            return true;
-        } catch (IOException e) {
-            Log.e(getTag(), "Error de red descargando " + fileName + ": " + e.getMessage());
-            return false;
-        } catch (Exception e) {
-            Log.e(getTag(), "Error inesperado descargando " + fileName, e);
-            return false;
+        // 🛡️ Retry con exponential backoff (2s, 4s, 8s)
+        for (int attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
+            try {
+                downloadSyncInternal(fileName, remoteUrl, callback);
+                saveVersion(fileName);
+                return true;
+            } catch (IOException e) {
+                Log.e(getTag(), "❌ Intento " + attempt + "/" + MAX_RETRY_ATTEMPTS +
+                        " falló para " + fileName + ": " + e.getMessage());
+                if (attempt < MAX_RETRY_ATTEMPTS) {
+                    long delay = RETRY_BASE_DELAY_MS * (1L << (attempt - 1)); // 2s, 4s, 8s
+                    Log.d(getTag(), "🔄 Reintentando en " + (delay / 1000) + "s...");
+                    try { Thread.sleep(delay); } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        return false;
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(getTag(), "Error inesperado descargando " + fileName, e);
+                return false;
+            }
         }
+
+        Log.e(getTag(), "❌ Descarga falló después de " + MAX_RETRY_ATTEMPTS + " intentos: " + fileName);
+        return false;
     }
 
     private void downloadSyncInternal(String fileName, String urlStr, SyncProgressCallback callback)
@@ -371,20 +404,35 @@ public abstract class AbstractDownloadManager {
             output.close();
             output = null;
 
-            // Renombrar a archivo final
+            // 🛡️ Verificar tamaño antes de promover
+            long expectedSize = getExpectedSize(fileName);
+            long actualSize = tempFile.length();
+            if (expectedSize > 0 && actualSize < expectedSize * 0.95) {
+                throw new IOException("Descarga incompleta: " + actualSize + "/" + expectedSize +
+                        " bytes (" + (actualSize * 100 / expectedSize) + "%)");
+            }
+
+            // 🛡️ Renombrar con fallback a copy+delete
             if (finalFile.exists()) {
                 finalFile.delete();
             }
             if (!tempFile.renameTo(finalFile)) {
-                throw new IOException("Error moviendo archivo temporal");
+                Log.w(getTag(), "rename() falló, intentando copy+delete...");
+                copyFile(tempFile, finalFile);
+                tempFile.delete();
             }
 
-            // Verificar archivo
+            // 🛡️ Verificación final post-rename
             if (!finalFile.exists() || finalFile.length() == 0) {
                 throw new IOException("Archivo no disponible después de guardar");
             }
+            if (expectedSize > 0 && finalFile.length() < expectedSize * 0.95) {
+                finalFile.delete();
+                throw new IOException("Archivo corrupto post-rename: " + finalFile.length() + "/" + expectedSize);
+            }
 
-            Log.d(getTag(), "Descarga sync completada: " + fileName);
+            Log.d(getTag(), "✅ Descarga sync completada: " + fileName +
+                    " (" + formatSize(finalFile.length()) + ")");
 
         } finally {
             closeQuietly(output);
@@ -521,6 +569,48 @@ public abstract class AbstractDownloadManager {
         // ⚡ FIX ANR: apply() en vez de commit() - no bloquea el thread
         versionPrefs.edit().putInt(VERSION_PREFIX + fileName, version).apply();
         Log.d(getTag(), "Versión " + version + " guardada para: " + fileName);
+    }
+
+    /**
+     * 🛡️ Copia un archivo byte a byte (fallback si rename() falla).
+     * Usado en filesystems donde rename entre particiones no es soportado.
+     */
+    private void copyFile(File src, File dst) throws IOException {
+        java.io.FileInputStream fis = null;
+        FileOutputStream fos = null;
+        try {
+            fis = new java.io.FileInputStream(src);
+            fos = new FileOutputStream(dst);
+            byte[] buffer = new byte[BUFFER_SIZE];
+            int bytesRead;
+            while ((bytesRead = fis.read(buffer)) != -1) {
+                fos.write(buffer, 0, bytesRead);
+            }
+            fos.flush();
+            fos.getFD().sync();
+        } finally {
+            closeQuietly(fos);
+            closeQuietly(fis);
+        }
+    }
+
+    /**
+     * 🛡️ Limpia archivos temporales huérfanos (.tmp) de descargas interrumpidas.
+     * Llamar al inicio para limpiar restos de sesiones anteriores.
+     */
+    private void cleanOrphanedTempFiles() {
+        File[] files = resourceDir.listFiles();
+        if (files == null) return;
+        int cleaned = 0;
+        for (File file : files) {
+            if (file.getName().endsWith(".tmp")) {
+                file.delete();
+                cleaned++;
+            }
+        }
+        if (cleaned > 0) {
+            Log.d(getTag(), "🧹 Limpiados " + cleaned + " archivos temporales huérfanos");
+        }
     }
 
     private void closeQuietly(java.io.Closeable closeable) {

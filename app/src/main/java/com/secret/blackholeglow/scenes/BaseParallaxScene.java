@@ -1189,7 +1189,7 @@ public abstract class BaseParallaxScene extends WallpaperScene {
     private void drawLayerStatic(ParallaxLayer layer) {
         GLES30.glUseProgram(simpleShaderProgram);
 
-        GLES30.glUniform2f(simpleOffsetLoc, 0f, 0f);
+        GLES30.glUniform2f(simpleOffsetLoc, offsetX * layer.depthScale, offsetY * layer.depthScale);
         GLES30.glUniform1f(simpleAlphaLoc, layer.alpha);
 
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0);

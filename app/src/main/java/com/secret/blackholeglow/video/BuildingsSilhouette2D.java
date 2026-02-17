@@ -7,6 +7,9 @@ import android.opengl.GLES30;
 import android.opengl.GLUtils;
 import android.util.Log;
 
+import com.secret.blackholeglow.image.ImageDownloadManager;
+
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -147,35 +150,51 @@ public class BuildingsSilhouette2D {
     }
 
     private void loadTexture() {
-        InputStream is = null;
-        try {
-            is = context.getAssets().open(TEXTURE_PATH);
+        Bitmap bitmap = null;
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inScaled = false;
 
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inScaled = false;
-            Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
+        // Prioridad: descarga remota (Supabase) > assets locales
+        ImageDownloadManager imageMgr = ImageDownloadManager.getInstance(context);
+        String texturePath = imageMgr.getImagePath("buildings_silhouette.png");
 
+        if (texturePath != null && new File(texturePath).exists()) {
+            bitmap = BitmapFactory.decodeFile(texturePath, options);
             if (bitmap != null) {
-                int[] textures = new int[1];
-                GLES30.glGenTextures(1, textures, 0);
-                textureId = textures[0];
-
-                GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
-                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
-                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
-                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
-                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
-                GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0);
-
-                Log.d(TAG, "🏘️ Buildings texture loaded: " + bitmap.getWidth() + "x" + bitmap.getHeight());
-                bitmap.recycle();
+                Log.d(TAG, "🌐 Buildings texture from download: " + bitmap.getWidth() + "x" + bitmap.getHeight());
             }
-        } catch (IOException e) {
-            Log.e(TAG, "Error loading buildings texture: " + e.getMessage());
-        } finally {
-            if (is != null) {
-                try { is.close(); } catch (IOException ignored) {}
+        }
+
+        // Fallback: assets locales
+        if (bitmap == null) {
+            InputStream is = null;
+            try {
+                is = context.getAssets().open(TEXTURE_PATH);
+                bitmap = BitmapFactory.decodeStream(is, null, options);
+                if (bitmap != null) {
+                    Log.d(TAG, "📂 Buildings texture from assets: " + bitmap.getWidth() + "x" + bitmap.getHeight());
+                }
+            } catch (IOException e) {
+                Log.e(TAG, "Error loading buildings texture: " + e.getMessage());
+            } finally {
+                if (is != null) {
+                    try { is.close(); } catch (IOException ignored) {}
+                }
             }
+        }
+
+        if (bitmap != null) {
+            int[] textures = new int[1];
+            GLES30.glGenTextures(1, textures, 0);
+            textureId = textures[0];
+
+            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
+            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
+            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
+            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
+            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
+            GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0);
+            bitmap.recycle();
         }
     }
 

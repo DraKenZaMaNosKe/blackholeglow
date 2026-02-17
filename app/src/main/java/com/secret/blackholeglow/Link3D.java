@@ -10,6 +10,7 @@ import android.util.Log;
 
 import com.secret.blackholeglow.util.ObjLoader;
 import com.secret.blackholeglow.image.ImageDownloadManager;
+import com.secret.blackholeglow.model.ModelDownloadManager;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -148,10 +149,19 @@ public class Link3D implements SceneObject {
 
     private void loadModel() {
         try {
-            Log.d(TAG, "📦 Cargando link_3d.obj desde assets...");
+            ObjLoader.Mesh mesh;
 
-            // Forzar flipV=true para corregir mapeo de texturas
-            ObjLoader.Mesh mesh = ObjLoader.loadObj(context, "link_3d.obj", true);
+            // Prioridad: descarga remota (Supabase) > assets locales
+            ModelDownloadManager modelMgr = ModelDownloadManager.getInstance(context);
+            String modelPath = modelMgr.getModelPath("link_3d.obj");
+
+            if (modelPath != null && new File(modelPath).exists()) {
+                Log.d(TAG, "🌐 Cargando link_3d.obj desde descarga: " + modelPath);
+                mesh = ObjLoader.loadObjFromFile(modelPath, true);
+            } else {
+                Log.d(TAG, "📂 Cargando link_3d.obj desde assets (fallback)...");
+                mesh = ObjLoader.loadObj(context, "link_3d.obj", true);
+            }
 
             Log.d(TAG, "✓ Modelo cargado: " + mesh.vertexCount + " vértices");
 

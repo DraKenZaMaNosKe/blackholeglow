@@ -116,6 +116,7 @@ public class LoadingBar implements SceneObject {
     private int bgUTextureLoc = -1;
     private int bgUAlphaLoc = -1;
     private int bgUDarkenLoc = -1;
+    private int bgUPixelSizeLoc = -1;
     private FloatBuffer bgVertexBuffer;
     private Context context;
     private int backgroundResourceId = 0;
@@ -187,9 +188,14 @@ public class LoadingBar implements SceneObject {
         "uniform sampler2D u_Texture;\n" +
         "uniform float u_Alpha;\n" +
         "uniform float u_Darken;\n" +
+        "uniform float u_PixelSize;\n" +
         "void main() {\n" +
-        "    vec4 texColor = texture2D(u_Texture, v_TexCoord);\n" +
-        "    // Oscurecer la imagen para que el texto resalte\n" +
+        "    vec2 uv = v_TexCoord;\n" +
+        "    if (u_PixelSize > 1.5) {\n" +
+        "        float count = 256.0 / u_PixelSize;\n" +
+        "        uv = floor(uv * count + 0.5) / count;\n" +
+        "    }\n" +
+        "    vec4 texColor = texture2D(u_Texture, uv);\n" +
         "    vec3 darkened = texColor.rgb * (1.0 - u_Darken);\n" +
         "    gl_FragColor = vec4(darkened, texColor.a * u_Alpha);\n" +
         "}\n";
@@ -385,6 +391,7 @@ public class LoadingBar implements SceneObject {
         bgUTextureLoc = GLES30.glGetUniformLocation(bgShaderProgram, "u_Texture");
         bgUAlphaLoc = GLES30.glGetUniformLocation(bgShaderProgram, "u_Alpha");
         bgUDarkenLoc = GLES30.glGetUniformLocation(bgShaderProgram, "u_Darken");
+        bgUPixelSizeLoc = GLES30.glGetUniformLocation(bgShaderProgram, "u_PixelSize");
 
         // Vertex buffer para fullscreen quad (pos + texcoord)
         float[] vertices = {
@@ -428,9 +435,18 @@ public class LoadingBar implements SceneObject {
             GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
 
             GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0);
-            bitmap.recycle();
 
-            Log.d(TAG, "✅ Fondo cargado: textureId=" + bgTextureId);
+            // 🛡️ Verificar que la textura se subió correctamente a GPU
+            int glError = GLES30.glGetError();
+            if (glError != GLES30.GL_NO_ERROR) {
+                Log.e(TAG, "❌ Error GPU cargando textura de fondo: 0x" + Integer.toHexString(glError));
+                GLES30.glDeleteTextures(1, textures, 0);
+                bgTextureId = 0;
+            } else {
+                Log.d(TAG, "✅ Fondo cargado: textureId=" + bgTextureId);
+            }
+
+            bitmap.recycle();
         } else {
             Log.e(TAG, "❌ Error cargando bitmap del fondo");
         }
@@ -439,7 +455,8 @@ public class LoadingBar implements SceneObject {
         GLES30.glDeleteShader(vs);
         GLES30.glDeleteShader(fs);
 
-        backgroundLoaded = true;
+        // 🛡️ Solo marcar como cargado si la textura es válida
+        backgroundLoaded = (bgTextureId != 0);
     }
 
     /**
@@ -450,9 +467,18 @@ public class LoadingBar implements SceneObject {
 
         GLES30.glUseProgram(bgShaderProgram);
 
+        // 🎨 Pixelación: progreso 0% → 40px (muy pixelado), 100% → 1px (nítido)
+        // Curva cuadrática para que se aclare más rápido al final
+        float t = 1.0f - displayProgress;
+        float pixelSize = 1.0f + 39.0f * t * t;
+
+        // Oscurecimiento: se reduce conforme avanza (misterioso → claro)
+        float dynamicDarken = bgDarkenAmount * t;
+
         // Uniforms
         GLES30.glUniform1f(bgUAlphaLoc, alpha);
-        GLES30.glUniform1f(bgUDarkenLoc, bgDarkenAmount);
+        GLES30.glUniform1f(bgUDarkenLoc, dynamicDarken);
+        GLES30.glUniform1f(bgUPixelSizeLoc, pixelSize);
 
         // Textura
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
@@ -589,118 +615,16 @@ public class LoadingBar implements SceneObject {
 
     @Override
     public void draw() {
-        if (alpha <= 0.01f || shaderProgram == 0) return;
+        if (alpha <= 0.01f) return;
 
-        // 🖼️ Inicializar y dibujar fondo (preview del wallpaper)
+        // 🎨 EFECTO DESPIXELACIÓN: La imagen preview se materializa gradualmente
+        // El usuario solo ve un efecto visual — no sabe que se están verificando recursos
         if (backgroundResourceId != 0 && !backgroundLoaded) {
             initBackgroundOpenGL();
         }
         if (backgroundLoaded) {
             drawBackground();
         }
-
-        GLES30.glUseProgram(shaderProgram);
-
-        // ⚡ OPTIMIZADO: Habilitar vertex attrib UNA vez para todos los quads
-        GLES30.glEnableVertexAttribArray(aPositionLoc);
-
-        // Uniforms comunes
-        GLES30.glUniform1f(uTimeLoc, time);
-        GLES30.glUniform1f(uProgressLoc, displayProgress);
-
-        // Calcular dimensiones ajustadas por aspect ratio
-        float adjustedHeight = barHeight;
-        float adjustedWidth = barWidth;
-        if (aspectRatio > 1f) {
-            adjustedHeight = barHeight * aspectRatio;
-        } else {
-            adjustedWidth = barWidth / aspectRatio;
-        }
-
-        // ═══════════════════════════════════════════════════════════
-        // 1. GLOW EXTERIOR (color del tema del wallpaper)
-        // ═══════════════════════════════════════════════════════════
-        float glowPadding = 0.015f;
-        drawQuad(
-            -adjustedWidth/2 - glowPadding,
-            barY - adjustedHeight - glowPadding,
-            adjustedWidth + glowPadding*2,
-            adjustedHeight*2 + glowPadding*2,
-            themeColorPrimary,
-            alpha * 0.3f,
-            true
-        );
-
-        // ═══════════════════════════════════════════════════════════
-        // 2. FONDO DE LA BARRA (gris oscuro)
-        // ═══════════════════════════════════════════════════════════
-        drawQuad(
-            -adjustedWidth/2,
-            barY - adjustedHeight,
-            adjustedWidth,
-            adjustedHeight*2,
-            COLOR_BG,
-            alpha * 0.9f,
-            false
-        );
-
-        // ═══════════════════════════════════════════════════════════
-        // 3. BARRA DE PROGRESO (gradiente cyan → magenta)
-        // ═══════════════════════════════════════════════════════════
-        if (displayProgress > 0.01f) {
-            float progressWidth = adjustedWidth * displayProgress;
-
-            // 🔧 FIX: Usar cache en lugar de new float[3] cada frame
-            for (int i = 0; i < 3; i++) {
-                progressColorCache[i] = themeColorPrimary[i] + (themeColorSecondary[i] - themeColorPrimary[i]) * displayProgress;
-            }
-
-            drawQuad(
-                -adjustedWidth/2,
-                barY - adjustedHeight,
-                progressWidth,
-                adjustedHeight*2,
-                progressColorCache,
-                alpha,
-                false
-            );
-
-            // ═══════════════════════════════════════════════════════════
-            // 4. BRILLO EN EL BORDE DEL PROGRESO
-            // ═══════════════════════════════════════════════════════════
-            float edgeX = -adjustedWidth/2 + progressWidth;
-            float edgeWidth = 0.02f;
-            // ⚡ OPTIMIZADO: Usar COLOR_WHITE cacheado
-            drawQuad(
-                edgeX - edgeWidth/2,
-                barY - adjustedHeight,
-                edgeWidth,
-                adjustedHeight*2,
-                COLOR_WHITE,
-                alpha * 0.6f * (0.7f + 0.3f * (float)Math.sin(time * 5f)),
-                false
-            );
-        }
-
-        // ═══════════════════════════════════════════════════════════
-        // 5. BORDE EXTERIOR (color del tema)
-        // ═══════════════════════════════════════════════════════════
-        // Top
-        drawQuad(-adjustedWidth/2, barY + adjustedHeight, adjustedWidth, 0.003f, themeColorPrimary, alpha * 0.5f, false);
-        // Bottom
-        drawQuad(-adjustedWidth/2, barY - adjustedHeight - 0.003f, adjustedWidth, 0.003f, themeColorPrimary, alpha * 0.5f, false);
-        // Left
-        drawQuad(-adjustedWidth/2 - 0.003f, barY - adjustedHeight, 0.003f, adjustedHeight*2, themeColorPrimary, alpha * 0.5f, false);
-        // Right
-        drawQuad(adjustedWidth/2, barY - adjustedHeight, 0.003f, adjustedHeight*2, themeColorPrimary, alpha * 0.5f, false);
-
-        // ⚡ OPTIMIZADO: Deshabilitar vertex attrib UNA vez después de todos los quads
-        GLES30.glDisableVertexAttribArray(aPositionLoc);
-
-        // ═══════════════════════════════════════════════════════════
-        // 6. TEXTO "Loading..." ARRIBA DE LA BARRA
-        // ═══════════════════════════════════════════════════════════
-        drawText();
     }
 
     private void drawQuad(float x, float y, float w, float h, float[] color, float quadAlpha, boolean isGlow) {

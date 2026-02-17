@@ -39,6 +39,7 @@ import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.WallpaperPreferences;
 import com.secret.blackholeglow.systems.AdsManager;
 import com.secret.blackholeglow.systems.EventBus;
+import com.secret.blackholeglow.core.ResourcePreloader;
 import com.secret.blackholeglow.systems.WallpaperNotificationManager;
 
 /**
@@ -456,6 +457,18 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
      * (antes había escritura doble: directa + WallpaperPreferences)
      */
     private void proceedToSetWallpaper() {
+        // 🛡️ FIX BLACK SCREEN: Verificar recursos antes de instalar
+        if (!ResourcePreloader.areSceneResourcesReady(this, nombre_wallpaper)) {
+            Log.e(TAG, "🛡️ Recursos NO disponibles para: " + nombre_wallpaper);
+            new android.app.AlertDialog.Builder(this)
+                .setTitle("Recursos no disponibles")
+                .setMessage("Los recursos del wallpaper no se descargaron correctamente.\nVerifica tu conexión a internet e intenta de nuevo.")
+                .setPositiveButton("Volver", (d, w) -> finish())
+                .setCancelable(false)
+                .show();
+            return;
+        }
+
         // 🛡️ CONSOLIDADO: Solo usar WallpaperPreferences (maneja SharedPrefs + Firebase)
         WallpaperPreferences.getInstance(this).setSelectedWallpaper(nombre_wallpaper, null);
         Log.d(TAG, "✅ Wallpaper guardado via WallpaperPreferences: " + nombre_wallpaper);
@@ -604,6 +617,15 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
                     .notifyWallpaperInstalled(nombre_wallpaper, displayName);
         } catch (Exception e) {
             Log.w(TAG, "Error enviando notificación de instalación: " + e.getMessage());
+        }
+
+        // 🧹 Limpiar recursos de escenas anteriores (instalación exitosa confirmada)
+        // Solo mantiene: panel + escena recién instalada. Libera espacio en disco.
+        try {
+            ResourcePreloader preloader = new ResourcePreloader(this);
+            preloader.cleanupAfterInstallation(nombre_wallpaper);
+        } catch (Exception e) {
+            Log.w(TAG, "Error iniciando limpieza post-instalación: " + e.getMessage());
         }
 
         // Auto cerrar

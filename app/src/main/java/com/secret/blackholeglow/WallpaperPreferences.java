@@ -79,6 +79,7 @@ public class WallpaperPreferences {
         "LOST_ATLANTIS",  // 🏛️ Lost Atlantis underwater temple
         "THE_HUMAN_PREDATOR", // 🦁 The Human Predator - Guerrero vs León
         "MOONLIT_CAT",       // 🌙 Moonlit Cat - Gato bajo la luna
+        "FRIEZA_DEATHBEAM",  // 💜 Frieza Death Beam - Dragon Ball Z
 
         // ═══════════════════════════════════════════
         // 📦 WALLPAPERS LEGADOS (compatibilidad)

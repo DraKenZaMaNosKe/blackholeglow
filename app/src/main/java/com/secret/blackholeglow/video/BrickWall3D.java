@@ -9,7 +9,10 @@ import android.opengl.Matrix;
 import android.util.Log;
 
 import com.secret.blackholeglow.util.ObjLoader;
+import com.secret.blackholeglow.image.ImageDownloadManager;
+import com.secret.blackholeglow.model.ModelDownloadManager;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.FloatBuffer;
@@ -23,10 +26,10 @@ import java.nio.IntBuffer;
  * ║  el gato negro. Posición fija en la parte inferior de la pantalla.      ║
  * ║  Sin animación (estático).                                              ║
  * ║                                                                          ║
- * ║  ESTADO: Activo - Modelos en assets locales                             ║
- * ║  Archivos en assets/models/:                                            ║
- * ║    - brick_wall.obj                                                     ║
- * ║    - brick_wall_texture.png                                             ║
+ * ║  ESTADO: Activo - Descarga remota (Supabase) con fallback local          ║
+ * ║  Archivos:                                                              ║
+ * ║    - brick_wall.obj          (Supabase → ModelDownloadManager)          ║
+ * ║    - brick_wall_texture.png  (Supabase → ImageDownloadManager)          ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 public class BrickWall3D {
@@ -112,48 +115,82 @@ public class BrickWall3D {
 
     private void loadModel() {
         try {
-            // Load OBJ from assets (flipV=true for Meshy AI models)
-            ObjLoader.Mesh mesh = ObjLoader.loadObj(context, OBJ_ASSET_PATH, true);
+            ObjLoader.Mesh mesh;
+            // Prioridad: descarga remota > assets locales
+            ModelDownloadManager modelMgr = ModelDownloadManager.getInstance(context);
+            String modelPath = modelMgr.getModelPath("brick_wall.obj");
+
+            if (modelPath != null && new File(modelPath).exists()) {
+                Log.d(TAG, "🌐 Modelo desde descarga: " + modelPath);
+                mesh = ObjLoader.loadObjFromFile(modelPath, true);
+            } else {
+                Log.d(TAG, "📂 Modelo desde assets (fallback)");
+                mesh = ObjLoader.loadObj(context, OBJ_ASSET_PATH, true);
+            }
 
             this.vertexBuffer = mesh.vertexBuffer;
             this.uvBuffer = mesh.uvBuffer;
-
-            // Build index buffer from faces
             this.indexCount = ObjLoader.countIndices(mesh.faces);
             this.indexBuffer = ObjLoader.buildIndexBuffer(mesh.faces, indexCount);
 
             modelLoaded = true;
-            Log.d(TAG, "🧱 Model loaded from assets: " + indexCount + " indices, " +
-                       mesh.stats.triangles + " triangles");
+            Log.d(TAG, "🧱 Model loaded: " + indexCount + " indices");
         } catch (IOException e) {
-            Log.e(TAG, "❌ Error loading model from assets: " + e.getMessage());
+            Log.e(TAG, "❌ Error loading model: " + e.getMessage());
         }
     }
 
     private void loadTexture() {
+        // Prioridad: descarga remota > assets locales
+        ImageDownloadManager imageMgr = ImageDownloadManager.getInstance(context);
+        String texturePath = imageMgr.getImagePath("brick_wall_texture.png");
+
+        if (texturePath != null && new File(texturePath).exists()) {
+            textureId = loadTextureFromFile(texturePath);
+            if (textureId != 0) {
+                Log.d(TAG, "🌐 Textura remota cargada: " + textureId);
+                return;
+            }
+        }
+
+        // Fallback: assets locales
+        loadTextureFromAssets();
+    }
+
+    private int loadTextureFromFile(String filePath) {
+        try {
+            // 🔧 OPT: Downscale 2048→1024 + RGB_565 (barda opaca, sin alpha)
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inScaled = false;
+            options.inSampleSize = 2;
+            options.inPreferredConfig = Bitmap.Config.RGB_565;
+            Bitmap bitmap = BitmapFactory.decodeFile(filePath, options);
+
+            if (bitmap != null) {
+                int texId = uploadBitmapToGL(bitmap);
+                bitmap.recycle();
+                return texId;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error loading texture from file: " + e.getMessage());
+        }
+        return 0;
+    }
+
+    private void loadTextureFromAssets() {
         InputStream is = null;
         try {
             is = context.getAssets().open(TEXTURE_ASSET_PATH);
-
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inScaled = false;
+            options.inSampleSize = 2;
+            options.inPreferredConfig = Bitmap.Config.RGB_565;
             Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
 
             if (bitmap != null) {
-                int[] textures = new int[1];
-                GLES30.glGenTextures(1, textures, 0);
-                textureId = textures[0];
-
-                GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
-                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR_MIPMAP_LINEAR);
-                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
-                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
-                GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
-                GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0);
-                GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D);
-
+                textureId = uploadBitmapToGL(bitmap);
                 bitmap.recycle();
-                Log.d(TAG, "🧱 Texture loaded from assets: " + textureId);
+                Log.d(TAG, "📂 Textura assets cargada: " + textureId);
             }
         } catch (IOException e) {
             Log.e(TAG, "❌ Error loading texture from assets: " + e.getMessage());
@@ -162,6 +199,22 @@ public class BrickWall3D {
                 try { is.close(); } catch (IOException ignored) {}
             }
         }
+    }
+
+    private int uploadBitmapToGL(Bitmap bitmap) {
+        int[] textures = new int[1];
+        GLES30.glGenTextures(1, textures, 0);
+        int texId = textures[0];
+
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, texId);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR_MIPMAP_LINEAR);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
+        GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0);
+        GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D);
+
+        return texId;
     }
 
     private void compileShader() {

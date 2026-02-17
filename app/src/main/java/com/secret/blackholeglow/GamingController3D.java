@@ -65,9 +65,15 @@ public class GamingController3D implements SceneObject {
     private float posX = 0f;
     private float posY = -0.1f;    // Ligeramente abajo del centro
     private float posZ = -3.5f;    // Profundidad
-    private float scale = 0.4f;    // Escala del control (reducido)
+    private float scale = 0.22f;   // Escala reducida para top-left
     private float rotationY = 0f;
     private float rotationX = 0f;
+
+    // NDC-based positioning: separa posición de toque (NDC) de posición de render (world)
+    private float ndcTargetX = -0.70f;  // Top-left en NDC
+    private float ndcTargetY = 0.65f;   // Top-left en NDC
+    private float worldX = 0f;          // Computed world-space X para render
+    private float worldY = 0f;          // Computed world-space Y para render
 
     // Animación
     private static final float TWO_PI = (float)(2.0 * Math.PI);
@@ -89,8 +95,8 @@ public class GamingController3D implements SceneObject {
     // Visibilidad
     private boolean visible = true;
 
-    // Touch detection - área más grande para el control
-    private float hitRadius = 0.25f;
+    // Touch detection
+    private float hitRadius = 0.15f;
 
     // ═══════════════════════════════════════════════════════════════════════
     // SHADERS - Estilo Cyberpunk Neón
@@ -347,6 +353,7 @@ public class GamingController3D implements SceneObject {
     public void setScreenSize(int width, int height) {
         aspectRatio = (float) width / height;
         Matrix.perspectiveM(projectionMatrix, 0, 45f, aspectRatio, 0.1f, 100f);
+        computeWorldPositionFromNDC();
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -361,15 +368,15 @@ public class GamingController3D implements SceneObject {
             time -= TIME_CYCLE;
         }
 
-        // Flotación suave (senoidal)
-        floatOffset = (float) Math.sin(time * 1.2) * 0.05f;
+        // Flotación suave (senoidal) - reducida para top-left
+        floatOffset = (float) Math.sin(time * 1.2) * 0.03f;
 
         // Rotación suave en Y (giro lento)
         rotationY += deltaTime * 15f;  // 15 grados por segundo
         if (rotationY > 360f) rotationY -= 360f;
 
-        // Inclinación sutil en X (cabeceo)
-        rotationX = (float) Math.sin(time * 0.7) * 4f;
+        // Inclinación sutil en X (cabeceo) - reducida para top-left
+        rotationX = (float) Math.sin(time * 0.7) * 2.5f;
 
         // Pulso de glow suave
         glowIntensity = 0.8f + (float) Math.sin(time * 1.5) * 0.2f;
@@ -385,9 +392,9 @@ public class GamingController3D implements SceneObject {
 
         GLES30.glUseProgram(shaderProgram);
 
-        // Construir matriz de modelo
+        // Construir matriz de modelo - usar worldX/worldY (computadas desde NDC)
         Matrix.setIdentityM(modelMatrix, 0);
-        Matrix.translateM(modelMatrix, 0, posX, posY + floatOffset, posZ);
+        Matrix.translateM(modelMatrix, 0, worldX, worldY + floatOffset, posZ);
         Matrix.rotateM(modelMatrix, 0, rotationY, 0f, 1f, 0f);    // Rotación Y (giro)
         Matrix.rotateM(modelMatrix, 0, rotationX, 1f, 0f, 0f);    // Inclinación X
         Matrix.rotateM(modelMatrix, 0, -15f, 1f, 0f, 0f);         // Inclinar hacia el usuario
@@ -437,11 +444,12 @@ public class GamingController3D implements SceneObject {
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * Verifica si un toque en coordenadas normalizadas (-1 a 1) está sobre el control
+     * Verifica si un toque en coordenadas normalizadas (-1 a 1) está sobre el control.
+     * Compara contra ndcTargetX/Y (posición en pantalla) en vez de world-space coords.
      */
     public boolean isInside(float nx, float ny) {
-        float dx = nx - posX;
-        float dy = ny - posY;
+        float dx = nx - ndcTargetX;
+        float dy = ny - ndcTargetY;
         return (dx * dx + dy * dy) <= hitRadius * hitRadius;
     }
 
@@ -469,6 +477,25 @@ public class GamingController3D implements SceneObject {
     public void setAspectRatio(float aspect) {
         this.aspectRatio = aspect;
         Matrix.perspectiveM(projectionMatrix, 0, 45f, aspectRatio, 0.1f, 100f);
+        computeWorldPositionFromNDC();
+    }
+
+    /**
+     * Computes world-space X/Y from NDC target position.
+     * The perspective projection maps world coords to NDC differently at various depths.
+     * We reverse the projection to find where the controller must be placed in world-space
+     * so it appears at (ndcTargetX, ndcTargetY) on screen.
+     *
+     * projectionMatrix[0] = 1/(aspect*tan(fov/2)), projectionMatrix[5] = 1/tan(fov/2)
+     * NDC_x = worldX * proj[0] / zDistance → worldX = ndcTargetX * zDistance / proj[0]
+     */
+    private void computeWorldPositionFromNDC() {
+        // Camera at z=3, object at posZ=-3.5 → zDistance = 3.0 - posZ = 6.5
+        float zDistance = 3.0f - posZ;
+        if (projectionMatrix[0] != 0f && projectionMatrix[5] != 0f) {
+            worldX = ndcTargetX * zDistance / projectionMatrix[0];
+            worldY = ndcTargetY * zDistance / projectionMatrix[5];
+        }
     }
 
     public void release() {

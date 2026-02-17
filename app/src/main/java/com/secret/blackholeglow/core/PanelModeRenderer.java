@@ -283,7 +283,10 @@ public class PanelModeRenderer {
     }
 
     public void updateWallpaperMode(float deltaTime) {
-        // Nothing to update in wallpaper mode
+        // Animate controller overlay (back-to-panel button)
+        if (controller != null) {
+            controller.update(deltaTime);
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -356,7 +359,14 @@ public class PanelModeRenderer {
     }
 
     public void drawWallpaperOverlay() {
-        // No overlay elements to draw
+        // Draw controller on top of wallpaper scene (back-to-panel button)
+        if (controller != null) {
+            GLES30.glClear(GLES30.GL_DEPTH_BUFFER_BIT);
+            GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+            GLES30.glEnable(GLES30.GL_BLEND);
+            GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
+            controller.draw();
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -436,12 +446,9 @@ public class PanelModeRenderer {
         }
         backgroundLoaded = false;
 
-        // Liberar controller (~15 MB GPU)
-        if (controller != null) {
-            controller.release();
-            controller = null;
-            Log.d(TAG, "  ✓ Gaming Controller liberado");
-        }
+        // KEEP controller alive for wallpaper mode (back-to-panel button)
+        // ~5-8 MB GPU retained - acceptable trade-off for navigation UX
+        Log.d(TAG, "  🎮 Gaming Controller retenido para wallpaper overlay");
 
         // Liberar OrbixGreeting (~1-2 MB GPU + bitmap RAM)
         if (orbixGreeting != null) {
@@ -457,7 +464,7 @@ public class PanelModeRenderer {
             Log.d(TAG, "  ✓ LoadingBar liberado");
         }
 
-        Log.d(TAG, "✅ Recursos del panel liberados - ~30-40 MB GPU recuperados");
+        Log.d(TAG, "✅ Recursos del panel liberados (controller retenido para overlay)");
     }
 
     public void onReturnToPanel() {
@@ -522,6 +529,17 @@ public class PanelModeRenderer {
             return controller.isInside(nx, ny);
         }
         return true;
+    }
+
+    /**
+     * Verifica si el toque está sobre el controller durante wallpaper mode
+     * (actúa como botón de regreso al panel)
+     */
+    public boolean isBackButtonTouched(float nx, float ny) {
+        if (controller != null) {
+            return controller.isInside(nx, ny);
+        }
+        return false;
     }
 
     // ═══════════════════════════════════════════════════════════════

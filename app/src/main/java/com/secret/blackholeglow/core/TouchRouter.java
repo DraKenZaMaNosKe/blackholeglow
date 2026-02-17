@@ -26,6 +26,7 @@ public class TouchRouter {
 
     public interface TouchListener {
         void onPlayButtonTapped();
+        void onBackButtonTapped();
         void onLikeButtonPressed();
         void onLikeButtonReleased();
         void onLikeButtonTapped();
@@ -158,6 +159,17 @@ public class TouchRouter {
      * Maneja toques en WALLPAPER_MODE
      */
     private boolean handleWallpaperModeTouch(float nx, float ny, int action) {
+        // Back button (controller overlay, top-left) - check FIRST before like button
+        if (panelRenderer != null && panelRenderer.isBackButtonTouched(nx, ny)) {
+            if (action == MotionEvent.ACTION_UP) {
+                Log.d(TAG, "🔙 Back button tapped (controller overlay)");
+                if (listener != null) {
+                    listener.onBackButtonTapped();
+                }
+            }
+            return true;
+        }
+
         // LikeButton
         if (songSharing != null && songSharing.isTouchOnLikeButton(nx, ny)) {
             if (action == MotionEvent.ACTION_DOWN) {
