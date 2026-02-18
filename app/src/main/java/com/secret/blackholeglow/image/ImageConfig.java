@@ -398,6 +398,14 @@ public class ImageConfig {
             1
         ));
 
+        // Fondo Death Beam verde con rayas diagonales (1080x1920)
+        IMAGES.put("frieza_deathbeam_bg.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "frieza_deathbeam_bg.png",
+            1_375_000L,  // ~1.31 MB
+            "Fondo Death Beam",
+            2  // v2: green version
+        ));
+
     }
 
     // ═══════════════════════════════════════════════════════════════════════

@@ -379,7 +379,7 @@ public class ResourcePreloader {
                         "brick_wall_texture.png", "buildings_silhouette.png", "moon_texture.png");
 
             case "FRIEZA_DEATHBEAM":
-                return Arrays.asList("frieza_texture.png", "frieza_bg_anime.png");
+                return Arrays.asList("frieza_texture.png", "frieza_deathbeam_bg.png");
 
             // GOKU, ADVENTURE_TIME solo usan videos
             default:
@@ -733,8 +733,8 @@ public class ResourcePreloader {
         // 2. Textura baked de Frieza (2048x2048)
         addImageDownloadTask("Textura Frieza", "frieza_texture.png", 5);
 
-        // 3. Fondo anime
-        addImageDownloadTask("Fondo Anime", "frieza_bg_anime.png", 2);
+        // 3. Fondo Death Beam
+        addImageDownloadTask("Fondo Death Beam", "frieza_deathbeam_bg.png", 2);
 
         calculateTotalWeight();
         Log.d(TAG, "💜 FriezaDeathBeam: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
