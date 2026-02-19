@@ -326,7 +326,7 @@ public class ResourcePreloader {
                 return Arrays.asList();  // No video - shader-based sky
 
             case "FRIEZA_DEATHBEAM":
-                return Arrays.asList();  // No video - 3D model + shader effects
+                return Arrays.asList("frieza_deathbeam_bg.mp4");
 
             default:
                 return new ArrayList<>();
@@ -379,7 +379,7 @@ public class ResourcePreloader {
                         "brick_wall_texture.png", "buildings_silhouette.png", "moon_texture.png");
 
             case "FRIEZA_DEATHBEAM":
-                return Arrays.asList("frieza_texture.png", "frieza_deathbeam_bg.png");
+                return Arrays.asList("frieza_texture.png");
 
             // GOKU, ADVENTURE_TIME solo usan videos
             default:
@@ -725,16 +725,14 @@ public class ResourcePreloader {
     public void prepareFriezaDeathBeamSceneTasks() {
         tasks.clear();
 
-        // No video - scene uses 3D model + shader effects
+        // 1. Video de fondo - anime speed lines (540x960, 3s loop)
+        addVideoDownloadTask("Video Fondo Anime", "frieza_deathbeam_bg.mp4", 3);
 
-        // 1. Modelo 3D de Frieza (Meshy AI, 3K faces)
+        // 2. Modelo 3D de Frieza (Meshy AI, 3K faces)
         addModelDownloadTask("Modelo Frieza", "frieza.obj", 3);
 
-        // 2. Textura baked de Frieza (2048x2048)
+        // 3. Textura baked de Frieza (2048x2048)
         addImageDownloadTask("Textura Frieza", "frieza_texture.png", 5);
-
-        // 3. Fondo Death Beam
-        addImageDownloadTask("Fondo Death Beam", "frieza_deathbeam_bg.png", 2);
 
         calculateTotalWeight();
         Log.d(TAG, "💜 FriezaDeathBeam: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
@@ -817,7 +815,7 @@ public class ResourcePreloader {
             case "MOONLIT_CAT":
                 return Arrays.asList();  // No video - shader-based sky
             case "FRIEZA_DEATHBEAM":
-                return Arrays.asList();  // No video - 3D model + shader effects
+                return Arrays.asList("frieza_deathbeam_bg.mp4");
             default:
                 return new ArrayList<>();
         }

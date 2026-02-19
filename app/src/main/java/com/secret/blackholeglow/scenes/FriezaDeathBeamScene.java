@@ -7,28 +7,20 @@ import com.secret.blackholeglow.EqualizerBarsDJ;
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.video.DeathBeamFX;
 import com.secret.blackholeglow.video.Frieza3D;
-import com.secret.blackholeglow.video.FriezaBackground;
 
 /**
  * FriezaDeathBeamScene - Frieza Final Form disparando Death Beam.
  *
  * Componentes:
- * - FriezaBackground: fondo con warp streaks animados
+ * - Video background: anime speed lines (frieza_deathbeam_bg.mp4)
  * - Frieza3D: modelo OBJ con rim light shader
  * - DeathBeamFX: esfera de energia + rayo conico con shaders animados
  */
 public class FriezaDeathBeamScene extends BaseVideoScene {
     private static final String TAG = "FriezaDeathBeam";
 
-    // ═══════════════════════════════════════════════════════════════
-    // 🎮 EDIT MODE - tap izquierdo/derecho para rotar dirección
-    // ═══════════════════════════════════════════════════════════════
-    private static final boolean EDIT_MODE = true;
-    private static final float ANGLE_STEP = 0.1745f; // 10 grados en radianes
-
     private Frieza3D frieza;
     private DeathBeamFX deathBeam;
-    private FriezaBackground background;
 
     // ═══════════════════════════════════════════════════════════════
     // ABSTRACT IMPLEMENTATIONS
@@ -44,7 +36,7 @@ public class FriezaDeathBeamScene extends BaseVideoScene {
     public int getPreviewResourceId() { return R.drawable.preview_frieza_deathbeam; }
 
     @Override
-    protected String getVideoFileName() { return null; }
+    protected String getVideoFileName() { return "frieza_deathbeam_bg.mp4"; }
 
     @Override
     protected EqualizerBarsDJ.Theme getTheme() {
@@ -58,13 +50,6 @@ public class FriezaDeathBeamScene extends BaseVideoScene {
     @Override
     protected void setupSceneSpecific() {
         Log.d(TAG, "Setting up Frieza Death Beam scene...");
-
-        try {
-            background = new FriezaBackground(context);
-            background.setScreenSize(screenWidth, screenHeight);
-        } catch (Exception e) {
-            Log.w(TAG, "FriezaBackground not ready: " + e.getMessage());
-        }
 
         try {
             frieza = new Frieza3D(context);
@@ -96,21 +81,15 @@ public class FriezaDeathBeamScene extends BaseVideoScene {
 
     @Override
     protected void updateSceneSpecific(float deltaTime) {
-        if (background != null) background.update(deltaTime);
         if (frieza != null) frieza.update(deltaTime);
         if (deathBeam != null) deathBeam.update(deltaTime);
     }
 
     @Override
     protected void drawSceneSpecific() {
-        GLES20.glClearColor(0.02f, 0.01f, 0.05f, 1.0f);
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
-
-        // Background primero (fullscreen quad, sin depth test ni depth write)
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
-        GLES20.glDepthMask(false);
-        if (background != null) background.draw();
-        GLES20.glDepthMask(true);
+        // Video background is drawn by BaseVideoScene before this method
+        // Just clear depth for 3D overlay
+        GLES20.glClear(GLES20.GL_DEPTH_BUFFER_BIT);
 
         // 3D scene con depth
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
@@ -122,47 +101,18 @@ public class FriezaDeathBeamScene extends BaseVideoScene {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // 🎮 TOUCH - Calibración de dirección de warp streaks
-    // ═══════════════════════════════════════════════════════════════
-
-    @Override
-    public boolean onTouchEvent(float normalizedX, float normalizedY, int action) {
-        if (!EDIT_MODE || background == null) return false;
-        if (action != 0) return false; // Solo ACTION_DOWN
-
-        float currentAngle = background.getDirectionAngle();
-
-        if (normalizedX < 0) {
-            // Tap izquierdo: rotar counter-clockwise
-            currentAngle -= ANGLE_STEP;
-        } else {
-            // Tap derecho: rotar clockwise
-            currentAngle += ANGLE_STEP;
-        }
-
-        background.setDirectionAngle(currentAngle);
-
-        float degrees = (float) Math.toDegrees(currentAngle);
-        Log.d(TAG, String.format("🎯 STREAK ANGLE: %.4f rad (%.1f°)", currentAngle, degrees));
-
-        return true;
-    }
-
-    // ═══════════════════════════════════════════════════════════════
     // SCREEN SIZE & RELEASE
     // ═══════════════════════════════════════════════════════════════
 
     @Override
     public void setScreenSize(int width, int height) {
         super.setScreenSize(width, height);
-        if (background != null) background.setScreenSize(width, height);
         if (frieza != null) frieza.setScreenSize(width, height);
         if (deathBeam != null) deathBeam.setScreenSize(width, height);
     }
 
     @Override
     protected void releaseSceneSpecificResources() {
-        if (background != null) { background.release(); background = null; }
         if (frieza != null) { frieza.release(); frieza = null; }
         if (deathBeam != null) { deathBeam.release(); deathBeam = null; }
         Log.d(TAG, "Frieza Death Beam resources released");

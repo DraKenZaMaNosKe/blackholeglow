@@ -117,6 +117,14 @@ public class VideoConfig {
             "The Human Predator",
             1  // v1: Initial version
         ));
+
+        // FriezaDeathBeamScene - Fondo anime speed lines morado (v2: 540x960, 3s loop)
+        VIDEOS.put("frieza_deathbeam_bg.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "frieza_deathbeam_bg.mp4",
+            440_255L,  // ~440 KB (540x960 @ 1.2Mbps)
+            "Frieza Death Beam BG",
+            2  // v2: Purple version
+        ));
     }
 
     // =========================================================================
