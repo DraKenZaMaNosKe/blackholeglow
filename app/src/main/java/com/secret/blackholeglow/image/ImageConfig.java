@@ -382,12 +382,12 @@ public class ImageConfig {
         // FRIEZA DEATH BEAM SCENE - Texturas
         // ═══════════════════════════════════════════════════════════════
 
-        // Textura baked de Frieza (Meshy AI, 2048x2048)
+        // Textura baked de Frieza (Meshy AI, 2048x2048) - v3: halo separated, body only
         IMAGES.put("frieza_texture.png", new ResourceInfo(
             SUPABASE_VIDEOS_URL + "frieza_texture.png",
-            5_312_000L,  // ~5.1 MB
+            4_351_506L,  // ~4.4 MB
             "Textura Frieza",
-            1
+            3  // v3: brightness adjusted, halo removed from mesh
         ));
 
         // Fondo anime estilo Dragon Ball

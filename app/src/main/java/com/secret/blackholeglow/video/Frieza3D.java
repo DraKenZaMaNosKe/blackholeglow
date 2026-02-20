@@ -12,6 +12,8 @@ import com.secret.blackholeglow.util.ObjLoader;
 import com.secret.blackholeglow.image.ImageDownloadManager;
 import com.secret.blackholeglow.model.ModelDownloadManager;
 
+import android.app.ActivityManager;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.FloatBuffer;
@@ -19,7 +21,7 @@ import java.nio.IntBuffer;
 
 /**
  * Frieza3D - Modelo 3D de Frieza (Final Form) con textura baked de Meshy AI.
- * Shader con purple rim light para efecto dramático.
+ * Shader con red rim light para efecto dramático.
  */
 public class Frieza3D {
     private static final String TAG = "Frieza3D";
@@ -76,7 +78,7 @@ public class Frieza3D {
         "    vPosition = aPosition;\n" +
         "}\n";
 
-    // Fragment shader: textured + purple rim light + subtle energy pulse
+    // Fragment shader: textured + red rim light + subtle energy pulse
     private static final String FRAGMENT_SHADER =
         "precision mediump float;\n" +
         "uniform sampler2D uTexture;\n" +
@@ -85,11 +87,11 @@ public class Frieza3D {
         "varying vec3 vPosition;\n" +
         "void main() {\n" +
         "    vec4 texColor = texture2D(uTexture, vTexCoord);\n" +
-        // Rim light (purple glow on edges)
+        // Rim light (red-orange glow on edges)
         "    float posLen = length(vPosition);\n" +
         "    vec3 nPos = posLen > 0.001 ? vPosition / posLen : vec3(0.0, 0.0, 1.0);\n" +
         "    float rim = pow(1.0 - abs(dot(nPos, vec3(0.0, 0.0, 1.0))), 2.5);\n" +
-        "    vec3 rimColor = vec3(0.5, 0.1, 0.8) * rim * (0.6 + 0.3 * sin(uTime * 2.0));\n" +
+        "    vec3 rimColor = vec3(0.8, 0.15, 0.05) * rim * (0.6 + 0.3 * sin(uTime * 2.0));\n" +
         // Subtle energy pulse on the whole model
         "    float pulse = 1.0 + 0.05 * sin(uTime * 3.0);\n" +
         "    vec3 finalColor = texColor.rgb * pulse + rimColor;\n" +
@@ -148,11 +150,39 @@ public class Frieza3D {
 
     private int loadTextureFromFile(String filePath) {
         try {
+            // Detect RAM tier for adaptive texture quality
+            int inSampleSize = 2;  // default: 2048→1024
+            Bitmap.Config bitmapConfig = Bitmap.Config.ARGB_8888;
+            try {
+                ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+                ActivityManager.MemoryInfo memInfo = new ActivityManager.MemoryInfo();
+                am.getMemoryInfo(memInfo);
+                long totalGB = memInfo.totalMem / (1024L * 1024L * 1024L);
+
+                if (totalGB < 4) {
+                    inSampleSize = 4;  // 2048→512px (~1MB VRAM vs ~4MB)
+                    bitmapConfig = Bitmap.Config.RGB_565;  // 16-bit, 50% less memory
+                    Log.d(TAG, "LOW RAM (" + totalGB + "GB): texture 512px RGB_565");
+                } else if (totalGB <= 6) {
+                    inSampleSize = 2;  // 2048→1024px
+                    bitmapConfig = Bitmap.Config.RGB_565;
+                    Log.d(TAG, "MEDIUM RAM (" + totalGB + "GB): texture 1024px RGB_565");
+                } else {
+                    inSampleSize = 2;  // 2048→1024px (full quality not needed)
+                    Log.d(TAG, "HIGH RAM (" + totalGB + "GB): texture 1024px ARGB_8888");
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "RAM detection failed, using defaults");
+            }
+
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inScaled = false;
-            options.inSampleSize = 2; // 2048->1024 para ahorrar VRAM
+            options.inSampleSize = inSampleSize;
+            options.inPreferredConfig = bitmapConfig;
             Bitmap bitmap = BitmapFactory.decodeFile(filePath, options);
             if (bitmap != null) {
+                Log.d(TAG, "Texture loaded: " + bitmap.getWidth() + "x" + bitmap.getHeight()
+                    + " (" + (bitmap.getByteCount() / 1024) + " KB)");
                 int texId = uploadBitmapToGL(bitmap);
                 bitmap.recycle();
                 return texId;
@@ -224,7 +254,7 @@ public class Frieza3D {
 
     public void update(float deltaTime) {
         time += deltaTime;
-        if (time > 1000f) time -= 1000f;
+        if (time > 62.83f) time -= 62.83f;  // ~10 full cycles of sin(time*1..3), safe for mediump
     }
 
     public void draw() {

@@ -148,10 +148,19 @@ public class ModelConfig {
         // FRIEZA DEATH BEAM SCENE - Frieza Final Form (Meshy AI)
         // ═══════════════════════════════════════════════════════════════
 
+        // Frieza body (sin aureola, separada) - v2: halo removed
         MODELS.put("frieza.obj", new ResourceInfo(
             SUPABASE_MODELS_URL + "frieza.obj",
-            332_000L,  // ~324 KB
+            318_550L,  // ~311 KB (sin halo)
             "Frieza Final Form",
+            2  // v2: halo separated into own object
+        ));
+
+        // Aureola angelical de Frieza (separada del cuerpo)
+        MODELS.put("frieza_halo.obj", new ResourceInfo(
+            SUPABASE_MODELS_URL + "frieza_halo.obj",
+            11_639L,  // ~11.6 KB
+            "Frieza Halo",
             1
         ));
     }

@@ -417,7 +417,7 @@ public class ResourcePreloader {
                 return Arrays.asList("black_cat_clean.obj", "brick_wall.obj");
 
             case "FRIEZA_DEATHBEAM":
-                return Arrays.asList("frieza.obj");
+                return Arrays.asList("frieza.obj", "frieza_halo.obj");
 
             // GOKU, ADVENTURE_TIME, SAINT_SEIYA no usan modelos 3D
             default:
@@ -728,10 +728,13 @@ public class ResourcePreloader {
         // 1. Video de fondo - anime speed lines (540x960, 3s loop)
         addVideoDownloadTask("Video Fondo Anime", "frieza_deathbeam_bg.mp4", 3);
 
-        // 2. Modelo 3D de Frieza (Meshy AI, 3K faces)
+        // 2. Modelo 3D de Frieza (Meshy AI, sin aureola)
         addModelDownloadTask("Modelo Frieza", "frieza.obj", 3);
 
-        // 3. Textura baked de Frieza (2048x2048)
+        // 3. Aureola angelical (separada del cuerpo)
+        addModelDownloadTask("Aureola Frieza", "frieza_halo.obj", 1);
+
+        // 4. Textura baked de Frieza (2048x2048)
         addImageDownloadTask("Textura Frieza", "frieza_texture.png", 5);
 
         calculateTotalWeight();
