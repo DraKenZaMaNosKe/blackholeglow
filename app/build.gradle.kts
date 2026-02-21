@@ -20,8 +20,8 @@ android {
         applicationId = "com.secret.blackholeglow"
         minSdk = 24
         targetSdk = 35
-        versionCode = 36
-        versionName = "5.1.1"
+        versionCode = 37
+        versionName = "5.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
