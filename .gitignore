@@ -28,3 +28,7 @@ keystore.properties
 
 # 📝 Notas de sesión locales
 SESSION_NOTES*.md
+
+# Local tool configs
+.mcp.json
+nul
