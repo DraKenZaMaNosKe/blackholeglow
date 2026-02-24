@@ -16,6 +16,8 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.os.LocaleListCompat;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -43,6 +45,7 @@ import com.secret.blackholeglow.MusicPermissionActivity;
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.UserManager;
 import com.secret.blackholeglow.fragments.AnimatedWallpaperListFragment;
+import com.secret.blackholeglow.fragments.DiagnosticFragment;
 import com.secret.blackholeglow.systems.AdsManager;
 
 
@@ -263,6 +266,16 @@ public class MainActivity extends AppCompatActivity
             openNotificationListenerSettings();
             return true;
 
+        } else if (id == R.id.nav_diagnostic) {
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.fragment_container, new DiagnosticFragment())
+                    .commit();
+
+        } else if (id == R.id.nav_language) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+            showLanguageDialog();
+            return true;
+
         } else if (id == R.id.nav_logout) {
             // Cerrar sesión
             showLogoutDialog();
@@ -342,20 +355,20 @@ public class MainActivity extends AppCompatActivity
      */
     private void showDeleteAccountDialog() {
         new AlertDialog.Builder(this)
-                .setTitle("⚠️ Eliminar mi cuenta")
-                .setMessage("Esta acción es PERMANENTE e IRREVERSIBLE.\n\n" +
-                        "Se eliminarán:\n" +
-                        "• Tu perfil de usuario\n" +
-                        "• Tus fondos favoritos guardados\n" +
-                        "• Todas tus preferencias\n\n" +
-                        "¿Estás seguro de que deseas continuar?")
-                .setPositiveButton("Sí, eliminar", (dialog, which) -> {
+                .setTitle("⚠️ Delete my account")
+                .setMessage("This action is PERMANENT and IRREVERSIBLE.\n\n" +
+                        "The following will be deleted:\n" +
+                        "• Your user profile\n" +
+                        "• Your saved favorite wallpapers\n" +
+                        "• All your preferences\n\n" +
+                        "Are you sure you want to continue?")
+                .setPositiveButton("Yes, delete", (dialog, which) -> {
                     // Cerrar drawer antes de proceder
                     drawerLayout.closeDrawer(GravityCompat.START);
                     // Proceder a eliminar la cuenta
                     deleteAccount();
                 })
-                .setNegativeButton("Cancelar", (dialog, which) -> {
+                .setNegativeButton("Cancel", (dialog, which) -> {
                     // Cerrar drawer
                     drawerLayout.closeDrawer(GravityCompat.START);
                     dialog.dismiss();
@@ -384,27 +397,27 @@ public class MainActivity extends AppCompatActivity
 
         String title, message;
         if (hasPermission) {
-            title = "✅ Detección de Música Activa";
-            message = "¡Ya tienes la detección de música activada!\n\n" +
-                    "Cuando reproduzcas música en Spotify, YouTube Music u otra app, " +
-                    "podrás compartirla tocando el corazón ♥ en el wallpaper.\n\n" +
-                    "¿Deseas abrir la configuración de todos modos?";
+            title = "✅ Music Detection Active";
+            message = "Music detection is already enabled!\n\n" +
+                    "When you play music on Spotify, YouTube Music or another app, " +
+                    "you can share it by tapping the heart ♥ on the wallpaper.\n\n" +
+                    "Would you like to open settings anyway?";
         } else {
-            title = "🎵 Configurar Detección de Música";
-            message = "Para compartir la canción que estás escuchando, necesitamos acceso a las notificaciones.\n\n" +
-                    "📱 En la siguiente pantalla:\n" +
-                    "1. Busca \"Orbix iA Fondos de Pantalla\"\n" +
-                    "2. Activa el interruptor\n" +
-                    "3. Confirma en el diálogo que aparece";
+            title = "🎵 Set Up Music Detection";
+            message = "To share the song you\'re listening to, we need access to notifications.\n\n" +
+                    "📱 On the next screen:\n" +
+                    "1. Look for \"Orbix iA Live Wallpapers\"\n" +
+                    "2. Toggle the switch on\n" +
+                    "3. Confirm in the dialog that appears";
         }
 
         new AlertDialog.Builder(this)
                 .setTitle(title)
                 .setMessage(message)
-                .setPositiveButton(hasPermission ? "Abrir Config" : "Configurar", (dialog, which) -> {
+                .setPositiveButton(hasPermission ? "Open Settings" : "Set Up", (dialog, which) -> {
                     openNotificationAccessSettings();
                 })
-                .setNegativeButton("Cancelar", null)
+                .setNegativeButton("Cancel", null)
                 .show();
     }
 
@@ -471,7 +484,7 @@ public class MainActivity extends AppCompatActivity
 
             // Mostrar instrucciones adicionales
             android.widget.Toast.makeText(this,
-                    "Busca 'Notificaciones' o 'Acceso a notificaciones' en esta pantalla",
+                    "Look for 'Notifications' or 'Notification access' on this screen",
                     android.widget.Toast.LENGTH_LONG).show();
             return;
         } catch (android.content.ActivityNotFoundException e) {
@@ -486,13 +499,33 @@ public class MainActivity extends AppCompatActivity
             startActivity(intent);
 
             android.widget.Toast.makeText(this,
-                    "Ve a Apps → Orbix iA → Notificaciones → Acceso a notificaciones",
+                    "Go to Apps → Orbix iA → Notifications → Notification access",
                     android.widget.Toast.LENGTH_LONG).show();
         } catch (Exception e) {
             android.widget.Toast.makeText(this,
-                    "No se pudo abrir la configuración. Por favor, hazlo manualmente desde Ajustes.",
+                    "Could not open settings. Please do it manually from Settings.",
                     android.widget.Toast.LENGTH_LONG).show();
         }
+    }
+
+    /**
+     * Muestra un diálogo para seleccionar el idioma de la app.
+     */
+    private void showLanguageDialog() {
+        String[] languages = {
+                getString(R.string.language_english),
+                getString(R.string.language_spanish)
+        };
+        String[] tags = {"en", "es"};
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.language_dialog_title)
+                .setItems(languages, (dialog, which) -> {
+                    LocaleListCompat locales = LocaleListCompat.forLanguageTags(tags[which]);
+                    AppCompatDelegate.setApplicationLocales(locales);
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
     }
 
     /**
@@ -500,13 +533,13 @@ public class MainActivity extends AppCompatActivity
      */
     private void showLogoutDialog() {
         new AlertDialog.Builder(this)
-                .setTitle("Cerrar sesión")
-                .setMessage("¿Estás seguro de que deseas cerrar sesión?\n\nTendrás que iniciar sesión nuevamente la próxima vez que abras la app.")
-                .setPositiveButton("Sí, cerrar sesión", (dialog, which) -> {
+                .setTitle("Log out")
+                .setMessage("Are you sure you want to log out?\n\nYou will need to sign in again the next time you open the app.")
+                .setPositiveButton("Yes, log out", (dialog, which) -> {
                     drawerLayout.closeDrawer(GravityCompat.START);
                     performLogout();
                 })
-                .setNegativeButton("Cancelar", (dialog, which) -> {
+                .setNegativeButton("Cancel", (dialog, which) -> {
                     drawerLayout.closeDrawer(GravityCompat.START);
                     dialog.dismiss();
                 })
@@ -521,7 +554,7 @@ public class MainActivity extends AppCompatActivity
      * Cierra la sesión de Firebase y Google, limpia datos locales y redirige al login.
      */
     private void performLogout() {
-        Toast.makeText(this, "Cerrando sesión...", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Logging out...", Toast.LENGTH_SHORT).show();
 
         // Cerrar sesión de Firebase
         mAuth.signOut();
@@ -531,7 +564,7 @@ public class MainActivity extends AppCompatActivity
             // Limpiar datos del UserManager
             UserManager.getInstance(MainActivity.this).logout();
 
-            Toast.makeText(MainActivity.this, "Sesión cerrada", Toast.LENGTH_SHORT).show();
+            Toast.makeText(MainActivity.this, "Logged out", Toast.LENGTH_SHORT).show();
 
             // Redirigir a LoginActivity
             Intent intent = new Intent(MainActivity.this, LoginActivity.class);
@@ -552,23 +585,23 @@ public class MainActivity extends AppCompatActivity
     private void deleteAccount() {
         FirebaseUser user = mAuth.getCurrentUser();
         if (user == null) {
-            Toast.makeText(this, "No hay usuario autenticado", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "No authenticated user", Toast.LENGTH_SHORT).show();
             return;
         }
 
         // Mostrar mensaje de progreso
-        Toast.makeText(this, "Eliminando cuenta...", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Deleting account...", Toast.LENGTH_SHORT).show();
 
         // Primero, re-autenticar al usuario para evitar el error "requires recent authentication"
         GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
         if (account == null) {
-            Toast.makeText(this, "Error: no se pudo obtener la cuenta de Google", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Error: could not get Google account", Toast.LENGTH_SHORT).show();
             return;
         }
 
         String idToken = account.getIdToken();
         if (idToken == null) {
-            Toast.makeText(this, "Error: no se pudo obtener el token de autenticación", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Error: could not get authentication token", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -596,7 +629,7 @@ public class MainActivity extends AppCompatActivity
 
                                             // Mostrar mensaje de éxito
                                             Toast.makeText(MainActivity.this,
-                                                    "Cuenta eliminada exitosamente. Cerrando app...",
+                                                    "Account deleted successfully. Closing app...",
                                                     Toast.LENGTH_LONG).show();
 
                                             // Esperar un momento para que se vea el Toast y luego cerrar la app
@@ -609,7 +642,7 @@ public class MainActivity extends AppCompatActivity
                                     } else {
                                         // Error al eliminar cuenta
                                         Log.e(TAG, "Error al eliminar cuenta", deleteTask.getException());
-                                        String errorMsg = "Error al eliminar la cuenta: ";
+                                        String errorMsg = "Error deleting account: ";
                                         if (deleteTask.getException() != null) {
                                             errorMsg += deleteTask.getException().getMessage();
                                         }
@@ -620,7 +653,7 @@ public class MainActivity extends AppCompatActivity
                         // Error en la re-autenticación
                         Log.e(TAG, "Error en re-autenticación", reauthTask.getException());
                         Toast.makeText(MainActivity.this,
-                                "Error al verificar tu identidad. Por favor, cierra sesión e inicia sesión nuevamente antes de eliminar tu cuenta.",
+                                "Error verifying your identity. Please log out and sign in again before deleting your account.",
                                 Toast.LENGTH_LONG).show();
                     }
                 });

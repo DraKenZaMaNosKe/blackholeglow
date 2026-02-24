@@ -1,12 +1,66 @@
 <resources>
     <string name="app_name">Orbix IA</string>
-    <string name="navigation_drawer_open">Abrir menú</string>
-    <string name="navigation_drawer_close">Cerrar menú</string>
-    <string name="wallpaper_preview">Vista previa del fondo</string>
+    <string name="navigation_drawer_open">Open menu</string>
+    <string name="navigation_drawer_close">Close menu</string>
+    <string name="wallpaper_preview">Wallpaper preview</string>
 
-    <string name="apply">Aplicar</string>
-    <string name="wallpaper_title">Nombre del fondo</string>
-    <string name="wallpaper_description">Descripción breve del fondo animado.</string>
-    <string name="preview_image_desc">Vista previa del fondo animado</string>
+    <string name="apply">Apply</string>
+    <string name="wallpaper_title">Wallpaper name</string>
+    <string name="wallpaper_description">Brief animated wallpaper description.</string>
+    <string name="preview_image_desc">Animated wallpaper preview</string>
+
+    <!-- Diagnostic Panel -->
+    <string name="diag_title">Diagnostics</string>
+    <string name="diag_device">DEVICE</string>
+    <string name="diag_ram_tier">RAM Tier:</string>
+    <string name="diag_storage">STORAGE</string>
+    <string name="diag_active_wallpaper">ACTIVE WALLPAPER</string>
+    <string name="diag_compatibility">COMPATIBILITY</string>
+    <string name="diag_no_active">None active</string>
+    <string name="diag_no_active_hint">Select a wallpaper from the catalog</string>
+    <string name="diag_legend_optimal">Optimal</string>
+    <string name="diag_legend_moderate">Moderate</string>
+    <string name="diag_legend_not_recommended">Not recom.</string>
+    <string name="diag_compat_optimal_msg">This wallpaper runs perfectly on your device.</string>
+    <string name="diag_compat_moderate_msg">There may be occasional lag on heavily loaded devices.</string>
+    <string name="diag_compat_not_recommended_msg">Your device doesn\'t have enough RAM. You may experience lag or crashes.</string>
+
+    <!-- Login -->
+    <string name="login_subtitle">Animated wallpapers for your screen</string>
+    <string name="login_sign_in_google">Continue with Google</string>
+    <string name="login_skip">Continue without account</string>
+    <string name="login_info_text">Your avatar will appear on the wallpaper</string>
+
+    <!-- Splash -->
+    <string name="splash_tagline">Explore the Infinite Cosmos</string>
+    <string name="splash_downloading">Downloading resources…</string>
+
+    <!-- Gemini Chat -->
+    <string name="chat_title">Chat with Orbix</string>
+    <string name="chat_close">Close</string>
+    <string name="chat_hint">Type something…</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_powered_by">Powered by Gemini AI</string>
+
+    <!-- Nav Header -->
+    <string name="nav_user_default">User</string>
+    <string name="nav_email_default">user@gmail.com</string>
+
+    <!-- Catalog Button -->
+    <string name="button_view_wallpaper">✨ VIEW WALLPAPER</string>
+
+    <!-- Drawer Menu -->
+    <string name="menu_home">Home</string>
+    <string name="menu_my_account">My Account</string>
+    <string name="menu_music_settings">Music Settings</string>
+    <string name="menu_diagnostic">Diagnostics</string>
+    <string name="menu_language">Language</string>
+    <string name="menu_logout">Log out</string>
+    <string name="menu_delete_account">Delete my account</string>
+
+    <!-- Language Dialog -->
+    <string name="language_dialog_title">Select Language</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Español</string>
 
 </resources>

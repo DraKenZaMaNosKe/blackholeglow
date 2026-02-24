@@ -3,27 +3,37 @@
 
     <item
         android:id="@+id/nav_home"
-        android:title="Inicio"
+        android:title="@string/menu_home"
         android:icon="@drawable/ic_home" />
 
     <item
         android:id="@+id/nav_micuenta"
         android:icon="@android:drawable/ic_menu_mylocation"
-        android:title="MiCuenta" />
+        android:title="@string/menu_my_account" />
 
     <item
         android:id="@+id/nav_notifications"
         android:icon="@android:drawable/ic_popup_reminder"
-        android:title="Configurar Música" />
+        android:title="@string/menu_music_settings" />
+
+    <item
+        android:id="@+id/nav_diagnostic"
+        android:icon="@drawable/ic_diagnostic"
+        android:title="@string/menu_diagnostic" />
+
+    <item
+        android:id="@+id/nav_language"
+        android:icon="@android:drawable/ic_menu_manage"
+        android:title="@string/menu_language" />
 
     <item
         android:id="@+id/nav_logout"
         android:icon="@android:drawable/ic_lock_power_off"
-        android:title="Cerrar sesión" />
+        android:title="@string/menu_logout" />
 
     <item
         android:id="@+id/nav_delete_account"
         android:icon="@android:drawable/ic_menu_delete"
-        android:title="Eliminar mi cuenta" />
+        android:title="@string/menu_delete_account" />
 
 </menu>
