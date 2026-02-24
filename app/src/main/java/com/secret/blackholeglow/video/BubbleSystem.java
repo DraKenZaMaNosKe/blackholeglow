@@ -322,4 +322,12 @@ public class BubbleSystem {
     public boolean isInitialized() {
         return initialized;
     }
+
+    public void release() {
+        if (shaderProgram != 0) {
+            GLES20.glDeleteProgram(shaderProgram);
+            shaderProgram = 0;
+        }
+        initialized = false;
+    }
 }

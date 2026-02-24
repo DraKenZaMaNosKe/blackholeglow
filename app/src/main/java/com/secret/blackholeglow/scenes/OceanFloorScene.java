@@ -294,6 +294,7 @@ public class OceanFloorScene extends BaseVideoScene {
             abyssalLeviathan = null;
         }
         if (bubbleSystem != null) {
+            bubbleSystem.release();
             bubbleSystem = null;
         }
     }
