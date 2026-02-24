@@ -130,6 +130,20 @@ public class ForegroundMask {
         GLES20.glAttachShader(shaderProgram, fs);
         GLES20.glLinkProgram(shaderProgram);
 
+        int[] linked = new int[1];
+        GLES20.glGetProgramiv(shaderProgram, GLES20.GL_LINK_STATUS, linked, 0);
+        if (linked[0] == 0) {
+            Log.e(TAG, "❌ Link error: " + GLES20.glGetProgramInfoLog(shaderProgram));
+            GLES20.glDeleteProgram(shaderProgram);
+            shaderProgram = 0;
+            GLES20.glDeleteShader(vs);
+            GLES20.glDeleteShader(fs);
+            return;
+        }
+
+        GLES20.glDeleteShader(vs);
+        GLES20.glDeleteShader(fs);
+
         aPositionLoc = GLES20.glGetAttribLocation(shaderProgram, "aPosition");
         aTexCoordLoc = GLES20.glGetAttribLocation(shaderProgram, "aTexCoord");
         uTextureLoc = GLES20.glGetUniformLocation(shaderProgram, "uTexture");

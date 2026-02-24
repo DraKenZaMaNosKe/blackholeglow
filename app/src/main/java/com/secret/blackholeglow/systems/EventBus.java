@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
@@ -95,11 +96,15 @@ public class EventBus {
     // 🔧 SINGLETON
     // ═══════════════════════════════════════════════════════════════
 
-    private static EventBus instance;
+    private static volatile EventBus instance;
 
     public static EventBus get() {
         if (instance == null) {
-            instance = new EventBus();
+            synchronized (EventBus.class) {
+                if (instance == null) {
+                    instance = new EventBus();
+                }
+            }
         }
         return instance;
     }
@@ -108,7 +113,7 @@ public class EventBus {
     // 📦 ALMACENAMIENTO DE SUSCRIPTORES
     // ═══════════════════════════════════════════════════════════════
 
-    private final Map<String, List<EventListener>> listeners = new HashMap<>();
+    private final Map<String, List<EventListener>> listeners = new ConcurrentHashMap<>();
     private boolean debugMode = false;
 
     private EventBus() {

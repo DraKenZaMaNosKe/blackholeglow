@@ -62,7 +62,7 @@ public class CameraController {
      * Actualiza la proyección cuando cambia el viewport
      */
     public void updateProjection(int width, int height) {
-        aspect = (float) width / height;
+        aspect = height > 0 ? (float) width / height : 1f;
 
         // Proyección perspectiva
         Matrix.perspectiveM(

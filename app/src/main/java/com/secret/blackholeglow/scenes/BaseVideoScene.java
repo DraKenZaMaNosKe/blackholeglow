@@ -254,8 +254,9 @@ public abstract class BaseVideoScene extends WallpaperScene {
 
     /**
      * Indica si el reloj debe mostrar milisegundos.
+     * DESACTIVADO por defecto: genera ~30 Bitmap allocs + GL uploads por segundo.
      *
-     * @return true por defecto
+     * @return false por defecto (solo escenas que realmente lo necesiten deben retornar true)
      */
     protected boolean showClockMilliseconds() {
         return true;

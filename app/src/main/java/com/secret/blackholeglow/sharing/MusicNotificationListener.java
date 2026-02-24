@@ -27,6 +27,7 @@ public class MusicNotificationListener extends NotificationListenerService {
     private static boolean isPlaying = false;
 
     private MediaSessionManager mediaSessionManager;
+    private MediaSessionManager.OnActiveSessionsChangedListener sessionsListener;
 
     @Override
     public void onCreate() {
@@ -38,8 +39,9 @@ public class MusicNotificationListener extends NotificationListenerService {
         try {
             mediaSessionManager = (MediaSessionManager) getSystemService(Context.MEDIA_SESSION_SERVICE);
             if (mediaSessionManager != null) {
+                sessionsListener = sessions -> updateCurrentSong();
                 mediaSessionManager.addOnActiveSessionsChangedListener(
-                    sessions -> updateCurrentSong(),
+                    sessionsListener,
                     new ComponentName(this, MusicNotificationListener.class)
                 );
                 updateCurrentSong();
@@ -150,8 +152,16 @@ public class MusicNotificationListener extends NotificationListenerService {
 
     @Override
     public void onDestroy() {
-        super.onDestroy();
+        if (mediaSessionManager != null && sessionsListener != null) {
+            try {
+                mediaSessionManager.removeOnActiveSessionsChangedListener(sessionsListener);
+            } catch (Exception e) {
+                Log.w(TAG, "⚠️ Error desregistrando listener: " + e.getMessage());
+            }
+            sessionsListener = null;
+        }
         instance = null;
         Log.d(TAG, "🔴 MusicNotificationListener destruido");
+        super.onDestroy();
     }
 }

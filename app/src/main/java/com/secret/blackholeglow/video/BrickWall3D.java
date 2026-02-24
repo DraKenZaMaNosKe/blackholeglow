@@ -231,6 +231,17 @@ public class BrickWall3D {
         GLES30.glAttachShader(shaderProgram, fs);
         GLES30.glLinkProgram(shaderProgram);
 
+        int[] linked = new int[1];
+        GLES30.glGetProgramiv(shaderProgram, GLES30.GL_LINK_STATUS, linked, 0);
+        if (linked[0] == 0) {
+            Log.e(TAG, "❌ Link error: " + GLES30.glGetProgramInfoLog(shaderProgram));
+            GLES30.glDeleteProgram(shaderProgram);
+            shaderProgram = 0;
+            GLES30.glDeleteShader(vs);
+            GLES30.glDeleteShader(fs);
+            return;
+        }
+
         aPositionLoc = GLES30.glGetAttribLocation(shaderProgram, "aPosition");
         aTexCoordLoc = GLES30.glGetAttribLocation(shaderProgram, "aTexCoord");
         uMVPMatrixLoc = GLES30.glGetUniformLocation(shaderProgram, "uMVPMatrix");

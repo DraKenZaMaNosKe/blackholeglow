@@ -78,7 +78,14 @@
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6dXd2c21seWlnanRzZWFyeHltIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1ODY0ODcwOSwiZXhwIjoyMDc0MjI0NzA5fQ.xDs_HCkdqcEVJktzTdjGIXnG-V--j86jbkrUA4SjAOs\")",
       "Bash(ASSETS_DIR=\"/d/Orbix/blackholeglow/app/src/main/assets/japanese_garden\":*)",
       "Bash(__NEW_LINE_b3a08cd314297b97__ for file in sky_moon.png mountains.png sakura_alpha.png torii_alpha.png lantern_alpha.png bridge_alpha.png bamboo_alpha.png foliage_alpha.png)",
-      "Bash(SUPABASE_URL=\"https://vzuwvsmlyigjtsearxym.supabase.co/storage/v1/object/public/wallpaper-videos\")"
+      "Bash(SUPABASE_URL=\"https://vzuwvsmlyigjtsearxym.supabase.co/storage/v1/object/public/wallpaper-videos\")",
+      "Bash(cd:*)",
+      "Bash(\"C:/Users/lalog/AppData/Local/Android/Sdk/platform-tools/adb.exe\" logcat:*)",
+      "Bash(head:*)",
+      "Bash(ADB=\"/c/Users/lalog/AppData/Local/Android/Sdk/platform-tools/adb.exe\" && \"$ADB\" shell dumpsys meminfo com.secret.blackholeglow 2>&1)",
+      "Bash(ADB=\"/c/Users/lalog/AppData/Local/Android/Sdk/platform-tools/adb.exe\" && \"$ADB\" shell dumpsys battery 2>&1)",
+      "Bash(export:*)",
+      "Bash(/c/Users/lalog/AppData/Local/Android/Sdk/platform-tools/adb.exe shell:*)"
     ],
     "deny": [],
     "ask": []

@@ -112,18 +112,28 @@ public class CloudFrame {
     }
 
     private void compileShader() {
-        int vs = GLES30.glCreateShader(GLES30.GL_VERTEX_SHADER);
-        GLES30.glShaderSource(vs, VERTEX_SHADER);
-        GLES30.glCompileShader(vs);
-
-        int fs = GLES30.glCreateShader(GLES30.GL_FRAGMENT_SHADER);
-        GLES30.glShaderSource(fs, FRAGMENT_SHADER);
-        GLES30.glCompileShader(fs);
+        int vs = compileShaderCode(GLES30.GL_VERTEX_SHADER, VERTEX_SHADER);
+        int fs = compileShaderCode(GLES30.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
+        if (vs == 0 || fs == 0) {
+            Log.e(TAG, "❌ Error compilando shaders");
+            return;
+        }
 
         shaderProgram = GLES30.glCreateProgram();
         GLES30.glAttachShader(shaderProgram, vs);
         GLES30.glAttachShader(shaderProgram, fs);
         GLES30.glLinkProgram(shaderProgram);
+
+        int[] linked = new int[1];
+        GLES30.glGetProgramiv(shaderProgram, GLES30.GL_LINK_STATUS, linked, 0);
+        if (linked[0] == 0) {
+            Log.e(TAG, "❌ Link error: " + GLES30.glGetProgramInfoLog(shaderProgram));
+            GLES30.glDeleteProgram(shaderProgram);
+            shaderProgram = 0;
+            GLES30.glDeleteShader(vs);
+            GLES30.glDeleteShader(fs);
+            return;
+        }
 
         aPositionLoc = GLES30.glGetAttribLocation(shaderProgram, "aPosition");
         aTexCoordLoc = GLES30.glGetAttribLocation(shaderProgram, "aTexCoord");
@@ -133,6 +143,20 @@ public class CloudFrame {
 
         GLES30.glDeleteShader(vs);
         GLES30.glDeleteShader(fs);
+    }
+
+    private int compileShaderCode(int type, String source) {
+        int shader = GLES30.glCreateShader(type);
+        GLES30.glShaderSource(shader, source);
+        GLES30.glCompileShader(shader);
+        int[] compiled = new int[1];
+        GLES30.glGetShaderiv(shader, GLES30.GL_COMPILE_STATUS, compiled, 0);
+        if (compiled[0] == 0) {
+            Log.e(TAG, "Shader error: " + GLES30.glGetShaderInfoLog(shader));
+            GLES30.glDeleteShader(shader);
+            return 0;
+        }
+        return shader;
     }
 
     private void loadTexture(Context context) {
