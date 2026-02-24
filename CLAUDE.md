@@ -2,108 +2,126 @@
 
 ## Project Overview
 
-**Black Hole Glow** - Android live wallpaper with OpenGL ES 2.0 3D space scenes.
+**Black Hole Glow** — Android live wallpaper with OpenGL ES 2.0/3.0 scenes.
 
-- **Package**: `com.secret.blackholeglow`
-- **Language**: Java (no Kotlin) | **Java**: 11
+- **Package**: `com.secret.blackholeglow` | **Language**: Java 11 (no Kotlin)
 - **SDK**: Min 24, Target 35 | **Build**: Gradle Kotlin DSL
-- **Deps**: `gradle/libs.versions.toml` (version catalogs)
+- **Deps**: `gradle/libs.versions.toml` | **Version**: 5.3.0 (versionCode 39)
 
-## Build Commands
+## Build
 
 ```bash
-./gradlew assembleDebug      # Debug APK
-./gradlew assembleRelease    # Release APK
-./gradlew bundleRelease      # Play Store AAB
-./gradlew installDebug       # Install on device
-./gradlew clean              # Clean
-./gradlew test               # Unit tests
+./gradlew assembleDebug    # Debug APK
+./gradlew installDebug     # Install on device
+./gradlew bundleRelease    # Play Store AAB
 ```
-
-Release artifacts: `app/build/outputs/bundle/release/app-release.aab`
 
 ## Architecture
 
-### Rendering Pipeline
-1. **LiveWallpaperService** - Entry point, creates GLWallpaperEngine. Prefs: `blackholeglow_prefs`
-2. **SceneRenderer** - GLSurfaceView.Renderer, render loop, manages CameraController + TextureManager
-3. **CameraController** - Multi-mode camera (ORBIT default). Static 3/4 isometric view (4,3,6 -> 0,0,0)
-4. **BaseShaderProgram** - Abstract shader base. Uniforms: `u_Time`, `u_MVP`, `u_Resolution`
+**Pipeline**: LiveWallpaperService → SceneRenderer → SceneFactory → WallpaperScene
+**Activity flow**: SplashActivity → MainActivity (drawer + catalog) → WallpaperPreviewActivity
+**Diagnostic**: Auto-reads WallpaperCatalog.getAll() + device RAM tier → calculates compatibility per wallpaper (no manual registration needed)
 
-### Scene Objects
-- Implement `SceneObject` interface + `CameraAware` for camera reference
-- Key classes: `Planeta`, `UniverseBackground`, `Asteroide`, `Spaceship3D`
+## Adding a New Video Scene (complete steps)
 
-### Key Patterns
-- **Camera assignment**: Always `((CameraAware) obj).setCameraController(sharedCamera)`
-- **Shaders**: Loaded from `assets/shaders/*.glsl` via `ShaderUtils.createProgramFromAssets()`
-- **Textures**: `TextureManager` with lazy-load cache. Resources in `res/drawable/`
-- **Models**: OBJ files in `assets/`, loaded via `ObjLoader.loadObj()`
-- **Threading**: GL calls on GL thread, UI on main thread
-- **ShaderUtils duplication**: `com.secret.blackholeglow.ShaderUtils` (rendering) vs `com.secret.blackholeglow.opengl.ShaderUtils` (UI)
+### 1. Upload video to Supabase
+- Bucket: `wallpaper-videos/`
+- Format: MP4, loop-friendly, ~720p/1080p
 
-### OpenGL Config
-- ES 2.0, RGB565, 16-bit depth, no stencil
-- Depth test + face culling + alpha blending (SRC_ALPHA, ONE_MINUS_SRC_ALPHA)
+### 2. Register video in `video/VideoConfig.java`
+- Add entry to the map: filename → ResourceInfo (URL, size, description, priority)
 
-### Activity Flow
-SplashActivity -> MainActivity (DrawerLayout + AnimatedWallpaperListFragment) -> WallpaperPreviewActivity
+### 3. Create scene class extending `BaseVideoScene`
+Implement 5 abstract methods:
+- `getName()` → `"MY_SCENE"`
+- `getDescription()` → user-facing text
+- `getPreviewResourceId()` → `R.drawable.preview_my_scene`
+- `getVideoFileName()` → `"my_scene.mp4"` (filename in Supabase)
+- `getTheme()` → `EqualizerBarsDJ.Theme.XXXX`
 
-## Notes
-- Live wallpaper project - main entry is WallpaperService, not Activity
-- Touch interaction disabled for stability
-- Spanish comments throughout codebase
-- LogCat tags: `LiveWallpaperService`, `SceneRenderer`, `Planeta`, `TextureManager`, `CameraController`
+BaseVideoScene auto-includes: video renderer, equalizer, clock, battery overlay.
 
-## Current Version
-- **versionCode**: 36 | **versionName**: 5.1.1 (published to Play Console)
+### 4. Register in SceneFactory (`core/SceneFactory.java` ~line 120)
+```java
+registerScene("MY_SCENE", MyScene.class);
+```
 
-## Recent Changes (v5.1.1)
-- **Auto-panel on visibility restore**: `LiveWallpaperService.startRendering()` calls `switchToPanelMode()` when returning to home screen (saves CPU ~90% → ~20%). Guarded by `!isSystemPreviewMode` so wallpaper picker still works.
-- Texture compression + lazy unloading for low-RAM devices
-- Moonlit Cat: UV blink system + Supabase integration
+### 5. Add to WallpaperCatalog (`systems/WallpaperCatalog.java` ~line 240)
+```java
+catalog.add(new WallpaperItem.Builder("MY SCENE")
+    .descripcion("Description for the user")
+    .preview(R.drawable.preview_my_scene)
+    .sceneName("MY_SCENE")           // must match SceneFactory ID
+    .tier(WallpaperTier.FREE)
+    .badge("NEW")
+    .glow(0xFFRRGGBB)
+    .weight(SceneWeight.LIGHT)       // LIGHT | MEDIUM | HEAVY
+    .featured()
+    .build());
+```
+The `weight` drives the diagnostic panel compatibility (auto-calculated vs device RAM).
 
-## Next Task: "Enchanted Garden" Wallpaper Scene
+### 6. Register in ResourcePreloader (`core/ResourcePreloader.java`)
+Add scene to **4 switch blocks**:
+- `prepareScene()` (~line 113) — call your prepare method
+- `getRequiredVideos()` (~line 301) — `return Arrays.asList("my_scene.mp4");`
+- `getRequiredImages()` (~line 377) — `return Arrays.asList();` (empty for video-only)
+- `getRequiredModels()` (~line 435) — `return Arrays.asList();` (empty for video-only)
 
-### Concept
-Magical garden at night with luminous flowers, a cat, moon, fireflies. **Flat vector / storybook illustration style**.
+### 7. Add preview image
+- Format: **WebP**, portrait (~512x768)
+- Path: `res/drawable/preview_my_scene.webp`
+- Naming: `preview_[lowercase_id].webp`
 
-### Reference Image
-Generated via Grok — flat illustration, dark background, glowing flowers (pink/purple/blue), black cat, moon, fireflies, layered foliage for depth.
+### 8. Build and test
+```bash
+./gradlew installDebug
+```
 
-### Approach: 2.5D Billboard in Blender
-Create the scene using **2D planes positioned in 3D space** in Blender:
+## Adding Scenes with 3D Objects
 
-1. **Generate assets in Grok** (each element with transparent background):
-   - Sky + moon (background layer)
-   - Back foliage/leaves (light colored)
-   - Flowers + stems (multiple, with glow)
-   - Cat (center focal point)
-   - Front foliage/leaves (dark, foreground)
+Same steps as above, plus:
+- Upload OBJ models + textures to Supabase (`wallpaper-models/`, `wallpaper-images/`)
+- Register in `image/ImageConfig.java` (textures) and add OBJ filenames to ResourcePreloader
+- Use `CALIBRATION_MODE` to position objects (see below)
 
-2. **Assemble in Blender**:
-   - Create a plane for each layer
-   - Apply textures with alpha transparency
-   - Position planes at different Z depths
-   - Animate with subtle wind/sway keyframes
-   - Test camera movement for natural parallax
+## Supabase Storage
 
-3. **Export for blackholeglow**:
-   - Export OBJ + textures per layer
-   - Load in OpenGL with existing parallax/scene architecture
-   - Add shaders: glow on flowers, particle system for fireflies, eye blink on cat
+- **URL base**: `https://vzuwvsmlyigjtsearxym.supabase.co/storage/v1/object/public/`
+- **Buckets**: `wallpaper-videos/`, `wallpaper-images/`, `wallpaper-models/`
+- Upload via Supabase console or CLI, then register URL in VideoConfig/ImageConfig
 
-### Layer Structure (front to back)
-| Z | Layer | Animation |
-|---|-------|-----------|
-| 0 | Front dark leaves | Strong parallax sway |
-| 1 | Cat | Eye blink (texture swap) |
-| 2 | Flowers + stems | Gentle wind sway |
-| 3 | Back light leaves | Subtle parallax |
-| 4 | Sky + moon | Static or slow glow pulse |
-| -- | Particles/fireflies | Shader-driven floating |
+## Calibration Mode
 
-### Key Decisions Pending
-- Final art style approval after Grok generates separated layers
-- Whether to use vertex animation (shader) or keyframe animation for wind
-- Camera behavior: static with touch parallax, or slow auto-orbit
+For positioning 3D objects in a scene:
+
+```java
+private static final boolean CALIBRATION_MODE = false; // true to tune
+
+// In onTouchEvent():
+if (CALIBRATION_MODE) return handleCalibrationTouch(nx, ny, action);
+
+// In update():
+if (!CALIBRATION_MODE) { /* run animations */ }
+```
+
+1. Set `CALIBRATION_MODE = true`, install
+2. Drag to adjust position, double-tap to switch object, tap corner to cycle mode
+3. Read values from LogCat tag `"CALIBRATE"`
+4. Copy values to code, set `CALIBRATION_MODE = false`
+
+## Blender Workflow
+
+MCP addon on port 9876. Use for assembling 2.5D billboard scenes:
+1. Generate layer assets (transparent PNGs)
+2. Create planes in Blender, apply textures, position at Z depths
+3. Export OBJ + textures per layer
+4. Load in scene with parallax architecture
+
+## Key Patterns
+
+- **Shaders**: `assets/shaders/*.glsl` loaded via `ShaderUtils.createProgramFromAssets()`
+- **Textures**: `TextureManager` with lazy-load cache
+- **Models**: OBJ in `assets/`, loaded via `ObjLoader.loadObj()`
+- **GL thread**: All GL calls on GL thread, UI on main thread
+- **Shader cleanup**: Always check `GL_COMPILE_STATUS` and call `glDeleteShader()` on failure
