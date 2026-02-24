@@ -150,11 +150,27 @@ public class VideoConfig {
             1
         ));
 
+        // GatitoDJScene - Gatito DJ bailando (v2: 540x960, sin audio)
+        VIDEOS.put("gatito_dance.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "gatito_dance.mp4",
+            1_635_458L,  // ~1.6 MB (540x960 @ 2Mbps, sin audio)
+            "Gatito DJ Dance",
+            2  // v2: Re-encoded 540p, -81% tamaño
+        ));
+
         // GatitoScene - Gatito animado
         VIDEOS.put("gatito_scene_final.mp4", new ResourceInfo(
             SUPABASE_VIDEOS_URL + "gatito_scene_final.mp4",
             9_513_973L,  // ~9.1 MB
             "Gatito",
+            1
+        ));
+
+        // PixelCityScene - Ciudad pixel art (v1: 540x960 optimizado, era 1080x1920)
+        VIDEOS.put("pixel_city_scene.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "pixel_city_scene.mp4",
+            682_683L,  // ~683 KB (540x960 @ 900kbps, sin audio)
+            "Pixel City",
             1
         ));
     }

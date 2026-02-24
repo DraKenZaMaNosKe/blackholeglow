@@ -26,6 +26,8 @@ import com.secret.blackholeglow.scenes.ScorpionScene;
 import com.secret.blackholeglow.scenes.TrenNocturnoScene;
 import com.secret.blackholeglow.scenes.TheEyeScene;
 import com.secret.blackholeglow.scenes.GatitoScene;
+import com.secret.blackholeglow.scenes.GatitoDJScene;
+import com.secret.blackholeglow.scenes.PixelCityScene;
 import com.secret.blackholeglow.systems.EventBus;
 import com.secret.blackholeglow.systems.ResourceManager;
 
@@ -156,6 +158,10 @@ public class SceneFactory {
         registerScene("THE_EYE", TheEyeScene.class);
         // 🐱 Gatito: Cute cat animation
         registerScene("GATITO", GatitoScene.class);
+        // 🎧 Gatito DJ: Dancing DJ cat
+        registerScene("GATITO_DJ", GatitoDJScene.class);
+        // 🏙️ Pixel City: Retro pixel art city
+        registerScene("PIXEL_CITY", PixelCityScene.class);
 
         Log.d(TAG, "🎭 " + registeredScenes.size() + " escenas registradas");
     }

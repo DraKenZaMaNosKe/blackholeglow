@@ -85,6 +85,8 @@ public class WallpaperPreferences {
         "TREN_NOCTURNO",     // 🚂 Tren Nocturno - Pixel Art
         "THE_EYE",           // 👁️ The Eye - Ojo Misterioso
         "GATITO",            // 🐱 Gatito - Cute Cat Animation
+        "GATITO_DJ",         // 🎧 Gatito DJ - Dancing DJ Cat
+        "PIXEL_CITY",        // 🏙️ Pixel City - Retro Pixel Art
 
         // ═══════════════════════════════════════════
         // 📦 WALLPAPERS LEGADOS (compatibilidad)

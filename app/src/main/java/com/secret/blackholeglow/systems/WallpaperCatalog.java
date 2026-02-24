@@ -535,6 +535,36 @@ public class WallpaperCatalog {
                 .featured()
                 .build());
 
+        // ═══════════════════════════════════════════════════════════════════
+        // 🎧 GATITO DJ - Dancing DJ Cat
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("🎧 GATITO DJ 🎧")
+                .descripcion("The coolest DJ cat in the universe! " +
+                        "Dancing and spinning beats with neon lights.")
+                .preview(R.drawable.preview_gatito_dj)
+                .sceneName("GATITO_DJ")
+                .tier(WallpaperTier.FREE)
+                .badge("🎧 NEW")
+                .glow(0xFFDA70D6)  // Orchid purple (neon)
+                .weight(SceneWeight.LIGHT)
+                .featured()
+                .build());
+
+        // ═══════════════════════════════════════════════════════════════════
+        // 🏙️ PIXEL CITY - Retro Pixel Art City
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("🏙️ PIXEL CITY 🏙️")
+                .descripcion("Retro pixel art city glowing under the night sky. " +
+                        "Neon lights and nostalgic 8-bit vibes.")
+                .preview(R.drawable.preview_pixel_city)
+                .sceneName("PIXEL_CITY")
+                .tier(WallpaperTier.FREE)
+                .badge("🏙️ NEW")
+                .glow(0xFF00BFFF)  // Deep Sky Blue (neon city)
+                .weight(SceneWeight.LIGHT)
+                .featured()
+                .build());
+
         Log.d(TAG, "📚 Catálogo inicializado: " + catalog.size() + " wallpapers");
     }
 }

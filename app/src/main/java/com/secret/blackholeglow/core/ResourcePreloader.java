@@ -195,6 +195,14 @@ public class ResourcePreloader {
                 prepareGatitoSceneTasks();
                 break;
 
+            case "GATITO_DJ":
+                prepareGatitoDJSceneTasks();
+                break;
+
+            case "PIXEL_CITY":
+                preparePixelCitySceneTasks();
+                break;
+
             default:
                 // Default: usar Lab
                 prepareLabSceneTasks();
@@ -362,6 +370,12 @@ public class ResourcePreloader {
 
             case "GATITO":
                 return Arrays.asList("gatito_scene_final.mp4");
+
+            case "GATITO_DJ":
+                return Arrays.asList("gatito_dance.mp4");
+
+            case "PIXEL_CITY":
+                return Arrays.asList("pixel_city_scene.mp4");
 
             default:
                 return new ArrayList<>();
@@ -841,6 +855,25 @@ public class ResourcePreloader {
         Log.d(TAG, "🐱 Gatito: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
     }
 
+    public void prepareGatitoDJSceneTasks() {
+        tasks.clear();
+        addVideoDownloadTask("Video Gatito DJ", "gatito_dance.mp4", 10);
+        addTextureTask("Preparando escena Gatito DJ", R.drawable.preview_gatito_dj, 2);
+        calculateTotalWeight();
+        Log.d(TAG, "🎧 Gatito DJ: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    /**
+     * 🏙️ Pixel City Scene - Retro pixel art city
+     */
+    public void preparePixelCitySceneTasks() {
+        tasks.clear();
+        addVideoDownloadTask("Video Pixel City", "pixel_city_scene.mp4", 10);
+        addTextureTask("Preparando escena Pixel City", R.drawable.preview_pixel_city, 2);
+        calculateTotalWeight();
+        Log.d(TAG, "🏙️ Pixel City: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
     private void calculateTotalWeight() {
         totalTasks = 0;
         for (PreloadTask task : tasks) {
@@ -929,6 +962,10 @@ public class ResourcePreloader {
                 return Arrays.asList("theeye_scene.mp4");
             case "GATITO":
                 return Arrays.asList("gatito_scene_final.mp4");
+            case "GATITO_DJ":
+                return Arrays.asList("gatito_dance.mp4");
+            case "PIXEL_CITY":
+                return Arrays.asList("pixel_city_scene.mp4");
             default:
                 return new ArrayList<>();
         }
