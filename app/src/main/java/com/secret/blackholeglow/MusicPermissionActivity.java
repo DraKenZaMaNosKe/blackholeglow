@@ -51,7 +51,7 @@ public class MusicPermissionActivity extends Activity {
 
         // Título
         TextView title = new TextView(this);
-        title.setText("🎵 Permiso de Audio Requerido");
+        title.setText("🎵 Audio Permission Required");
         title.setTextSize(24);
         title.setTextColor(0xFFFFFFFF);
         title.setPadding(0, 20, 0, 30);
@@ -59,10 +59,10 @@ public class MusicPermissionActivity extends Activity {
 
         // Mensaje
         TextView message = new TextView(this);
-        message.setText("Para que el wallpaper reaccione a tu música, necesita acceso al audio.\n\n" +
-                "✓ No graba ni almacena audio\n" +
-                "✓ Solo analiza frecuencias en tiempo real\n" +
-                "✓ Tu música NO se ve afectada");
+        message.setText("For the wallpaper to react to your music, it needs audio access.\n\n" +
+                "✓ Does not record or store audio\n" +
+                "✓ Only analyzes frequencies in real time\n" +
+                "✓ Your music is NOT affected");
         message.setTextSize(16);
         message.setTextColor(0xFFCCCCCC);
         message.setPadding(0, 0, 0, 40);
@@ -70,7 +70,7 @@ public class MusicPermissionActivity extends Activity {
 
         // Botón de permiso
         Button btnGrant = new Button(this);
-        btnGrant.setText("Conceder Permiso");
+        btnGrant.setText("Grant Permission");
         btnGrant.setTextSize(18);
         btnGrant.setBackgroundColor(0xFF4CAF50);
         btnGrant.setTextColor(0xFFFFFFFF);
@@ -80,13 +80,13 @@ public class MusicPermissionActivity extends Activity {
 
         // Botón de cancelar
         Button btnCancel = new Button(this);
-        btnCancel.setText("Usar sin Música (Solo Visual)");
+        btnCancel.setText("Use without Music (Visual Only)");
         btnCancel.setTextSize(14);
         btnCancel.setBackgroundColor(0xFF666666);
         btnCancel.setTextColor(0xFFFFFFFF);
         btnCancel.setPadding(20, 20, 20, 20);
         btnCancel.setOnClickListener(v -> {
-            Toast.makeText(this, "El wallpaper funcionará sin reactividad musical", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "The wallpaper will work without music reactivity", Toast.LENGTH_LONG).show();
             finish();
         });
         android.widget.LinearLayout.LayoutParams params = new android.widget.LinearLayout.LayoutParams(
@@ -126,15 +126,15 @@ public class MusicPermissionActivity extends Activity {
 
     private void showRationaleAndRequest() {
         new android.app.AlertDialog.Builder(this)
-                .setTitle("Permiso Necesario")
-                .setMessage("El wallpaper necesita acceso al audio para crear efectos visuales reactivos a tu música.\n\n" +
-                           "No se graba ni almacena ningún audio.")
-                .setPositiveButton("Entendido", (dialog, which) -> {
+                .setTitle("Permission Required")
+                .setMessage("The wallpaper needs audio access to create visual effects that react to your music.\n\n" +
+                           "No audio is recorded or stored.")
+                .setPositiveButton("Got it", (dialog, which) -> {
                     ActivityCompat.requestPermissions(this,
                             new String[]{Manifest.permission.RECORD_AUDIO},
                             PERMISSION_REQUEST_CODE);
                 })
-                .setNegativeButton("No Ahora", (dialog, which) -> finish())
+                .setNegativeButton("Not Now", (dialog, which) -> finish())
                 .show();
     }
 
@@ -155,7 +155,7 @@ public class MusicPermissionActivity extends Activity {
                     // Ofrecer ir a configuración
                     showGoToSettingsDialog();
                 } else {
-                    Toast.makeText(this, "Sin permiso de audio, el wallpaper no reaccionará a la música",
+                    Toast.makeText(this, "Without audio permission, the wallpaper won't react to music",
                                  Toast.LENGTH_LONG).show();
                     finish();
                 }
@@ -165,22 +165,22 @@ public class MusicPermissionActivity extends Activity {
 
     private void showGoToSettingsDialog() {
         new android.app.AlertDialog.Builder(this)
-                .setTitle("Permiso Bloqueado")
-                .setMessage("Has denegado el permiso permanentemente. Para habilitar la música reactiva, " +
-                           "debes ir a Configuración → Aplicaciones → Black Hole Glow → Permisos → Micrófono")
-                .setPositiveButton("Ir a Configuración", (dialog, which) -> {
+                .setTitle("Permission Blocked")
+                .setMessage("You have permanently denied the permission. To enable music reactivity, " +
+                           "go to Settings → Apps → Black Hole Glow → Permissions → Microphone")
+                .setPositiveButton("Go to Settings", (dialog, which) -> {
                     Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                     Uri uri = Uri.fromParts("package", getPackageName(), null);
                     intent.setData(uri);
                     startActivity(intent);
                     finish();
                 })
-                .setNegativeButton("Cancelar", (dialog, which) -> finish())
+                .setNegativeButton("Cancel", (dialog, which) -> finish())
                 .show();
     }
 
     private void showSuccessAndFinish() {
-        Toast.makeText(this, "✓ Permiso concedido! El wallpaper reaccionará a tu música 🎵",
+        Toast.makeText(this, "✓ Permission granted! The wallpaper will react to your music 🎵",
                      Toast.LENGTH_LONG).show();
         finish();
     }

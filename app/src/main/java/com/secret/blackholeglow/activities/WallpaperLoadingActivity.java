@@ -155,7 +155,7 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         // SUBTITULO "Cargando recursos..."
         // ═══════════════════════════════════════════════════════════════
         TextView subtitle = new TextView(this);
-        subtitle.setText("Preparando experiencia...");
+        subtitle.setText("Preparing experience...");
         subtitle.setTextSize(14);
         subtitle.setTextColor(Color.parseColor("#B8C5D6"));  // Orbix secondary text
         subtitle.setGravity(Gravity.CENTER);
@@ -237,7 +237,7 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         // TEXTO DE TAREA ACTUAL
         // ═══════════════════════════════════════════════════════════════
         textCurrentTask = new TextView(this);
-        textCurrentTask.setText("Iniciando...");
+        textCurrentTask.setText("Starting...");
         textCurrentTask.setTextSize(12);
         textCurrentTask.setTextColor(Color.parseColor("#6B7A8F"));  // Orbix hint text
         textCurrentTask.setGravity(Gravity.CENTER);
@@ -252,7 +252,7 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         // 😊 MENSAJE TRANQUILIZADOR (para el usuario)
         // ═══════════════════════════════════════════════════════════════
         TextView reassuringText = new TextView(this);
-        reassuringText.setText("✨ Preparando tu wallpaper...");
+        reassuringText.setText("✨ Preparing your wallpaper...");
         reassuringText.setTextSize(14);
         reassuringText.setTextColor(Color.parseColor("#66E5FF"));  // Orbix cyan light
         reassuringText.setGravity(Gravity.CENTER);
@@ -361,7 +361,7 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         // Animar a 100%
         animateProgressTo(100);
         textProgress.setText("100%");
-        textCurrentTask.setText("Listo!");
+        textCurrentTask.setText("Done!");
 
         // Esperar un momento y luego ir al preview
         handler.postDelayed(() -> {
@@ -382,7 +382,7 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
         // 🛡️ MEJORA: Reintentar automáticamente si hay conexión
         if (errorRetryCount < MAX_RETRIES) {
             errorRetryCount++;
-            textProgress.setText("Reintentando... (" + errorRetryCount + "/" + MAX_RETRIES + ")");
+            textProgress.setText("Retrying... (" + errorRetryCount + "/" + MAX_RETRIES + ")");
             Log.d(TAG, "🔄 Reintento automático " + errorRetryCount + "/" + MAX_RETRIES);
 
             handler.postDelayed(() -> {
@@ -413,29 +413,29 @@ public class WallpaperLoadingActivity extends AppCompatActivity implements Resou
             boolean resourcesAvailable = ResourcePreloader.areSceneResourcesReady(this, sceneId);
 
             android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this)
-                .setTitle("Error de carga")
+                .setTitle("Loading error")
                 .setCancelable(false);
 
             if (resourcesAvailable) {
                 // Recursos existen (descargados previamente) - permitir continuar
-                builder.setMessage("Hubo errores durante la descarga, pero los recursos necesarios ya estaban disponibles.\n\n" + error)
-                    .setPositiveButton("Continuar", (dialog, which) -> {
+                builder.setMessage("There were errors during download, but the required resources were already available.\n\n" + error)
+                    .setPositiveButton("Continue", (dialog, which) -> {
                         Log.d(TAG, "🛡️ Continuando con recursos ya disponibles");
                         goToPreview();
                     })
-                    .setNegativeButton("Cancelar", (dialog, which) -> finish());
+                    .setNegativeButton("Cancel", (dialog, which) -> finish());
             } else {
                 // 🛡️ Recursos NO disponibles - NO permitir continuar (evita pantalla negra)
-                builder.setMessage("No se pudieron descargar los recursos necesarios.\n\n" + error +
-                        "\n\nVerifica tu conexión a internet e intenta de nuevo.")
-                    .setPositiveButton("Reintentar", (dialog, which) -> {
+                builder.setMessage("Could not download the required resources.\n\n" + error +
+                        "\n\nCheck your internet connection and try again.")
+                    .setPositiveButton("Retry", (dialog, which) -> {
                         Log.d(TAG, "Usuario eligió reintentar");
                         errorRetryCount = 0;
                         hasPreloadErrors = false;
                         textCurrentTask.setTextColor(Color.parseColor("#6B7A8F"));
                         startPreloading();
                     })
-                    .setNegativeButton("Volver", (dialog, which) -> {
+                    .setNegativeButton("Back", (dialog, which) -> {
                         Log.d(TAG, "🛡️ Recursos no disponibles, volviendo");
                         finish();
                     });

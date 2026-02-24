@@ -9,6 +9,7 @@ import com.secret.blackholeglow.CameraController;
 import com.secret.blackholeglow.Clock3D;
 import com.secret.blackholeglow.EqualizerBarsDJ;
 import com.secret.blackholeglow.TextureManager;
+import com.secret.blackholeglow.core.MemoryPressureLevel;
 import com.secret.blackholeglow.video.MediaCodecVideoRenderer;
 import com.secret.blackholeglow.video.VideoDownloadManager;
 
@@ -739,6 +740,41 @@ public abstract class BaseVideoScene extends WallpaperScene {
     public boolean onTouchEvent(float normalizedX, float normalizedY, int action) {
         // Override en subclases que necesiten interacción táctil
         return false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ADAPTIVE MEMORY SYSTEM
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    @Override
+    public void onMemoryPressure(MemoryPressureLevel level) {
+        super.onMemoryPressure(level);
+        Log.d(TAG, getName() + " memoria: " + level);
+
+        switch (level) {
+            case WARNING:
+                if (equalizerDJ != null) equalizerDJ.setReducedMode(true);
+                if (clock != null) clock.setVisible(false);
+                if (battery != null) battery.setVisible(false);
+                break;
+            case CRITICAL:
+                if (equalizerDJ != null) {
+                    equalizerDJ.setReducedMode(true);
+                    equalizerDJ.setEnabled(false);
+                }
+                if (clock != null) clock.setVisible(false);
+                if (battery != null) battery.setVisible(false);
+                break;
+            case NORMAL:
+            default:
+                if (equalizerDJ != null) {
+                    equalizerDJ.setEnabled(true);
+                    equalizerDJ.setReducedMode(false);
+                }
+                if (clock != null) clock.setVisible(true);
+                if (battery != null) battery.setVisible(true);
+                break;
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

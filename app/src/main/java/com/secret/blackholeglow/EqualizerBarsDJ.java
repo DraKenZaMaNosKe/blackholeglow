@@ -1084,9 +1084,18 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // MEMORY PRESSURE CONTROLS
+    // ═══════════════════════════════════════════════════════════════
+    private boolean enabled = true;
+    private boolean reducedMode = false;
+
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public void setReducedMode(boolean reduced) { this.reducedMode = reduced; }
+
     @Override
     public void draw() {
-        if (!initialized) return;
+        if (!initialized || !enabled) return;
 
         GLES30.glUseProgram(shaderProgram);
 
@@ -1114,14 +1123,17 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         updatePeakGeometry();
         drawBuffers(peakVertexBuffer, peakColorBuffer);
 
-        // 4. 🌊 Dibujar ondas de energía
-        drawEnergyWaves();
+        // En modo reducido, omitir efectos costosos (waves, lightning, sparks)
+        if (!reducedMode) {
+            // 4. Dibujar ondas de energia
+            drawEnergyWaves();
 
-        // 5. ⚡ Dibujar rayos eléctricos
-        drawLightning();
+            // 5. Dibujar rayos electricos
+            drawLightning();
 
-        // 6. ✨ Dibujar chispas entre peaks
-        drawPeakSparks();
+            // 6. Dibujar chispas entre peaks
+            drawPeakSparks();
+        }
 
         GLES30.glEnable(GLES30.GL_DEPTH_TEST);
     }
@@ -1136,6 +1148,8 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         GLES30.glVertexAttribPointer(aColorHandle, 4, GLES30.GL_FLOAT, false, 0, cBuffer);
 
         for (int i = 0; i < NUM_BARS; i++) {
+            // En modo reducido, dibujar solo barras pares (mitad de draw calls)
+            if (reducedMode && (i % 2 != 0)) continue;
             GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, i * 4, 4);
         }
 

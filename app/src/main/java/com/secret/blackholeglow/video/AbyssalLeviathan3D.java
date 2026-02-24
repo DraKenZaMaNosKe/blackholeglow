@@ -51,6 +51,7 @@ public class AbyssalLeviathan3D {
     private float posZ = -0.18f;
     private float scale = 0.442f;
     private float time = 0f;
+    private int aiFrameCounter = 0;      // Throttle AI a cada 3 frames
     private float rotationY = 2.0f;      // Mirando hacia cámara
     private float rotationX = 6.8f;
     private float rotationZ = -3.7f;
@@ -184,15 +185,6 @@ public class AbyssalLeviathan3D {
         "    tex.rgb += crystalGlow * isCrystal;\n" +
         "    \n" +
         "    // ════════════════════════════════════════════════════════\n" +
-        "    // ⚡ BIO-ELECTRICIDAD - Ondas suaves que recorren el cuerpo\n" +
-        "    // ════════════════════════════════════════════════════════\n" +
-        "    float wave = sin(vUV.y * 8.0 - u_Time * 1.5) * 0.5 + 0.5;\n" +
-        "    wave *= sin(vUV.x * 6.0 + u_Time * 1.0) * 0.5 + 0.5;\n" +
-        "    float electricPulse = pow(wave, 4.0) * 0.25;\n" +
-        "    vec3 electricColor = vec3(0.4, 0.85, 1.0);\n" +
-        "    tex.rgb += electricColor * electricPulse * smoothstep(0.35, 0.6, brightness);\n" +
-        "    \n" +
-        "    // ════════════════════════════════════════════════════════\n" +
         "    // 💚 PUNTAS VENENOSAS - Sutil brillo verde en bordes\n" +
         "    // ════════════════════════════════════════════════════════\n" +
         "    float isDark = smoothstep(0.25, 0.1, brightness);\n" +
@@ -207,12 +199,6 @@ public class AbyssalLeviathan3D {
         "    float eyePulse = sin(u_Time * 2.5) * 0.3 + 0.7;\n" +
         "    vec3 eyeGlow = vec3(1.0, 0.5, 0.8) * eyePulse;\n" +
         "    tex.rgb += eyeGlow * isEye;\n" +
-        "    \n" +
-        "    // CAUSTICAS - Luz ondulante del agua\n" +
-        "    float c1 = sin(vUV.x * 6.0 + u_Time * 1.2);\n" +
-        "    float c2 = sin(vUV.y * 5.0 + u_Time * 1.0);\n" +
-        "    float caustic = c1 * c2 * 0.12;\n" +
-        "    tex.rgb += vec3(caustic * 0.2, caustic * 0.4, caustic * 0.7);\n" +
         "    \n" +
         "    // TINTE AGUA PROFUNDA\n" +
         "    tex.rgb *= vec3(0.7, 0.85, 1.0);\n" +
@@ -364,6 +350,10 @@ public class AbyssalLeviathan3D {
         if (time > 62.83f) time -= 62.83f;
 
         if (calibrationMode) return;
+
+        // Throttle AI: solo actualizar cada 3 frames
+        aiFrameCounter++;
+        if (aiFrameCounter % 3 != 0) return;
 
         // ─────────────────────────────────────────────────────────────────────────
         // MÁQUINA DE ESTADOS - Cambiar comportamiento

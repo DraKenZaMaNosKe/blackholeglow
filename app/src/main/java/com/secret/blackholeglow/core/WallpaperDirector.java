@@ -20,6 +20,8 @@ import com.secret.blackholeglow.systems.ResourceManager;
 import com.secret.blackholeglow.systems.ScreenEffectsManager;
 import com.secret.blackholeglow.systems.ScreenManager;
 import com.secret.blackholeglow.systems.WallpaperCatalog;
+import com.secret.blackholeglow.core.MemoryPressureLevel;
+import com.secret.blackholeglow.models.SceneWeight;
 import com.secret.blackholeglow.models.WallpaperItem;
 import com.secret.blackholeglow.systems.UIController;
 import com.secret.blackholeglow.gl3.MatrixPool;
@@ -265,6 +267,19 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
                 sceneFactory.createScene(pendingSceneName);
 
+                // 🛡️ GUARD: Si createScene falló, volver al panel sin crash
+                if (!sceneFactory.hasCurrentScene()) {
+                    Log.e(TAG, "❌ Scene creation failed (autoload): " + pendingSceneName);
+                    if (modeController != null) modeController.stopWallpaper();
+                    if (panelRenderer != null) {
+                        panelRenderer.onReturnToPanel();
+                        panelRenderer.resume();
+                    }
+                    return;
+                }
+
+                startMemoryMonitor();
+
                 // 🔧 FIX VIDEO PAUSADO: Resumir la escena INMEDIATAMENTE después de crearla
                 // Antes, resume() se llamaba ANTES de que la escena existiera (en startRendering),
                 // así que scene.onResume() nunca se ejecutaba → video pausado, texturas sin cargar
@@ -390,7 +405,8 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
      */
     private void forceReturnToPanel() {
         try {
-            Log.d(TAG, "🛡️ Forzando retorno seguro al panel...");
+            Log.d(TAG, "Forzando retorno seguro al panel...");
+            SceneHealthMonitor.get().stop();
 
             // Destruir escena actual
             if (sceneFactory != null) {
@@ -496,8 +512,34 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         resourcesReady = false;
         resourcesReadyTimer = 0f;
 
+        // 🧠 OOM risk warning: LOW RAM + HEAVY scene + low available memory
+        DeviceProfile dp = DeviceProfile.get();
+        if (dp.isLowRam()) {
+            WallpaperItem item = WallpaperCatalog.get().getBySceneName(pendingSceneName);
+            if (item != null && item.getSceneWeight() == SceneWeight.HEAVY) {
+                long availMB = dp.getAvailableRamMB();
+                if (availMB >= 0 && availMB < 200) {
+                    Log.w(TAG, "OOM RISK: LOW RAM + HEAVY scene '" + pendingSceneName
+                            + "' + only " + availMB + "MB available");
+                }
+            }
+        }
+
         Log.d(TAG, "Carga completada - activando wallpaper");
         sceneFactory.createScene(pendingSceneName);
+
+        // 🛡️ GUARD: Si createScene falló, volver al panel sin crash
+        if (!sceneFactory.hasCurrentScene()) {
+            Log.e(TAG, "❌ Scene creation failed (loading): " + pendingSceneName);
+            if (modeController != null) modeController.stopWallpaper();
+            if (panelRenderer != null) {
+                panelRenderer.onReturnToPanel();
+                panelRenderer.resume();
+            }
+            return;
+        }
+
+        startMemoryMonitor();
         modeController.activateWallpaper();
         panelRenderer.onWallpaperActivated();
 
@@ -600,6 +642,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
     public void switchToPanelMode() {
         if (modeController == null) return;
+        SceneHealthMonitor.get().stop();
         if (modeController.stopWallpaper()) {
             // 🔧 FIX RACE CONDITION: Write both flags atomically so GL thread
             // always sees them together (avoids destroy without return → black screen)
@@ -607,12 +650,16 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
                 pendingSceneDestroy = true;
                 pendingReturnToPanel = true;
             }
-            Log.d(TAG, "🔧 switchToPanelMode: destrucción programada en GL thread");
+            Log.d(TAG, "switchToPanelMode: destruccion programada en GL thread");
         }
     }
 
     private void initializeSharedSystems() {
         Log.d(TAG, "Inicializando sistemas compartidos...");
+
+        // 🧠 DeviceProfile: singleton central de deteccion de RAM (debe ser primero)
+        DeviceProfile.init(context);
+
         camera = new CameraController();
         camera.setMode(CameraController.CameraMode.PERSPECTIVE_3_4);
         resources = ResourceManager.get();
@@ -906,6 +953,8 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             firebaseQueue = null;
         }
 
+        SceneHealthMonitor.reset();
+        DeviceProfile.reset();
         ResourceManager.reset();
         UIController.reset();
         EventBus.reset();
@@ -980,6 +1029,19 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             }
         });
 
-        Log.d(TAG, "💥 Suscrito a eventos de efectos de pantalla");
+        Log.d(TAG, "Suscrito a eventos de efectos de pantalla");
+    }
+
+    /**
+     * Inicia el monitor de memoria adaptativo para la escena activa.
+     * El listener propaga cambios de nivel a la escena actual.
+     */
+    private void startMemoryMonitor() {
+        SceneHealthMonitor.get().start(level -> {
+            WallpaperScene scene = sceneFactory != null ? sceneFactory.getCurrentScene() : null;
+            if (scene != null) {
+                scene.onMemoryPressure(level);
+            }
+        });
     }
 }

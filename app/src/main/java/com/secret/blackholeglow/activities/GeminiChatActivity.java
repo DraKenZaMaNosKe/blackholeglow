@@ -92,7 +92,7 @@ public class GeminiChatActivity extends AppCompatActivity {
     }
 
     private void showInitialGreeting() {
-        tvResponse.setText("¡Hola! Soy Orbix, tu asistente cósmico. ¿En qué puedo ayudarte?");
+        tvResponse.setText("Hi! I'm Orbix, your cosmic assistant. How can I help you?");
         tvUserMessage.setVisibility(View.GONE);
     }
 
@@ -107,7 +107,7 @@ public class GeminiChatActivity extends AppCompatActivity {
         // Limpiar input y mostrar loading
         etMessage.setText("");
         showLoading(true);
-        tvResponse.setText("Pensando...");
+        tvResponse.setText("Thinking...");
 
         // Enviar a Gemini
         geminiService.chat(message, new GeminiService.GeminiCallback() {
@@ -120,7 +120,7 @@ public class GeminiChatActivity extends AppCompatActivity {
             @Override
             public void onError(String error) {
                 showLoading(false);
-                tvResponse.setText("Oops, las estrellas están desalineadas. Intenta de nuevo.");
+                tvResponse.setText("Oops, the stars are misaligned. Try again.");
             }
         });
     }

@@ -26,6 +26,9 @@ import com.secret.blackholeglow.activities.WallpaperPreviewActivity;
 import com.secret.blackholeglow.WallpaperPreferences;
 import com.secret.blackholeglow.ui.GradientTextView;
 import com.secret.blackholeglow.image.ImageDownloadManager;
+import com.secret.blackholeglow.core.SceneRequirements;
+import com.secret.blackholeglow.core.PreFlightCheck;
+import android.app.AlertDialog;
 import android.graphics.BitmapFactory;
 import java.io.File;
 import java.util.HashMap;
@@ -212,7 +215,7 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         if (downloadFailed) {
             holder.buttonPreview.setEnabled(true);
             holder.buttonPreview.setAlpha(1.0f);
-            holder.buttonPreview.setText("⚠️ REINTENTAR");
+            holder.buttonPreview.setText("⚠️ RETRY");
             holder.buttonPreview.setOnClickListener(v -> {
                 if (context instanceof FragmentActivity) {
                     androidx.fragment.app.Fragment fragment = ((FragmentActivity) context)
@@ -229,9 +232,9 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
             holder.buttonPreview.setEnabled(false);
             holder.buttonPreview.setAlpha(0.6f);
             if (downloadProgress > 0 && downloadProgress < 100) {
-                holder.buttonPreview.setText("📥 Preparando " + downloadProgress + "%");
+                holder.buttonPreview.setText("📥 Preparing " + downloadProgress + "%");
             } else {
-                holder.buttonPreview.setText("📥 Preparando...");
+                holder.buttonPreview.setText("📥 Preparing...");
             }
             holder.buttonPreview.setOnClickListener(null);
         }
@@ -239,26 +242,12 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         else if (item.isAvailable()) {
             holder.buttonPreview.setEnabled(true);
             holder.buttonPreview.setAlpha(1.0f);
-            holder.buttonPreview.setText("✨ VER WALLPAPER");
-            holder.buttonPreview.setOnClickListener(v -> {
-                String previousWallpaper = WallpaperPreferences.getInstance(context).getSelectedWallpaperSync();
-
-                // 🎬 Mostrar ad ANTES de ir a loading (no durante instalación)
-                com.secret.blackholeglow.systems.AdsManager.get().showInterstitialAd(
-                        (android.app.Activity) context, shown -> {
-                    Log.d("WallpaperAdapter", "Ad completado: " + shown + ", abriendo loading...");
-                    Intent intent = new Intent(context, com.secret.blackholeglow.activities.WallpaperLoadingActivity.class);
-                    intent.putExtra("WALLPAPER_PREVIEW_ID", item.getResourceIdPreview());
-                    intent.putExtra("WALLPAPER_ID", item.getSceneName());
-                    intent.putExtra("WALLPAPER_DISPLAY_NAME", item.getNombre());
-                    intent.putExtra("PREVIOUS_WALLPAPER_ID", previousWallpaper);
-                    context.startActivity(intent);
-                });
-            });
+            holder.buttonPreview.setText("✨ VIEW WALLPAPER");
+            holder.buttonPreview.setOnClickListener(v -> runPreFlightAndLaunch(item));
         } else {
             holder.buttonPreview.setEnabled(false);
             holder.buttonPreview.setAlpha(0.6f);
-            holder.buttonPreview.setText("🔒 PRÓXIMAMENTE");
+            holder.buttonPreview.setText("🔒 COMING SOON");
             holder.buttonPreview.setOnClickListener(null);
         }
     }
@@ -296,7 +285,7 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         if (downloadFailed) {
             holder.buttonPreview.setEnabled(true);
             holder.buttonPreview.setAlpha(1.0f);
-            holder.buttonPreview.setText("⚠️ REINTENTAR");
+            holder.buttonPreview.setText("⚠️ RETRY");
             holder.buttonPreview.setOnClickListener(v -> {
                 if (context instanceof FragmentActivity) {
                     androidx.fragment.app.Fragment fragment = ((FragmentActivity) context)
@@ -314,39 +303,25 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
             holder.buttonPreview.setAlpha(0.6f);
             holder.buttonPreview.setOnClickListener(null);
             if (downloadProgress > 0 && downloadProgress < 100) {
-                holder.buttonPreview.setText("📥 Preparando " + downloadProgress + "%");
+                holder.buttonPreview.setText("📥 Preparing " + downloadProgress + "%");
             } else {
-                holder.buttonPreview.setText("📥 Preparando...");
+                holder.buttonPreview.setText("📥 Preparing...");
             }
         } else if (item.isAvailable()) {
             holder.buttonPreview.setEnabled(true);
             holder.buttonPreview.setAlpha(1.0f);
-            holder.buttonPreview.setText("✨ VER WALLPAPER");
-            holder.buttonPreview.setOnClickListener(v -> {
-                String previousWallpaper = WallpaperPreferences.getInstance(context).getSelectedWallpaperSync();
-
-                // 🎬 Mostrar ad ANTES de ir a loading
-                com.secret.blackholeglow.systems.AdsManager.get().showInterstitialAd(
-                        (android.app.Activity) context, shown -> {
-                    Log.d("WallpaperAdapter", "Ad completado: " + shown + ", abriendo loading...");
-                    Intent intent = new Intent(context, com.secret.blackholeglow.activities.WallpaperLoadingActivity.class);
-                    intent.putExtra("WALLPAPER_PREVIEW_ID", item.getResourceIdPreview());
-                    intent.putExtra("WALLPAPER_ID", item.getSceneName());
-                    intent.putExtra("WALLPAPER_DISPLAY_NAME", item.getNombre());
-                    intent.putExtra("PREVIOUS_WALLPAPER_ID", previousWallpaper);
-                    context.startActivity(intent);
-                });
-            });
+            holder.buttonPreview.setText("✨ VIEW WALLPAPER");
+            holder.buttonPreview.setOnClickListener(v -> runPreFlightAndLaunch(item));
         } else {
             holder.buttonPreview.setEnabled(false);
             holder.buttonPreview.setAlpha(0.6f);
             holder.buttonPreview.setOnClickListener(null);
-            holder.buttonPreview.setText("🔒 PRÓXIMAMENTE");
+            holder.buttonPreview.setText("🔒 COMING SOON");
         }
     }
 
     /**
-     * Actualiza el badge del item: prioriza "INSTALADO" sobre el badge propio.
+     * Actualiza el badge del item: prioriza INSTALADO > RAM/DOWNLOAD status > badge propio.
      */
     private void updateBadge(WallpaperViewHolder holder, WallpaperItem item) {
         if (holder.textBadge == null) return;
@@ -355,15 +330,29 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
                 item.getSceneName().equals(installedSceneName);
 
         if (isInstalled) {
-            holder.textBadge.setText("INSTALADO");
+            holder.textBadge.setText("INSTALLED");
             holder.textBadge.setBackgroundColor(Color.parseColor("#2E7D32"));
             holder.textBadge.setVisibility(View.VISIBLE);
-        } else if (item.hasBadge()) {
-            holder.textBadge.setText(item.getBadge());
-            holder.textBadge.setBackgroundResource(R.drawable.badge_background);
-            holder.textBadge.setVisibility(View.VISIBLE);
         } else {
-            holder.textBadge.setVisibility(View.GONE);
+            // Evaluar estado de la escena
+            SceneRequirements.SceneStatus status = SceneRequirements.evaluate(
+                    context, item.getSceneName(), item.getSceneWeight());
+
+            if (status == SceneRequirements.SceneStatus.NOT_RECOMMENDED) {
+                holder.textBadge.setText("RAM");
+                holder.textBadge.setBackgroundColor(Color.parseColor("#E65100"));
+                holder.textBadge.setVisibility(View.VISIBLE);
+            } else if (status == SceneRequirements.SceneStatus.NEEDS_DOWNLOAD) {
+                holder.textBadge.setText("DOWNLOAD");
+                holder.textBadge.setBackgroundColor(Color.parseColor("#1565C0"));
+                holder.textBadge.setVisibility(View.VISIBLE);
+            } else if (item.hasBadge()) {
+                holder.textBadge.setText(item.getBadge());
+                holder.textBadge.setBackgroundResource(R.drawable.badge_background);
+                holder.textBadge.setVisibility(View.VISIBLE);
+            } else {
+                holder.textBadge.setVisibility(View.GONE);
+            }
         }
     }
 
@@ -457,6 +446,85 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
             buttonPreview = itemView.findViewById(R.id.button_preview);
             animatedBorder = itemView.findViewById(R.id.animated_border);
         }
+    }
+
+    // ╔═════════════════════════════════════════════════════════════════╗
+    // ║  🛡️ PRE-FLIGHT CHECK + LAUNCH                                   ║
+    // ╚═════════════════════════════════════════════════════════════════╝
+
+    /**
+     * Ejecuta PreFlightCheck y decide si lanzar directo, mostrar warnings, o bloquear.
+     */
+    private void runPreFlightAndLaunch(WallpaperItem item) {
+        PreFlightCheck.Result result = PreFlightCheck.run(context, item.getSceneName());
+
+        if (result.isClean()) {
+            launchWallpaper(item);
+        } else if (result.canProceed) {
+            showPreFlightWarnings(result, () -> launchWallpaper(item));
+        } else {
+            showPreFlightBlockers(result);
+        }
+    }
+
+    /**
+     * Lanza el wallpaper: ad + WallpaperLoadingActivity.
+     */
+    private void launchWallpaper(WallpaperItem item) {
+        String previousWallpaper = WallpaperPreferences.getInstance(context).getSelectedWallpaperSync();
+
+        com.secret.blackholeglow.systems.AdsManager.get().showInterstitialAd(
+                (android.app.Activity) context, shown -> {
+            Log.d("WallpaperAdapter", "Ad completado: " + shown + ", abriendo loading...");
+            Intent intent = new Intent(context, com.secret.blackholeglow.activities.WallpaperLoadingActivity.class);
+            intent.putExtra("WALLPAPER_PREVIEW_ID", item.getResourceIdPreview());
+            intent.putExtra("WALLPAPER_ID", item.getSceneName());
+            intent.putExtra("WALLPAPER_DISPLAY_NAME", item.getNombre());
+            intent.putExtra("PREVIOUS_WALLPAPER_ID", previousWallpaper);
+            context.startActivity(intent);
+        });
+    }
+
+    /**
+     * Muestra dialog con warnings y opciones "Continuar" / "Cancelar".
+     */
+    private void showPreFlightWarnings(PreFlightCheck.Result result, Runnable onProceed) {
+        StringBuilder msg = new StringBuilder();
+        for (PreFlightCheck.Issue issue : result.getWarnings()) {
+            msg.append("• ").append(issue.titulo).append("\n");
+            msg.append("  ").append(issue.detalle).append("\n");
+            msg.append("  ➜ ").append(issue.accionSugerida).append("\n\n");
+        }
+
+        new AlertDialog.Builder(context)
+                .setTitle("⚠️ Warning")
+                .setMessage(msg.toString().trim())
+                .setPositiveButton("Continue", (d, w) -> onProceed.run())
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    /**
+     * Muestra dialog con errores bloqueantes (no se puede continuar).
+     */
+    private void showPreFlightBlockers(PreFlightCheck.Result result) {
+        StringBuilder msg = new StringBuilder();
+        for (PreFlightCheck.Issue issue : result.getBlockers()) {
+            msg.append("• ").append(issue.titulo).append("\n");
+            msg.append("  ").append(issue.detalle).append("\n");
+            msg.append("  ➜ ").append(issue.accionSugerida).append("\n\n");
+        }
+        // Tambien incluir warnings si los hay
+        for (PreFlightCheck.Issue issue : result.getWarnings()) {
+            msg.append("• ").append(issue.titulo).append("\n");
+            msg.append("  ").append(issue.detalle).append("\n\n");
+        }
+
+        new AlertDialog.Builder(context)
+                .setTitle("❌ Cannot continue")
+                .setMessage(msg.toString().trim())
+                .setPositiveButton("OK", null)
+                .show();
     }
 
     // ╔═════════════════════════════════════════════════════════════════╗

@@ -3,6 +3,7 @@ package com.secret.blackholeglow.systems;
 import android.util.Log;
 
 import com.secret.blackholeglow.R;
+import com.secret.blackholeglow.models.SceneWeight;
 import com.secret.blackholeglow.models.WallpaperItem;
 import com.secret.blackholeglow.models.WallpaperTier;
 
@@ -248,73 +249,79 @@ public class WallpaperCatalog {
 
         // 🌊 ABYSSIA - Océano alienígena con video de fondo
         catalog.add(new WallpaperItem.Builder("✧ ABYSSIA ✧")
-                .descripcion("Desciende a las profundidades de un océano alienígena. " +
-                        "Bioluminiscencia ancestral y criaturas de otro mundo.")
+                .descripcion("Descend into the depths of an alien ocean. " +
+                        "Ancestral bioluminescence and otherworldly creatures.")
                 .preview(R.drawable.preview_oceano_sc)
                 .sceneName("ABYSSIA")
                 .tier(WallpaperTier.FREE)
-                .badge("🌊 NUEVO")
+                .badge("🌊 NEW")
                 .glow(0xFF00CED1)  // Dark Turquoise
+                .weight(SceneWeight.HEAVY)  // Video + 2 OBJ models + particulas = genuinamente pesado
                 .featured()
                 .build());
 
         // 🔥 PYRALIS - Portal de fuego cósmico
         catalog.add(new WallpaperItem.Builder("✦ PYRALIS ✦")
-                .descripcion("Atraviesa el portal de fuego eterno. " +
-                        "Nubes cósmicas ardientes y dimensiones desconocidas.")
+                .descripcion("Cross through the eternal fire portal. " +
+                        "Blazing cosmic clouds and unknown dimensions.")
                 .preview(R.drawable.preview_portal_cosmico)
                 .sceneName("PYRALIS")
                 .tier(WallpaperTier.FREE)
                 .badge("🔥 POPULAR")
                 .glow(0xFFFF4500)  // Orange Red
+                .weight(SceneWeight.MEDIUM)
                 .featured()
                 .build());
 
         // 🐉 GOKU - Dragon Ball Kamehameha
         catalog.add(new WallpaperItem.Builder("✧ GOKU ✧")
-                .descripcion("¡KAME-HAME-HAAA! Libera el poder del Ultra Instinto. " +
-                        "La energía Ki más poderosa del universo.")
+                .descripcion("KAME-HAME-HAAA! Unleash the power of Ultra Instinct. " +
+                        "The mightiest Ki energy in the universe.")
                 .preview(R.drawable.preview_goku)
                 .sceneName("GOKU")
                 .tier(WallpaperTier.FREE)
-                .badge("🐉 NUEVO")
+                .badge("🐉 NEW")
                 .glow(0xFF00BFFF)  // Deep Sky Blue (energía Ki)
+                .weight(SceneWeight.LIGHT)
                 .featured()
                 .build());
 
         // 🌳 ADVENTURE TIME - Fogata con Finn y Jake
         catalog.add(new WallpaperItem.Builder("✧ ADVENTURE TIME ✧")
-                .descripcion("¡Hora de Aventura! Finn, Jake, Tronquitos y Dulce Princesa " +
-                        "alrededor de una acogedora fogata en el bosque.")
+                .descripcion("Adventure Time! Finn, Jake, Tree Trunks and Princess Bubblegum " +
+                        "around a cozy campfire in the woods.")
                 .preview(R.drawable.hdapreview)
                 .sceneName("ADVENTURE_TIME")
                 .tier(WallpaperTier.FREE)
-                .badge("🌳 NUEVO")
+                .badge("🌳 NEW")
                 .glow(0xFFFF8C00)  // Dark Orange (fogata)
+                .weight(SceneWeight.LIGHT)
                 .featured()
                 .build());
 
         // 🚗 NEON CITY - Synthwave DeLorean
         catalog.add(new WallpaperItem.Builder("✧ NEON CITY ✧")
-                .descripcion("Carretera infinita hacia el horizonte neón. " +
-                        "DeLorean, palmeras y un sol eterno estilo synthwave 80s.")
+                .descripcion("Endless highway toward the neon horizon. " +
+                        "DeLorean, palm trees and an eternal 80s synthwave sun.")
                 .preview(R.drawable.preview_neoncity)
                 .sceneName("NEON_CITY")
                 .tier(WallpaperTier.FREE)
-                .badge("🚗 NUEVO")
+                .badge("🚗 NEW")
                 .glow(0xFFFF1493)  // Deep Pink (synthwave)
+                .weight(SceneWeight.MEDIUM)
                 .featured()
                 .build());
 
         // ⭐ SAINT SEIYA - Caballeros del Zodiaco
         catalog.add(new WallpaperItem.Builder("⭐ SAINT SEIYA ⭐")
-                .descripcion("¡Enciende tu cosmos! Los Caballeros del Zodiaco " +
-                        "protegen a Athena con energía dorada y constelaciones.")
+                .descripcion("Ignite your cosmos! The Knights of the Zodiac " +
+                        "protect Athena with golden energy and constellations.")
                 .preview(R.drawable.preview_saintseiya)
                 .sceneName("SAINT_SEIYA")
                 .tier(WallpaperTier.FREE)
                 .badge("⭐ COSMOS")
                 .glow(0xFFFFD700)  // Gold (cosmos)
+                .weight(SceneWeight.MEDIUM)
                 .featured()
                 .build());
 
@@ -322,13 +329,14 @@ public class WallpaperCatalog {
         // 🧟 THE WALKING DEAD - Cementerio Zombie Apocalíptico
         // ═══════════════════════════════════════════════════════════════════
         catalog.add(new WallpaperItem.Builder("🧟 THE WALKING DEAD 🧟")
-                .descripcion("Cementerio maldito bajo la luna llena. " +
-                        "Manos zombie emergiendo entre niebla verde y púrpura.")
+                .descripcion("Cursed cemetery under the full moon. " +
+                        "Zombie hands rising through green and purple fog.")
                 .preview(R.drawable.preview_walkingdead)
                 .sceneName("WALKING_DEAD")
                 .tier(WallpaperTier.FREE)
                 .badge("🧟 ZOMBIE")
                 .glow(0xFF00FF00)  // Green zombie
+                .weight(SceneWeight.MEDIUM)
                 .featured()
                 .build());
 
@@ -336,13 +344,14 @@ public class WallpaperCatalog {
         // 🗡️ ZELDA BOTW - Parallax Breath of the Wild
         // ═══════════════════════════════════════════════════════════════════
         catalog.add(new WallpaperItem.Builder("🗡️ ZELDA BOTW 🗡️")
-                .descripcion("Link contempla el reino de Hyrule desde lo alto. " +
-                        "Efecto parallax con giroscopio estilo Breath of the Wild.")
+                .descripcion("Link gazes upon the kingdom of Hyrule from above. " +
+                        "Gyroscope parallax effect Breath of the Wild style.")
                 .preview(R.drawable.preview_zelda)
                 .sceneName("ZELDA_BOTW")
                 .tier(WallpaperTier.FREE)
                 .badge("🛡️ PARALLAX")
                 .glow(0xFF4CAF50)  // Zelda green
+                .weight(SceneWeight.MEDIUM)  // Sin video: parallax layers + 1 OBJ = MEDIUM
                 .featured()
                 .build());
 
@@ -350,13 +359,14 @@ public class WallpaperCatalog {
         // 🦸 SUPERMAN - Man of Steel
         // ═══════════════════════════════════════════════════════════════════
         catalog.add(new WallpaperItem.Builder("🦸 SUPERMAN 🦸")
-                .descripcion("El Hombre de Acero surca los cielos con su capa ondeando. " +
-                        "Poder, esperanza y justicia en cada frame.")
+                .descripcion("The Man of Steel soars through the skies with his cape flowing. " +
+                        "Power, hope and justice in every frame.")
                 .preview(R.drawable.preview_superman)
                 .sceneName("SUPERMAN")
                 .tier(WallpaperTier.FREE)
                 .badge("🦸 HERO")
                 .glow(0xFFDC143C)  // Superman red
+                .weight(SceneWeight.LIGHT)
                 .featured()
                 .build());
 
@@ -364,13 +374,14 @@ public class WallpaperCatalog {
         // ⚔️ AOT - Attack on Titan (Eren Jaeger)
         // ═══════════════════════════════════════════════════════════════════
         catalog.add(new WallpaperItem.Builder("⚔️ ATTACK ON TITAN ⚔️")
-                .descripcion("Eren Jaeger con el Titán Colosal. " +
-                        "La humanidad contraataca. Shinzou wo Sasageyo!")
+                .descripcion("Eren Jaeger with the Colossal Titan. " +
+                        "Humanity strikes back. Shinzou wo Sasageyo!")
                 .preview(R.drawable.preview_aot)
                 .sceneName("AOT")
                 .tier(WallpaperTier.FREE)
                 .badge("⚔️ TITAN")
                 .glow(0xFF00E5B0)  // Eren's green eyes
+                .weight(SceneWeight.LIGHT)
                 .featured()
                 .build());
 
@@ -378,13 +389,14 @@ public class WallpaperCatalog {
         // 🕷️ SPIDER - Black Spider Horror
         // ═══════════════════════════════════════════════════════════════════
         catalog.add(new WallpaperItem.Builder("🕷️ BLACK SPIDER 🕷️")
-                .descripcion("Araña gigante con ojos rojos brillantes. " +
-                        "Terror aracnofóbico en la oscuridad más profunda.")
+                .descripcion("Giant spider with glowing red eyes. " +
+                        "Arachnophobic terror in the deepest darkness.")
                 .preview(R.drawable.preview_spider)
                 .sceneName("SPIDER")
                 .tier(WallpaperTier.FREE)
                 .badge("🕷️ HORROR")
                 .glow(0xFFDC143C)  // Crimson red (spider eyes)
+                .weight(SceneWeight.LIGHT)
                 .featured()
                 .build());
 
@@ -392,13 +404,14 @@ public class WallpaperCatalog {
         // 🏛️ LOST ATLANTIS - Ciudad Sumergida
         // ═══════════════════════════════════════════════════════════════════
         catalog.add(new WallpaperItem.Builder("🏛️ LOST ATLANTIS 🏛️")
-                .descripcion("Templo ancestral sumergido en aguas turquesa. " +
-                        "Energía mística, pétalos de cerezo y linternas doradas.")
+                .descripcion("Ancient temple submerged in turquoise waters. " +
+                        "Mystic energy, cherry blossom petals and golden lanterns.")
                 .preview(R.drawable.preview_lost_atlantis)
                 .sceneName("LOST_ATLANTIS")
                 .tier(WallpaperTier.FREE)
-                .badge("🌊 NUEVO")
+                .badge("🌊 NEW")
                 .glow(0xFF00CED1)  // Dark Turquoise
+                .weight(SceneWeight.LIGHT)  // Video-only, sin modelos 3D = LIGHT
                 .featured()
                 .build());
 
@@ -406,13 +419,14 @@ public class WallpaperCatalog {
         // 🦁 THE HUMAN PREDATOR - Guerrero vs León
         // ═══════════════════════════════════════════════════════════════════
         catalog.add(new WallpaperItem.Builder("🦁 THE HUMAN PREDATOR 🦁")
-                .descripcion("Guerrero prehistórico con garras venenosas vs león gigante. " +
-                        "Jungla volcánica, combate épico a muerte.")
+                .descripcion("Prehistoric warrior with venomous claws vs giant lion. " +
+                        "Volcanic jungle, epic battle to the death.")
                 .preview(R.drawable.preview_human_predator)
                 .sceneName("THE_HUMAN_PREDATOR")
                 .tier(WallpaperTier.FREE)
-                .badge("🦁 NUEVO")
+                .badge("🦁 NEW")
                 .glow(0xFF8B0000)  // Dark Red (sangre)
+                .weight(SceneWeight.LIGHT)  // Video-only, sin modelos 3D = LIGHT
                 .featured()
                 .build());
 
@@ -420,13 +434,14 @@ public class WallpaperCatalog {
         // 🌙 MOONLIT CAT - Gato Negro Bajo la Luna
         // ═══════════════════════════════════════════════════════════════════
         catalog.add(new WallpaperItem.Builder("🌙 MOONLIT CAT 🌙")
-                .descripcion("Gato negro sentado en una barda contemplando la luna gigante. " +
-                        "Cielo nocturno con estrellas titilantes y siluetas de edificios.")
+                .descripcion("Black cat sitting on a fence gazing at the giant moon. " +
+                        "Night sky with twinkling stars and building silhouettes.")
                 .preview(R.drawable.preview_moonlit_cat)
                 .sceneName("MOONLIT_CAT")
                 .tier(WallpaperTier.FREE)
-                .badge("🌙 NUEVO")
+                .badge("🌙 NEW")
                 .glow(0xFF4169E1)  // Royal Blue (moonlight)
+                .weight(SceneWeight.MEDIUM)  // Sin video: shaders + 2 OBJ + texturas optimizadas = MEDIUM
                 .featured()
                 .build());
 
@@ -434,13 +449,89 @@ public class WallpaperCatalog {
         // 💜 FRIEZA DEATH BEAM - Dragon Ball Z
         // ═══════════════════════════════════════════════════════════════════
         catalog.add(new WallpaperItem.Builder("💜 FRIEZA DEATH BEAM 💜")
-                .descripcion("Frieza Final Form disparando su Death Beam. " +
-                        "Modelo 3D con rayo de energía animado y fondo anime.")
+                .descripcion("Frieza Final Form firing his Death Beam. " +
+                        "3D model with animated energy ray and anime background.")
                 .preview(R.drawable.preview_frieza_deathbeam)
                 .sceneName("FRIEZA_DEATHBEAM")
                 .tier(WallpaperTier.FREE)
-                .badge("💜 NUEVO")
+                .badge("💜 NEW")
                 .glow(0xFF8B00FF)  // Purple (Frieza energy)
+                .weight(SceneWeight.MEDIUM)
+                .featured()
+                .build());
+
+        // ═══════════════════════════════════════════════════════════════════
+        // 🥊 KEN - Side Scroll Fighter
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("🥊 KEN 🥊")
+                .descripcion("Street Fighter pixel art with side scroll. " +
+                        "Ken walks and throws hadoukens with retro parallax.")
+                .preview(R.drawable.preview_ken)
+                .sceneName("KEN")
+                .tier(WallpaperTier.FREE)
+                .badge("🥊 NEW")
+                .glow(0xFFFF4500)  // Orange Red (Ken's gi)
+                .weight(SceneWeight.LIGHT)
+                .featured()
+                .build());
+
+        // ═══════════════════════════════════════════════════════════════════
+        // 🦂 SCORPION - Mortal Kombat
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("🦂 SCORPION 🦂")
+                .descripcion("GET OVER HERE! Scorpion from Mortal Kombat. " +
+                        "Hellfire and the deadliest ninja of the Netherrealm.")
+                .preview(R.drawable.preview_scorpion)
+                .sceneName("SCORPION")
+                .tier(WallpaperTier.FREE)
+                .badge("🔥 NEW")
+                .glow(0xFFFF8C00)  // Dark Orange (Scorpion fire)
+                .weight(SceneWeight.LIGHT)
+                .featured()
+                .build());
+
+        // ═══════════════════════════════════════════════════════════════════
+        // 🚂 TREN NOCTURNO - Pixel Art Night Train
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("🚂 TREN NOCTURNO 🚂")
+                .descripcion("Pixel train crossing the starry night. " +
+                        "Warm lights and nocturnal landscapes in retro style.")
+                .preview(R.drawable.preview_tren_nocturno)
+                .sceneName("TREN_NOCTURNO")
+                .tier(WallpaperTier.FREE)
+                .badge("🌃 NEW")
+                .glow(0xFF6A0DAD)  // Purple (night sky)
+                .weight(SceneWeight.LIGHT)
+                .featured()
+                .build());
+
+        // ═══════════════════════════════════════════════════════════════════
+        // 👁️ THE EYE - Ojo Misterioso
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("👁️ THE EYE 👁️")
+                .descripcion("Giant eye with hypnotic and detailed iris. " +
+                        "Mystery, depth and a gaze that sees all.")
+                .preview(R.drawable.preview_the_eye)
+                .sceneName("THE_EYE")
+                .tier(WallpaperTier.FREE)
+                .badge("👁️ NEW")
+                .glow(0xFF00FF7F)  // Spring Green (iris glow)
+                .weight(SceneWeight.LIGHT)
+                .featured()
+                .build());
+
+        // ═══════════════════════════════════════════════════════════════════
+        // 🐱 GATITO - Cute Cat Animation
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("🐱 GATITO 🐱")
+                .descripcion("Adorable kitten in a charming animation. " +
+                        "Pure cuteness for your home screen.")
+                .preview(R.drawable.preview_gatito)
+                .sceneName("GATITO")
+                .tier(WallpaperTier.FREE)
+                .badge("🐱 NEW")
+                .glow(0xFFFFB6C1)  // Light Pink (cute)
+                .weight(SceneWeight.LIGHT)
                 .featured()
                 .build());
 

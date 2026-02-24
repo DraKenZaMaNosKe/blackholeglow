@@ -328,7 +328,7 @@ public class MediaCodecVideoRenderer {
         while (isRunning) {
             // Enviar datos al decoder
             if (!inputDone) {
-                int inputIndex = decoder.dequeueInputBuffer(10000);
+                int inputIndex = decoder.dequeueInputBuffer(5000);
                 if (inputIndex >= 0) {
                     ByteBuffer inputBuffer = decoder.getInputBuffer(inputIndex);
                     int sampleSize = extractor.readSampleData(inputBuffer, 0);
@@ -345,9 +345,12 @@ public class MediaCodecVideoRenderer {
                 }
             }
 
-            // Obtener frames decodificados
-            int outputIndex = decoder.dequeueOutputBuffer(bufferInfo, 10000);
-            if (outputIndex >= 0) {
+            // Obtener frames decodificados (reduced timeout: 5ms instead of 10ms)
+            int outputIndex = decoder.dequeueOutputBuffer(bufferInfo, 5000);
+            if (outputIndex < 0) {
+                // No output ready - yield CPU instead of busy-waiting
+                try { Thread.sleep(2); } catch (InterruptedException e) { break; }
+            } else if (outputIndex >= 0) {
                 // Sincronización de tiempo para playback suave
                 long presentationTimeNs = bufferInfo.presentationTimeUs * 1000;
                 long elapsed = System.nanoTime() - startTime;

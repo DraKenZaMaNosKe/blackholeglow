@@ -437,9 +437,13 @@ public class Clock3D implements SceneObject {
         glowIntensity = 0.7f + 0.3f * (float)Math.sin(glowPulse);
     }
 
+    // Memory pressure visibility control
+    private boolean visible = true;
+    public void setVisible(boolean visible) { this.visible = visible; }
+
     @Override
     public void draw() {
-        if (programId == 0) {
+        if (programId == 0 || !visible) {
             return;
         }
 

@@ -51,6 +51,7 @@ public class AbyssalLurker3D {
     private float posZ = -0.21f;
     private float scale = 0.379f;
     private float time = 0f;
+    private int aiFrameCounter = 0;    // Throttle AI a cada 3 frames
     private float rotationY = 361.9f;  // Mirando hacia cámara
     private float rotationX = 1.4f;
     private float rotationZ = -0.8f;
@@ -188,15 +189,7 @@ public class AbyssalLurker3D {
         "    // Glow cyan intenso en los ojos\n" +
         "    vec3 eyeGlow = vec3(0.3, 0.9, 1.0) * eyePulse * 0.8;\n" +
         "    tex.rgb += eyeGlow * isEye;\n" +
-        "    // Segundo pulso más rápido para efecto de \"latido\"\n" +
-        "    float eyeFlicker = sin(u_Time * 4.5) * 0.15 + 0.15;\n" +
-        "    tex.rgb += vec3(0.5, 1.0, 1.0) * eyeFlicker * isEye;\n" +
         "    \n" +
-        "    // CAUSTICAS VISIBLES - Reflejos ondulantes del agua\n" +
-        "    float c1 = sin(vUV.x * 8.0 + u_Time * 1.5);\n" +
-        "    float c2 = sin(vUV.y * 6.0 + u_Time * 1.2);\n" +
-        "    float caustic = c1 * c2 * 0.18;\n" +
-        "    tex.rgb += vec3(caustic * 0.3, caustic * 0.6, caustic);\n" +
         "    // TINTE SUBMARINO PROFUNDO\n" +
         "    tex.rgb *= vec3(0.6, 0.8, 1.0);\n" +
         "    // DESATURACION SUBMARINA (menos en ojos)\n" +
@@ -355,6 +348,10 @@ public class AbyssalLurker3D {
         if (time > 62.83f) time -= 62.83f;
 
         if (calibrationMode) return;
+
+        // Throttle AI: solo actualizar cada 3 frames
+        aiFrameCounter++;
+        if (aiFrameCounter % 3 != 0) return;
 
         // ─────────────────────────────────────────────────────────────────────────
         // DETECCIÓN DE PELIGRO - ¿El Leviathan está cerca?

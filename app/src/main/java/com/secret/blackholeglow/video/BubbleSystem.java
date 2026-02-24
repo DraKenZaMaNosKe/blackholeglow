@@ -24,7 +24,7 @@ public class BubbleSystem {
     // ═══════════════════════════════════════════════════════════════════════════
     // CONFIGURACIÓN
     // ═══════════════════════════════════════════════════════════════════════════
-    private static final int MAX_BUBBLES = 15;              // Pocas burbujas (GPU friendly)
+    private static final int MAX_BUBBLES = 8;               // Reducido de 15 para mejor rendimiento
     private static final float BUBBLE_LIFETIME = 2.0f;      // Vida corta
     private static final float RISE_SPEED = 0.06f;          // Subida más lenta
     private static final float WOBBLE_SPEED = 2.5f;         // Oscilación suave

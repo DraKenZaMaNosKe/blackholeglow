@@ -279,6 +279,8 @@ public class NightSkyRenderer {
         Bitmap bitmap = null;
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inScaled = false;
+        options.inSampleSize = 2;  // La luna ocupa ~15% de pantalla, no necesita full res
+        options.inPreferredConfig = Bitmap.Config.RGB_565;  // 50% menos VRAM
 
         // Prioridad: descarga remota (Supabase)
         ImageDownloadManager imageMgr = ImageDownloadManager.getInstance(context);

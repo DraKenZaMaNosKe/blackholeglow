@@ -3,7 +3,7 @@ package com.secret.blackholeglow.video;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.GLUtils;
 import android.opengl.Matrix;
 import android.util.Log;
@@ -83,6 +83,7 @@ public class BlackCat3D {
     private int screenWidth = 1;
     private int screenHeight = 1;
     private boolean modelLoaded = false;
+    private boolean mvpDirty = true; // Solo recalcular MVP cuando cambia posicion/escala
 
     private static final String VERTEX_SHADER =
         "precision highp float;\n" +
@@ -190,6 +191,7 @@ public class BlackCat3D {
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inScaled = false;
             options.inSampleSize = 2;  // 2048→1024
+            options.inPreferredConfig = Bitmap.Config.RGB_565;  // 2 bpp vs 4 bpp = 50% VRAM
             Bitmap bitmap = BitmapFactory.decodeFile(filePath, options);
             if (bitmap != null) {
                 int texId = uploadBitmapToGL(bitmap);
@@ -209,6 +211,7 @@ public class BlackCat3D {
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inScaled = false;
             options.inSampleSize = 2;  // 2048→1024
+            options.inPreferredConfig = Bitmap.Config.RGB_565;  // 2 bpp vs 4 bpp = 50% VRAM
             Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
             if (bitmap != null) {
                 int texId = uploadBitmapToGL(bitmap);
@@ -226,58 +229,58 @@ public class BlackCat3D {
 
     private int uploadBitmapToGL(Bitmap bitmap) {
         int[] textures = new int[1];
-        GLES20.glGenTextures(1, textures, 0);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[0]);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR_MIPMAP_LINEAR);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
-        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
-        GLES20.glGenerateMipmap(GLES20.GL_TEXTURE_2D);
+        GLES30.glGenTextures(1, textures, 0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textures[0]);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR_MIPMAP_LINEAR);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
+        GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0);
+        GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D);
         return textures[0];
     }
 
     private void compileShader() {
-        int vs = compileShaderCode(GLES20.GL_VERTEX_SHADER, VERTEX_SHADER);
-        int fs = compileShaderCode(GLES20.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
+        int vs = compileShaderCode(GLES30.GL_VERTEX_SHADER, VERTEX_SHADER);
+        int fs = compileShaderCode(GLES30.GL_FRAGMENT_SHADER, FRAGMENT_SHADER);
         if (vs == 0 || fs == 0) return;
 
-        shaderProgram = GLES20.glCreateProgram();
-        GLES20.glAttachShader(shaderProgram, vs);
-        GLES20.glAttachShader(shaderProgram, fs);
-        GLES20.glLinkProgram(shaderProgram);
+        shaderProgram = GLES30.glCreateProgram();
+        GLES30.glAttachShader(shaderProgram, vs);
+        GLES30.glAttachShader(shaderProgram, fs);
+        GLES30.glLinkProgram(shaderProgram);
 
         int[] linked = new int[1];
-        GLES20.glGetProgramiv(shaderProgram, GLES20.GL_LINK_STATUS, linked, 0);
+        GLES30.glGetProgramiv(shaderProgram, GLES30.GL_LINK_STATUS, linked, 0);
         if (linked[0] == 0) {
-            Log.e(TAG, "Shader link error: " + GLES20.glGetProgramInfoLog(shaderProgram));
-            GLES20.glDeleteProgram(shaderProgram);
+            Log.e(TAG, "Shader link error: " + GLES30.glGetProgramInfoLog(shaderProgram));
+            GLES30.glDeleteProgram(shaderProgram);
             shaderProgram = 0;
-            GLES20.glDeleteShader(vs);
-            GLES20.glDeleteShader(fs);
+            GLES30.glDeleteShader(vs);
+            GLES30.glDeleteShader(fs);
             return;
         }
 
-        aPositionLoc = GLES20.glGetAttribLocation(shaderProgram, "aPosition");
-        aTexCoordLoc = GLES20.glGetAttribLocation(shaderProgram, "aTexCoord");
-        uMVPMatrixLoc = GLES20.glGetUniformLocation(shaderProgram, "uMVPMatrix");
-        uTimeLoc = GLES20.glGetUniformLocation(shaderProgram, "uTime");
-        uTextureLoc = GLES20.glGetUniformLocation(shaderProgram, "uTexture");
+        aPositionLoc = GLES30.glGetAttribLocation(shaderProgram, "aPosition");
+        aTexCoordLoc = GLES30.glGetAttribLocation(shaderProgram, "aTexCoord");
+        uMVPMatrixLoc = GLES30.glGetUniformLocation(shaderProgram, "uMVPMatrix");
+        uTimeLoc = GLES30.glGetUniformLocation(shaderProgram, "uTime");
+        uTextureLoc = GLES30.glGetUniformLocation(shaderProgram, "uTexture");
 
-        GLES20.glDeleteShader(vs);
-        GLES20.glDeleteShader(fs);
+        GLES30.glDeleteShader(vs);
+        GLES30.glDeleteShader(fs);
         Log.d(TAG, "Shader compiled OK");
     }
 
     private int compileShaderCode(int type, String source) {
-        int shader = GLES20.glCreateShader(type);
-        GLES20.glShaderSource(shader, source);
-        GLES20.glCompileShader(shader);
+        int shader = GLES30.glCreateShader(type);
+        GLES30.glShaderSource(shader, source);
+        GLES30.glCompileShader(shader);
         int[] compiled = new int[1];
-        GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0);
+        GLES30.glGetShaderiv(shader, GLES30.GL_COMPILE_STATUS, compiled, 0);
         if (compiled[0] == 0) {
-            Log.e(TAG, "Shader error: " + GLES20.glGetShaderInfoLog(shader));
-            GLES20.glDeleteShader(shader);
+            Log.e(TAG, "Shader error: " + GLES30.glGetShaderInfoLog(shader));
+            GLES30.glDeleteShader(shader);
             return 0;
         }
         return shader;
@@ -337,47 +340,50 @@ public class BlackCat3D {
     public void draw() {
         if (!modelLoaded || shaderProgram == 0) return;
 
-        GLES20.glUseProgram(shaderProgram);
+        GLES30.glUseProgram(shaderProgram);
 
-        // Build MVP matrix
-        float aspect = (float) screenWidth / screenHeight;
-        Matrix.perspectiveM(projectionMatrix, 0, 45f, aspect, 0.1f, 100f);
-        Matrix.setLookAtM(viewMatrix, 0, 0f, 0f, 3f, 0f, 0f, 0f, 0f, 1f, 0f);
+        // MVP cacheado: solo recalcular cuando cambia posicion/escala/rotacion
+        if (mvpDirty) {
+            float aspect = (float) screenWidth / screenHeight;
+            Matrix.perspectiveM(projectionMatrix, 0, 45f, aspect, 0.1f, 100f);
+            Matrix.setLookAtM(viewMatrix, 0, 0f, 0f, 3f, 0f, 0f, 0f, 0f, 1f, 0f);
 
-        Matrix.setIdentityM(modelMatrix, 0);
-        Matrix.translateM(modelMatrix, 0, posX, posY, posZ);
-        Matrix.rotateM(modelMatrix, 0, rotationY, 0f, 1f, 0f);
-        Matrix.rotateM(modelMatrix, 0, rotationX, 1f, 0f, 0f);
-        Matrix.rotateM(modelMatrix, 0, rotationZ, 0f, 0f, 1f);
-        Matrix.scaleM(modelMatrix, 0, scale, scale, scale);
+            Matrix.setIdentityM(modelMatrix, 0);
+            Matrix.translateM(modelMatrix, 0, posX, posY, posZ);
+            Matrix.rotateM(modelMatrix, 0, rotationY, 0f, 1f, 0f);
+            Matrix.rotateM(modelMatrix, 0, rotationX, 1f, 0f, 0f);
+            Matrix.rotateM(modelMatrix, 0, rotationZ, 0f, 0f, 1f);
+            Matrix.scaleM(modelMatrix, 0, scale, scale, scale);
 
-        Matrix.multiplyMM(tempMatrix, 0, viewMatrix, 0, modelMatrix, 0);
-        Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, tempMatrix, 0);
+            Matrix.multiplyMM(tempMatrix, 0, viewMatrix, 0, modelMatrix, 0);
+            Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, tempMatrix, 0);
+            mvpDirty = false;
+        }
 
-        GLES20.glUniformMatrix4fv(uMVPMatrixLoc, 1, false, mvpMatrix, 0);
-        GLES20.glUniform1f(uTimeLoc, time);
+        GLES30.glUniformMatrix4fv(uMVPMatrixLoc, 1, false, mvpMatrix, 0);
+        GLES30.glUniform1f(uTimeLoc, time);
 
         // Bind current atlas texture (swapped for blink)
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, currentTexture);
-        GLES20.glUniform1i(uTextureLoc, 0);
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, currentTexture);
+        GLES30.glUniform1i(uTextureLoc, 0);
 
         // Draw single mesh
         vertexBuffer.position(0);
-        GLES20.glEnableVertexAttribArray(aPositionLoc);
-        GLES20.glVertexAttribPointer(aPositionLoc, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES30.glEnableVertexAttribArray(aPositionLoc);
+        GLES30.glVertexAttribPointer(aPositionLoc, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
 
         if (uvBuffer != null) {
             uvBuffer.position(0);
-            GLES20.glEnableVertexAttribArray(aTexCoordLoc);
-            GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 0, uvBuffer);
+            GLES30.glEnableVertexAttribArray(aTexCoordLoc);
+            GLES30.glVertexAttribPointer(aTexCoordLoc, 2, GLES30.GL_FLOAT, false, 0, uvBuffer);
         }
 
         indexBuffer.position(0);
-        GLES20.glDrawElements(GLES20.GL_TRIANGLES, indexCount, GLES20.GL_UNSIGNED_INT, indexBuffer);
+        GLES30.glDrawElements(GLES30.GL_TRIANGLES, indexCount, GLES30.GL_UNSIGNED_INT, indexBuffer);
 
-        GLES20.glDisableVertexAttribArray(aPositionLoc);
-        GLES20.glDisableVertexAttribArray(aTexCoordLoc);
+        GLES30.glDisableVertexAttribArray(aPositionLoc);
+        GLES30.glDisableVertexAttribArray(aTexCoordLoc);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -385,13 +391,13 @@ public class BlackCat3D {
     // ═══════════════════════════════════════════════════════════════
 
     public void setPosition(float x, float y, float z) {
-        this.posX = x; this.posY = y; this.posZ = z;
+        this.posX = x; this.posY = y; this.posZ = z; mvpDirty = true;
     }
-    public void setScale(float s) { this.scale = s; }
-    public void setRotationX(float angle) { this.rotationX = angle; }
-    public void setRotationY(float angle) { this.rotationY = angle; }
-    public void setRotationZ(float angle) { this.rotationZ = angle; }
-    public void setScreenSize(int w, int h) { screenWidth = w; screenHeight = h; }
+    public void setScale(float s) { this.scale = s; mvpDirty = true; }
+    public void setRotationX(float angle) { this.rotationX = angle; mvpDirty = true; }
+    public void setRotationY(float angle) { this.rotationY = angle; mvpDirty = true; }
+    public void setRotationZ(float angle) { this.rotationZ = angle; mvpDirty = true; }
+    public void setScreenSize(int w, int h) { screenWidth = w; screenHeight = h; mvpDirty = true; }
 
     public float getPosX() { return posX; }
     public float getPosY() { return posY; }
@@ -407,14 +413,14 @@ public class BlackCat3D {
 
     public void release() {
         if (shaderProgram != 0) {
-            GLES20.glDeleteProgram(shaderProgram);
+            GLES30.glDeleteProgram(shaderProgram);
             shaderProgram = 0;
         }
         // Delete unique texture IDs (avoid double-delete if fallback shares ID)
         int lastDeleted = 0;
         for (int i = 0; i < atlasTextureIds.length; i++) {
             if (atlasTextureIds[i] != 0 && atlasTextureIds[i] != lastDeleted) {
-                GLES20.glDeleteTextures(1, new int[]{atlasTextureIds[i]}, 0);
+                GLES30.glDeleteTextures(1, new int[]{atlasTextureIds[i]}, 0);
                 lastDeleted = atlasTextureIds[i];
                 atlasTextureIds[i] = 0;
             }

@@ -11,6 +11,7 @@ import com.secret.blackholeglow.Clock3D;
 import com.secret.blackholeglow.EqualizerBarsDJ;
 import com.secret.blackholeglow.GyroscopeManager;
 import com.secret.blackholeglow.R;
+import com.secret.blackholeglow.core.MemoryPressureLevel;
 import com.secret.blackholeglow.image.ImageDownloadManager;
 
 import java.io.File;
@@ -1329,6 +1330,44 @@ public abstract class BaseParallaxScene extends WallpaperScene {
 
         quadTexCoordBufferCover.clear();
         quadTexCoordBufferCover.put(texCoords).position(0);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════════════
+    // ADAPTIVE MEMORY SYSTEM
+    // ═══════════════════════════════════════════════════════════════════════════════════
+
+    @Override
+    public void onMemoryPressure(MemoryPressureLevel level) {
+        super.onMemoryPressure(level);
+        Log.d(TAG, getName() + " memoria: " + level);
+
+        switch (level) {
+            case WARNING:
+                if (equalizerDJ != null) equalizerDJ.setReducedMode(true);
+                if (gyroscope != null) gyroscope.stop();
+                if (clock != null) clock.setVisible(false);
+                if (battery != null) battery.setVisible(false);
+                break;
+            case CRITICAL:
+                if (equalizerDJ != null) {
+                    equalizerDJ.setReducedMode(true);
+                    equalizerDJ.setEnabled(false);
+                }
+                if (gyroscope != null) gyroscope.stop();
+                if (clock != null) clock.setVisible(false);
+                if (battery != null) battery.setVisible(false);
+                break;
+            case NORMAL:
+            default:
+                if (equalizerDJ != null) {
+                    equalizerDJ.setEnabled(true);
+                    equalizerDJ.setReducedMode(false);
+                }
+                if (gyroscope != null && !isPaused) gyroscope.start();
+                if (clock != null) clock.setVisible(true);
+                if (battery != null) battery.setVisible(true);
+                break;
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════════

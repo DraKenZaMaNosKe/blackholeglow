@@ -21,6 +21,11 @@ import com.secret.blackholeglow.scenes.LostAtlantisScene;
 import com.secret.blackholeglow.scenes.TheHumanPredatorScene;
 import com.secret.blackholeglow.scenes.MoonlitCatScene;
 import com.secret.blackholeglow.scenes.FriezaDeathBeamScene;
+import com.secret.blackholeglow.scenes.KenScene;
+import com.secret.blackholeglow.scenes.ScorpionScene;
+import com.secret.blackholeglow.scenes.TrenNocturnoScene;
+import com.secret.blackholeglow.scenes.TheEyeScene;
+import com.secret.blackholeglow.scenes.GatitoScene;
 import com.secret.blackholeglow.systems.EventBus;
 import com.secret.blackholeglow.systems.ResourceManager;
 
@@ -141,6 +146,16 @@ public class SceneFactory {
         registerScene("MOONLIT_CAT", MoonlitCatScene.class);
         // 💜 Frieza Death Beam: Frieza Final Form con Death Beam
         registerScene("FRIEZA_DEATHBEAM", FriezaDeathBeamScene.class);
+        // 🥊 Ken: Side-scrolling pixel art fighter con parallax
+        registerScene("KEN", KenScene.class);
+        // 🦂 Scorpion: Mortal Kombat fire ninja
+        registerScene("SCORPION", ScorpionScene.class);
+        // 🚂 Tren Nocturno: Pixel art night train
+        registerScene("TREN_NOCTURNO", TrenNocturnoScene.class);
+        // 👁️ The Eye: Mysterious iris
+        registerScene("THE_EYE", TheEyeScene.class);
+        // 🐱 Gatito: Cute cat animation
+        registerScene("GATITO", GatitoScene.class);
 
         Log.d(TAG, "🎭 " + registeredScenes.size() + " escenas registradas");
     }

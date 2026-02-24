@@ -63,27 +63,27 @@ public class GeminiService {
 
         String timeContext;
         if (hour >= 5 && hour < 12) {
-            timeContext = "mañana";
+            timeContext = "morning";
         } else if (hour >= 12 && hour < 19) {
-            timeContext = "tarde";
+            timeContext = "afternoon";
         } else {
-            timeContext = "noche";
+            timeContext = "evening";
         }
 
         String dayContext;
         switch (dayOfWeek) {
-            case Calendar.MONDAY: dayContext = "lunes"; break;
-            case Calendar.TUESDAY: dayContext = "martes"; break;
-            case Calendar.WEDNESDAY: dayContext = "miércoles"; break;
-            case Calendar.THURSDAY: dayContext = "jueves"; break;
-            case Calendar.FRIDAY: dayContext = "viernes"; break;
-            case Calendar.SATURDAY: dayContext = "sábado"; break;
-            default: dayContext = "domingo"; break;
+            case Calendar.MONDAY: dayContext = "Monday"; break;
+            case Calendar.TUESDAY: dayContext = "Tuesday"; break;
+            case Calendar.WEDNESDAY: dayContext = "Wednesday"; break;
+            case Calendar.THURSDAY: dayContext = "Thursday"; break;
+            case Calendar.FRIDAY: dayContext = "Friday"; break;
+            case Calendar.SATURDAY: dayContext = "Saturday"; break;
+            default: dayContext = "Sunday"; break;
         }
 
-        String prompt = "Genera un saludo corto, creativo y cálido (máximo 6 palabras). " +
-                       "Es " + dayContext + " por la " + timeContext +
-                       ". Sé poético o inspirador. Solo responde con el saludo, sin explicaciones ni comillas.";
+        String prompt = "Generate a short, creative and warm greeting (max 6 words). " +
+                       "It's " + dayContext + " " + timeContext +
+                       ". Be poetic or inspirational. Only respond with the greeting, no explanations or quotes.";
 
         sendRequest(prompt, callback);
     }
@@ -93,9 +93,9 @@ public class GeminiService {
      * (no envía datos personales)
      */
     public void chat(String userMessage, GeminiCallback callback) {
-        String prompt = "Eres Orbix, un asistente amigable y conciso dentro de una app de wallpapers espaciales. " +
-                       "Responde de forma breve (máximo 2 oraciones), amigable y con un toque espacial/cósmico. " +
-                       "Mensaje del usuario: " + userMessage;
+        String prompt = "You are Orbix, a friendly and concise assistant inside a space wallpaper app. " +
+                       "Respond briefly (max 2 sentences), friendly and with a space/cosmic touch. " +
+                       "User message: " + userMessage;
 
         sendRequest(prompt, callback);
     }
@@ -117,10 +117,10 @@ public class GeminiService {
      * @param callback Callback con la respuesta
      */
     public void generateSongComment(String songTitle, String userName, GeminiCallback callback) {
-        String prompt = "Genera un mensaje MUY CORTO (máximo 15 palabras) y creativo sobre la canción '" + songTitle + "'. " +
-                       "Sé entusiasta, usa 1-2 emojis. " +
-                       "Ejemplos de estilo: '🎵 Vibrando con esto!', '♥ Disfrutando este temazo', '🔥 Gran elección!'. " +
-                       "Solo responde con el mensaje, sin explicaciones ni comillas.";
+        String prompt = "Generate a VERY SHORT message (max 15 words) and creative about the song '" + songTitle + "'. " +
+                       "Be enthusiastic, use 1-2 emojis. " +
+                       "Style examples: '🎵 Vibing with this!', '♥ Loving this banger', '🔥 Great choice!'. " +
+                       "Only respond with the message, no explanations or quotes.";
 
         sendRequest(prompt, callback);
     }

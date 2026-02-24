@@ -8,6 +8,7 @@ import android.opengl.GLUtils;
 import android.opengl.Matrix;
 import android.util.Log;
 
+import com.secret.blackholeglow.core.DeviceProfile;
 import com.secret.blackholeglow.util.ObjLoader;
 import com.secret.blackholeglow.image.ImageDownloadManager;
 import com.secret.blackholeglow.model.ModelDownloadManager;
@@ -70,6 +71,7 @@ public class BrickWall3D {
     // Screen size
     private int screenWidth = 1;
     private int screenHeight = 1;
+    private boolean mvpDirty = true; // Solo recalcular MVP cuando cambia posicion/escala
 
     private boolean modelLoaded = false;
 
@@ -159,10 +161,11 @@ public class BrickWall3D {
 
     private int loadTextureFromFile(String filePath) {
         try {
-            // 🔧 OPT: Downscale 2048→1024 + RGB_565 (barda opaca, sin alpha)
+            // Adaptive downscale: LOW=4 (512px, ~1MB), MEDIUM/HIGH=2 (1024px, ~4MB)
+            int inSampleSize = DeviceProfile.get().isLowRam() ? 4 : 2;
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inScaled = false;
-            options.inSampleSize = 2;
+            options.inSampleSize = inSampleSize;
             options.inPreferredConfig = Bitmap.Config.RGB_565;
             Bitmap bitmap = BitmapFactory.decodeFile(filePath, options);
 
@@ -181,9 +184,10 @@ public class BrickWall3D {
         InputStream is = null;
         try {
             is = context.getAssets().open(TEXTURE_ASSET_PATH);
+            int inSampleSize = DeviceProfile.get().isLowRam() ? 4 : 2;
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inScaled = false;
-            options.inSampleSize = 2;
+            options.inSampleSize = inSampleSize;
             options.inPreferredConfig = Bitmap.Config.RGB_565;
             Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
 
@@ -264,18 +268,21 @@ public class BrickWall3D {
 
         GLES30.glUseProgram(shaderProgram);
 
-        // Build MVP matrix
-        float aspect = (float) screenWidth / screenHeight;
-        Matrix.perspectiveM(projectionMatrix, 0, 45f, aspect, 0.1f, 100f);
-        Matrix.setLookAtM(viewMatrix, 0, 0f, 0f, 3f, 0f, 0f, 0f, 0f, 1f, 0f);
+        // MVP cacheado: solo recalcular cuando cambia posicion/escala/rotacion
+        if (mvpDirty) {
+            float aspect = (float) screenWidth / screenHeight;
+            Matrix.perspectiveM(projectionMatrix, 0, 45f, aspect, 0.1f, 100f);
+            Matrix.setLookAtM(viewMatrix, 0, 0f, 0f, 3f, 0f, 0f, 0f, 0f, 1f, 0f);
 
-        Matrix.setIdentityM(modelMatrix, 0);
-        Matrix.translateM(modelMatrix, 0, posX, posY, posZ);
-        Matrix.rotateM(modelMatrix, 0, rotationY, 0f, 1f, 0f);
-        Matrix.scaleM(modelMatrix, 0, scale, scale, scale);
+            Matrix.setIdentityM(modelMatrix, 0);
+            Matrix.translateM(modelMatrix, 0, posX, posY, posZ);
+            Matrix.rotateM(modelMatrix, 0, rotationY, 0f, 1f, 0f);
+            Matrix.scaleM(modelMatrix, 0, scale, scale, scale);
 
-        Matrix.multiplyMM(tempMatrix, 0, viewMatrix, 0, modelMatrix, 0);
-        Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, tempMatrix, 0);
+            Matrix.multiplyMM(tempMatrix, 0, viewMatrix, 0, modelMatrix, 0);
+            Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, tempMatrix, 0);
+            mvpDirty = false;
+        }
 
         // Uniforms
         GLES30.glUniformMatrix4fv(uMVPMatrixLoc, 1, false, mvpMatrix, 0);
@@ -312,22 +319,19 @@ public class BrickWall3D {
     // ═══════════════════════════════════════════════════════════════════════════
 
     public void setPosition(float x, float y, float z) {
-        this.posX = x;
-        this.posY = y;
-        this.posZ = z;
+        this.posX = x; this.posY = y; this.posZ = z; mvpDirty = true;
     }
 
     public void setScale(float s) {
-        this.scale = s;
+        this.scale = s; mvpDirty = true;
     }
 
     public void setScreenSize(int width, int height) {
-        this.screenWidth = width;
-        this.screenHeight = height;
+        this.screenWidth = width; this.screenHeight = height; mvpDirty = true;
     }
 
     public void setRotationY(float angle) {
-        this.rotationY = angle;
+        this.rotationY = angle; mvpDirty = true;
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

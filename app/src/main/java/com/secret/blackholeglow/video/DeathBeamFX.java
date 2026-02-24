@@ -4,8 +4,7 @@ import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.util.Log;
 
-import android.app.ActivityManager;
-import android.content.Context;
+import com.secret.blackholeglow.core.DeviceProfile;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -22,15 +21,13 @@ import java.nio.ShortBuffer;
 public class DeathBeamFX {
     private static final String TAG = "DeathBeamFX";
 
-    // Sphere geometry
-    private FloatBuffer sphereVertices;
-    private ShortBuffer sphereIndices;
+    // Sphere geometry (VBO)
+    private int sphereVBO, sphereIBO;
     private int sphereIndexCount;
     private int sphereProgram;
 
-    // Beam geometry
-    private FloatBuffer beamVertices;
-    private ShortBuffer beamIndices;
+    // Beam geometry (VBO)
+    private int beamVBO, beamIBO;
     private int beamIndexCount;
     private int beamProgram;
 
@@ -119,60 +116,41 @@ public class DeathBeamFX {
         "uniform float uTime;\n" +
         "varying vec3 vPos;\n" +
         "varying float vAlongBeam;\n" +
-        // 3D noise functions
-        "vec3 hash3(vec3 p) {\n" +
-        "    p = vec3(dot(p,vec3(127.1,311.7,74.7)),\n" +
-        "            dot(p,vec3(269.5,183.3,246.1)),\n" +
-        "            dot(p,vec3(113.5,271.9,124.6)));\n" +
-        "    return -1.0 + 2.0 * fract(sin(p) * 43758.5453);\n" +
+        // Cheap 2D value noise (no sin-heavy 3D gradient noise)
+        "float hash(vec2 p) {\n" +
+        "    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);\n" +
         "}\n" +
-        "float noise3d(vec3 p) {\n" +
-        "    vec3 i = floor(p);\n" +
-        "    vec3 f = fract(p);\n" +
-        "    vec3 u = f*f*(3.0-2.0*f);\n" +
-        "    return mix(mix(mix(dot(hash3(i),f),\n" +
-        "                       dot(hash3(i+vec3(1,0,0)),f-vec3(1,0,0)),u.x),\n" +
-        "                   mix(dot(hash3(i+vec3(0,1,0)),f-vec3(0,1,0)),\n" +
-        "                       dot(hash3(i+vec3(1,1,0)),f-vec3(1,1,0)),u.x),u.y),\n" +
-        "               mix(mix(dot(hash3(i+vec3(0,0,1)),f-vec3(0,0,1)),\n" +
-        "                       dot(hash3(i+vec3(1,0,1)),f-vec3(1,0,1)),u.x),\n" +
-        "                   mix(dot(hash3(i+vec3(0,1,1)),f-vec3(0,1,1)),\n" +
-        "                       dot(hash3(i+vec3(1,1,1)),f-vec3(1,1,1)),u.x),u.y),u.z);\n" +
+        "float noise2d(vec2 p) {\n" +
+        "    vec2 i = floor(p);\n" +
+        "    vec2 f = fract(p);\n" +
+        "    vec2 u = f*f*(3.0-2.0*f);\n" +
+        "    return mix(mix(hash(i), hash(i+vec2(1.0,0.0)), u.x),\n" +
+        "              mix(hash(i+vec2(0.0,1.0)), hash(i+vec2(1.0,1.0)), u.x), u.y);\n" +
         "}\n" +
         "void main() {\n" +
         // Radial distance from beam center
         "    float radial = length(vPos.xz);\n" +
         "    float coreFade = smoothstep(1.0, 0.0, radial * 10.0);\n" +
-        "    float angle = atan(vPos.z, vPos.x);\n" +
         //
-        // === PLASMA / FIRE FLOW (directional, like dense flame) ===
-        // Fast primary flow along beam direction
+        // === PLASMA FLOW (cheap 2D noise, 2 layers instead of 3) ===
         "    float flow1 = vAlongBeam * 6.0 - uTime * 8.0;\n" +
-        // Slower secondary flow for large-scale turbulence
         "    float flow2 = vAlongBeam * 3.0 - uTime * 5.0;\n" +
-        // Very fast fine detail
-        "    float flow3 = vAlongBeam * 12.0 - uTime * 11.0;\n" +
+        "    float plasma1 = noise2d(vec2(radial * 8.0 + uTime * 1.5, flow1)) * 0.5 + 0.5;\n" +
+        "    float plasma2 = noise2d(vec2(radial * 12.0 + 1.7, flow2 + uTime * 0.8)) * 0.5 + 0.5;\n" +
         //
-        // Multi-scale plasma turbulence (like fire, flows in one direction)
-        "    float plasma1 = noise3d(vec3(angle * 2.0, flow1, uTime * 1.5)) * 0.5 + 0.5;\n" +
-        "    float plasma2 = noise3d(vec3(angle * 4.0 + 1.7, flow2, uTime * 0.8)) * 0.5 + 0.5;\n" +
-        "    float plasma3 = noise3d(vec3(vPos.xz * 15.0, flow3)) * 0.5 + 0.5;\n" +
-        //
-        // Combine: large swirls + medium detail + fine grain
-        "    float energy = coreFade * (plasma1 * 0.45 + plasma2 * 0.35 + plasma3 * 0.2);\n" +
+        // Combine
+        "    float energy = coreFade * (plasma1 * 0.55 + plasma2 * 0.45);\n" +
         "    energy = pow(energy, 0.35);\n" +
         //
-        // Traveling pulse waves (energy surges along the beam)
-        "    float surge1 = 0.75 + 0.25 * sin(uTime * 7.0 + vAlongBeam * 12.0);\n" +
-        "    float surge2 = 0.85 + 0.15 * sin(uTime * 11.0 - vAlongBeam * 8.0);\n" +
-        "    float surge3 = 0.9 + 0.1 * sin(uTime * 4.5 + vAlongBeam * 20.0);\n" +
-        "    energy *= surge1 * surge2 * surge3;\n" +
+        // Single traveling surge (was 3 separate sin calls)
+        "    float surge = 0.75 + 0.25 * sin(uTime * 7.0 + vAlongBeam * 12.0);\n" +
+        "    energy *= surge;\n" +
         //
-        // Flickering intensity (like flame)
-        "    float flicker = 0.85 + 0.15 * noise3d(vec3(vAlongBeam * 5.0, uTime * 6.0, 0.0));\n" +
+        // Flicker (cheap 2D noise instead of 3D)
+        "    float flicker = 0.85 + 0.15 * noise2d(vec2(vAlongBeam * 5.0, uTime * 6.0));\n" +
         "    energy *= flicker;\n" +
         //
-        // === COLOR: red tones matching sphere (NO orange/yellow) ===
+        // === COLOR: red tones matching sphere ===
         "    vec3 col;\n" +
         "    if (energy < 0.2) {\n" +
         "        col = mix(vec3(0.25,0.0,0.0), vec3(0.6,0.01,0.01), energy/0.2);\n" +
@@ -184,24 +162,21 @@ public class DeathBeamFX {
         "        col = mix(vec3(1.0,0.15,0.1), vec3(1.0,0.35,0.28), (energy-0.7)/0.3);\n" +
         "    }\n" +
         //
-        // === ELECTRICITY ARCS (red/pink-white, not yellow) ===
-        "    float arc1 = noise3d(vec3(angle * 3.0, vAlongBeam * 15.0 - uTime * 9.0, uTime * 2.5));\n" +
+        // === ELECTRICITY ARCS (2 arcs instead of 3, 2D noise) ===
+        "    float arc1 = noise2d(vec2(radial * 15.0 + uTime * 2.5, vAlongBeam * 15.0 - uTime * 9.0));\n" +
         "    arc1 = pow(max(arc1, 0.0), 8.0);\n" +
-        "    float arc2 = noise3d(vec3(angle * 5.5 + 2.0, vAlongBeam * 22.0 + uTime * 11.0, uTime * 3.5));\n" +
+        "    float arc2 = noise2d(vec2(radial * 22.0 + 2.0, vAlongBeam * 22.0 + uTime * 11.0));\n" +
         "    arc2 = pow(max(arc2, 0.0), 10.0);\n" +
-        "    float arc3 = noise3d(vec3(angle * 7.0 - 1.5, vAlongBeam * 12.0 - uTime * 13.0, uTime * 1.8));\n" +
-        "    arc3 = pow(max(arc3, 0.0), 6.0);\n" +
-        "    float electricity = (arc1 + arc2 * 0.7 + arc3 * 0.5) * coreFade;\n" +
-        // Red-pink-white arcs (matching red theme)
+        "    float electricity = (arc1 + arc2 * 0.7) * coreFade;\n" +
         "    col += vec3(1.0, 0.6, 0.55) * electricity * 3.5;\n" +
         //
-        // === EDGE GLOW (red aura at beam surface) ===
+        // === EDGE GLOW ===
         "    float edgeGlow = pow(smoothstep(0.0, 0.8, radial * 8.0) * (1.0 - smoothstep(0.8, 1.0, radial * 8.0)), 2.0);\n" +
         "    col += vec3(0.7, 0.02, 0.0) * edgeGlow * (0.8 + 0.4 * sin(uTime * 5.0 + vAlongBeam * 8.0));\n" +
         //
         // Final brightness + alpha
         "    float brightness = 1.8 + 0.4 * sin(uTime * 4.0);\n" +
-        "    float alpha = energy * (0.85 + 0.15 * surge1) + electricity * 0.5;\n" +
+        "    float alpha = energy * (0.85 + 0.15 * surge) + electricity * 0.5;\n" +
         "    gl_FragColor = vec4(col * brightness, clamp(alpha, 0.0, 1.0));\n" +
         "}\n";
 
@@ -210,27 +185,13 @@ public class DeathBeamFX {
     // ==========================================
 
     public DeathBeamFX() {
-        this(null);
-    }
-
-    public DeathBeamFX(Context context) {
-        // Adaptive geometry quality based on device RAM
+        // Adaptive geometry quality based on DeviceProfile
         int sphereDetail = 32;
         int coneSegments = 12;
-        if (context != null) {
-            try {
-                ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-                ActivityManager.MemoryInfo memInfo = new ActivityManager.MemoryInfo();
-                am.getMemoryInfo(memInfo);
-                long totalGB = memInfo.totalMem / (1024L * 1024L * 1024L);
-                if (totalGB < 4) {
-                    sphereDetail = 16;  // 289 verts vs 1089 (73% less)
-                    coneSegments = 8;   // 18 verts vs 26 (30% less)
-                    Log.d(TAG, "LOW RAM: reduced geometry (sphere=" + sphereDetail + ", cone=" + coneSegments + ")");
-                }
-            } catch (Exception e) {
-                Log.w(TAG, "RAM detection failed, using full detail");
-            }
+        if (DeviceProfile.get().isLowRam()) {
+            sphereDetail = 16;  // 289 verts vs 1089 (73% less)
+            coneSegments = 8;   // 18 verts vs 26 (30% less)
+            Log.d(TAG, "LOW RAM: reduced geometry (sphere=" + sphereDetail + ", cone=" + coneSegments + ")");
         }
 
         generateSphere(sphereDetail, sphereDetail);
@@ -286,9 +247,20 @@ public class DeathBeamFX {
                 idx[ii++] = (short) (first + 1);
             }
         }
-        sphereVertices = createFloatBuffer(verts);
-        sphereIndices = createShortBuffer(idx);
         sphereIndexCount = numIdx;
+        // Upload to VBO (static geometry, upload once)
+        FloatBuffer vertBuf = createFloatBuffer(verts);
+        ShortBuffer idxBuf = createShortBuffer(idx);
+        int[] bufs = new int[2];
+        GLES20.glGenBuffers(2, bufs, 0);
+        sphereVBO = bufs[0];
+        sphereIBO = bufs[1];
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, sphereVBO);
+        GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, verts.length * 4, vertBuf, GLES20.GL_STATIC_DRAW);
+        GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, sphereIBO);
+        GLES20.glBufferData(GLES20.GL_ELEMENT_ARRAY_BUFFER, idx.length * 2, idxBuf, GLES20.GL_STATIC_DRAW);
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
+        GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, 0);
     }
 
     private void generateCone(int segments, float length) {
@@ -322,9 +294,20 @@ public class DeathBeamFX {
             idx[ii++] = (short) t1;
             idx[ii++] = (short) b1;
         }
-        beamVertices = createFloatBuffer(verts);
-        beamIndices = createShortBuffer(idx);
         beamIndexCount = numIdx;
+        // Upload to VBO
+        FloatBuffer vertBuf = createFloatBuffer(verts);
+        ShortBuffer idxBuf = createShortBuffer(idx);
+        int[] bufs = new int[2];
+        GLES20.glGenBuffers(2, bufs, 0);
+        beamVBO = bufs[0];
+        beamIBO = bufs[1];
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, beamVBO);
+        GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, verts.length * 4, vertBuf, GLES20.GL_STATIC_DRAW);
+        GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, beamIBO);
+        GLES20.glBufferData(GLES20.GL_ELEMENT_ARRAY_BUFFER, idx.length * 2, idxBuf, GLES20.GL_STATIC_DRAW);
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
+        GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, 0);
     }
 
     // ==========================================
@@ -365,12 +348,14 @@ public class DeathBeamFX {
         GLES20.glUniformMatrix4fv(sphereMVPLoc, 1, false, mvpMatrix, 0);
         GLES20.glUniform1f(sphereTimeLoc, time);
 
-        sphereVertices.position(0);
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, sphereVBO);
         GLES20.glEnableVertexAttribArray(spherePosLoc);
-        GLES20.glVertexAttribPointer(spherePosLoc, 3, GLES20.GL_FLOAT, false, 0, sphereVertices);
-        sphereIndices.position(0);
-        GLES20.glDrawElements(GLES20.GL_TRIANGLES, sphereIndexCount, GLES20.GL_UNSIGNED_SHORT, sphereIndices);
+        GLES20.glVertexAttribPointer(spherePosLoc, 3, GLES20.GL_FLOAT, false, 0, 0);
+        GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, sphereIBO);
+        GLES20.glDrawElements(GLES20.GL_TRIANGLES, sphereIndexCount, GLES20.GL_UNSIGNED_SHORT, 0);
         GLES20.glDisableVertexAttribArray(spherePosLoc);
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
+        GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, 0);
     }
 
     private void drawBeam() {
@@ -396,12 +381,14 @@ public class DeathBeamFX {
         GLES20.glUniformMatrix4fv(beamMVPLoc, 1, false, mvpMatrix, 0);
         GLES20.glUniform1f(beamTimeLoc, time);
 
-        beamVertices.position(0);
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, beamVBO);
         GLES20.glEnableVertexAttribArray(beamPosLoc);
-        GLES20.glVertexAttribPointer(beamPosLoc, 3, GLES20.GL_FLOAT, false, 0, beamVertices);
-        beamIndices.position(0);
-        GLES20.glDrawElements(GLES20.GL_TRIANGLES, beamIndexCount, GLES20.GL_UNSIGNED_SHORT, beamIndices);
+        GLES20.glVertexAttribPointer(beamPosLoc, 3, GLES20.GL_FLOAT, false, 0, 0);
+        GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, beamIBO);
+        GLES20.glDrawElements(GLES20.GL_TRIANGLES, beamIndexCount, GLES20.GL_UNSIGNED_SHORT, 0);
         GLES20.glDisableVertexAttribArray(beamPosLoc);
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
+        GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, 0);
     }
 
     // ==========================================
@@ -500,5 +487,8 @@ public class DeathBeamFX {
         if (sphereProgram != 0) GLES20.glDeleteProgram(sphereProgram);
         if (beamProgram != 0) GLES20.glDeleteProgram(beamProgram);
         sphereProgram = beamProgram = 0;
+        int[] bufs = {sphereVBO, sphereIBO, beamVBO, beamIBO};
+        GLES20.glDeleteBuffers(4, bufs, 0);
+        sphereVBO = sphereIBO = beamVBO = beamIBO = 0;
     }
 }

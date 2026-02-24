@@ -406,6 +406,45 @@ public class ImageConfig {
             2  // v2: green version
         ));
 
+        // ═══════════════════════════════════════════════════════════════
+        // KEN SCENE - Side Scroll Fighter
+        // ═══════════════════════════════════════════════════════════════
+
+        IMAGES.put("background_ken_scene.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "background_ken_scene.png",
+            52_000L,  // ~51 KB
+            "Ken Background City",
+            1
+        ));
+
+        IMAGES.put("floor_tile.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "floor_tile.png",
+            239_000L,  // ~233 KB
+            "Ken Floor Tile",
+            1
+        ));
+
+        IMAGES.put("ken_walk.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "ken_walk.png",
+            914_000L,  // ~892 KB
+            "Ken Walk Sprite Sheet",
+            1
+        ));
+
+        IMAGES.put("ken_hadouken.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "ken_hadouken.png",
+            838_000L,  // ~818 KB
+            "Ken Hadouken Sprite Sheet",
+            1
+        ));
+
+        IMAGES.put("hadouken_transparente.png", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "hadouken_transparente.png",
+            170_000L,  // ~170 KB
+            "Hadouken Projectile",
+            1
+        ));
+
     }
 
     // ═══════════════════════════════════════════════════════════════════════

@@ -22,6 +22,10 @@ public class FriezaBackground {
     private float time = 0f;
     private int screenWidth = 1, screenHeight = 1;
 
+    // Cached uniform/attrib locations
+    private int posLoc = -1, uvLoc = -1, timeLoc = -1, resLoc = -1;
+    private int centerLoc = -1, speedLoc = -1, brightnessLoc = -1;
+
     // Effect parameters (touch-calibratable)
     private float centerX = 0.0f;      // center X in NDC (-1 to 1, 0=center)
     private float centerY = 0.3f;      // center Y in NDC (positive=up)
@@ -80,11 +84,7 @@ public class FriezaBackground {
         "    float f1 = noise(p1 * 45.0);\n" +
         "    vec2 p2 = 2.1 * vec2(mirror(t, 0.4), d + doff);\n" +
         "    float f2 = noise(p2 * 45.0);\n" +
-        "    vec2 p3 = 3.7 * vec2(mirror(t, 0.8), d + doff);\n" +
-        "    float f3 = noise(p3 * 45.0);\n" +
-        "    vec2 p4 = 5.8 * vec2(mirror(t, 0.0), d + doff);\n" +
-        "    float f4 = noise(p4 * 45.0);\n" +
-        "    return pow((f1 + 0.5 * f2 + 0.25 * f3 + 0.125 * f4) * 3.0, 1.0);\n" +
+        "    return pow((f1 + 0.5 * f2) * 4.0, 1.0);\n" +
         "}\n" +
         "\n" +
         "vec3 colorize(float x) {\n" +
@@ -124,6 +124,15 @@ public class FriezaBackground {
         quadVertices.position(0);
 
         shaderProgram = buildProgram();
+        if (shaderProgram != 0) {
+            posLoc = GLES20.glGetAttribLocation(shaderProgram, "aPosition");
+            uvLoc = GLES20.glGetAttribLocation(shaderProgram, "aTexCoord");
+            timeLoc = GLES20.glGetUniformLocation(shaderProgram, "uTime");
+            resLoc = GLES20.glGetUniformLocation(shaderProgram, "uResolution");
+            centerLoc = GLES20.glGetUniformLocation(shaderProgram, "uCenter");
+            speedLoc = GLES20.glGetUniformLocation(shaderProgram, "uSpeed");
+            brightnessLoc = GLES20.glGetUniformLocation(shaderProgram, "uBrightness");
+        }
     }
 
     public void update(float deltaTime) {
@@ -138,16 +147,11 @@ public class FriezaBackground {
 
         GLES20.glUseProgram(shaderProgram);
 
-        int posLoc = GLES20.glGetAttribLocation(shaderProgram, "aPosition");
-        int uvLoc = GLES20.glGetAttribLocation(shaderProgram, "aTexCoord");
-        int timeLoc = GLES20.glGetUniformLocation(shaderProgram, "uTime");
-        int resLoc = GLES20.glGetUniformLocation(shaderProgram, "uResolution");
-
         GLES20.glUniform1f(timeLoc, time);
         GLES20.glUniform2f(resLoc, screenWidth, screenHeight);
-        GLES20.glUniform2f(GLES20.glGetUniformLocation(shaderProgram, "uCenter"), centerX, centerY);
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(shaderProgram, "uSpeed"), speed);
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(shaderProgram, "uBrightness"), brightness);
+        GLES20.glUniform2f(centerLoc, centerX, centerY);
+        GLES20.glUniform1f(speedLoc, speed);
+        GLES20.glUniform1f(brightnessLoc, brightness);
 
         quadVertices.position(0);
         GLES20.glEnableVertexAttribArray(posLoc);

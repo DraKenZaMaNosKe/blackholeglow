@@ -104,7 +104,7 @@ public class FriezaDeathBeamScene extends BaseVideoScene {
         }
 
         try {
-            deathBeam = new DeathBeamFX(context);
+            deathBeam = new DeathBeamFX();
             deathBeam.setScreenSize(screenWidth, screenHeight);
             deathBeam.setSpherePosition(BEAM_BASE_X, BEAM_BASE_Y, BEAM_BASE_Z);
             deathBeam.setSphereScale(SPHERE_BASE_SCALE);

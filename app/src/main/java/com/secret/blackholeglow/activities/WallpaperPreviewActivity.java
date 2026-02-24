@@ -37,10 +37,16 @@ import androidx.core.view.WindowInsetsCompat;
 import com.secret.blackholeglow.LiveWallpaperService;
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.WallpaperPreferences;
+import com.secret.blackholeglow.image.ImageDownloadManager;
+import com.secret.blackholeglow.model.ModelDownloadManager;
 import com.secret.blackholeglow.systems.AdsManager;
 import com.secret.blackholeglow.systems.EventBus;
+import com.secret.blackholeglow.core.PreFlightCheck;
 import com.secret.blackholeglow.core.ResourcePreloader;
 import com.secret.blackholeglow.systems.WallpaperNotificationManager;
+import com.secret.blackholeglow.video.VideoDownloadManager;
+
+import java.util.List;
 
 /**
  * ╔═════════════════════════════════════════════════════════════════╗
@@ -183,7 +189,7 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         button.addView(iconBtn);
 
         TextView textBtn = new TextView(this);
-        textBtn.setText("Instalar");
+        textBtn.setText("Install");
         textBtn.setTextColor(Color.WHITE);
         textBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         textBtn.setTypeface(null, Typeface.BOLD);
@@ -226,7 +232,7 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         // 📖 Título de instrucciones
         // ════════════════════════════════════════
         TextView title = new TextView(this);
-        title.setText("📖 Cómo usar el Wallpaper");
+        title.setText("📖 How to Use the Wallpaper");
         title.setTextColor(COLOR_CYAN);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         title.setTypeface(null, Typeface.BOLD);
@@ -240,7 +246,7 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
                 "▶",
                 COLOR_GREEN,
                 "PLAY",
-                "Presiona para iniciar la animación del wallpaper"
+                "Press to start the wallpaper animation"
         );
         panel.addView(playRow);
 
@@ -251,7 +257,7 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
                 "⏹",
                 COLOR_PINK,
                 "STOP",
-                "Presiona para detener y volver al panel de control"
+                "Press to stop and return to the control panel"
         );
         panel.addView(stopRow);
 
@@ -259,7 +265,7 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         // 💡 Tip adicional
         // ════════════════════════════════════════
         TextView tip = new TextView(this);
-        tip.setText("💡 El botón STOP aparece dentro del wallpaper activo");
+        tip.setText("💡 The STOP button appears inside the active wallpaper");
         tip.setTextColor(Color.parseColor("#888888"));
         tip.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         tip.setPadding(0, 25, 0, 0);
@@ -377,7 +383,7 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
 
         // Texto del botón
         TextView textBtn = new TextView(this);
-        textBtn.setText("Definir fondo de pantalla");
+        textBtn.setText("Set wallpaper");
         textBtn.setTextColor(Color.BLACK);
         textBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         textBtn.setTypeface(null, Typeface.BOLD);
@@ -442,52 +448,241 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
     }
 
     /**
-     * Maneja el click en el botón de establecer wallpaper
+     * Maneja el click en el botón de establecer wallpaper.
+     * Muestra dialog de resumen pre-instalación con estado de recursos y sistema.
      */
     private void onSetWallpaperClicked() {
-        // 🚀 Instalación INSTANTÁNEA - sin ads ni delays
-        // El ad ya se mostró en WallpaperAdapter al presionar "VER WALLPAPER"
-        proceedToSetWallpaper();
+        showInstallReadinessDialog();
     }
 
     /**
-     * Procede a establecer el wallpaper después del anuncio
-     *
-     * 🛡️ CONSOLIDADO: Una sola escritura via WallpaperPreferences
-     * (antes había escritura doble: directa + WallpaperPreferences)
+     * Muestra dialog con resumen visual del estado de recursos y sistema.
      */
-    private void proceedToSetWallpaper() {
-        // 🛡️ FIX BLACK SCREEN: Verificar recursos antes de instalar
-        if (!ResourcePreloader.areSceneResourcesReady(this, nombre_wallpaper)) {
-            Log.e(TAG, "🛡️ Recursos NO disponibles para: " + nombre_wallpaper);
-            new android.app.AlertDialog.Builder(this)
-                .setTitle("Recursos no disponibles")
-                .setMessage("Los recursos del wallpaper no se descargaron correctamente.\nVerifica tu conexión a internet e intenta de nuevo.")
-                .setPositiveButton("Volver", (d, w) -> finish())
-                .setCancelable(false)
-                .show();
-            return;
+    private void showInstallReadinessDialog() {
+        PreFlightCheck.InstallCheckResult result = PreFlightCheck.runInstallCheck(this, nombre_wallpaper);
+
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog);
+        builder.setCancelable(true);
+
+        // Contenido del dialog
+        LinearLayout content = buildReadinessView(result);
+
+        // Scroll wrapper por si el contenido es largo
+        android.widget.ScrollView scrollView = new android.widget.ScrollView(this);
+        scrollView.addView(content);
+
+        builder.setView(scrollView);
+
+        if (result.canInstall) {
+            builder.setPositiveButton("Install", (d, w) -> proceedToSetWallpaper());
+            builder.setNegativeButton("Cancel", null);
+        } else if (!result.allResourcesReady) {
+            builder.setNegativeButton("Back", null);
+            // Se agrega botón Reintentar dinámicamente abajo
+        } else {
+            // systemHealthy = false, solo info
+            builder.setNegativeButton("Back", null);
         }
 
-        // 🛡️ CONSOLIDADO: Solo usar WallpaperPreferences (maneja SharedPrefs + Firebase)
+        android.app.AlertDialog dialog = builder.create();
+
+        // Si faltan recursos, agregar botón neutral de reintentar
+        if (!result.allResourcesReady) {
+            dialog.setButton(android.app.AlertDialog.BUTTON_POSITIVE, "Retry \u21BB",
+                    (d, w) -> retryMissingResources(result));
+        }
+
+        dialog.show();
+    }
+
+    /**
+     * Construye el LinearLayout con el contenido visual del dialog.
+     */
+    private LinearLayout buildReadinessView(PreFlightCheck.InstallCheckResult result) {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(dpToPx(24), dpToPx(20), dpToPx(24), dpToPx(8));
+
+        // Título
+        TextView title = new TextView(this);
+        title.setText(result.canInstall ? "\uD83D\uDEE1\uFE0F Pre-Install Summary"
+                : "\u26A0\uFE0F Pre-Install Summary");
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        title.setTypeface(null, Typeface.BOLD);
+        title.setTextColor(Color.WHITE);
+        title.setPadding(0, 0, 0, dpToPx(16));
+        root.addView(title);
+
+        // Sección Recursos
+        if (!result.resources.isEmpty()) {
+            TextView resourceHeader = new TextView(this);
+            resourceHeader.setText("\uD83D\uDCE6 Resources");
+            resourceHeader.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            resourceHeader.setTypeface(null, Typeface.BOLD);
+            resourceHeader.setTextColor(Color.parseColor("#AAAAAA"));
+            resourceHeader.setPadding(0, 0, 0, dpToPx(8));
+            root.addView(resourceHeader);
+
+            for (PreFlightCheck.ResourceStatus rs : result.resources) {
+                String typeName;
+                switch (rs.type) {
+                    case VIDEO: typeName = "Video"; break;
+                    case IMAGE: typeName = "Images"; break;
+                    case MODEL: typeName = "3D Models"; break;
+                    default: typeName = "Resource"; break;
+                }
+
+                String icon = rs.isComplete() ? "\u2705" : "\u274C";
+                String line = icon + " " + typeName + " (" + rs.available + "/" + rs.total + ")";
+
+                TextView resourceLine = new TextView(this);
+                resourceLine.setText(line);
+                resourceLine.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+                resourceLine.setTextColor(Color.WHITE);
+                resourceLine.setPadding(dpToPx(8), dpToPx(2), 0, dpToPx(2));
+                root.addView(resourceLine);
+
+                // Mostrar nombres de archivos faltantes
+                if (!rs.isComplete()) {
+                    for (String missing : rs.missing) {
+                        TextView missingLine = new TextView(this);
+                        missingLine.setText("     Missing: " + missing);
+                        missingLine.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+                        missingLine.setTextColor(Color.parseColor("#FF6666"));
+                        missingLine.setPadding(dpToPx(16), 0, 0, dpToPx(2));
+                        root.addView(missingLine);
+                    }
+                }
+            }
+        } else {
+            // Escena sin recursos descargables (puro local)
+            TextView noResources = new TextView(this);
+            noResources.setText("\u2705 No external resources needed");
+            noResources.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            noResources.setTextColor(Color.WHITE);
+            noResources.setPadding(dpToPx(8), dpToPx(4), 0, dpToPx(4));
+            root.addView(noResources);
+        }
+
+        // Separador
+        View divider = new View(this);
+        divider.setBackgroundColor(Color.parseColor("#333333"));
+        LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(1));
+        dividerParams.setMargins(0, dpToPx(12), 0, dpToPx(12));
+        root.addView(divider, dividerParams);
+
+        // Sección Sistema
+        TextView systemHeader = new TextView(this);
+        systemHeader.setText("\uD83D\uDCCA System");
+        systemHeader.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        systemHeader.setTypeface(null, Typeface.BOLD);
+        systemHeader.setTextColor(Color.parseColor("#AAAAAA"));
+        systemHeader.setPadding(0, 0, 0, dpToPx(8));
+        root.addView(systemHeader);
+
+        // RAM
+        String ramIcon = result.availableRamMB >= 50 ? "\u2705" : "\u26A0\uFE0F";
+        String ramText = "RAM: " + formatSize(result.availableRamMB) + " free " + ramIcon;
+        TextView ramLine = new TextView(this);
+        ramLine.setText(ramText);
+        ramLine.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        ramLine.setTextColor(Color.WHITE);
+        ramLine.setPadding(dpToPx(8), dpToPx(2), 0, dpToPx(2));
+        root.addView(ramLine);
+
+        // Disco
+        String diskIcon = result.freeDiskMB >= 30 ? "\u2705" : "\u26A0\uFE0F";
+        String diskText = "Disk: " + formatSize(result.freeDiskMB) + " free " + diskIcon;
+        TextView diskLine = new TextView(this);
+        diskLine.setText(diskText);
+        diskLine.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        diskLine.setTextColor(Color.WHITE);
+        diskLine.setPadding(dpToPx(8), dpToPx(2), 0, dpToPx(2));
+        root.addView(diskLine);
+
+        return root;
+    }
+
+    /**
+     * Formatea MB en texto legible (ej: 1800 MB → "1.8 GB", 450 MB → "450 MB")
+     */
+    private String formatSize(long mb) {
+        if (mb >= 1024) {
+            return String.format("%.1f GB", mb / 1024.0);
+        }
+        return mb + " MB";
+    }
+
+    /**
+     * Re-descarga los recursos faltantes en background, luego re-muestra el dialog.
+     */
+    private void retryMissingResources(PreFlightCheck.InstallCheckResult failedResult) {
+        android.app.ProgressDialog progress = new android.app.ProgressDialog(this);
+        progress.setMessage("Downloading missing resources...");
+        progress.setCancelable(false);
+        progress.setProgressStyle(android.app.ProgressDialog.STYLE_HORIZONTAL);
+        List<String> allMissing = failedResult.getAllMissing();
+        progress.setMax(allMissing.size());
+        progress.show();
+
+        new Thread(() -> {
+            int downloaded = 0;
+            for (String file : allMissing) {
+                if (isFinishing() || isDestroyed()) break;
+                final int current = downloaded + 1;
+                runOnUiThread(() -> {
+                    if (!isFinishing() && !isDestroyed()) {
+                        progress.setProgress(current);
+                        progress.setMessage("Downloading: " + file);
+                    }
+                });
+
+                boolean success = false;
+                if (file.endsWith(".mp4")) {
+                    success = VideoDownloadManager.getInstance(this)
+                            .downloadVideoSync(file, percent -> {});
+                } else if (file.endsWith(".obj")) {
+                    success = ModelDownloadManager.getInstance(this)
+                            .downloadModelSync(file, percent -> {});
+                } else {
+                    success = ImageDownloadManager.getInstance(this)
+                            .downloadImageSync(file, percent -> {});
+                }
+
+                if (success) downloaded++;
+                Log.d(TAG, (success ? "\u2705" : "\u274C") + " Retry: " + file);
+            }
+
+            runOnUiThread(() -> {
+                if (!isFinishing() && !isDestroyed()) {
+                    progress.dismiss();
+                    // Re-mostrar el dialog con estado actualizado
+                    showInstallReadinessDialog();
+                }
+            });
+        }, "RetryDownload").start();
+    }
+
+    /**
+     * Procede a establecer el wallpaper (recursos ya verificados por dialog).
+     *
+     * \uD83D\uDEE1\uFE0F CONSOLIDADO: Una sola escritura via WallpaperPreferences
+     */
+    private void proceedToSetWallpaper() {
+        // \uD83D\uDEE1\uFE0F CONSOLIDADO: Solo usar WallpaperPreferences (maneja SharedPrefs + Firebase)
         WallpaperPreferences.getInstance(this).setSelectedWallpaper(nombre_wallpaper, null);
-        Log.d(TAG, "✅ Wallpaper guardado via WallpaperPreferences: " + nombre_wallpaper);
+        Log.d(TAG, "\u2705 Wallpaper guardado via WallpaperPreferences: " + nombre_wallpaper);
 
         EventBus.get().publish("wallpaper_set",
                 new EventBus.EventData().put("wallpaper_id", nombre_wallpaper));
 
-        // 🔧 FIX: Si nuestro wallpaper YA está activo, NO abrir el system picker.
-        // El system picker crea un engine nuevo de preview que causa congelamiento.
-        // En su lugar, el engine existente detectará el cambio en el próximo ciclo
-        // de visibilidad (cuando el usuario regrese al home screen).
+        // \uD83D\uDD27 FIX: Si nuestro wallpaper YA est\u00E1 activo, NO abrir el system picker.
         if (isOurWallpaperActive()) {
-            Log.d(TAG, "🔧 Wallpaper ya activo - cambio directo sin system picker");
-            // Mostrar éxito directamente - el cambio se aplicará al volver al home
+            Log.d(TAG, "\uD83D\uDD27 Wallpaper ya activo - cambio directo sin system picker");
             showSuccessMessage();
         } else {
-            // Primera instalación: necesitamos el system picker para que Android
-            // registre nuestro servicio como el wallpaper activo
-            Log.d(TAG, "🆕 Primera instalación - abriendo system picker");
+            Log.d(TAG, "\uD83C\uDD95 Primera instalaci\u00F3n - abriendo system picker");
             waitingForWallpaperResult = true;
 
             Intent intent = new Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER);
@@ -574,7 +769,7 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
 
         // Título
         TextView titleView = new TextView(this);
-        titleView.setText("¡Wallpaper Aplicado!");
+        titleView.setText("Wallpaper Applied!");
         titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
         titleView.setTextColor(Color.WHITE);
         titleView.setGravity(Gravity.CENTER);
@@ -592,7 +787,7 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
 
         // Instrucción
         TextView infoView = new TextView(this);
-        infoView.setText("Ve a inicio y presiona ▶ PLAY");
+        infoView.setText("Go to home and press ▶ PLAY");
         infoView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         infoView.setTextColor(Color.parseColor("#888888"));
         infoView.setGravity(Gravity.CENTER);

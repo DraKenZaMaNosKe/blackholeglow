@@ -153,6 +153,7 @@ public class BuildingsSilhouette2D {
         Bitmap bitmap = null;
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inScaled = false;
+        options.inSampleSize = 2;  // Silueta: no necesita full res, 50% menos VRAM
 
         // Prioridad: descarga remota (Supabase) > assets locales
         ImageDownloadManager imageMgr = ImageDownloadManager.getInstance(context);

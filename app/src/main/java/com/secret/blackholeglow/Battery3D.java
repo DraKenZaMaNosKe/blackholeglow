@@ -622,9 +622,13 @@ public class Battery3D implements SceneObject {
         }
     }
 
+    // Memory pressure visibility control
+    private boolean visible = true;
+    public void setVisible(boolean visible) { this.visible = visible; }
+
     @Override
     public void draw() {
-        if (programId == 0) return;
+        if (programId == 0 || !visible) return;
 
         updateTexture();
 

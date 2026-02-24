@@ -134,7 +134,7 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Log.d(TAG, "Skip login - continuando sin autenticacion");
-                Toast.makeText(LoginActivity.this, "Continuando sin login", Toast.LENGTH_SHORT).show();
+                Toast.makeText(LoginActivity.this, "Continuing without login", Toast.LENGTH_SHORT).show();
                 goToMainActivity();
             }
         });
@@ -166,7 +166,7 @@ public class LoginActivity extends AppCompatActivity {
                 // Inicio de sesión falló
                 Log.e(TAG, "✗ Google Sign-In falló: " + e.getStatusCode(), e);
                 showLoading(false);
-                Toast.makeText(this, "Error al iniciar sesión: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Sign in error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -187,7 +187,7 @@ public class LoginActivity extends AppCompatActivity {
                         // Autenticación falló
                         Log.e(TAG, "✗ Firebase Auth falló", task.getException());
                         showLoading(false);
-                        Toast.makeText(LoginActivity.this, "Autenticación fallida", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(LoginActivity.this, "Authentication failed", Toast.LENGTH_SHORT).show();
                         updateUI(null);
                     }
                 });
@@ -210,7 +210,7 @@ public class LoginActivity extends AppCompatActivity {
 
             // Login completo, ir a MainActivity
             showLoading(false);
-            Toast.makeText(this, "¡Bienvenido, " + userName + "!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Welcome, " + userName + "!", Toast.LENGTH_SHORT).show();
             goToMainActivity();
         }
     }
@@ -282,6 +282,6 @@ public class LoginActivity extends AppCompatActivity {
     private void showLoading(boolean show) {
         progressBar.setVisibility(show ? View.VISIBLE : View.GONE);
         btnSignIn.setEnabled(!show);
-        tvStatus.setText(show ? "Iniciando sesión..." : "");
+        tvStatus.setText(show ? "Signing in..." : "");
     }
 }

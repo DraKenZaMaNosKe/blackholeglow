@@ -63,10 +63,10 @@ public class WallpaperNotificationManager {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
-                    "Estado del Wallpaper",
+                    "Wallpaper Status",
                     NotificationManager.IMPORTANCE_DEFAULT
             );
-            channel.setDescription("Estado de instalación de wallpapers");
+            channel.setDescription("Wallpaper installation status");
             notificationManager.createNotificationChannel(channel);
         }
     }
@@ -152,8 +152,8 @@ public class WallpaperNotificationManager {
             return;
         }
 
-        String title = displayName + " listo";
-        String summary = resourceCount + " recursos descargados (" + formatSize(totalSize) + ")";
+        String title = displayName + " ready";
+        String summary = resourceCount + " resources downloaded (" + formatSize(totalSize) + ")";
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
@@ -246,12 +246,12 @@ public class WallpaperNotificationManager {
             return;
         }
 
-        String title = displayName + " activado";
+        String title = displayName + " activated";
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setContentTitle(title)
-                .setContentText("Wallpaper instalado correctamente")
+                .setContentText("Wallpaper installed successfully")
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setContentIntent(getOpenAppIntent())
                 .setAutoCancel(true);
@@ -314,7 +314,7 @@ public class WallpaperNotificationManager {
             }
         }
 
-        return grandCount + " recursos en dispositivo (" + formatSize(grandTotal) + ")";
+        return grandCount + " resources on device (" + formatSize(grandTotal) + ")";
     }
 
     // ═══════════════════════════════════════════════════════════════

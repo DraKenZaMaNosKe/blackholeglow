@@ -138,7 +138,7 @@ public class SplashActivity extends AppCompatActivity {
                 if (!modelMgr.isModelAvailable(model)) {
                     Log.d(TAG, "⬇️ Descargando modelo: " + model);
                     final int c = completed;
-                    updateStatusUI("Descargando control...", c, totalResources);
+                    updateStatusUI("Downloading controls...", c, totalResources);
                     modelMgr.downloadModelSync(model, percent ->
                         updateProgressUI(percent, c, totalResources));
                     Log.d(TAG, "✅ Modelo descargado: " + model);
@@ -154,7 +154,7 @@ public class SplashActivity extends AppCompatActivity {
                 if (!imageMgr.isImageAvailable(img)) {
                     Log.d(TAG, "⬇️ Descargando: " + img);
                     final int c = completed;
-                    updateStatusUI("Descargando texturas...", c, totalResources);
+                    updateStatusUI("Downloading textures...", c, totalResources);
                     imageMgr.downloadImageSync(img, percent ->
                         updateProgressUI(percent, c, totalResources));
                 } else {
@@ -166,7 +166,7 @@ public class SplashActivity extends AppCompatActivity {
             // Todo listo
             Log.d(TAG, "✅ Descarga de recursos del panel COMPLETADA");
             mainHandler.post(() -> {
-                statusText.setText("¡Listo!");
+                statusText.setText("Ready!");
                 onResourcesReady();
             });
         }).start();
@@ -203,7 +203,7 @@ public class SplashActivity extends AppCompatActivity {
     private void showDownloadUI() {
         loadingSpinner.setVisibility(View.GONE);
         downloadContainer.setVisibility(View.VISIBLE);
-        statusText.setText("Preparando experiencia...");
+        statusText.setText("Preparing experience...");
 
         // Obtener el ancho máximo de la barra de progreso después del layout
         downloadContainer.post(() -> {

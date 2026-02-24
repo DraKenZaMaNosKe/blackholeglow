@@ -38,7 +38,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:text="Explora el Cosmos Infinito"
+            android:text="@string/splash_tagline"
             android:textColor="#8B9DC3"
             android:textSize="14sp"
             android:fontFamily="sans-serif-light" />
@@ -62,7 +62,7 @@
                 android:id="@+id/status_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Descargando recursos..."
+                android:text="@string/splash_downloading"
                 android:textColor="#6B7AA1"
                 android:textSize="13sp"
                 android:fontFamily="sans-serif-light" />

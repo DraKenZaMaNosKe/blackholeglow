@@ -7,6 +7,7 @@ import com.secret.blackholeglow.CameraAware;
 import com.secret.blackholeglow.CameraController;
 import com.secret.blackholeglow.SceneObject;
 import com.secret.blackholeglow.TextureManager;
+import com.secret.blackholeglow.core.MemoryPressureLevel;
 import com.secret.blackholeglow.systems.EventBus;
 import com.secret.blackholeglow.systems.ResourceManager;
 
@@ -63,6 +64,9 @@ public abstract class WallpaperScene implements Disposable {
     protected boolean isLoaded = false;
     protected boolean isPaused = true;
     protected boolean isDisposed = false;
+
+    // Nivel de presion de memoria actual
+    protected MemoryPressureLevel currentPressureLevel = MemoryPressureLevel.NORMAL;
 
     // ═══════════════════════════════════════════════════════════════
     // DIMENSIONES DE PANTALLA
@@ -402,5 +406,17 @@ public abstract class WallpaperScene implements Disposable {
         float nx = (event.getX() / Math.max(1, screenWidth)) * 2f - 1f;
         float ny = -((event.getY() / Math.max(1, screenHeight)) * 2f - 1f);
         return onTouchEvent(nx, ny, event.getAction());
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ADAPTIVE MEMORY SYSTEM
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Reacciona a cambios en la presion de memoria.
+     * Las subclases override para degradar/restaurar calidad.
+     */
+    public void onMemoryPressure(MemoryPressureLevel level) {
+        this.currentPressureLevel = level;
     }
 }

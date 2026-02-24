@@ -80,6 +80,11 @@ public class WallpaperPreferences {
         "THE_HUMAN_PREDATOR", // 🦁 The Human Predator - Guerrero vs León
         "MOONLIT_CAT",       // 🌙 Moonlit Cat - Gato bajo la luna
         "FRIEZA_DEATHBEAM",  // 💜 Frieza Death Beam - Dragon Ball Z
+        "KEN",               // 🥊 Ken - Side Scroll Fighter
+        "SCORPION",          // 🦂 Scorpion - Mortal Kombat
+        "TREN_NOCTURNO",     // 🚂 Tren Nocturno - Pixel Art
+        "THE_EYE",           // 👁️ The Eye - Ojo Misterioso
+        "GATITO",            // 🐱 Gatito - Cute Cat Animation
 
         // ═══════════════════════════════════════════
         // 📦 WALLPAPERS LEGADOS (compatibilidad)

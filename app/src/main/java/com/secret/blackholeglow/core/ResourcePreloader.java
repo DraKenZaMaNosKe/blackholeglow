@@ -175,6 +175,26 @@ public class ResourcePreloader {
                 prepareFriezaDeathBeamSceneTasks();
                 break;
 
+            case "KEN":
+                prepareKenSceneTasks();
+                break;
+
+            case "SCORPION":
+                prepareScorpionSceneTasks();
+                break;
+
+            case "TREN_NOCTURNO":
+                prepareTrenNocturnoSceneTasks();
+                break;
+
+            case "THE_EYE":
+                prepareTheEyeSceneTasks();
+                break;
+
+            case "GATITO":
+                prepareGatitoSceneTasks();
+                break;
+
             default:
                 // Default: usar Lab
                 prepareLabSceneTasks();
@@ -328,6 +348,21 @@ public class ResourcePreloader {
             case "FRIEZA_DEATHBEAM":
                 return Arrays.asList("frieza_deathbeam_bg.mp4");
 
+            case "KEN":
+                return Arrays.asList();  // No video - sprite-based
+
+            case "SCORPION":
+                return Arrays.asList("scorpion_scene.mp4");
+
+            case "TREN_NOCTURNO":
+                return Arrays.asList("tren_nocturno.mp4");
+
+            case "THE_EYE":
+                return Arrays.asList("theeye_scene.mp4");
+
+            case "GATITO":
+                return Arrays.asList("gatito_scene_final.mp4");
+
             default:
                 return new ArrayList<>();
         }
@@ -355,10 +390,10 @@ public class ResourcePreloader {
 
             case "SAINT_SEIYA":
                 return Arrays.asList(
-                    "seiya_fondo_cosmos.png",
-                    "seiya_fondo_cosmos_depth.png",
-                    "seiya_character_cosmos.png",
-                    "seiya_character_cosmos_depth.png"
+                    "fondouniverso.png",
+                    "fondouniverso3d.png",
+                    "seiya_solo.png",
+                    "seiya_depth.png"
                 );
 
             case "WALKING_DEAD":
@@ -380,6 +415,10 @@ public class ResourcePreloader {
 
             case "FRIEZA_DEATHBEAM":
                 return Arrays.asList("frieza_texture.png");
+
+            case "KEN":
+                return Arrays.asList("background_ken_scene.png", "floor_tile.png",
+                        "ken_walk.png", "ken_hadouken.png", "hadouken_transparente.png");
 
             // GOKU, ADVENTURE_TIME solo usan videos
             default:
@@ -418,6 +457,9 @@ public class ResourcePreloader {
 
             case "FRIEZA_DEATHBEAM":
                 return Arrays.asList("frieza.obj", "frieza_halo.obj");
+
+            case "KEN":
+                return Arrays.asList();  // No 3D models - sprite-based
 
             // GOKU, ADVENTURE_TIME, SAINT_SEIYA no usan modelos 3D
             default:
@@ -741,6 +783,64 @@ public class ResourcePreloader {
         Log.d(TAG, "💜 FriezaDeathBeam: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
     }
 
+    public void prepareKenSceneTasks() {
+        tasks.clear();
+
+        // Ken solo usa imagenes de Supabase, sin video ni modelos 3D
+        addImageDownloadTask("Ken Background", "background_ken_scene.png", 1);
+        addImageDownloadTask("Ken Floor", "floor_tile.png", 1);
+        addImageDownloadTask("Ken Walk Sheet", "ken_walk.png", 3);
+        addImageDownloadTask("Ken Hadouken Sheet", "ken_hadouken.png", 3);
+        addImageDownloadTask("Hadouken Projectile", "hadouken_transparente.png", 2);
+
+        calculateTotalWeight();
+        Log.d(TAG, "🥊 Ken: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    /**
+     * 🦂 Scorpion Scene - Mortal Kombat
+     */
+    public void prepareScorpionSceneTasks() {
+        tasks.clear();
+        addVideoDownloadTask("Video Scorpion", "scorpion_scene.mp4", 10);
+        addTextureTask("Preparando escena Scorpion", R.drawable.preview_scorpion, 2);
+        calculateTotalWeight();
+        Log.d(TAG, "🦂 Scorpion: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    /**
+     * 🚂 Tren Nocturno Scene - Pixel Art Night Train
+     */
+    public void prepareTrenNocturnoSceneTasks() {
+        tasks.clear();
+        addVideoDownloadTask("Video Tren Nocturno", "tren_nocturno.mp4", 10);
+        addTextureTask("Preparando escena Tren Nocturno", R.drawable.preview_tren_nocturno, 2);
+        calculateTotalWeight();
+        Log.d(TAG, "🚂 TrenNocturno: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    /**
+     * 👁️ The Eye Scene - Ojo Misterioso
+     */
+    public void prepareTheEyeSceneTasks() {
+        tasks.clear();
+        addVideoDownloadTask("Video The Eye", "theeye_scene.mp4", 10);
+        addTextureTask("Preparando escena The Eye", R.drawable.preview_the_eye, 2);
+        calculateTotalWeight();
+        Log.d(TAG, "👁️ TheEye: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    /**
+     * 🐱 Gatito Scene - Cute Cat Animation
+     */
+    public void prepareGatitoSceneTasks() {
+        tasks.clear();
+        addVideoDownloadTask("Video Gatito", "gatito_scene_final.mp4", 10);
+        addTextureTask("Preparando escena Gatito", R.drawable.preview_gatito, 2);
+        calculateTotalWeight();
+        Log.d(TAG, "🐱 Gatito: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
     private void calculateTotalWeight() {
         totalTasks = 0;
         for (PreloadTask task : tasks) {
@@ -819,6 +919,16 @@ public class ResourcePreloader {
                 return Arrays.asList();  // No video - shader-based sky
             case "FRIEZA_DEATHBEAM":
                 return Arrays.asList("frieza_deathbeam_bg.mp4");
+            case "KEN":
+                return Arrays.asList();  // No video
+            case "SCORPION":
+                return Arrays.asList("scorpion_scene.mp4");
+            case "TREN_NOCTURNO":
+                return Arrays.asList("tren_nocturno.mp4");
+            case "THE_EYE":
+                return Arrays.asList("theeye_scene.mp4");
+            case "GATITO":
+                return Arrays.asList("gatito_scene_final.mp4");
             default:
                 return new ArrayList<>();
         }
@@ -1077,8 +1187,14 @@ public class ResourcePreloader {
     public static List<String> getRequiredImages(String sceneName) {
         if (sceneName == null) return new ArrayList<>();
         switch (sceneName) {
+            case "Portal Cosmico":
+            case "PYRALIS":
+            case "LabScene":
+                return Arrays.asList("human_interceptor_texture.png", "thruster_flames.png");
             case "ABYSSIA":
-                return Arrays.asList("abyssal_leviathan_texture.png", "abyssal_lurker_texture.png", "huevo_zerg.png");
+            case "Oceano":
+            case "OceanFloorScene":
+                return Arrays.asList("abyssal_leviathan_texture.png", "abyssal_lurker_texture.png");
             case "NEON_CITY":
                 return Arrays.asList("delorean_texture.png");
             case "SAINT_SEIYA":
@@ -1091,6 +1207,11 @@ public class ResourcePreloader {
             case "MOONLIT_CAT":
                 return Arrays.asList("cat_open.png", "cat_half.png", "cat_closed.png",
                         "brick_wall_texture.png", "buildings_silhouette.png", "moon_texture.png");
+            case "FRIEZA_DEATHBEAM":
+                return Arrays.asList("frieza_texture.png");
+            case "KEN":
+                return Arrays.asList("background_ken_scene.png", "floor_tile.png",
+                        "ken_walk.png", "ken_hadouken.png", "hadouken_transparente.png");
             default:
                 return new ArrayList<>();
         }
@@ -1099,7 +1220,13 @@ public class ResourcePreloader {
     public static List<String> getRequiredModels(String sceneName) {
         if (sceneName == null) return new ArrayList<>();
         switch (sceneName) {
+            case "Portal Cosmico":
+            case "PYRALIS":
+            case "LabScene":
+                return Arrays.asList("human_interceptor_flames.obj");
             case "ABYSSIA":
+            case "Oceano":
+            case "OceanFloorScene":
                 return Arrays.asList("abyssal_leviathan.obj", "abyssal_lurker.obj");
             case "NEON_CITY":
                 return Arrays.asList("delorean.obj");
@@ -1109,6 +1236,8 @@ public class ResourcePreloader {
                 return Arrays.asList("link_3d.obj");
             case "MOONLIT_CAT":
                 return Arrays.asList("black_cat_clean.obj", "brick_wall.obj");
+            case "FRIEZA_DEATHBEAM":
+                return Arrays.asList("frieza.obj", "frieza_halo.obj");
             default:
                 return new ArrayList<>();
         }

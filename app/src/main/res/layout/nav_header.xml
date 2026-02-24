@@ -25,7 +25,7 @@
         android:id="@+id/tv_user_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Usuario"
+        android:text="@string/nav_user_default"
         android:textColor="@android:color/white"
         android:textSize="18sp"
         android:textStyle="bold" />
@@ -36,7 +36,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:text="usuario@gmail.com"
+        android:text="@string/nav_email_default"
         android:textColor="@android:color/white"
         android:textSize="14sp"
         android:alpha="0.8" />

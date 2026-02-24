@@ -1,13 +1,14 @@
 // TextureManager.java
 package com.secret.blackholeglow;
 
-import android.app.ActivityManager;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.opengl.GLES30;
 import android.opengl.GLUtils;
 import android.util.Log;
+
+import com.secret.blackholeglow.core.DeviceProfile;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -56,8 +57,11 @@ public class TextureManager implements TextureLoader {
         if (initialized) return true;
         initialized = true;
 
-        // 🧠 Detectar tier de memoria del dispositivo
-        detectMemoryTier();
+        // 🧠 Leer tier de memoria desde DeviceProfile (singleton central)
+        DeviceProfile dp = DeviceProfile.get();
+        memoryTier = dp.getMemoryTier();
+        maxTextureDimension = dp.getMaxTextureDimension();
+        defaultInSampleSize = dp.getDefaultInSampleSize();
 
         // 🛡️ Crear textura de fallback para errores
         createFallbackTexture();
@@ -65,42 +69,6 @@ public class TextureManager implements TextureLoader {
         Log.d("TextureManager", "Inicializado - Memory tier: " + memoryTier
                 + ", maxDim=" + maxTextureDimension + ", inSampleSize=" + defaultInSampleSize);
         return true;
-    }
-
-    /**
-     * 🧠 Detecta la RAM total del dispositivo y configura límites de textura.
-     * LOW  (<4 GB): cap 1024px, inSampleSize=2 → ~50-75% menos memoria GPU
-     * MEDIUM (4-6 GB): cap 1536px, inSampleSize=1
-     * HIGH (>6 GB): cap 2048px, inSampleSize=1
-     */
-    private void detectMemoryTier() {
-        try {
-            ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-            ActivityManager.MemoryInfo memInfo = new ActivityManager.MemoryInfo();
-            am.getMemoryInfo(memInfo);
-
-            long totalGB = memInfo.totalMem / (1024L * 1024L * 1024L);
-            Log.d("TextureManager", "Device RAM: " + totalGB + " GB (" + memInfo.totalMem + " bytes)");
-
-            if (totalGB < 4) {
-                memoryTier = MemoryTier.LOW;
-                maxTextureDimension = 1024;
-                defaultInSampleSize = 2;
-            } else if (totalGB <= 6) {
-                memoryTier = MemoryTier.MEDIUM;
-                maxTextureDimension = 1536;
-                defaultInSampleSize = 1;
-            } else {
-                memoryTier = MemoryTier.HIGH;
-                maxTextureDimension = 2048;
-                defaultInSampleSize = 1;
-            }
-        } catch (Exception e) {
-            Log.w("TextureManager", "Could not detect memory tier, using MEDIUM: " + e.getMessage());
-            memoryTier = MemoryTier.MEDIUM;
-            maxTextureDimension = 1536;
-            defaultInSampleSize = 1;
-        }
     }
 
     /**

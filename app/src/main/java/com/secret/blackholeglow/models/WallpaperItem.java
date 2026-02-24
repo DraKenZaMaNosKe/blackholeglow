@@ -44,6 +44,7 @@ public class WallpaperItem {
     private final String badge;          // Etiqueta especial (null si no tiene)
     private final int glowColor;         // Color de glow para destacar (0 = sin glow)
     private final boolean isFeatured;    // Si está destacado
+    private final SceneWeight sceneWeight; // Peso de recursos de la escena
 
     // ═══════════════════════════════════════════════════════════════
     // CONSTRUCTORES
@@ -60,7 +61,8 @@ public class WallpaperItem {
             WallpaperTier tier,
             String badge,
             int glowColor,
-            boolean isFeatured
+            boolean isFeatured,
+            SceneWeight sceneWeight
     ) {
         this.nombre = nombre;
         this.descripcion = descripcion;
@@ -70,13 +72,14 @@ public class WallpaperItem {
         this.badge = badge;
         this.glowColor = glowColor;
         this.isFeatured = isFeatured;
+        this.sceneWeight = sceneWeight;
     }
 
     /**
      * Constructor simplificado para wallpapers FREE sin efectos especiales
      */
     public WallpaperItem(int resourceIdPreview, String nombre, String descripcion) {
-        this(nombre, descripcion, resourceIdPreview, nombre, WallpaperTier.FREE, null, 0, false);
+        this(nombre, descripcion, resourceIdPreview, nombre, WallpaperTier.FREE, null, 0, false, SceneWeight.MEDIUM);
     }
 
     /**
@@ -91,7 +94,8 @@ public class WallpaperItem {
                 isAvailable ? WallpaperTier.FREE : WallpaperTier.COMING_SOON,
                 null,
                 0,
-                false
+                false,
+                SceneWeight.MEDIUM
         );
     }
 
@@ -108,6 +112,7 @@ public class WallpaperItem {
         private String badge = null;
         private int glowColor = 0;
         private boolean isFeatured = false;
+        private SceneWeight sceneWeight = SceneWeight.MEDIUM;
 
         public Builder(String nombre) {
             this.nombre = nombre;
@@ -149,10 +154,15 @@ public class WallpaperItem {
             return this;
         }
 
+        public Builder weight(SceneWeight weight) {
+            this.sceneWeight = weight;
+            return this;
+        }
+
         public WallpaperItem build() {
             return new WallpaperItem(
                     nombre, descripcion, resourceIdPreview,
-                    sceneName, tier, badge, glowColor, isFeatured
+                    sceneName, tier, badge, glowColor, isFeatured, sceneWeight
             );
         }
     }
@@ -222,6 +232,11 @@ public class WallpaperItem {
     /** Si está destacado en el catálogo */
     public boolean isFeatured() {
         return isFeatured;
+    }
+
+    /** Peso de recursos de la escena (LIGHT, MEDIUM, HEAVY) */
+    public SceneWeight getSceneWeight() {
+        return sceneWeight;
     }
 
     // ═══════════════════════════════════════════════════════════════

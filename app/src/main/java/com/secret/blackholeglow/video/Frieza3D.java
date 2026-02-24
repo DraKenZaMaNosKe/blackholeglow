@@ -8,11 +8,10 @@ import android.opengl.GLUtils;
 import android.opengl.Matrix;
 import android.util.Log;
 
+import com.secret.blackholeglow.core.DeviceProfile;
 import com.secret.blackholeglow.util.ObjLoader;
 import com.secret.blackholeglow.image.ImageDownloadManager;
 import com.secret.blackholeglow.model.ModelDownloadManager;
-
-import android.app.ActivityManager;
 
 import java.io.File;
 import java.io.IOException;
@@ -150,30 +149,25 @@ public class Frieza3D {
 
     private int loadTextureFromFile(String filePath) {
         try {
-            // Detect RAM tier for adaptive texture quality
-            int inSampleSize = 2;  // default: 2048→1024
-            Bitmap.Config bitmapConfig = Bitmap.Config.ARGB_8888;
-            try {
-                ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-                ActivityManager.MemoryInfo memInfo = new ActivityManager.MemoryInfo();
-                am.getMemoryInfo(memInfo);
-                long totalGB = memInfo.totalMem / (1024L * 1024L * 1024L);
-
-                if (totalGB < 4) {
-                    inSampleSize = 4;  // 2048→512px (~1MB VRAM vs ~4MB)
-                    bitmapConfig = Bitmap.Config.RGB_565;  // 16-bit, 50% less memory
-                    Log.d(TAG, "LOW RAM (" + totalGB + "GB): texture 512px RGB_565");
-                } else if (totalGB <= 6) {
-                    inSampleSize = 2;  // 2048→1024px
+            // Adaptive texture quality from DeviceProfile
+            int inSampleSize;
+            Bitmap.Config bitmapConfig;
+            switch (DeviceProfile.get().getMemoryTier()) {
+                case LOW:
+                    inSampleSize = 4;  // 2048->512px (~1MB VRAM vs ~4MB)
                     bitmapConfig = Bitmap.Config.RGB_565;
-                    Log.d(TAG, "MEDIUM RAM (" + totalGB + "GB): texture 1024px RGB_565");
-                } else {
-                    inSampleSize = 2;  // 2048→1024px (full quality not needed)
-                    Log.d(TAG, "HIGH RAM (" + totalGB + "GB): texture 1024px ARGB_8888");
-                }
-            } catch (Exception e) {
-                Log.w(TAG, "RAM detection failed, using defaults");
+                    break;
+                case MEDIUM:
+                    inSampleSize = 2;  // 2048->1024px
+                    bitmapConfig = Bitmap.Config.RGB_565;
+                    break;
+                default: // HIGH
+                    inSampleSize = 2;  // 2048->1024px
+                    bitmapConfig = Bitmap.Config.ARGB_8888;
+                    break;
             }
+            Log.d(TAG, "Texture quality: " + DeviceProfile.get().getMemoryTier()
+                    + " inSampleSize=" + inSampleSize);
 
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inScaled = false;

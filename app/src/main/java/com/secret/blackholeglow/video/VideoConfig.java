@@ -125,6 +125,38 @@ public class VideoConfig {
             "Frieza Death Beam BG",
             2  // v2: Purple version
         ));
+
+        // ScorpionScene - Mortal Kombat Scorpion
+        VIDEOS.put("scorpion_scene.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "scorpion_scene.mp4",
+            9_047_158L,  // ~8.6 MB
+            "Scorpion MK",
+            1
+        ));
+
+        // TrenNocturnoScene - Pixel art night train
+        VIDEOS.put("tren_nocturno.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "tren_nocturno.mp4",
+            9_503_657L,  // ~9.1 MB
+            "Tren Nocturno",
+            1
+        ));
+
+        // TheEyeScene - Ojo misterioso
+        VIDEOS.put("theeye_scene.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "theeye_scene.mp4",
+            9_412_534L,  // ~9.0 MB
+            "The Eye",
+            1
+        ));
+
+        // GatitoScene - Gatito animado
+        VIDEOS.put("gatito_scene_final.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "gatito_scene_final.mp4",
+            9_513_973L,  // ~9.1 MB
+            "Gatito",
+            1
+        ));
     }
 
     // =========================================================================
