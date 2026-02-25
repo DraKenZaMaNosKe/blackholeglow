@@ -155,7 +155,10 @@ public class PanelModeRenderer {
         String selectedScene = WallpaperPreferences.getInstance(context).getSelectedWallpaperSync();
 
         if (selectedScene == null || selectedScene.isEmpty()) {
-            selectedScene = "ABYSSIA"; // Default
+            useProceduralBackground = true;
+            Log.d(TAG, "🖼️ No hay wallpaper seleccionado, usando fondo procedural");
+            backgroundLoaded = false;
+            return;
         }
 
         WallpaperItem item = WallpaperCatalog.get().getBySceneName(selectedScene);
@@ -167,9 +170,8 @@ public class PanelModeRenderer {
             Log.d(TAG, "🖼️ Preview seleccionado: " + selectedScene + " -> " + currentPreviewResourceId
                     + (useProceduralBackground ? " (procedural)" : ""));
         } else {
-            currentPreviewResourceId = R.drawable.preview_oceano_sc; // Fallback
-            useProceduralBackground = false;
-            Log.w(TAG, "⚠️ Wallpaper no encontrado, usando fallback");
+            useProceduralBackground = true;
+            Log.w(TAG, "⚠️ Wallpaper '" + selectedScene + "' no encontrado, usando fondo procedural");
         }
 
         backgroundLoaded = false; // Forzar recarga en GL thread
