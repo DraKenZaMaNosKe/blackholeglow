@@ -4,8 +4,11 @@ import android.util.Log;
 
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.models.SceneWeight;
+import com.secret.blackholeglow.models.WallpaperCategory;
 import com.secret.blackholeglow.models.WallpaperItem;
 import com.secret.blackholeglow.models.WallpaperTier;
+
+import android.content.Context;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -72,6 +75,28 @@ public class WallpaperCatalog {
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // DYNAMIC CATALOG
+    // ═══════════════════════════════════════════════════════════════
+
+    private final List<WallpaperItem> dynamicItems = new ArrayList<>();
+
+    /**
+     * Loads dynamic wallpapers from DynamicCatalog cache and appends to catalog.
+     * Call after DynamicCatalog.refresh() or on app startup.
+     */
+    public void loadDynamicEntries(Context context) {
+        // Remove previous dynamic entries
+        catalog.removeAll(dynamicItems);
+        dynamicItems.clear();
+
+        List<WallpaperItem> items = DynamicCatalog.get().toWallpaperItems(context);
+        dynamicItems.addAll(items);
+        catalog.addAll(items);
+
+        Log.d(TAG, "Dynamic entries loaded: " + items.size());
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // 1. OBTENER TODOS
     // ═══════════════════════════════════════════════════════════════
 
@@ -84,7 +109,47 @@ public class WallpaperCatalog {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // 2. FILTRAR POR TIER
+    // 2. FILTRAR POR CATEGORÍA
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Obtiene wallpapers de una categoría específica.
+     * Si la categoría es ALL, retorna todos.
+     */
+    public List<WallpaperItem> getByCategory(WallpaperCategory category) {
+        if (category == WallpaperCategory.ALL) {
+            return Collections.unmodifiableList(catalog);
+        }
+        List<WallpaperItem> result = new ArrayList<>();
+        for (WallpaperItem item : catalog) {
+            if (item.getCategory() == category) {
+                result.add(item);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Retorna las categorías que tienen al menos 1 wallpaper.
+     * Siempre incluye ALL como primera entrada.
+     */
+    public List<WallpaperCategory> getAvailableCategories() {
+        List<WallpaperCategory> available = new ArrayList<>();
+        available.add(WallpaperCategory.ALL);
+        for (WallpaperCategory cat : WallpaperCategory.values()) {
+            if (cat == WallpaperCategory.ALL) continue;
+            for (WallpaperItem item : catalog) {
+                if (item.getCategory() == cat) {
+                    available.add(cat);
+                    break;
+                }
+            }
+        }
+        return available;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 3. FILTRAR POR TIER
     // ═══════════════════════════════════════════════════════════════
 
     /**
@@ -257,6 +322,7 @@ public class WallpaperCatalog {
                 .badge("🌊 NEW")
                 .glow(0xFF00CED1)  // Dark Turquoise
                 .weight(SceneWeight.HEAVY)  // Video + 2 OBJ models + particulas = genuinamente pesado
+                .category(WallpaperCategory.NATURE)
                 .featured()
                 .build());
 
@@ -270,6 +336,7 @@ public class WallpaperCatalog {
                 .badge("🔥 POPULAR")
                 .glow(0xFFFF4500)  // Orange Red
                 .weight(SceneWeight.MEDIUM)
+                .category(WallpaperCategory.UNIVERSE)
                 .featured()
                 .build());
 
@@ -283,6 +350,7 @@ public class WallpaperCatalog {
                 .badge("🐉 NEW")
                 .glow(0xFF00BFFF)  // Deep Sky Blue (energía Ki)
                 .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIME)
                 .featured()
                 .build());
 
@@ -296,6 +364,7 @@ public class WallpaperCatalog {
                 .badge("🌳 NEW")
                 .glow(0xFFFF8C00)  // Dark Orange (fogata)
                 .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIME)
                 .featured()
                 .build());
 
@@ -309,6 +378,7 @@ public class WallpaperCatalog {
                 .badge("🚗 NEW")
                 .glow(0xFFFF1493)  // Deep Pink (synthwave)
                 .weight(SceneWeight.MEDIUM)
+                .category(WallpaperCategory.SCENES)
                 .featured()
                 .build());
 
@@ -322,6 +392,7 @@ public class WallpaperCatalog {
                 .badge("⭐ COSMOS")
                 .glow(0xFFFFD700)  // Gold (cosmos)
                 .weight(SceneWeight.MEDIUM)
+                .category(WallpaperCategory.ANIME)
                 .featured()
                 .build());
 
@@ -337,6 +408,7 @@ public class WallpaperCatalog {
                 .badge("🧟 ZOMBIE")
                 .glow(0xFF00FF00)  // Green zombie
                 .weight(SceneWeight.MEDIUM)
+                .category(WallpaperCategory.SCENES)
                 .featured()
                 .build());
 
@@ -352,6 +424,7 @@ public class WallpaperCatalog {
                 .badge("🛡️ PARALLAX")
                 .glow(0xFF4CAF50)  // Zelda green
                 .weight(SceneWeight.MEDIUM)  // Sin video: parallax layers + 1 OBJ = MEDIUM
+                .category(WallpaperCategory.GAMING)
                 .featured()
                 .build());
 
@@ -367,6 +440,7 @@ public class WallpaperCatalog {
                 .badge("🦸 HERO")
                 .glow(0xFFDC143C)  // Superman red
                 .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIME)
                 .featured()
                 .build());
 
@@ -382,6 +456,7 @@ public class WallpaperCatalog {
                 .badge("⚔️ TITAN")
                 .glow(0xFF00E5B0)  // Eren's green eyes
                 .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIME)
                 .featured()
                 .build());
 
@@ -397,6 +472,7 @@ public class WallpaperCatalog {
                 .badge("🕷️ HORROR")
                 .glow(0xFFDC143C)  // Crimson red (spider eyes)
                 .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIMALS)
                 .featured()
                 .build());
 
@@ -412,6 +488,7 @@ public class WallpaperCatalog {
                 .badge("🌊 NEW")
                 .glow(0xFF00CED1)  // Dark Turquoise
                 .weight(SceneWeight.LIGHT)  // Video-only, sin modelos 3D = LIGHT
+                .category(WallpaperCategory.SCENES)
                 .featured()
                 .build());
 
@@ -427,6 +504,7 @@ public class WallpaperCatalog {
                 .badge("🦁 NEW")
                 .glow(0xFF8B0000)  // Dark Red (sangre)
                 .weight(SceneWeight.LIGHT)  // Video-only, sin modelos 3D = LIGHT
+                .category(WallpaperCategory.SCENES)
                 .featured()
                 .build());
 
@@ -442,6 +520,7 @@ public class WallpaperCatalog {
                 .badge("🌙 NEW")
                 .glow(0xFF4169E1)  // Royal Blue (moonlight)
                 .weight(SceneWeight.MEDIUM)  // Sin video: shaders + 2 OBJ + texturas optimizadas = MEDIUM
+                .category(WallpaperCategory.ANIMALS)
                 .featured()
                 .build());
 
@@ -457,6 +536,7 @@ public class WallpaperCatalog {
                 .badge("💜 NEW")
                 .glow(0xFF8B00FF)  // Purple (Frieza energy)
                 .weight(SceneWeight.MEDIUM)
+                .category(WallpaperCategory.ANIME)
                 .featured()
                 .build());
 
@@ -472,6 +552,7 @@ public class WallpaperCatalog {
                 .badge("🥊 NEW")
                 .glow(0xFFFF4500)  // Orange Red (Ken's gi)
                 .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.GAMING)
                 .featured()
                 .build());
 
@@ -487,6 +568,7 @@ public class WallpaperCatalog {
                 .badge("🔥 NEW")
                 .glow(0xFFFF8C00)  // Dark Orange (Scorpion fire)
                 .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.GAMING)
                 .featured()
                 .build());
 
@@ -502,6 +584,7 @@ public class WallpaperCatalog {
                 .badge("🌃 NEW")
                 .glow(0xFF6A0DAD)  // Purple (night sky)
                 .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.SCENES)
                 .featured()
                 .build());
 
@@ -517,6 +600,7 @@ public class WallpaperCatalog {
                 .badge("👁️ NEW")
                 .glow(0xFF00FF7F)  // Spring Green (iris glow)
                 .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.UNIVERSE)
                 .featured()
                 .build());
 
@@ -532,6 +616,7 @@ public class WallpaperCatalog {
                 .badge("🐱 NEW")
                 .glow(0xFFFFB6C1)  // Light Pink (cute)
                 .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIMALS)
                 .featured()
                 .build());
 
@@ -547,6 +632,7 @@ public class WallpaperCatalog {
                 .badge("🎧 NEW")
                 .glow(0xFFDA70D6)  // Orchid purple (neon)
                 .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIMALS)
                 .featured()
                 .build());
 
@@ -562,6 +648,7 @@ public class WallpaperCatalog {
                 .badge("🏙️ NEW")
                 .glow(0xFF00BFFF)  // Deep Sky Blue (neon city)
                 .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.SCENES)
                 .featured()
                 .build());
 

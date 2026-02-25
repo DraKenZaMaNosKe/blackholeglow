@@ -176,6 +176,14 @@ public class VideoConfig {
     }
 
     // =========================================================================
+    // REGISTRO DINÁMICO (para DynamicCatalog)
+    // =========================================================================
+
+    public static void registerDynamic(String fileName, String url, long sizeBytes) {
+        VIDEOS.put(fileName, new ResourceInfo(url, sizeBytes, "Dynamic: " + fileName, 1));
+    }
+
+    // =========================================================================
     // MÉTODOS PÚBLICOS
     // =========================================================================
 

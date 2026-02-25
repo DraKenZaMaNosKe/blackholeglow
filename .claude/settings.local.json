@@ -79,13 +79,11 @@
       "Bash(ASSETS_DIR=\"/d/Orbix/blackholeglow/app/src/main/assets/japanese_garden\":*)",
       "Bash(__NEW_LINE_b3a08cd314297b97__ for file in sky_moon.png mountains.png sakura_alpha.png torii_alpha.png lantern_alpha.png bridge_alpha.png bamboo_alpha.png foliage_alpha.png)",
       "Bash(SUPABASE_URL=\"https://vzuwvsmlyigjtsearxym.supabase.co/storage/v1/object/public/wallpaper-videos\")",
-      "Bash(cd:*)",
-      "Bash(\"C:/Users/lalog/AppData/Local/Android/Sdk/platform-tools/adb.exe\" logcat:*)",
-      "Bash(head:*)",
-      "Bash(ADB=\"/c/Users/lalog/AppData/Local/Android/Sdk/platform-tools/adb.exe\" && \"$ADB\" shell dumpsys meminfo com.secret.blackholeglow 2>&1)",
-      "Bash(ADB=\"/c/Users/lalog/AppData/Local/Android/Sdk/platform-tools/adb.exe\" && \"$ADB\" shell dumpsys battery 2>&1)",
-      "Bash(export:*)",
-      "Bash(/c/Users/lalog/AppData/Local/Android/Sdk/platform-tools/adb.exe shell:*)"
+      "Bash(cat:*)",
+      "Bash(/c/Python314/python.exe:*)",
+      "Bash(ls:*)",
+      "Bash(echo === Missing in Spanish ===:*)",
+      "Bash(wc:*)"
     ],
     "deny": [],
     "ask": []

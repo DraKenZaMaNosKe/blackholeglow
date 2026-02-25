@@ -14,16 +14,25 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.adapters.WallpaperAdapter;
 import com.secret.blackholeglow.image.ImageDownloadManager;
 import com.secret.blackholeglow.model.ModelDownloadManager;
+import com.secret.blackholeglow.models.WallpaperCategory;
 import com.secret.blackholeglow.models.WallpaperItem;
+import com.secret.blackholeglow.systems.DynamicCatalog;
 import com.secret.blackholeglow.systems.SubscriptionManager;
 import com.secret.blackholeglow.systems.WallpaperCatalog;
 import com.secret.blackholeglow.systems.WallpaperNotificationManager;
 import com.secret.blackholeglow.video.VideoDownloadManager;
 import com.secret.blackholeglow.core.PanelResources;
+
+import android.content.res.ColorStateList;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import androidx.appcompat.view.ContextThemeWrapper;
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -57,6 +66,8 @@ public class AnimatedWallpaperListFragment extends Fragment {
     private List<WallpaperItem> wallpaperItems;
     private WallpaperAdapter adapter;
     private RecyclerView recyclerViewRef;
+    private ChipGroup chipGroupCategories;
+    private WallpaperCategory selectedCategory = WallpaperCategory.ALL;
     private VideoDownloadManager videoManager;
     private ImageDownloadManager imageManager;
     private ModelDownloadManager modelManager;
@@ -109,6 +120,10 @@ public class AnimatedWallpaperListFragment extends Fragment {
         recyclerView.setNestedScrollingEnabled(true);
 
         SubscriptionManager.init(requireContext());
+        // Load dynamic wallpapers from cache (offline-safe)
+        WallpaperCatalog.get().loadDynamicEntries(requireContext());
+        // Refresh dynamic catalog in background
+        refreshDynamicCatalogAsync();
         wallpaperItems = WallpaperCatalog.get().getAll();
 
         // Verificar si TODOS los recursos del panel están disponibles
@@ -124,12 +139,68 @@ public class AnimatedWallpaperListFragment extends Fragment {
         );
         recyclerView.setAdapter(adapter);
 
+        // Setup category chips
+        chipGroupCategories = view.findViewById(R.id.chip_group_categories);
+        setupCategoryChips();
+
         // Si los recursos no están listos, iniciar descarga
         if (!isPanelReady) {
             startPanelResourcesDownload();
         }
 
         return view;
+    }
+
+    /**
+     * Creates category filter chips from available categories.
+     * Only categories with at least 1 wallpaper are shown.
+     */
+    private void setupCategoryChips() {
+        if (chipGroupCategories == null) return;
+
+        List<WallpaperCategory> categories = WallpaperCatalog.get().getAvailableCategories();
+        // Wrap context with Material theme for Chip compatibility (app uses AppCompat)
+        android.content.Context chipContext = new ContextThemeWrapper(
+                requireContext(), com.google.android.material.R.style.Theme_MaterialComponents);
+
+        for (WallpaperCategory cat : categories) {
+            Chip chip = new Chip(chipContext);
+            chip.setText(cat.getDisplayLabel());
+            chip.setCheckable(true);
+            chip.setCheckedIconVisible(false);
+            chip.setTextSize(13);
+            chip.setTypeface(null, Typeface.BOLD);
+
+            // Dark theme styling
+            chip.setChipBackgroundColor(ColorStateList.valueOf(Color.parseColor("#1A1A2E")));
+            chip.setTextColor(getResources().getColorStateList(R.color.chip_category_colors, null));
+            chip.setChipStrokeWidth(1f);
+            chip.setChipStrokeColor(ColorStateList.valueOf(Color.parseColor("#333355")));
+            chip.setRippleColor(ColorStateList.valueOf(Color.parseColor("#33FFFFFF")));
+
+            // Select "TODOS" by default
+            if (cat == WallpaperCategory.ALL) {
+                chip.setChecked(true);
+            }
+
+            chip.setTag(cat);
+            chipGroupCategories.addView(chip);
+        }
+
+        chipGroupCategories.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            if (checkedIds.isEmpty()) return;
+            Chip selected = group.findViewById(checkedIds.get(0));
+            if (selected == null) return;
+
+            WallpaperCategory cat = (WallpaperCategory) selected.getTag();
+            if (cat == null) cat = WallpaperCategory.ALL;
+
+            selectedCategory = cat;
+            List<WallpaperItem> filtered = WallpaperCatalog.get().getByCategory(cat);
+            if (adapter != null) {
+                adapter.updateItems(filtered);
+            }
+        });
     }
 
     /**
@@ -315,6 +386,42 @@ public class AnimatedWallpaperListFragment extends Fragment {
             adapter.setDownloadFailed(false);
         }
         startPanelResourcesDownload();
+    }
+
+    /**
+     * Refreshes the dynamic catalog from Supabase in background.
+     * If new entries are found, reloads the catalog and updates the adapter.
+     */
+    private void refreshDynamicCatalogAsync() {
+        new Thread(() -> {
+            try {
+                DynamicCatalog dc = DynamicCatalog.get();
+                boolean hasNoEntries = dc.getCachedEntries(requireContext()).isEmpty();
+                boolean needsRefresh = hasNoEntries || dc.isCacheStale(requireContext());
+                if (needsRefresh) {
+                    boolean updated = dc.refresh(requireContext());
+                    if (updated && isAdded()) {
+                        mainHandler.post(() -> {
+                            if (!isAdded()) return;
+                            WallpaperCatalog.get().loadDynamicEntries(requireContext());
+                            // Refresh with current category filter
+                            if (adapter != null) {
+                                List<WallpaperItem> filtered = WallpaperCatalog.get().getByCategory(selectedCategory);
+                                adapter.updateItems(filtered);
+                            }
+                            // Rebuild chips in case new categories appeared
+                            if (chipGroupCategories != null) {
+                                chipGroupCategories.removeAllViews();
+                                setupCategoryChips();
+                            }
+                            Log.d(TAG, "Dynamic catalog updated: " + dc.getCachedEntries(requireContext()).size() + " entries");
+                        });
+                    }
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Dynamic catalog refresh failed: " + e.getMessage());
+            }
+        }, "DynamicCatalogRefresh").start();
     }
 
     /**

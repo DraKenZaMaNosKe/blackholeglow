@@ -12,6 +12,8 @@ import com.secret.blackholeglow.image.ImageDownloadManager;
 import com.secret.blackholeglow.model.ModelDownloadManager;
 import com.secret.blackholeglow.video.VideoDownloadManager;
 
+import com.secret.blackholeglow.systems.DynamicCatalog;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -204,10 +206,45 @@ public class ResourcePreloader {
                 break;
 
             default:
-                // Default: usar Lab
-                prepareLabSceneTasks();
+                // Dynamic scenes: DYN_IMG_* / DYN_VID_*
+                if (sceneName.startsWith("DYN_IMG_") || sceneName.startsWith("DYN_VID_")) {
+                    prepareDynamicSceneTasks(sceneName);
+                } else {
+                    prepareLabSceneTasks();
+                }
                 break;
         }
+    }
+
+    /**
+     * Prepares download tasks for a dynamic scene (image or video).
+     */
+    private void prepareDynamicSceneTasks(String sceneName) {
+        tasks.clear();
+        String id = sceneName.startsWith("DYN_IMG_")
+            ? sceneName.substring("DYN_IMG_".length())
+            : sceneName.substring("DYN_VID_".length());
+
+        DynamicCatalog.DynamicEntry entry = DynamicCatalog.get().getEntryById(id);
+        if (entry == null) {
+            Log.w(TAG, "Dynamic entry not found: " + id);
+            calculateTotalWeight();
+            return;
+        }
+
+        if ("VIDEO".equals(entry.type) && entry.videoFile != null) {
+            addVideoDownloadTask("Dynamic Video", entry.videoFile, 10);
+        } else if ("IMAGE".equals(entry.type) && entry.imageFile != null) {
+            addImageDownloadTask("Dynamic Image", entry.imageFile, 5);
+        }
+
+        // Preview image
+        if (entry.previewFile != null) {
+            addImageDownloadTask("Preview", entry.previewFile, 2);
+        }
+
+        calculateTotalWeight();
+        Log.d(TAG, "DynamicTasks: " + tasks.size() + " tasks for " + sceneName);
     }
 
     /**
@@ -306,6 +343,15 @@ public class ResourcePreloader {
     private List<String> getSceneVideos(String sceneName) {
         if (sceneName == null) return new ArrayList<>();
 
+        // Dynamic scenes
+        if (sceneName.startsWith("DYN_VID_")) {
+            String id = sceneName.substring("DYN_VID_".length());
+            DynamicCatalog.DynamicEntry entry = DynamicCatalog.get().getEntryById(id);
+            if (entry != null && entry.videoFile != null) return Arrays.asList(entry.videoFile);
+            return new ArrayList<>();
+        }
+        if (sceneName.startsWith("DYN_IMG_")) return new ArrayList<>();
+
         switch (sceneName) {
             case "Portal Cosmico":
             case "PYRALIS":
@@ -388,6 +434,24 @@ public class ResourcePreloader {
     private List<String> getSceneImages(String sceneName) {
         if (sceneName == null) return new ArrayList<>();
 
+        // Dynamic scenes
+        if (sceneName.startsWith("DYN_IMG_")) {
+            String id = sceneName.substring("DYN_IMG_".length());
+            DynamicCatalog.DynamicEntry entry = DynamicCatalog.get().getEntryById(id);
+            List<String> images = new ArrayList<>();
+            if (entry != null) {
+                if (entry.imageFile != null) images.add(entry.imageFile);
+                if (entry.previewFile != null) images.add(entry.previewFile);
+            }
+            return images;
+        }
+        if (sceneName.startsWith("DYN_VID_")) {
+            String id = sceneName.substring("DYN_VID_".length());
+            DynamicCatalog.DynamicEntry entry = DynamicCatalog.get().getEntryById(id);
+            if (entry != null && entry.previewFile != null) return Arrays.asList(entry.previewFile);
+            return new ArrayList<>();
+        }
+
         switch (sceneName) {
             case "Portal Cosmico":
             case "PYRALIS":
@@ -445,6 +509,11 @@ public class ResourcePreloader {
      */
     private List<String> getSceneModels(String sceneName) {
         if (sceneName == null) return new ArrayList<>();
+
+        // Dynamic scenes don't use 3D models
+        if (sceneName.startsWith("DYN_IMG_") || sceneName.startsWith("DYN_VID_")) {
+            return new ArrayList<>();
+        }
 
         switch (sceneName) {
             case "Portal Cosmico":
@@ -921,6 +990,15 @@ public class ResourcePreloader {
     private static List<String> getSceneVideosStatic(String sceneName) {
         if (sceneName == null) return new ArrayList<>();
 
+        // Dynamic scenes
+        if (sceneName.startsWith("DYN_VID_")) {
+            String id = sceneName.substring("DYN_VID_".length());
+            DynamicCatalog.DynamicEntry entry = DynamicCatalog.get().getEntryById(id);
+            if (entry != null && entry.videoFile != null) return Arrays.asList(entry.videoFile);
+            return new ArrayList<>();
+        }
+        if (sceneName.startsWith("DYN_IMG_")) return new ArrayList<>();
+
         switch (sceneName) {
             case "Portal Cosmico":
             case "PYRALIS":
@@ -1223,6 +1301,25 @@ public class ResourcePreloader {
 
     public static List<String> getRequiredImages(String sceneName) {
         if (sceneName == null) return new ArrayList<>();
+
+        // Dynamic scenes
+        if (sceneName.startsWith("DYN_IMG_")) {
+            String id = sceneName.substring("DYN_IMG_".length());
+            DynamicCatalog.DynamicEntry entry = DynamicCatalog.get().getEntryById(id);
+            List<String> images = new ArrayList<>();
+            if (entry != null) {
+                if (entry.imageFile != null) images.add(entry.imageFile);
+                if (entry.previewFile != null) images.add(entry.previewFile);
+            }
+            return images;
+        }
+        if (sceneName.startsWith("DYN_VID_")) {
+            String id = sceneName.substring("DYN_VID_".length());
+            DynamicCatalog.DynamicEntry entry = DynamicCatalog.get().getEntryById(id);
+            if (entry != null && entry.previewFile != null) return Arrays.asList(entry.previewFile);
+            return new ArrayList<>();
+        }
+
         switch (sceneName) {
             case "Portal Cosmico":
             case "PYRALIS":
@@ -1256,6 +1353,12 @@ public class ResourcePreloader {
 
     public static List<String> getRequiredModels(String sceneName) {
         if (sceneName == null) return new ArrayList<>();
+
+        // Dynamic scenes don't use 3D models
+        if (sceneName.startsWith("DYN_IMG_") || sceneName.startsWith("DYN_VID_")) {
+            return new ArrayList<>();
+        }
+
         switch (sceneName) {
             case "Portal Cosmico":
             case "PYRALIS":

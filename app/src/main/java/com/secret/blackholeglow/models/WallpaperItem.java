@@ -45,6 +45,8 @@ public class WallpaperItem {
     private final int glowColor;         // Color de glow para destacar (0 = sin glow)
     private final boolean isFeatured;    // Si está destacado
     private final SceneWeight sceneWeight; // Peso de recursos de la escena
+    private final String remotePreviewFile; // Archivo de preview remoto (null = usar drawable local)
+    private final WallpaperCategory category; // Categoria para filtrado en UI
 
     // ═══════════════════════════════════════════════════════════════
     // CONSTRUCTORES
@@ -64,6 +66,22 @@ public class WallpaperItem {
             boolean isFeatured,
             SceneWeight sceneWeight
     ) {
+        this(nombre, descripcion, resourceIdPreview, sceneName, tier, badge, glowColor, isFeatured, sceneWeight, null, WallpaperCategory.MISC);
+    }
+
+    public WallpaperItem(
+            String nombre,
+            String descripcion,
+            int resourceIdPreview,
+            String sceneName,
+            WallpaperTier tier,
+            String badge,
+            int glowColor,
+            boolean isFeatured,
+            SceneWeight sceneWeight,
+            String remotePreviewFile,
+            WallpaperCategory category
+    ) {
         this.nombre = nombre;
         this.descripcion = descripcion;
         this.resourceIdPreview = resourceIdPreview;
@@ -73,13 +91,15 @@ public class WallpaperItem {
         this.glowColor = glowColor;
         this.isFeatured = isFeatured;
         this.sceneWeight = sceneWeight;
+        this.remotePreviewFile = remotePreviewFile;
+        this.category = category;
     }
 
     /**
      * Constructor simplificado para wallpapers FREE sin efectos especiales
      */
     public WallpaperItem(int resourceIdPreview, String nombre, String descripcion) {
-        this(nombre, descripcion, resourceIdPreview, nombre, WallpaperTier.FREE, null, 0, false, SceneWeight.MEDIUM);
+        this(nombre, descripcion, resourceIdPreview, nombre, WallpaperTier.FREE, null, 0, false, SceneWeight.MEDIUM, null, WallpaperCategory.MISC);
     }
 
     /**
@@ -95,7 +115,9 @@ public class WallpaperItem {
                 null,
                 0,
                 false,
-                SceneWeight.MEDIUM
+                SceneWeight.MEDIUM,
+                null,
+                WallpaperCategory.MISC
         );
     }
 
@@ -113,6 +135,8 @@ public class WallpaperItem {
         private int glowColor = 0;
         private boolean isFeatured = false;
         private SceneWeight sceneWeight = SceneWeight.MEDIUM;
+        private String remotePreviewFile = null;
+        private WallpaperCategory category = WallpaperCategory.MISC;
 
         public Builder(String nombre) {
             this.nombre = nombre;
@@ -159,10 +183,20 @@ public class WallpaperItem {
             return this;
         }
 
+        public Builder remotePreview(String remoteFile) {
+            this.remotePreviewFile = remoteFile;
+            return this;
+        }
+
+        public Builder category(WallpaperCategory category) {
+            this.category = category;
+            return this;
+        }
+
         public WallpaperItem build() {
             return new WallpaperItem(
                     nombre, descripcion, resourceIdPreview,
-                    sceneName, tier, badge, glowColor, isFeatured, sceneWeight
+                    sceneName, tier, badge, glowColor, isFeatured, sceneWeight, remotePreviewFile, category
             );
         }
     }
@@ -237,6 +271,21 @@ public class WallpaperItem {
     /** Peso de recursos de la escena (LIGHT, MEDIUM, HEAVY) */
     public SceneWeight getSceneWeight() {
         return sceneWeight;
+    }
+
+    /** Archivo de preview remoto (null = usar drawable local) */
+    public String getRemotePreviewFile() {
+        return remotePreviewFile;
+    }
+
+    /** Categoria del wallpaper para filtrado */
+    public WallpaperCategory getCategory() {
+        return category != null ? category : WallpaperCategory.MISC;
+    }
+
+    /** Verifica si tiene preview remoto */
+    public boolean hasRemotePreview() {
+        return remotePreviewFile != null && !remotePreviewFile.isEmpty();
     }
 
     // ═══════════════════════════════════════════════════════════════

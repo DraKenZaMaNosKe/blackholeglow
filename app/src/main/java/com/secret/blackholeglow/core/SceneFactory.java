@@ -28,6 +28,8 @@ import com.secret.blackholeglow.scenes.TheEyeScene;
 import com.secret.blackholeglow.scenes.GatitoScene;
 import com.secret.blackholeglow.scenes.GatitoDJScene;
 import com.secret.blackholeglow.scenes.PixelCityScene;
+import com.secret.blackholeglow.scenes.DynamicImageScene;
+import com.secret.blackholeglow.scenes.DynamicVideoScene;
 import com.secret.blackholeglow.systems.EventBus;
 import com.secret.blackholeglow.systems.ResourceManager;
 
@@ -170,6 +172,9 @@ public class SceneFactory {
      * ¿Existe una escena con este nombre?
      */
     public boolean hasScene(String name) {
+        if (name != null && (name.startsWith("DYN_IMG_") || name.startsWith("DYN_VID_"))) {
+            return true;
+        }
         return registeredScenes.containsKey(name);
     }
 
@@ -209,6 +214,11 @@ public class SceneFactory {
         // Destruir escena actual
         destroyCurrentScene();
 
+        // Dynamic scene handling: DYN_IMG_* and DYN_VID_* prefixes
+        if (sceneName.startsWith("DYN_IMG_") || sceneName.startsWith("DYN_VID_")) {
+            return createDynamicScene(sceneName);
+        }
+
         // Buscar clase de la escena
         Class<? extends WallpaperScene> sceneClass = registeredScenes.get(sceneName);
         if (sceneClass == null) {
@@ -243,6 +253,45 @@ public class SceneFactory {
 
         } catch (Exception e) {
             Log.e(TAG, "❌ Error creando escena: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * Creates a dynamic scene (DYN_IMG_* or DYN_VID_*) without static registration.
+     */
+    private WallpaperScene createDynamicScene(String sceneName) {
+        try {
+            WallpaperScene scene;
+            if (sceneName.startsWith("DYN_IMG_")) {
+                String id = sceneName.substring("DYN_IMG_".length());
+                DynamicImageScene imgScene = new DynamicImageScene();
+                imgScene.setDynamicId(id, context);
+                scene = imgScene;
+            } else {
+                String id = sceneName.substring("DYN_VID_".length());
+                DynamicVideoScene vidScene = new DynamicVideoScene();
+                vidScene.setDynamicId(id, context);
+                scene = vidScene;
+            }
+
+            if (resourceManager != null) {
+                scene.setResourceManager(resourceManager);
+            }
+            scene.onCreate(context, textureManager, camera);
+            scene.setScreenSize(screenWidth, screenHeight);
+
+            currentScene = scene;
+            currentSceneName = sceneName;
+
+            Log.d(TAG, "✅ Dynamic scene " + sceneName + " created");
+            EventBus.get().publish(EventBus.SCENE_CHANGED,
+                new EventBus.EventData().put("scene", sceneName));
+
+            return scene;
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error creating dynamic scene: " + e.getMessage());
             e.printStackTrace();
             return null;
         }

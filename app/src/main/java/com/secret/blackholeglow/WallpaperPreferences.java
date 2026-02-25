@@ -283,10 +283,15 @@ public class WallpaperPreferences {
     // ============================================
 
     /**
-     * Valida si un nombre de wallpaper es válido
+     * Valida si un nombre de wallpaper es válido.
+     * Accepts static wallpapers from VALID_WALLPAPERS set
+     * and dynamic wallpapers with DYN_IMG_ or DYN_VID_ prefix.
      */
     private boolean isValidWallpaper(@Nullable String wallpaperName) {
-        return wallpaperName != null && VALID_WALLPAPERS.contains(wallpaperName);
+        if (wallpaperName == null) return false;
+        if (VALID_WALLPAPERS.contains(wallpaperName)) return true;
+        // Dynamic wallpapers are always valid
+        return wallpaperName.startsWith("DYN_IMG_") || wallpaperName.startsWith("DYN_VID_");
     }
 
     /**

@@ -36,7 +36,13 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
+import android.os.Handler;
+import android.os.Looper;
+
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 
 /**
  * ╔════════════════════════════════════════════════════════════════╗
@@ -99,7 +105,7 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
     public WallpaperAdapter(Context context, List<WallpaperItem> wallpapers,
                             OnWallpaperClickListener listener, boolean isPanelResourcesReady) {
         this.context = context;
-        this.wallpapers = wallpapers;
+        this.wallpapers = new ArrayList<>(wallpapers);
         this.listener = listener;
         this.isPanelResourcesReady = isPanelResourcesReady;
     }
@@ -151,6 +157,16 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         this.installedSceneName = sceneName;
         notifyItemRangeChanged(0, getItemCount(), "INSTALLED_UPDATE");
         Log.d("WallpaperAdapter", "🏷️ Wallpaper instalado actualizado: " + sceneName);
+    }
+
+    /**
+     * Updates the displayed wallpaper list (for category filtering).
+     * Replaces current items and refreshes the RecyclerView.
+     */
+    public void updateItems(List<WallpaperItem> newItems) {
+        this.wallpapers.clear();
+        this.wallpapers.addAll(newItems);
+        notifyDataSetChanged();
     }
 
     /**
@@ -582,17 +598,25 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         // Agregar más wallpapers con preview remoto aquí si es necesario
     }
 
+    // Track which previews are being lazy-downloaded to avoid duplicate threads
+    private final java.util.Set<String> downloadingPreviews = new java.util.HashSet<>();
+    private final Handler lazyHandler = new Handler(Looper.getMainLooper());
+
     /**
      * Carga la imagen de preview del wallpaper.
      * Si tiene preview remoto descargado, lo usa. Sino, usa drawable local.
+     * Dynamic previews are lazy-downloaded: only when the item scrolls into view.
      * OPTIMIZADO: Escala imágenes grandes para evitar OutOfMemoryError
      * 🧠 FIX GL LEAK: Software layer prevents HWUI from caching bitmaps as GPU textures.
-     * The wallpaper service keeps the process alive, so GPU texture cache never clears.
      */
     private void loadPreviewImage(ImageView imageView, WallpaperItem item) {
         // Prevent hardware renderer from uploading bitmap as GL texture
         imageView.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
-        String remoteFile = REMOTE_PREVIEWS.get(item.getSceneName());
+
+        // Check WallpaperItem's remote preview (dynamic wallpapers)
+        String remoteFile = item.hasRemotePreview()
+            ? item.getRemotePreviewFile()
+            : REMOTE_PREVIEWS.get(item.getSceneName());
 
         if (remoteFile != null) {
             // Verificar si el preview remoto está descargado
@@ -606,21 +630,54 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
                     Bitmap bitmap = decodeSampledBitmapFromFile(localPath, 512, 512);
                     if (bitmap != null) {
                         imageView.setImageBitmap(bitmap);
-                        Log.d("WallpaperAdapter", "📥 Preview remoto cargado: " + remoteFile);
                         return;
                     }
                 }
             }
+
+            // Not downloaded yet - show placeholder and lazy-download in background
+            imageView.setImageResource(item.getResourceIdPreview());
+            lazyDownloadPreview(remoteFile);
+            return;
         }
 
         // Fallback: usar drawable local con escalado para evitar OOM
-        Bitmap bitmap = decodeSampledBitmapFromResource(item.getResourceIdPreview(), 512, 512);
+        int resId = item.getResourceIdPreview();
+        if (resId == 0) return;
+        Bitmap bitmap = decodeSampledBitmapFromResource(resId, 512, 512);
         if (bitmap != null) {
             imageView.setImageBitmap(bitmap);
         } else {
             // Ultra fallback si todo falla
-            imageView.setImageResource(item.getResourceIdPreview());
+            imageView.setImageResource(resId);
         }
+    }
+
+    /**
+     * Lazy-downloads a remote preview in background (only when scrolled into view).
+     * When done, notifies adapter so the preview image refreshes.
+     */
+    private void lazyDownloadPreview(String remoteFile) {
+        synchronized (downloadingPreviews) {
+            if (downloadingPreviews.contains(remoteFile)) return;
+            downloadingPreviews.add(remoteFile);
+        }
+
+        new Thread(() -> {
+            try {
+                ImageDownloadManager downloader = ImageDownloadManager.getInstance(context);
+                boolean ok = downloader.downloadImageSync(remoteFile, null);
+                if (ok) {
+                    lazyHandler.post(() -> notifyDataSetChanged());
+                }
+            } catch (Exception e) {
+                Log.w("WallpaperAdapter", "Preview download failed: " + remoteFile);
+            } finally {
+                synchronized (downloadingPreviews) {
+                    downloadingPreviews.remove(remoteFile);
+                }
+            }
+        }, "PreviewDL").start();
     }
 
     /**
