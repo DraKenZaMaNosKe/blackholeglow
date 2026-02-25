@@ -11,8 +11,8 @@ import java.nio.FloatBuffer;
 
 /**
  * Fondo procedural para el panel de control.
- * Negro profundo con ondas sutiles de luz en cyan oscuro y magenta tenue.
- * Zero texturas, solo math. ~1-2ms en Mali-G52.
+ * Campo de estrellas con colores variados y parpadeo individual.
+ * Zero texturas, solo hash + sin. Ultra ligero ~0.3ms en Mali-G52.
  */
 public class ProceduralPanelBackground implements SceneObject {
     private static final String TAG = "ProceduralPanelBg";
@@ -47,61 +47,45 @@ public class ProceduralPanelBackground implements SceneObject {
         "uniform float u_Time;\n" +
         "uniform vec2 u_Resolution;\n" +
         "\n" +
-        "void main() {\n" +
-        "    vec2 uv = v_UV;\n" +
-        "    float aspect = u_Resolution.x / u_Resolution.y;\n" +
-        "    vec2 center = vec2(0.5, 0.5);\n" +
-        "    vec2 p = uv - center;\n" +
-        "    p.x *= aspect;\n" +
+        // Hash: pseudo-random per grid cell
+        "float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}\n" +
         "\n" +
-        "    float dist = length(p);\n" +
-        "    float t = u_Time;\n" +
+        "void main(){\n" +
+        "    float t=u_Time;\n" +
+        "    float gW=80.0;\n" +
+        "    float gH=gW*u_Resolution.y/u_Resolution.x;\n" +
+        "    vec2 p=floor(v_UV*vec2(gW,gH));\n" +
         "\n" +
-        // Ring 1: expanding concentric wave
-        "    float ring1 = sin(dist * 12.0 - t * 1.2) * 0.5 + 0.5;\n" +
-        "    ring1 = smoothstep(0.45, 0.55, ring1);\n" +
-        "    ring1 *= exp(-dist * 3.0);\n" +
+        // Black background
+        "    vec3 col=vec3(0.0);\n" +
         "\n" +
-        // Ring 2: slower, offset phase
-        "    float ring2 = sin(dist * 8.0 - t * 0.8 + 1.57) * 0.5 + 0.5;\n" +
-        "    ring2 = smoothstep(0.4, 0.6, ring2);\n" +
-        "    ring2 *= exp(-dist * 2.5);\n" +
+        // Per-cell random values
+        "    float h1=hash(p);\n" +
+        "    float h2=hash(p+100.0);\n" +
+        "    float h3=hash(p+200.0);\n" +
         "\n" +
-        // Ring 3: ghost trail
-        "    float ring3 = sin(dist * 15.0 - t * 1.5 + 3.14) * 0.5 + 0.5;\n" +
-        "    ring3 = smoothstep(0.48, 0.52, ring3);\n" +
-        "    ring3 *= exp(-dist * 4.0);\n" +
+        // Star if h1 < density threshold
+        "    float isStar=step(h1,0.012);\n" +
         "\n" +
-        // Subtle angular variation
-        "    float angle = atan(p.y, p.x);\n" +
-        "    float angular = sin(angle * 3.0 + t * 0.5) * 0.15 + 0.85;\n" +
+        // Twinkle: each star has its own speed and phase
+        "    float twinkle=sin(t*(1.5+h2*2.0)+h2*6.2832)*0.4+0.6;\n" +
         "\n" +
-        // Cyan dark: #003344 = (0.0, 0.2, 0.267)
-        "    vec3 cyan = vec3(0.0, 0.2, 0.267);\n" +
-        // Magenta tenue: #220033 = (0.133, 0.0, 0.2)
-        "    vec3 magenta = vec3(0.133, 0.0, 0.2);\n" +
+        // Color variety based on h3:
+        //   [0.0, 0.4) → white-blue
+        //   [0.4, 0.7) → warm white-yellow
+        //   [0.7, 0.85) → soft pink
+        //   [0.85, 1.0) → cyan
+        "    vec3 starCol=vec3(0.7,0.8,1.0);\n" +
+        "    starCol=mix(starCol,vec3(1.0,0.95,0.7),step(0.4,h3));\n" +
+        "    starCol=mix(starCol,vec3(1.0,0.7,0.8),step(0.7,h3));\n" +
+        "    starCol=mix(starCol,vec3(0.5,1.0,0.95),step(0.85,h3));\n" +
         "\n" +
-        // Mix colors based on angle and time
-        "    float colorMix = sin(angle * 2.0 + t * 0.3) * 0.5 + 0.5;\n" +
-        "    vec3 ringColor1 = mix(cyan, magenta, colorMix);\n" +
-        "    vec3 ringColor2 = mix(magenta, cyan, colorMix);\n" +
+        // Brightness variation
+        "    float brightness=0.4+h2*0.6;\n" +
         "\n" +
-        // Combine rings
-        "    vec3 color = vec3(0.0);\n" +
-        "    color += ringColor1 * ring1 * 0.7 * angular;\n" +
-        "    color += ringColor2 * ring2 * 0.5 * angular;\n" +
-        "    color += cyan * ring3 * 0.3;\n" +
+        "    col=isStar*starCol*twinkle*brightness;\n" +
         "\n" +
-        // Gentle center glow
-        "    float centerGlow = exp(-dist * dist * 8.0);\n" +
-        "    color += mix(cyan, magenta, sin(t * 0.2) * 0.5 + 0.5) * centerGlow * 0.08;\n" +
-        "\n" +
-        // Dark vignette on edges
-        "    float vignette = 1.0 - smoothstep(0.3, 0.85, dist);\n" +
-        "    color *= vignette;\n" +
-        "\n" +
-        // Ensure deep black base
-        "    fragColor = vec4(color, 1.0);\n" +
+        "    fragColor=vec4(col,1.0);\n" +
         "}\n";
 
     public ProceduralPanelBackground() {
