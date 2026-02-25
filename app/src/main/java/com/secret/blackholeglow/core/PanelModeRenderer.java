@@ -12,6 +12,8 @@ import com.secret.blackholeglow.LoadingBar;
 import com.secret.blackholeglow.OrbixGreeting;
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.WallpaperPreferences;
+import com.secret.blackholeglow.effects.PixelationTransition;
+import com.secret.blackholeglow.effects.ProceduralPanelBackground;
 import com.secret.blackholeglow.models.WallpaperItem;
 import com.secret.blackholeglow.systems.WallpaperCatalog;
 
@@ -81,6 +83,12 @@ public class PanelModeRenderer {
     private OrbixGreeting orbixGreeting;
     private LoadingBar loadingBar;
 
+    // Procedural background + pixelation transition
+    private ProceduralPanelBackground proceduralBg;
+    private PixelationTransition pixelTransition;
+    private boolean isTransitioning = false;
+    private boolean useProceduralBackground = false;
+
     // Estado
     private boolean initialized = false;
     private final Context context;
@@ -105,6 +113,14 @@ public class PanelModeRenderer {
         if (initialized) return;
 
         Log.d(TAG, "🎛️ Inicializando Panel de Control...");
+
+        // Procedural background for dynamic wallpapers (no preview image)
+        proceduralBg = new ProceduralPanelBackground();
+        Log.d(TAG, "🌌 ProceduralPanelBackground inicializado");
+
+        // Pixelation transition effect
+        pixelTransition = new PixelationTransition();
+        Log.d(TAG, "🔲 PixelationTransition inicializado");
 
         // Cargar preview del wallpaper seleccionado como fondo
         loadSelectedWallpaperPreview();
@@ -146,9 +162,13 @@ public class PanelModeRenderer {
 
         if (item != null) {
             currentPreviewResourceId = item.getResourceIdPreview();
-            Log.d(TAG, "🖼️ Preview seleccionado: " + selectedScene + " -> " + currentPreviewResourceId);
+            // Detect placeholder → use procedural background instead
+            useProceduralBackground = (currentPreviewResourceId == R.drawable.preview_placeholder);
+            Log.d(TAG, "🖼️ Preview seleccionado: " + selectedScene + " -> " + currentPreviewResourceId
+                    + (useProceduralBackground ? " (procedural)" : ""));
         } else {
             currentPreviewResourceId = R.drawable.preview_oceano_sc; // Fallback
+            useProceduralBackground = false;
             Log.w(TAG, "⚠️ Wallpaper no encontrado, usando fallback");
         }
 
@@ -260,9 +280,23 @@ public class PanelModeRenderer {
     // ═══════════════════════════════════════════════════════════════
 
     public void updatePanelMode(float deltaTime) {
+        // Pixelation transition takes priority
+        if (isTransitioning && pixelTransition != null) {
+            pixelTransition.update(deltaTime);
+            if (!pixelTransition.isActive()) {
+                isTransitioning = false;
+            }
+            return;
+        }
+
         // Inicializar fondo si está pendiente (debe hacerse en GL thread)
-        if (!backgroundLoaded && currentPreviewResourceId != 0) {
+        if (!useProceduralBackground && !backgroundLoaded && currentPreviewResourceId != 0) {
             initBackgroundOpenGL();
+        }
+
+        // Update procedural background
+        if (useProceduralBackground && proceduralBg != null) {
+            proceduralBg.update(deltaTime);
         }
 
         if (controller != null) {
@@ -274,6 +308,15 @@ public class PanelModeRenderer {
     }
 
     public void updateLoadingMode(float deltaTime) {
+        // Continue pixelation transition during loading mode
+        if (isTransitioning && pixelTransition != null) {
+            pixelTransition.update(deltaTime);
+            if (!pixelTransition.isActive()) {
+                isTransitioning = false;
+            }
+            return;
+        }
+
         if (loadingBar != null) {
             loadingBar.update(deltaTime);
         }
@@ -323,10 +366,23 @@ public class PanelModeRenderer {
     }
 
     public void drawPanelMode() {
-        // 1. Dibujar fondo (preview del wallpaper)
+        // Pixelation transition overrides everything
+        if (isTransitioning && pixelTransition != null && pixelTransition.isActive()) {
+            GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+            GLES30.glDisable(GLES30.GL_BLEND);
+            pixelTransition.draw();
+            return;
+        }
+
+        // 1. Dibujar fondo
         GLES30.glDisable(GLES30.GL_DEPTH_TEST);
         GLES30.glDisable(GLES30.GL_BLEND);
-        drawBackground();
+
+        if (useProceduralBackground && proceduralBg != null) {
+            proceduralBg.draw();
+        } else {
+            drawBackground();
+        }
 
         // 2. Dibujar UI encima del fondo
         GLES30.glEnable(GLES30.GL_DEPTH_TEST);
@@ -346,6 +402,14 @@ public class PanelModeRenderer {
     }
 
     public void drawLoadingMode() {
+        // Continue drawing pixelation if active
+        if (isTransitioning && pixelTransition != null && pixelTransition.isActive()) {
+            GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+            GLES30.glDisable(GLES30.GL_BLEND);
+            pixelTransition.draw();
+            return;
+        }
+
         GLES30.glDisable(GLES30.GL_DEPTH_TEST);
 
         if (orbixGreeting != null) {
@@ -381,6 +445,40 @@ public class PanelModeRenderer {
      * @param previewResourceId ID del drawable del preview (0 si no hay)
      */
     public void onStartLoadingWithPreview(String sceneName, String displayName, int glowColor, int previewResourceId) {
+        // Try to start pixelation transition
+        boolean transitionStarted = false;
+        if (pixelTransition != null && screenWidth > 0 && screenHeight > 0) {
+            if (pixelTransition.beginCapture()) {
+                // Draw current panel contents into FBO
+                GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+                GLES30.glDisable(GLES30.GL_BLEND);
+                if (useProceduralBackground && proceduralBg != null) {
+                    proceduralBg.draw();
+                } else {
+                    drawBackground();
+                }
+                GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+                GLES30.glEnable(GLES30.GL_BLEND);
+                GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
+                if (controller != null) controller.draw();
+                GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+                if (orbixGreeting != null) orbixGreeting.draw();
+
+                // End capture and start animation
+                pixelTransition.endCaptureAndStart(() -> {
+                    // Transition complete → show loading bar
+                    // (isTransitioning is reset by updateLoadingMode when !isActive)
+                    if (loadingBar != null) {
+                        loadingBar.show();
+                    }
+                    Log.d(TAG, "🔲 Pixelation complete → showing loading bar");
+                });
+                isTransitioning = true;
+                transitionStarted = true;
+                Log.d(TAG, "🔲 Pixelation transition started");
+            }
+        }
+
         if (orbixGreeting != null) {
             orbixGreeting.hide();
         }
@@ -393,10 +491,13 @@ public class PanelModeRenderer {
             } else {
                 loadingBar.setBackgroundForScene(context, sceneName);
             }
-            loadingBar.show();
-            // NO llamar setProgress(1.0f) - el progreso vendrá del ResourcePreloader
+            // If transition is active, don't show loading bar yet (callback will show it)
+            if (!transitionStarted) {
+                loadingBar.show();
+            }
         }
-        Log.d(TAG, "📊 Cargando: " + displayName + " (escena: " + sceneName + ", preview: " + previewResourceId + ")");
+        Log.d(TAG, "📊 Cargando: " + displayName + " (escena: " + sceneName
+                + ", preview: " + previewResourceId + ", transition: " + transitionStarted + ")");
     }
 
     /**
@@ -411,19 +512,6 @@ public class PanelModeRenderer {
                 loadingBar.setResourceName(currentTask);
             }
         }
-    }
-
-    // Legacy methods (mantener compatibilidad)
-    public void onStartLoading(String sceneName, String displayName, int glowColor) {
-        onStartLoadingWithPreview(sceneName, displayName, glowColor, 0);
-    }
-
-    public void onStartLoading(String sceneName) {
-        onStartLoading(sceneName, sceneName, 0xFF00D4FF);
-    }
-
-    public void onStartLoading() {
-        onStartLoading(null, "Orbix", 0xFF00D4FF);
     }
 
     public void onWallpaperActivated() {
@@ -445,6 +533,21 @@ public class PanelModeRenderer {
             Log.d(TAG, "  ✓ Textura de fondo liberada");
         }
         backgroundLoaded = false;
+
+        // Liberar procedural background (solo shaders, 0 texturas)
+        if (proceduralBg != null) {
+            proceduralBg.release();
+            proceduralBg = null;
+            Log.d(TAG, "  ✓ ProceduralPanelBackground liberado");
+        }
+
+        // Liberar pixelation transition
+        if (pixelTransition != null) {
+            pixelTransition.release();
+            pixelTransition = null;
+            Log.d(TAG, "  ✓ PixelationTransition liberado");
+        }
+        isTransitioning = false;
 
         // KEEP controller alive for wallpaper mode (back-to-panel button)
         // ~5-8 MB GPU retained - acceptable trade-off for navigation UX
@@ -479,6 +582,24 @@ public class PanelModeRenderer {
 
     private void reloadForPanelMode() {
         Log.d(TAG, "🔄 Recargando recursos del panel...");
+
+        // Recreate procedural background
+        if (proceduralBg == null) {
+            proceduralBg = new ProceduralPanelBackground();
+            if (screenWidth > 0 && screenHeight > 0) {
+                proceduralBg.setScreenSize(screenWidth, screenHeight);
+            }
+            Log.d(TAG, "  🌌 ProceduralPanelBackground recargado");
+        }
+
+        // Recreate pixelation transition
+        if (pixelTransition == null) {
+            pixelTransition = new PixelationTransition();
+            if (screenWidth > 0 && screenHeight > 0) {
+                pixelTransition.setScreenSize(screenWidth, screenHeight);
+            }
+            Log.d(TAG, "  🔲 PixelationTransition recargado");
+        }
 
         // Recargar preview del wallpaper seleccionado (puede haber cambiado)
         loadSelectedWallpaperPreview();
@@ -559,6 +680,14 @@ public class PanelModeRenderer {
         if (orbixGreeting != null) {
             orbixGreeting.setAspectRatio(aspectRatio);
         }
+
+        if (proceduralBg != null) {
+            proceduralBg.setScreenSize(width, height);
+        }
+
+        if (pixelTransition != null) {
+            pixelTransition.setScreenSize(width, height);
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -577,8 +706,10 @@ public class PanelModeRenderer {
         return initialized;
     }
 
-    public OrbixGreeting getOrbixGreeting() { return orbixGreeting; }
-    public LoadingBar getLoadingBar() { return loadingBar; }
+    public boolean isTransitioning() {
+        return isTransitioning;
+    }
+
 
     public void setGreetingEnabled(boolean enabled) {
         this.greetingEnabled = enabled;
@@ -620,6 +751,17 @@ public class PanelModeRenderer {
             bgShaderProgram = 0;
         }
 
+        if (proceduralBg != null) {
+            proceduralBg.release();
+            proceduralBg = null;
+        }
+
+        if (pixelTransition != null) {
+            pixelTransition.release();
+            pixelTransition = null;
+        }
+        isTransitioning = false;
+
         if (controller != null) {
             controller.release();
             controller = null;
@@ -635,27 +777,7 @@ public class PanelModeRenderer {
             loadingBar = null;
         }
 
+        initialized = false;
         Log.d(TAG, "🧹 PanelModeRenderer recursos liberados");
-    }
-
-    /**
-     * @return true siempre (ya no hay video que esperar)
-     */
-    public boolean isVideoReady() {
-        return true; // Imagen siempre lista
-    }
-
-    /**
-     * @return 100 siempre (ya no hay descarga de video)
-     */
-    public int getDownloadProgress() {
-        return 100;
-    }
-
-    /**
-     * @return false siempre (ya no hay descarga de video)
-     */
-    public boolean isVideoDownloading() {
-        return false;
     }
 }

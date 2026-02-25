@@ -89,6 +89,11 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     private float resourcesReadyTimer = 0f;
     private static final float LOADING_FALLBACK_TIMEOUT = 2.0f;  // 2 segundos máximo de animación
 
+    // Auto-start: inicia wallpaper automáticamente después de 500ms en panel
+    private float panelAutoStartTimer = 0f;
+    private boolean panelAutoStartFired = false;
+    private static final float PANEL_AUTO_START_DELAY = 0.5f; // 500ms
+
     // TIMING (deltaTime y FPS manejados por GLStateManager)
     private static final float TIME_WRAP = 3600f;  // Reset cada hora para evitar overflow
     private float totalTime = 0f;
@@ -318,11 +323,25 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
                 case PANEL_MODE:
                     panelRenderer.updatePanelMode(deltaTime);
                     panelRenderer.drawPanelMode();
+                    // Auto-start wallpaper after 500ms in panel
+                    if (!panelAutoStartFired && pendingSceneName != null && !pendingSceneName.isEmpty()) {
+                        panelAutoStartTimer += deltaTime;
+                        if (panelAutoStartTimer >= PANEL_AUTO_START_DELAY) {
+                            panelAutoStartFired = true;
+                            Log.d(TAG, "⏱️ Auto-start: iniciando wallpaper tras 500ms");
+                            startLoading();
+                        }
+                    }
                     break;
                 case LOADING_MODE:
                     panelRenderer.updateLoadingMode(deltaTime);
-                    panelRenderer.drawLoadingMode();
-                    checkLoadingComplete();
+                    // If pixelation transition is active, draw panel (shows pixelation)
+                    if (panelRenderer.isTransitioning()) {
+                        panelRenderer.drawPanelMode();
+                    } else {
+                        panelRenderer.drawLoadingMode();
+                        checkLoadingComplete();
+                    }
                     break;
                 case WALLPAPER_MODE:
                     renderWallpaperModeSafe(deltaTime);
@@ -642,6 +661,9 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
     public void switchToPanelMode() {
         if (modeController == null) return;
+        // Reset auto-start para que funcione de nuevo al volver al panel
+        panelAutoStartTimer = 0f;
+        panelAutoStartFired = false;
         SceneHealthMonitor.get().stop();
         if (modeController.stopWallpaper()) {
             // 🔧 FIX RACE CONDITION: Write both flags atomically so GL thread
@@ -876,6 +898,10 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
         String previousScene = pendingSceneName;
         pendingSceneName = sceneName;
+
+        // Reset auto-start timer para la nueva escena
+        panelAutoStartTimer = 0f;
+        panelAutoStartFired = false;
 
         // 🎮 Si NO estamos en PANEL_MODE, volver al panel para que el usuario presione PLAY
         // Esto maneja tanto WALLPAPER_MODE (escena activa) como LOADING_MODE (carga en curso)

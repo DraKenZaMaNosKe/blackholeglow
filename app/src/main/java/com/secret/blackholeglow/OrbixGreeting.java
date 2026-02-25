@@ -27,7 +27,6 @@ public class OrbixGreeting implements SceneObject {
     private static final String TAG = "OrbixGreeting";
 
     // Estado
-    private Context context;
     private boolean isVisible = false;
     private float alpha = 0f;
     private float targetAlpha = 0f;
@@ -50,7 +49,6 @@ public class OrbixGreeting implements SceneObject {
     private int uTextureLoc = -1;
     private int uAlphaLoc = -1;
     private int uTimeLoc = -1;
-    private int uTypeLoc = -1;
     private FloatBuffer vertexBuffer;
 
     // ⚡ OPTIMIZACIÓN: Cache de vertices para evitar allocations
@@ -63,14 +61,11 @@ public class OrbixGreeting implements SceneObject {
     private boolean needsTitleUpdate = true;
 
     public OrbixGreeting(Context context) {
-        this.context = context;
         initBitmaps();
         initOpenGL();
     }
 
-    // Constructor sin context (fallback)
     public OrbixGreeting() {
-        this.context = null;
         initBitmaps();
         initOpenGL();
     }
@@ -82,16 +77,21 @@ public class OrbixGreeting implements SceneObject {
     }
 
     private void initOpenGL() {
+        // Vertex shader with breathing animation
         String vertexShader =
             "#version 300 es\n" +
             "in vec2 a_Position;\n" +
             "in vec2 a_TexCoord;\n" +
             "out vec2 v_TexCoord;\n" +
+            "uniform float u_Time;\n" +
             "void main() {\n" +
             "    v_TexCoord = a_TexCoord;\n" +
-            "    gl_Position = vec4(a_Position, 0.0, 1.0);\n" +
+            "    float breath = 0.985 + sin(u_Time * 1.5) * 0.015;\n" +
+            "    vec2 pos = a_Position * breath;\n" +
+            "    gl_Position = vec4(pos, 0.0, 1.0);\n" +
             "}\n";
 
+        // Fragment shader with halo glow, scan line, edge glow, improved gradient
         String fragmentShader =
             "#version 300 es\n" +
             "precision mediump float;\n" +
@@ -100,21 +100,45 @@ public class OrbixGreeting implements SceneObject {
             "uniform sampler2D u_Texture;\n" +
             "uniform float u_Alpha;\n" +
             "uniform float u_Time;\n" +
-            "uniform float u_Type;\n" +
             "\n" +
             "void main() {\n" +
             "    vec4 texColor = texture(u_Texture, v_TexCoord);\n" +
             "    float pulse = sin(u_Time * 2.0) * 0.1 + 0.9;\n" +
-            "    float colorShift = sin(v_TexCoord.x * 3.14159 + u_Time) * 0.5 + 0.5;\n" +
-            "    \n" +
-            "    vec3 color1 = vec3(0.0, 1.0, 1.0);\n" +   // Cyan
-            "    vec3 color2 = vec3(1.0, 0.4, 1.0);\n" +   // Magenta
-            "    \n" +
-            "    vec3 gradientColor = mix(color1, color2, colorShift);\n" +
-            "    \n" +
+            "\n" +
+            // Halo glow: sample neighbors for alpha spread
+            "    vec2 texel = vec2(1.0 / 512.0, 1.0 / 64.0);\n" +
+            "    float halo = 0.0;\n" +
+            "    halo += texture(u_Texture, v_TexCoord + vec2( texel.x * 2.0, 0.0)).a;\n" +
+            "    halo += texture(u_Texture, v_TexCoord + vec2(-texel.x * 2.0, 0.0)).a;\n" +
+            "    halo += texture(u_Texture, v_TexCoord + vec2(0.0,  texel.y * 2.0)).a;\n" +
+            "    halo += texture(u_Texture, v_TexCoord + vec2(0.0, -texel.y * 2.0)).a;\n" +
+            "    halo = clamp(halo * 0.25, 0.0, 1.0);\n" +
+            "\n" +
+            // Improved gradient: branchless with smoothstep blending
+            "    float shift = sin(v_TexCoord.x * 3.14159 + u_Time) * 0.5 + 0.5;\n" +
+            "    vec3 cyan = vec3(0.0, 1.0, 1.0);\n" +
+            "    vec3 magenta = vec3(1.0, 0.4, 1.0);\n" +
+            "    vec3 purple = vec3(0.6, 0.2, 1.0);\n" +
+            "    vec3 gradientColor = mix(cyan, magenta, smoothstep(0.0, 0.5, shift));\n" +
+            "    gradientColor = mix(gradientColor, purple, smoothstep(0.5, 1.0, shift));\n" +
+            "\n" +
+            // Scan line: horizontal sweep
+            "    float scanPos = fract(u_Time * 0.3);\n" +
+            "    float scanLine = smoothstep(scanPos - 0.05, scanPos, v_TexCoord.x)\n" +
+            "                   - smoothstep(scanPos, scanPos + 0.05, v_TexCoord.x);\n" +
+            "    scanLine *= 0.4;\n" +
+            "\n" +
+            // Edge glow: bright on text edges
+            "    float edgeGlow = clamp(halo - texColor.a, 0.0, 1.0) * 0.6;\n" +
+            "\n" +
+            // Combine
             "    vec3 finalColor = gradientColor * texColor.rgb * pulse;\n" +
             "    finalColor += gradientColor * texColor.a * 0.2;\n" +
-            "    fragColor = vec4(finalColor, texColor.a * u_Alpha);\n" +
+            "    finalColor += cyan * halo * 0.15;\n" +
+            "    finalColor += vec3(1.0) * scanLine * texColor.a;\n" +
+            "    finalColor += gradientColor * edgeGlow;\n" +
+            "    float finalAlpha = max(texColor.a, halo * 0.3) * u_Alpha;\n" +
+            "    fragColor = vec4(finalColor, finalAlpha);\n" +
             "}\n";
 
         int vs = compileShader(GLES30.GL_VERTEX_SHADER, vertexShader);
@@ -134,6 +158,8 @@ public class OrbixGreeting implements SceneObject {
         GLES30.glGetProgramiv(shaderProgram, GLES30.GL_LINK_STATUS, linkStatus, 0);
         if (linkStatus[0] == 0) {
             Log.e(TAG, "Error linking: " + GLES30.glGetProgramInfoLog(shaderProgram));
+            GLES30.glDeleteProgram(shaderProgram);
+            shaderProgram = 0;
             return;
         }
 
@@ -142,7 +168,6 @@ public class OrbixGreeting implements SceneObject {
         uTextureLoc = GLES30.glGetUniformLocation(shaderProgram, "u_Texture");
         uAlphaLoc = GLES30.glGetUniformLocation(shaderProgram, "u_Alpha");
         uTimeLoc = GLES30.glGetUniformLocation(shaderProgram, "u_Time");
-        uTypeLoc = GLES30.glGetUniformLocation(shaderProgram, "u_Type");
 
         float[] vertices = {
             -1.0f, -1.0f,   0.0f, 1.0f,
@@ -233,7 +258,7 @@ public class OrbixGreeting implements SceneObject {
 
     @Override
     public void draw() {
-        if (alpha <= 0.01f || shaderProgram == 0) return;
+        if (alpha <= 0.01f || shaderProgram == 0 || vertexBuffer == null) return;
 
         updateTitleTexture();
 
@@ -250,7 +275,7 @@ public class OrbixGreeting implements SceneObject {
         GLES30.glUniform1f(uTimeLoc, time);
 
         // Título "Orbix iA"
-        drawTextQuad(titleTextureId, titleY, 0.38f, 0.05f, 0.0f);
+        drawTextQuad(titleTextureId, titleY, 0.38f, 0.05f);
 
         GLES30.glDisableVertexAttribArray(aPositionLoc);
         GLES30.glDisableVertexAttribArray(aTexCoordLoc);
@@ -258,7 +283,7 @@ public class OrbixGreeting implements SceneObject {
         GLES30.glUseProgram(0);
     }
 
-    private void drawTextQuad(int textureId, float posY, float width, float height, float type) {
+    private void drawTextQuad(int textureId, float posY, float width, float height) {
         float halfWidth = width / aspectRatio;
         float halfHeight = height;
 
@@ -271,15 +296,12 @@ public class OrbixGreeting implements SceneObject {
         vertexBuffer.put(vertexCache);
         vertexBuffer.position(0);
 
-        vertexBuffer.position(0);
         GLES30.glVertexAttribPointer(aPositionLoc, 2, GLES30.GL_FLOAT, false, 16, vertexBuffer);
 
         vertexBuffer.position(2);
         GLES30.glVertexAttribPointer(aTexCoordLoc, 2, GLES30.GL_FLOAT, false, 16, vertexBuffer);
 
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
-        GLES30.glUniform1f(uTypeLoc, type);
-
         GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
     }
 
@@ -291,10 +313,6 @@ public class OrbixGreeting implements SceneObject {
     public void hide() {
         isVisible = false;
         targetAlpha = 0.0f;
-    }
-
-    public void resetTime() {
-        time = 0f;
     }
 
     public void setAspectRatio(float aspect) {
