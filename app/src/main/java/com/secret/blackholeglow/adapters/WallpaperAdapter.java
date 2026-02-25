@@ -3,6 +3,8 @@ package com.secret.blackholeglow.adapters;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Vibrator;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -395,27 +397,45 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
      * ║     de pantalla (optimización)  ║
      * ╚═════════════════════════════════╝
      */
+    /**
+     * 🧠 Reciclar bitmap cuando la vista sale del RecyclerView.
+     * Libera la textura GL que hardware acceleration creó.
+     */
     @Override
-    public void onViewAttachedToWindow(@NonNull WallpaperViewHolder holder) {
-        super.onViewAttachedToWindow(holder);
-        // Reanudar animaciones cuando la vista vuelve a pantalla
-        if (holder.animatedBorder != null) {
-            holder.animatedBorder.resumeAnimation();
-        }
-        if (holder.buttonPreview != null) {
-            holder.buttonPreview.resumeAnimation();
-        }
+    public void onViewRecycled(@NonNull WallpaperViewHolder holder) {
+        super.onViewRecycled(holder);
+        recycleImageView(holder.imagePreview);
     }
 
-    @Override
-    public void onViewDetachedFromWindow(@NonNull WallpaperViewHolder holder) {
-        super.onViewDetachedFromWindow(holder);
-        // Pausar animaciones cuando la vista sale de pantalla
-        if (holder.animatedBorder != null) {
-            holder.animatedBorder.pauseAnimation();
+    /**
+     * 🧹 Libera TODOS los bitmaps de todas las vistas visibles.
+     * Llamar desde Fragment.onDestroyView() antes de destruir el adapter.
+     */
+    public void releaseAllBitmaps(RecyclerView recyclerView) {
+        if (recyclerView == null) return;
+        for (int i = 0; i < recyclerView.getChildCount(); i++) {
+            RecyclerView.ViewHolder vh = recyclerView.getChildViewHolder(recyclerView.getChildAt(i));
+            if (vh instanceof WallpaperViewHolder) {
+                recycleImageView(((WallpaperViewHolder) vh).imagePreview);
+            }
         }
-        if (holder.buttonPreview != null) {
-            holder.buttonPreview.pauseAnimation();
+        // Also clear cached views
+        recyclerView.getRecycledViewPool().clear();
+        Log.d("WallpaperAdapter", "🧹 All preview bitmaps released");
+    }
+
+    /**
+     * Recicla el bitmap de un ImageView y libera GPU memory.
+     */
+    private static void recycleImageView(ImageView imageView) {
+        if (imageView == null) return;
+        Drawable drawable = imageView.getDrawable();
+        imageView.setImageDrawable(null);
+        if (drawable instanceof BitmapDrawable) {
+            Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
+            if (bitmap != null && !bitmap.isRecycled()) {
+                bitmap.recycle();
+            }
         }
     }
 
@@ -433,8 +453,8 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
         TextView textDescription;
         TextView textBadge;
         View overlayComingSoon;
-        com.secret.blackholeglow.ui.AnimatedGlowButton buttonPreview;
-        com.secret.blackholeglow.ui.AnimatedGlowCard animatedBorder;
+        Button buttonPreview;
+        View animatedBorder;
 
         public WallpaperViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -566,8 +586,12 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
      * Carga la imagen de preview del wallpaper.
      * Si tiene preview remoto descargado, lo usa. Sino, usa drawable local.
      * OPTIMIZADO: Escala imágenes grandes para evitar OutOfMemoryError
+     * 🧠 FIX GL LEAK: Software layer prevents HWUI from caching bitmaps as GPU textures.
+     * The wallpaper service keeps the process alive, so GPU texture cache never clears.
      */
     private void loadPreviewImage(ImageView imageView, WallpaperItem item) {
+        // Prevent hardware renderer from uploading bitmap as GL texture
+        imageView.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
         String remoteFile = REMOTE_PREVIEWS.get(item.getSceneName());
 
         if (remoteFile != null) {

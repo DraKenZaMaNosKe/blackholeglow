@@ -17,12 +17,13 @@
     android:layout_margin="16dp">
 
     <!-- ══════════════════════════════════════════════════════════════
-         ✨ BORDE ANIMADO (mismo efecto que el botón)
+         ✨ BORDE ESTÁTICO (gradiente sutil purple → transparent)
          ══════════════════════════════════════════════════════════════ -->
-    <com.secret.blackholeglow.ui.AnimatedGlowCard
+    <View
         android:id="@+id/animated_border"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
+        android:layout_height="match_parent"
+        android:background="@drawable/card_glow_border"/>
 
     <!-- ══════════════════════════════════════════════════════════════
          📦 CARD PRINCIPAL
@@ -130,18 +131,22 @@
                 android:shadowDy="1"
                 android:shadowRadius="4"/>
 
-            <!-- ✨ Botón ÉPICO ANIMADO con efectos -->
-            <com.secret.blackholeglow.ui.AnimatedGlowButton
+            <!-- ✨ Botón gradient purple→cyan con ripple -->
+            <Button
                 android:id="@+id/button_preview"
                 android:layout_width="match_parent"
                 android:layout_height="60dp"
                 android:layout_marginTop="16dp"
                 android:layout_marginStart="20dp"
                 android:layout_marginEnd="20dp"
+                android:background="@drawable/button_wallpaper"
                 android:text="@string/button_view_wallpaper"
+                android:textColor="@android:color/white"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                android:letterSpacing="0.05"/>
+                android:letterSpacing="0.05"
+                android:stateListAnimator="@null"
+                android:elevation="4dp"/>
 
         </LinearLayout>
 

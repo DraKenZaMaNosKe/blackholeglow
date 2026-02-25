@@ -1851,10 +1851,32 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     }
 
     /**
-     * Limpieza - desregistrarse del AspectRatioManager
+     * Limpieza completa - liberar GPU resources y desregistrarse
      */
     public void release() {
+        // 🧠 FIX MEMORY LEAK: Liberar shader program de GPU
+        if (shaderProgram != 0) {
+            GLES30.glDeleteProgram(shaderProgram);
+            shaderProgram = 0;
+        }
+
+        // Liberar FloatBuffers (permite GC)
+        vertexBuffer = null;
+        colorBuffer = null;
+        glowVertexBuffer = null;
+        glowColorBuffer = null;
+        peakVertexBuffer = null;
+        peakColorBuffer = null;
+        lightningVertexBuffer = null;
+        lightningColorBuffer = null;
+        sparkVertexBuffer = null;
+        sparkColorBuffer = null;
+        waveVertexBuffer = null;
+        waveColorBuffer = null;
+
+        initialized = false;
+
         AspectRatioManager.get().unregister(this);
-        Log.d(TAG, "🎵 EqualizerBarsDJ liberado");
+        Log.d(TAG, "🎵 EqualizerBarsDJ liberado (GPU resources freed)");
     }
 }

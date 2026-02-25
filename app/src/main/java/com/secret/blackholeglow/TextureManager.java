@@ -271,14 +271,15 @@ public class TextureManager implements TextureLoader {
             GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, texId);
 
             // Configurar parámetros de textura
-            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR_MIPMAP_LINEAR);
+            // 🧠 Sin mipmaps: file textures son fondos full-screen, no se escalan
+            // Ahorra 33% de GPU memory por textura
+            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
             GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
             GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
             GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
 
-            // Subir bitmap a GPU
+            // Subir bitmap a GPU (sin glGenerateMipmap)
             GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0);
-            GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D);
 
             // Liberar bitmap (ya está en GPU)
             bitmap.recycle();

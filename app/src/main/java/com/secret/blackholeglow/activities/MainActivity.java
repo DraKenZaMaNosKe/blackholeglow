@@ -234,6 +234,22 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * 🧠 FIX GL LEAK: Forzar liberación de caches del hardware renderer
+     * cuando la Activity deja de ser visible (usuario regresa al Home).
+     * El proceso sigue vivo por el wallpaper service, así que
+     * debemos liberar explícitamente las texturas GPU de los previews.
+     */
+    @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        if (level >= TRIM_MEMORY_UI_HIDDEN) {
+            // La UI ya no es visible — liberar caches de hardware renderer
+            getWindow().getDecorView().setLayerType(View.LAYER_TYPE_NONE, null);
+            Log.d(TAG, "🧹 onTrimMemory UI_HIDDEN: released hardware layer cache");
+        }
+    }
+
     // ╔════════════════════════════════════════════════════════════════════╗
     // ║ 🌈 Método onNavigationItemSelected: Maneja clicks en el menú lateral ║
     // ╚════════════════════════════════════════════════════════════════════╝

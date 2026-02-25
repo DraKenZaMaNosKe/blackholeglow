@@ -56,6 +56,7 @@ public class AnimatedWallpaperListFragment extends Fragment {
 
     private List<WallpaperItem> wallpaperItems;
     private WallpaperAdapter adapter;
+    private RecyclerView recyclerViewRef;
     private VideoDownloadManager videoManager;
     private ImageDownloadManager imageManager;
     private ModelDownloadManager modelManager;
@@ -93,12 +94,13 @@ public class AnimatedWallpaperListFragment extends Fragment {
         modelManager = ModelDownloadManager.getInstance(requireContext());
 
         RecyclerView recyclerView = view.findViewById(R.id.wallpaper_recycler_view);
+        recyclerViewRef = recyclerView;
         LinearLayoutManager layoutManager = new LinearLayoutManager(getContext());
-        layoutManager.setInitialPrefetchItemCount(3);
+        layoutManager.setInitialPrefetchItemCount(2);
         recyclerView.setLayoutManager(layoutManager);
 
         recyclerView.setHasFixedSize(true);
-        recyclerView.setItemViewCacheSize(3);
+        recyclerView.setItemViewCacheSize(2);
 
         androidx.recyclerview.widget.RecyclerView.RecycledViewPool viewPool =
             new androidx.recyclerview.widget.RecyclerView.RecycledViewPool();
@@ -347,6 +349,16 @@ public class AnimatedWallpaperListFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
+        // 🧠 FIX GL LEAK: Reciclar TODOS los bitmaps para liberar texturas GPU
+        if (adapter != null && recyclerViewRef != null) {
+            adapter.releaseAllBitmaps(recyclerViewRef);
+        }
+        if (recyclerViewRef != null) {
+            recyclerViewRef.setAdapter(null);
+            recyclerViewRef = null;
+        }
+        adapter = null;
+
         super.onDestroyView();
         // 🛡️ Cancelar descargas pendientes al destruir el fragment
         if (downloadTask != null) {

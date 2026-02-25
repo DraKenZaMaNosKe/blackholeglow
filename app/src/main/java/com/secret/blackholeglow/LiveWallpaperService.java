@@ -248,7 +248,9 @@ public class LiveWallpaperService extends WallpaperService {
                 // OpenGL ES 3.0
                 glSurfaceView.setEGLContextClientVersion(3);
                 glSurfaceView.setPreserveEGLContextOnPause(true);
-                glSurfaceView.setEGLConfigChooser(8, 8, 8, 8, 24, 0);
+                // 🧠 RGB565 + 16-bit depth: ahorra ~20MB vs RGBA8888+24bit
+                // Live wallpapers no necesitan canal alpha (el sistema lo maneja)
+                glSurfaceView.setEGLConfigChooser(5, 6, 5, 0, 16, 0);
 
                 Log.d(TAG, "╔════════════════════════════════════════╗");
                 Log.d(TAG, "║   🚀 OPENGL ES 3.0 ACTIVADO           ║");
