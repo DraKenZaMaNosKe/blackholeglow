@@ -30,9 +30,11 @@ import com.secret.blackholeglow.scenes.GatitoDJScene;
 import com.secret.blackholeglow.scenes.PixelCityScene;
 import com.secret.blackholeglow.scenes.DynamicImageScene;
 import com.secret.blackholeglow.scenes.DynamicVideoScene;
+import com.secret.blackholeglow.systems.DynamicCatalog;
 import com.secret.blackholeglow.systems.EventBus;
 import com.secret.blackholeglow.systems.ResourceManager;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -112,6 +114,9 @@ public class SceneFactory {
      * Registra una escena con un nombre
      */
     public void registerScene(String name, Class<? extends WallpaperScene> sceneClass) {
+        if (registeredScenes.containsKey(name)) {
+            Log.w(TAG, "⚠️ Overwriting existing scene registration: " + name);
+        }
         registeredScenes.put(name, sceneClass);
         Log.d(TAG, "📝 Escena registrada: " + name);
     }
@@ -182,7 +187,7 @@ public class SceneFactory {
      * Obtiene los nombres de todas las escenas registradas
      */
     public Set<String> getSceneNames() {
-        return registeredScenes.keySet();
+        return Collections.unmodifiableSet(registeredScenes.keySet());
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -263,14 +268,23 @@ public class SceneFactory {
      */
     private WallpaperScene createDynamicScene(String sceneName) {
         try {
+            // Validate the dynamic entry exists before creating scene
+            String id = sceneName.startsWith("DYN_IMG_")
+                ? sceneName.substring("DYN_IMG_".length())
+                : sceneName.substring("DYN_VID_".length());
+
+            DynamicCatalog.DynamicEntry entry = DynamicCatalog.get().getEntryById(id, context);
+            if (entry == null) {
+                Log.e(TAG, "❌ Dynamic entry not found for: " + sceneName);
+                return null;
+            }
+
             WallpaperScene scene;
             if (sceneName.startsWith("DYN_IMG_")) {
-                String id = sceneName.substring("DYN_IMG_".length());
                 DynamicImageScene imgScene = new DynamicImageScene();
                 imgScene.setDynamicId(id, context);
                 scene = imgScene;
             } else {
-                String id = sceneName.substring("DYN_VID_".length());
                 DynamicVideoScene vidScene = new DynamicVideoScene();
                 vidScene.setDynamicId(id, context);
                 scene = vidScene;

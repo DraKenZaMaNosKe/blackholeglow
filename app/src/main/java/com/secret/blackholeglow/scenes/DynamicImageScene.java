@@ -1,6 +1,7 @@
 package com.secret.blackholeglow.scenes;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.secret.blackholeglow.EqualizerBarsDJ;
 import com.secret.blackholeglow.R;
@@ -12,6 +13,7 @@ import com.secret.blackholeglow.systems.DynamicCatalog;
  * Gets equalizer + clock + battery for free from BaseParallaxScene.
  */
 public class DynamicImageScene extends BaseParallaxScene {
+    private static final String TAG = "DynamicImageScene";
 
     private String dynamicId = "";
     private String imageFile = null;
@@ -21,10 +23,19 @@ public class DynamicImageScene extends BaseParallaxScene {
     }
 
     public void setDynamicId(String id, Context context) {
+        if (id == null || id.isEmpty()) {
+            Log.e(TAG, "setDynamicId called with null/empty id");
+            return;
+        }
         this.dynamicId = id;
         DynamicCatalog.DynamicEntry entry = DynamicCatalog.get().getEntryById(id, context);
         if (entry != null) {
             this.imageFile = entry.imageFile;
+            if (this.imageFile == null) {
+                Log.e(TAG, "Entry '" + id + "' has no imageFile defined");
+            }
+        } else {
+            Log.w(TAG, "No catalog entry found for dynamic id: " + id);
         }
     }
 

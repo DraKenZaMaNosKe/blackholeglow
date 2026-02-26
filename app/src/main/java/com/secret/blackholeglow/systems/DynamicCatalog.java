@@ -16,10 +16,12 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -42,11 +44,11 @@ public class DynamicCatalog {
     private static final String PREFS_NAME = "dynamic_catalog_cache";
     private static final String KEY_JSON = "catalog_json";
     private static final String KEY_TIMESTAMP = "catalog_timestamp";
-    private static final long CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+    private static final long CACHE_TTL_MS = 6L * 60 * 60 * 1000; // 6 hours
 
     private static DynamicCatalog instance;
-    private List<DynamicEntry> cachedEntries;
-    private boolean resourcesRegistered = false;
+    private volatile List<DynamicEntry> cachedEntries;
+    private volatile boolean resourcesRegistered = false;
 
     public static synchronized DynamicCatalog get() {
         if (instance == null) {
@@ -86,17 +88,32 @@ public class DynamicCatalog {
             this.sortOrder = json.optInt("sortOrder", 99);
             this.category = WallpaperCategory.fromString(json.optString("category", "MISC"));
 
-            // Parse hex color string like "#FF8800"
+            // Parse hex color string like "#FF8800" or "#80FF8800" (ARGB)
             String colorStr = json.optString("glowColor", "#FFFFFF");
             int parsed = 0xFFFFFFFF;
             try {
                 if (colorStr.startsWith("#")) {
-                    parsed = (int) Long.parseLong("FF" + colorStr.substring(1), 16);
+                    String hex = colorStr.substring(1);
+                    if (hex.length() == 8) {
+                        // Already has alpha: #AARRGGBB
+                        parsed = (int) Long.parseLong(hex, 16);
+                    } else if (hex.length() == 6) {
+                        // No alpha: #RRGGBB — prepend FF
+                        parsed = (int) Long.parseLong("FF" + hex, 16);
+                    }
                 }
             } catch (NumberFormatException e) {
                 Log.w(TAG, "Invalid glowColor: " + colorStr);
             }
             this.glowColor = parsed;
+        }
+
+        boolean isValid() {
+            if (id.isEmpty()) return false;
+            if (!"IMAGE".equals(type) && !"VIDEO".equals(type)) return false;
+            if ("IMAGE".equals(type) && imageFile == null) return false;
+            if ("VIDEO".equals(type) && videoFile == null) return false;
+            return true;
         }
 
         /** Scene name used in SceneFactory / WallpaperPreferences */
@@ -110,8 +127,9 @@ public class DynamicCatalog {
      * @return true if new data was fetched
      */
     public boolean refresh(Context context) {
+        HttpURLConnection conn = null;
         try {
-            HttpURLConnection conn = (HttpURLConnection) new URL(CATALOG_URL).openConnection();
+            conn = (HttpURLConnection) new URL(CATALOG_URL).openConnection();
             conn.setConnectTimeout(10_000);
             conn.setReadTimeout(10_000);
             conn.setRequestProperty("Cache-Control", "no-cache");
@@ -119,6 +137,8 @@ public class DynamicCatalog {
             int code = conn.getResponseCode();
             if (code != 200) {
                 Log.w(TAG, "HTTP " + code + " fetching catalog");
+                // Drain error stream to allow connection reuse
+                drainStream(conn.getErrorStream());
                 return false;
             }
 
@@ -151,7 +171,20 @@ public class DynamicCatalog {
         } catch (Exception e) {
             Log.w(TAG, "Error refreshing catalog: " + e.getMessage());
             return false;
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
         }
+    }
+
+    private static void drainStream(InputStream stream) {
+        if (stream == null) return;
+        try {
+            byte[] buf = new byte[1024];
+            while (stream.read(buf) != -1) { /* drain */ }
+            stream.close();
+        } catch (Exception ignored) {}
     }
 
     /**
@@ -160,7 +193,7 @@ public class DynamicCatalog {
     public List<DynamicEntry> getCachedEntries(Context context) {
         if (cachedEntries != null) {
             ensureResourcesRegistered();
-            return cachedEntries;
+            return Collections.unmodifiableList(cachedEntries);
         }
 
         // Load from SharedPreferences
@@ -173,7 +206,7 @@ public class DynamicCatalog {
             cachedEntries = new ArrayList<>();
         }
         ensureResourcesRegistered();
-        return cachedEntries;
+        return Collections.unmodifiableList(cachedEntries);
     }
 
     /**
@@ -224,9 +257,9 @@ public class DynamicCatalog {
      * Look up a dynamic entry by its ID (cache must already be loaded).
      */
     public DynamicEntry getEntryById(String id) {
-        if (cachedEntries == null) return null;
+        if (id == null || cachedEntries == null) return null;
         for (DynamicEntry entry : cachedEntries) {
-            if (entry.id.equals(id)) return entry;
+            if (id.equals(entry.id)) return entry;
         }
         return null;
     }
@@ -236,6 +269,7 @@ public class DynamicCatalog {
     // =========================================================================
 
     private List<DynamicEntry> parseJson(String json) {
+        if (json == null || json.isEmpty()) return null;
         try {
             JSONObject root = new JSONObject(json);
             JSONArray arr = root.optJSONArray("wallpapers");
@@ -243,7 +277,21 @@ public class DynamicCatalog {
 
             List<DynamicEntry> entries = new ArrayList<>();
             for (int i = 0; i < arr.length(); i++) {
-                entries.add(new DynamicEntry(arr.getJSONObject(i)));
+                JSONObject obj = arr.optJSONObject(i);
+                if (obj == null) {
+                    Log.w(TAG, "Skipping null entry at index " + i);
+                    continue;
+                }
+                try {
+                    DynamicEntry entry = new DynamicEntry(obj);
+                    if (entry.isValid()) {
+                        entries.add(entry);
+                    } else {
+                        Log.w(TAG, "Skipping invalid entry: id='" + entry.id + "' type='" + entry.type + "'");
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Skipping malformed entry at index " + i + ": " + e.getMessage());
+                }
             }
             return entries;
         } catch (Exception e) {
@@ -294,7 +342,7 @@ public class DynamicCatalog {
     }
 
     /** Reset singleton (for testing) */
-    public static void reset() {
+    public static synchronized void reset() {
         instance = null;
     }
 }

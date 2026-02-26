@@ -83,9 +83,7 @@ public class ResourcePreloader {
         this.listener = listener;
     }
 
-    // 🔧 FIX ANR: Guardar sceneName para limpieza diferida en background
-    private String pendingCleanupScene = null;
-    private String activeSceneToProtect = null;  // 🔧 Escena activa que NO debe limpiarse
+    private volatile String activeSceneToProtect = null;  // 🔧 Escena activa que NO debe limpiarse
 
     /**
      * 🔧 Establece la escena activa que debe protegerse durante limpieza.
@@ -220,22 +218,32 @@ public class ResourcePreloader {
      * Prepares download tasks for a dynamic scene (image or video).
      */
     private void prepareDynamicSceneTasks(String sceneName) {
-        tasks.clear();
+        synchronized (tasksLock) {
+            tasks.clear();
+        }
         String id = sceneName.startsWith("DYN_IMG_")
             ? sceneName.substring("DYN_IMG_".length())
             : sceneName.substring("DYN_VID_".length());
 
-        DynamicCatalog.DynamicEntry entry = DynamicCatalog.get().getEntryById(id);
+        DynamicCatalog.DynamicEntry entry = DynamicCatalog.get().getEntryById(id, context);
         if (entry == null) {
             Log.w(TAG, "Dynamic entry not found: " + id);
             calculateTotalWeight();
             return;
         }
 
-        if ("VIDEO".equals(entry.type) && entry.videoFile != null) {
-            addVideoDownloadTask("Dynamic Video", entry.videoFile, 10);
-        } else if ("IMAGE".equals(entry.type) && entry.imageFile != null) {
-            addImageDownloadTask("Dynamic Image", entry.imageFile, 5);
+        if ("VIDEO".equals(entry.type)) {
+            if (entry.videoFile != null) {
+                addVideoDownloadTask("Dynamic Video", entry.videoFile, 10);
+            } else {
+                Log.e(TAG, "DYN_VID entry '" + id + "' has null videoFile!");
+            }
+        } else if ("IMAGE".equals(entry.type)) {
+            if (entry.imageFile != null) {
+                addImageDownloadTask("Dynamic Image", entry.imageFile, 5);
+            } else {
+                Log.e(TAG, "DYN_IMG entry '" + id + "' has null imageFile!");
+            }
         }
 
         // Preview image
@@ -346,7 +354,7 @@ public class ResourcePreloader {
         // Dynamic scenes
         if (sceneName.startsWith("DYN_VID_")) {
             String id = sceneName.substring("DYN_VID_".length());
-            DynamicCatalog.DynamicEntry entry = DynamicCatalog.get().getEntryById(id);
+            DynamicCatalog.DynamicEntry entry = DynamicCatalog.get().getEntryById(id, context);
             if (entry != null && entry.videoFile != null) return Arrays.asList(entry.videoFile);
             return new ArrayList<>();
         }
@@ -437,7 +445,7 @@ public class ResourcePreloader {
         // Dynamic scenes
         if (sceneName.startsWith("DYN_IMG_")) {
             String id = sceneName.substring("DYN_IMG_".length());
-            DynamicCatalog.DynamicEntry entry = DynamicCatalog.get().getEntryById(id);
+            DynamicCatalog.DynamicEntry entry = DynamicCatalog.get().getEntryById(id, context);
             List<String> images = new ArrayList<>();
             if (entry != null) {
                 if (entry.imageFile != null) images.add(entry.imageFile);
@@ -447,7 +455,7 @@ public class ResourcePreloader {
         }
         if (sceneName.startsWith("DYN_VID_")) {
             String id = sceneName.substring("DYN_VID_".length());
-            DynamicCatalog.DynamicEntry entry = DynamicCatalog.get().getEntryById(id);
+            DynamicCatalog.DynamicEntry entry = DynamicCatalog.get().getEntryById(id, context);
             if (entry != null && entry.previewFile != null) return Arrays.asList(entry.previewFile);
             return new ArrayList<>();
         }
@@ -965,7 +973,7 @@ public class ResourcePreloader {
         if (sceneName == null) return true;
 
         // Obtener videos requeridos para esta escena
-        List<String> requiredVideos = getSceneVideosStatic(sceneName);
+        List<String> requiredVideos = getSceneVideosStatic(sceneName, context);
 
         if (requiredVideos.isEmpty()) {
             // Escenas sin video (Saint Seiya, Zelda) siempre están listas
@@ -987,13 +995,13 @@ public class ResourcePreloader {
     /**
      * Versión estática de getSceneVideos para uso desde otros componentes
      */
-    private static List<String> getSceneVideosStatic(String sceneName) {
+    private static List<String> getSceneVideosStatic(String sceneName, Context context) {
         if (sceneName == null) return new ArrayList<>();
 
         // Dynamic scenes
         if (sceneName.startsWith("DYN_VID_")) {
             String id = sceneName.substring("DYN_VID_".length());
-            DynamicCatalog.DynamicEntry entry = DynamicCatalog.get().getEntryById(id);
+            DynamicCatalog.DynamicEntry entry = DynamicCatalog.get().getEntryById(id, context);
             if (entry != null && entry.videoFile != null) return Arrays.asList(entry.videoFile);
             return new ArrayList<>();
         }
@@ -1296,13 +1304,15 @@ public class ResourcePreloader {
     // ═══════════════════════════════════════════════════════════════════════
 
     public static List<String> getRequiredVideos(String sceneName) {
-        return getSceneVideosStatic(sceneName);
+        return getSceneVideosStatic(sceneName, null);
     }
 
     public static List<String> getRequiredImages(String sceneName) {
         if (sceneName == null) return new ArrayList<>();
 
-        // Dynamic scenes
+        // Dynamic scenes — use getEntryById(id) since static context is unavailable.
+        // DynamicCatalog.getEntryById(id, context) with context is preferred,
+        // but the no-arg version works if cache was loaded by a prior getCachedEntries() call.
         if (sceneName.startsWith("DYN_IMG_")) {
             String id = sceneName.substring("DYN_IMG_".length());
             DynamicCatalog.DynamicEntry entry = DynamicCatalog.get().getEntryById(id);

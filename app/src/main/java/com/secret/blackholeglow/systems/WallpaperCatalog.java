@@ -51,9 +51,9 @@ public class WallpaperCatalog {
     // SINGLETON
     // ═══════════════════════════════════════════════════════════════
 
-    private static WallpaperCatalog instance;
+    private static volatile WallpaperCatalog instance;
 
-    public static WallpaperCatalog get() {
+    public static synchronized WallpaperCatalog get() {
         if (instance == null) {
             instance = new WallpaperCatalog();
         }
@@ -84,7 +84,7 @@ public class WallpaperCatalog {
      * Loads dynamic wallpapers from DynamicCatalog cache and appends to catalog.
      * Call after DynamicCatalog.refresh() or on app startup.
      */
-    public void loadDynamicEntries(Context context) {
+    public synchronized void loadDynamicEntries(Context context) {
         // Remove previous dynamic entries
         catalog.removeAll(dynamicItems);
         dynamicItems.clear();
@@ -104,8 +104,8 @@ public class WallpaperCatalog {
      * Obtiene todos los wallpapers del catálogo
      * @return Lista inmutable de todos los wallpapers
      */
-    public List<WallpaperItem> getAll() {
-        return Collections.unmodifiableList(catalog);
+    public synchronized List<WallpaperItem> getAll() {
+        return new ArrayList<>(catalog);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -116,9 +116,9 @@ public class WallpaperCatalog {
      * Obtiene wallpapers de una categoría específica.
      * Si la categoría es ALL, retorna todos.
      */
-    public List<WallpaperItem> getByCategory(WallpaperCategory category) {
+    public synchronized List<WallpaperItem> getByCategory(WallpaperCategory category) {
         if (category == WallpaperCategory.ALL) {
-            return Collections.unmodifiableList(catalog);
+            return new ArrayList<>(catalog);
         }
         List<WallpaperItem> result = new ArrayList<>();
         for (WallpaperItem item : catalog) {
@@ -236,7 +236,7 @@ public class WallpaperCatalog {
      * @param sceneName Nombre de la escena (para SceneFactory)
      * @return WallpaperItem o null si no existe
      */
-    public WallpaperItem getBySceneName(String sceneName) {
+    public synchronized WallpaperItem getBySceneName(String sceneName) {
         for (WallpaperItem item : catalog) {
             if (item.getSceneName().equalsIgnoreCase(sceneName)) {
                 return item;
@@ -287,7 +287,7 @@ public class WallpaperCatalog {
     /**
      * Reset del singleton (para recreación completa)
      */
-    public static void reset() {
+    public static synchronized void reset() {
         instance = null;
         Log.d(TAG, "WallpaperCatalog reset");
     }
