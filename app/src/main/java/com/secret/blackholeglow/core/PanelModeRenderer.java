@@ -14,8 +14,11 @@ import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.WallpaperPreferences;
 import com.secret.blackholeglow.effects.PixelationTransition;
 import com.secret.blackholeglow.effects.ProceduralPanelBackground;
+import com.secret.blackholeglow.image.ImageDownloadManager;
 import com.secret.blackholeglow.models.WallpaperItem;
 import com.secret.blackholeglow.systems.WallpaperCatalog;
+
+import java.io.File;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -88,6 +91,8 @@ public class PanelModeRenderer {
     private PixelationTransition pixelTransition;
     private boolean isTransitioning = false;
     private boolean useProceduralBackground = false;
+    private boolean useRemotePreview = false;
+    private String remotePreviewPath = null;
 
     // Estado
     private boolean initialized = false;
@@ -153,6 +158,8 @@ public class PanelModeRenderer {
      */
     private void loadSelectedWallpaperPreview() {
         String selectedScene = WallpaperPreferences.getInstance(context).getSelectedWallpaperSync();
+        useRemotePreview = false;
+        remotePreviewPath = null;
 
         if (selectedScene == null || selectedScene.isEmpty()) {
             useProceduralBackground = true;
@@ -167,8 +174,21 @@ public class PanelModeRenderer {
             currentPreviewResourceId = item.getResourceIdPreview();
             // Detect placeholder → use procedural background instead
             useProceduralBackground = (currentPreviewResourceId == R.drawable.preview_placeholder);
+
+            // If placeholder, try to load downloaded remote preview
+            if (useProceduralBackground && item.hasRemotePreview()) {
+                String path = ImageDownloadManager.getInstance(context)
+                        .getImagePath(item.getRemotePreviewFile());
+                if (path != null && new File(path).exists()) {
+                    remotePreviewPath = path;
+                    useProceduralBackground = false;
+                    useRemotePreview = true;
+                    Log.d(TAG, "🖼️ Preview remoto encontrado: " + path);
+                }
+            }
+
             Log.d(TAG, "🖼️ Preview seleccionado: " + selectedScene + " -> " + currentPreviewResourceId
-                    + (useProceduralBackground ? " (procedural)" : ""));
+                    + (useProceduralBackground ? " (procedural)" : useRemotePreview ? " (remote)" : ""));
         } else {
             useProceduralBackground = true;
             Log.w(TAG, "⚠️ Wallpaper '" + selectedScene + "' no encontrado, usando fondo procedural");
@@ -188,7 +208,8 @@ public class PanelModeRenderer {
      * 🖼️ Inicializa los recursos OpenGL del fondo (llamar desde GL thread)
      */
     private void initBackgroundOpenGL() {
-        if (currentPreviewResourceId == 0 || backgroundLoaded) return;
+        if (backgroundLoaded) return;
+        if (!useRemotePreview && currentPreviewResourceId == 0) return;
 
         // Liberar textura anterior si existe
         if (bgTextureId != 0) {
@@ -235,10 +256,29 @@ public class PanelModeRenderer {
             GLES30.glDeleteShader(fs);
         }
 
-        // Cargar textura del preview
+        // Cargar textura del preview (con proteccion OOM: max 1024x1024)
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inScaled = false;
-        Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), currentPreviewResourceId, options);
+        options.inJustDecodeBounds = true;
+        if (useRemotePreview && remotePreviewPath != null) {
+            BitmapFactory.decodeFile(remotePreviewPath, options);
+        } else {
+            BitmapFactory.decodeResource(context.getResources(), currentPreviewResourceId, options);
+        }
+        int maxBgSize = 1024;
+        options.inSampleSize = 1;
+        while (options.outWidth / options.inSampleSize > maxBgSize ||
+               options.outHeight / options.inSampleSize > maxBgSize) {
+            options.inSampleSize *= 2;
+        }
+        options.inJustDecodeBounds = false;
+
+        Bitmap bitmap;
+        if (useRemotePreview && remotePreviewPath != null) {
+            bitmap = BitmapFactory.decodeFile(remotePreviewPath, options);
+        } else {
+            bitmap = BitmapFactory.decodeResource(context.getResources(), currentPreviewResourceId, options);
+        }
 
         if (bitmap != null) {
             int[] textures = new int[1];
@@ -254,12 +294,15 @@ public class PanelModeRenderer {
             GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bitmap, 0);
             bitmap.recycle();
 
+            backgroundLoaded = true;
             Log.d(TAG, "✅ Fondo cargado: textureId=" + bgTextureId);
         } else {
-            Log.e(TAG, "❌ Error cargando bitmap del preview");
+            // Bitmap null: archivo corrupto o borrado. Fallback a procedural.
+            Log.e(TAG, "❌ Error cargando bitmap del preview, fallback a procedural");
+            useProceduralBackground = true;
+            useRemotePreview = false;
+            backgroundLoaded = false;
         }
-
-        backgroundLoaded = true;
     }
 
     private int compileShader(int type, String source) {
@@ -292,8 +335,10 @@ public class PanelModeRenderer {
         }
 
         // Inicializar fondo si está pendiente (debe hacerse en GL thread)
-        if (!useProceduralBackground && !backgroundLoaded && currentPreviewResourceId != 0) {
-            initBackgroundOpenGL();
+        if (!useProceduralBackground && !backgroundLoaded) {
+            if (useRemotePreview || currentPreviewResourceId != 0) {
+                initBackgroundOpenGL();
+            }
         }
 
         // Update procedural background
@@ -488,8 +533,10 @@ public class PanelModeRenderer {
             loadingBar.reset();
             loadingBar.setWallpaperTheme(displayName, glowColor);
             // 🖼️ Usar preview real del wallpaper como fondo
-            if (previewResourceId != 0) {
+            if (previewResourceId != 0 && previewResourceId != R.drawable.preview_placeholder) {
                 loadingBar.setBackgroundImage(context, previewResourceId);
+            } else if (useRemotePreview && remotePreviewPath != null) {
+                loadingBar.setBackgroundFromFile(context, remotePreviewPath);
             } else {
                 loadingBar.setBackgroundForScene(context, sceneName);
             }

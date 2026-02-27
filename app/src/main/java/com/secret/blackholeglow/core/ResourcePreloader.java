@@ -203,6 +203,10 @@ public class ResourcePreloader {
                 preparePixelCitySceneTasks();
                 break;
 
+            case "KRATOS":
+                prepareKratosSceneTasks();
+                break;
+
             default:
                 // Dynamic scenes: DYN_IMG_* / DYN_VID_*
                 if (sceneName.startsWith("DYN_IMG_") || sceneName.startsWith("DYN_VID_")) {
@@ -430,6 +434,9 @@ public class ResourcePreloader {
 
             case "PIXEL_CITY":
                 return Arrays.asList("pixel_city_scene.mp4");
+
+            case "KRATOS":
+                return Arrays.asList("kratos_scene.mp4");
 
             default:
                 return new ArrayList<>();
@@ -951,6 +958,14 @@ public class ResourcePreloader {
         Log.d(TAG, "🏙️ Pixel City: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
     }
 
+    public void prepareKratosSceneTasks() {
+        tasks.clear();
+        addVideoDownloadTask("Video Kratos God of War", "kratos_scene.mp4", 10);
+        addTextureTask("Preparando escena Kratos", R.drawable.preview_kratos, 2);
+        calculateTotalWeight();
+        Log.d(TAG, "⚔️ Kratos: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
     private void calculateTotalWeight() {
         totalTasks = 0;
         for (PreloadTask task : tasks) {
@@ -1052,6 +1067,8 @@ public class ResourcePreloader {
                 return Arrays.asList("gatito_dance.mp4");
             case "PIXEL_CITY":
                 return Arrays.asList("pixel_city_scene.mp4");
+            case "KRATOS":
+                return Arrays.asList("kratos_scene.mp4");
             default:
                 return new ArrayList<>();
         }

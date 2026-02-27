@@ -41,7 +41,8 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
         SUPERMAN,     // Rojo → Azul → Amarillo (Man of Steel)
         AOT,          // Verde neón → Rojo sangre → Naranja titán (Attack on Titan)
         SPIDER,       // Rojo sangre → Negro → Carmesí (Black Spider horror)
-        ATLANTIS      // Cyan → Turquesa → Dorado (templo sumergido)
+        ATLANTIS,     // Cyan → Turquesa → Dorado (templo sumergido)
+        KRATOS        // Rojo → Naranja → Dorado (furia espartana)
     }
 
     private Theme currentTheme = Theme.DEFAULT;
@@ -166,6 +167,15 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
     private static final float[] ATLANTIS_WAVE_NORMAL = {0.0f, 0.35f, 0.45f};  // Azul oceánico oscuro
     private static final float[] ATLANTIS_LIGHTNING_1 = {0.0f, 0.9f, 1.0f};    // Rayo cyan (energía mística)
     private static final float[] ATLANTIS_LIGHTNING_2 = {0.9f, 0.75f, 0.3f};   // Rayo dorado (destellos)
+
+    // === KRATOS (God of War - Rojo → Naranja → Dorado) ===
+    private static final float[] KRATOS_BASS = {0.85f, 0.15f, 0.05f};          // Rojo sangre (furia espartana)
+    private static final float[] KRATOS_TREBLE = {1.0f, 0.55f, 0.0f};          // Naranja fuego (Blades of Chaos)
+    private static final float[] KRATOS_PEAK = {1.0f, 0.85f, 0.2f};            // Dorado brillante (poder divino)
+    private static final float[] KRATOS_WAVE_STRONG = {0.7f, 0.1f, 0.0f};      // Rojo oscuro (sangre de dios)
+    private static final float[] KRATOS_WAVE_NORMAL = {0.45f, 0.08f, 0.0f};    // Granate profundo
+    private static final float[] KRATOS_LIGHTNING_1 = {1.0f, 0.35f, 0.0f};     // Rayo naranja (cadenas ardientes)
+    private static final float[] KRATOS_LIGHTNING_2 = {1.0f, 0.75f, 0.15f};    // Rayo dorado (ira divina)
 
     // Colores activos (se actualizan con setTheme)
     private float[] colorBass = DEFAULT_BASS;
@@ -494,6 +504,17 @@ public class EqualizerBarsDJ implements SceneObject, AspectRatioManager.AspectRa
                 colorLightning1 = ATLANTIS_LIGHTNING_1;
                 colorLightning2 = ATLANTIS_LIGHTNING_2;
                 Log.d(TAG, "🏛️ Tema ATLANTIS activado - Lost Atlantis");
+                break;
+
+            case KRATOS:
+                colorBass = KRATOS_BASS;
+                colorTreble = KRATOS_TREBLE;
+                colorPeak = KRATOS_PEAK;
+                colorWaveStrong = KRATOS_WAVE_STRONG;
+                colorWaveNormal = KRATOS_WAVE_NORMAL;
+                colorLightning1 = KRATOS_LIGHTNING_1;
+                colorLightning2 = KRATOS_LIGHTNING_2;
+                Log.d(TAG, "⚔️ Tema KRATOS activado - God of War");
                 break;
 
             default:

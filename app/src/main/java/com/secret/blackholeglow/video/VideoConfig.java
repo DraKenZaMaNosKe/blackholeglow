@@ -173,6 +173,14 @@ public class VideoConfig {
             "Pixel City",
             1
         ));
+
+        // KratosScene - God of War
+        VIDEOS.put("kratos_scene.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "kratos_scene.mp4",
+            12_466_791L,  // ~12.5 MB
+            "Kratos God of War",
+            1
+        ));
     }
 
     // =========================================================================

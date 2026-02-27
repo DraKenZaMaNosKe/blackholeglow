@@ -28,6 +28,7 @@ import com.secret.blackholeglow.scenes.TheEyeScene;
 import com.secret.blackholeglow.scenes.GatitoScene;
 import com.secret.blackholeglow.scenes.GatitoDJScene;
 import com.secret.blackholeglow.scenes.PixelCityScene;
+import com.secret.blackholeglow.scenes.KratosScene;
 import com.secret.blackholeglow.scenes.DynamicImageScene;
 import com.secret.blackholeglow.scenes.DynamicVideoScene;
 import com.secret.blackholeglow.systems.DynamicCatalog;
@@ -169,6 +170,8 @@ public class SceneFactory {
         registerScene("GATITO_DJ", GatitoDJScene.class);
         // 🏙️ Pixel City: Retro pixel art city
         registerScene("PIXEL_CITY", PixelCityScene.class);
+        // ⚔️ Kratos: God of War - Furia espartana
+        registerScene("KRATOS", KratosScene.class);
 
         Log.d(TAG, "🎭 " + registeredScenes.size() + " escenas registradas");
     }

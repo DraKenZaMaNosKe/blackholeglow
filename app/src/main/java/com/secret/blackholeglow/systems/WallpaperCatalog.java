@@ -652,6 +652,22 @@ public class WallpaperCatalog {
                 .featured()
                 .build());
 
+        // ═══════════════════════════════════════════════════════════════════
+        // ⚔️ KRATOS - God of War
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("⚔️ KRATOS ⚔️")
+                .descripcion("BOY! The Ghost of Sparta unleashes divine fury. " +
+                        "Blades of Chaos burn with the rage of a god.")
+                .preview(R.drawable.preview_kratos)
+                .sceneName("KRATOS")
+                .tier(WallpaperTier.FREE)
+                .badge("⚔️ NEW")
+                .glow(0xFFCC2200)  // Rojo oscuro (sangre espartana)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.GAMING)
+                .featured()
+                .build());
+
         Log.d(TAG, "📚 Catálogo inicializado: " + catalog.size() + " wallpapers");
     }
 }
