@@ -207,6 +207,10 @@ public class ResourcePreloader {
                 prepareKratosSceneTasks();
                 break;
 
+            case "KRATOS_CYCLOPS":
+                prepareKratosCyclopsSceneTasks();
+                break;
+
             default:
                 // Dynamic scenes: DYN_IMG_* / DYN_VID_*
                 if (sceneName.startsWith("DYN_IMG_") || sceneName.startsWith("DYN_VID_")) {
@@ -438,6 +442,9 @@ public class ResourcePreloader {
             case "KRATOS":
                 return Arrays.asList("kratos_scene.mp4");
 
+            case "KRATOS_CYCLOPS":
+                return Arrays.asList();  // Solo usa imágenes, no videos
+
             default:
                 return new ArrayList<>();
         }
@@ -513,6 +520,9 @@ public class ResourcePreloader {
                 return Arrays.asList("background_ken_scene.png", "floor_tile.png",
                         "ken_walk.png", "ken_hadouken.png", "hadouken_transparente.png");
 
+            case "KRATOS_CYCLOPS":
+                return Arrays.asList("kratos_cyclops_bg.jpg");
+
             // GOKU, ADVENTURE_TIME solo usan videos
             default:
                 return new ArrayList<>();
@@ -558,6 +568,9 @@ public class ResourcePreloader {
 
             case "KEN":
                 return Arrays.asList();  // No 3D models - sprite-based
+
+            case "KRATOS_CYCLOPS":
+                return Arrays.asList();  // aura_energy.obj is in assets, not downloaded
 
             // GOKU, ADVENTURE_TIME, SAINT_SEIYA no usan modelos 3D
             default:
@@ -966,6 +979,14 @@ public class ResourcePreloader {
         Log.d(TAG, "⚔️ Kratos: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
     }
 
+    public void prepareKratosCyclopsSceneTasks() {
+        tasks.clear();
+        addImageDownloadTask("Fondo Kratos vs Cyclops", "kratos_cyclops_bg.jpg", 5);
+        addTextureTask("Preparando escena Kratos Cyclops", R.drawable.preview_kratos_cyclops, 2);
+        calculateTotalWeight();
+        Log.d(TAG, "⚔️ Kratos Cyclops: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
     private void calculateTotalWeight() {
         totalTasks = 0;
         for (PreloadTask task : tasks) {
@@ -1069,6 +1090,8 @@ public class ResourcePreloader {
                 return Arrays.asList("pixel_city_scene.mp4");
             case "KRATOS":
                 return Arrays.asList("kratos_scene.mp4");
+            case "KRATOS_CYCLOPS":
+                return Arrays.asList();  // No video
             default:
                 return new ArrayList<>();
         }
@@ -1373,6 +1396,8 @@ public class ResourcePreloader {
             case "KEN":
                 return Arrays.asList("background_ken_scene.png", "floor_tile.png",
                         "ken_walk.png", "ken_hadouken.png", "hadouken_transparente.png");
+            case "KRATOS_CYCLOPS":
+                return Arrays.asList("kratos_cyclops_bg.jpg");
             default:
                 return new ArrayList<>();
         }
@@ -1405,6 +1430,8 @@ public class ResourcePreloader {
                 return Arrays.asList("black_cat_clean.obj", "brick_wall.obj");
             case "FRIEZA_DEATHBEAM":
                 return Arrays.asList("frieza.obj", "frieza_halo.obj");
+            case "KRATOS_CYCLOPS":
+                return Arrays.asList();  // aura_energy.obj is in assets/
             default:
                 return new ArrayList<>();
         }

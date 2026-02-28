@@ -26,6 +26,7 @@ import com.secret.blackholeglow.models.WallpaperItem;
 import com.secret.blackholeglow.systems.UIController;
 import com.secret.blackholeglow.gl3.MatrixPool;
 import com.secret.blackholeglow.effects.BloomEffect;
+import com.secret.blackholeglow.effects.TouchSparkleEffect;
 import com.secret.blackholeglow.systems.WallpaperNotificationManager;
 
 import javax.microedition.khronos.egl.EGLConfig;
@@ -60,6 +61,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     private EventBus eventBus;
     private FirebaseQueueManager firebaseQueue;
     private BloomEffect bloomEffect;
+    private TouchSparkleEffect touchSparkles;
     private ResourcePreloader resourcePreloader;
 
     // ESTADO
@@ -330,7 +332,9 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             boolean loading = modeController.isLoadingMode();
             boolean transitioning = panelRenderer != null && panelRenderer.isTransitioning();
 
-            boolean shouldBeActive = musicActive || recentActivity || loading || transitioning;
+            boolean sceneRunning = modeController.isWallpaperMode()
+                    && sceneFactory != null && sceneFactory.hasCurrentScene();
+            boolean shouldBeActive = musicActive || recentActivity || loading || transitioning || sceneRunning;
 
             if (shouldBeActive && isIdle) {
                 isIdle = false;
@@ -495,6 +499,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         }
         sceneFactory.updateCurrentScene(deltaTime);
         if (screenEffects != null) screenEffects.update(deltaTime);
+        if (touchSparkles != null) touchSparkles.update(deltaTime);
         panelRenderer.updateWallpaperMode(deltaTime);
         songSharing.update(deltaTime);
     }
@@ -508,6 +513,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         // Dibujar escena 3D
         sceneFactory.drawCurrentScene();
         if (screenEffects != null) screenEffects.draw();
+        if (touchSparkles != null) touchSparkles.draw();
 
         // ✨ Bloom: DESHABILITADO TEMPORALMENTE
         // if (bloomEffect != null && bloomEffect.isEnabled()) {
@@ -724,6 +730,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         musicVisualizer = new MusicVisualizer(context);
         musicVisualizer.initialize();
         screenEffects = new ScreenEffectsManager();
+        touchSparkles = new TouchSparkleEffect();
         // TODO: BloomEffect deshabilitado temporalmente para debugging
         // bloomEffect = new BloomEffect();
 
@@ -826,7 +833,21 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         if (!initialized) return false;
         markActivity();
         touchRouter.setCurrentScene(sceneFactory.getCurrentScene());
-        return touchRouter.onTouchEvent(event);
+        boolean consumed = touchRouter.onTouchEvent(event);
+
+        // Sparkles on touch if scene didn't consume the event (static wallpapers)
+        if (!consumed && modeController != null && modeController.isWallpaperMode() && touchSparkles != null) {
+            float nx = (event.getX() / screenWidth) * 2.0f - 1.0f;
+            float ny = -((event.getY() / screenHeight) * 2.0f - 1.0f);
+            int action = event.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN) {
+                touchSparkles.spawn(nx, ny, 5);
+            } else if (action == MotionEvent.ACTION_MOVE) {
+                touchSparkles.spawn(nx, ny, 2);
+            }
+        }
+
+        return consumed;
     }
 
     // NOTA: deltaTime y FPS ahora son manejados por GLStateManager
@@ -1012,6 +1033,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         if (musicVisualizer != null) musicVisualizer.release();
         if (resources != null) resources.release();
         if (screenEffects != null) screenEffects.release();
+        if (touchSparkles != null) touchSparkles.release();
         if (bloomEffect != null) bloomEffect.release();
 
         // Flush final y liberar FirebaseQueueManager

@@ -61,9 +61,10 @@ public class SongMessageRenderer implements SceneObject {
 
     // Animación
     private float alpha = 0.0f;
-    private float targetAlpha = 0.0f;
-    private long showStartTime = 0;
-    private static final long SHOW_DURATION = 8000;  // 8 segundos
+    private float showElapsed = 0f;          // seconds since showMessage()
+    private static final float SHOW_DURATION = 1.0f;   // 1 segundo total
+    private static final float FADE_IN = 0.15f;        // fade in rápido
+    private static final float FADE_OUT = 0.35f;       // fade out suave
     private boolean isVisible = false;
 
     // Colores del gradiente cósmico
@@ -98,14 +99,14 @@ public class SongMessageRenderer implements SceneObject {
         "    gl_FragColor = vec4(finalColor, texColor.a * u_Alpha);\n" +
         "}\n";
 
-    private Context context;
     private float time = 0f;
+    private static final float TIME_WRAP = 628.318f;  // ~100 * TAU
 
     public SongMessageRenderer(Context context) {
-        this.context = context;
+        // context not stored — only needed transiently if subclasses require it
         initShader();
         setupBuffers();
-        Log.d(TAG, "🎵 SongMessageRenderer inicializado");
+        Log.d(TAG, "SongMessageRenderer inicializado");
     }
 
     private void initShader() {
@@ -167,18 +168,18 @@ public class SongMessageRenderer implements SceneObject {
         currentText = message;
         needsUpdate = true;
         isVisible = true;
-        targetAlpha = 1.0f;
-        showStartTime = System.currentTimeMillis();
+        showElapsed = 0f;
+        alpha = 0f;
 
-        Log.d(TAG, "🎵 Mostrando: " + message);
+        Log.d(TAG, "Mostrando: " + message);
     }
 
     /**
      * Oculta el mensaje
      */
     public void hide() {
-        targetAlpha = 0.0f;
         isVisible = false;
+        alpha = 0f;
     }
 
     /**
@@ -324,20 +325,26 @@ public class SongMessageRenderer implements SceneObject {
 
     @Override
     public void update(float deltaTime) {
+        // Wrap time to prevent float precision loss
         time += deltaTime;
+        if (time > TIME_WRAP) time -= TIME_WRAP;
 
-        // Actualizar alpha con interpolación suave
-        alpha += (targetAlpha - alpha) * 0.1f;
+        if (!isVisible) return;
 
-        // Auto-ocultar después del tiempo
-        if (isVisible) {
-            long elapsed = System.currentTimeMillis() - showStartTime;
-            if (elapsed > SHOW_DURATION) {
-                hide();
-            } else if (elapsed > SHOW_DURATION - 1000) {
-                // Fade out en el último segundo
-                targetAlpha = (SHOW_DURATION - elapsed) / 1000.0f;
-            }
+        showElapsed += deltaTime;
+
+        if (showElapsed >= SHOW_DURATION) {
+            // Done
+            hide();
+        } else if (showElapsed < FADE_IN) {
+            // Fast fade in
+            alpha = showElapsed / FADE_IN;
+        } else if (showElapsed > SHOW_DURATION - FADE_OUT) {
+            // Smooth fade out
+            alpha = (SHOW_DURATION - showElapsed) / FADE_OUT;
+        } else {
+            // Full brightness
+            alpha = 1.0f;
         }
     }
 

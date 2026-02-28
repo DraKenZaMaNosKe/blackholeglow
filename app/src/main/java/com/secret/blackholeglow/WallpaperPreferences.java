@@ -88,6 +88,7 @@ public class WallpaperPreferences {
         "GATITO_DJ",         // 🎧 Gatito DJ - Dancing DJ Cat
         "PIXEL_CITY",        // 🏙️ Pixel City - Retro Pixel Art
         "KRATOS",            // ⚔️ Kratos - God of War
+        "KRATOS_CYCLOPS",    // ⚔️ Kratos vs Cyclops - God of War
 
         // ═══════════════════════════════════════════
         // 📦 WALLPAPERS LEGADOS (compatibilidad)

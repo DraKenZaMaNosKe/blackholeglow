@@ -44,7 +44,7 @@ public class SongSharingController {
     private final Queue<SharedSong> songQueue = new LinkedList<>();
     private float nextShowTime = 0f;
     private float elapsedTime = 0f;
-    private static final float DISPLAY_INTERVAL = 65f;  // 65 segundos (1 min + 5 seg) para mostrar
+    private static final float DISPLAY_INTERVAL = 76f;  // 1 min 16 seg entre mensajes
 
     public SongSharingController(Context context) {
         this.context = context.getApplicationContext();

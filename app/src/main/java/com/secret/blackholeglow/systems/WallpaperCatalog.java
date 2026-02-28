@@ -668,6 +668,22 @@ public class WallpaperCatalog {
                 .featured()
                 .build());
 
+        // ═══════════════════════════════════════════════════════════════════
+        // ⚔️ KRATOS vs CYCLOPS - God of War (Imagen + Aura)
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("⚔️ KRATOS vs CYCLOPS")
+                .descripcion("The Ghost of Sparta leaps into battle against a colossal cyclops. " +
+                        "Green cursed energy radiates from the ancient beast.")
+                .preview(R.drawable.preview_kratos_cyclops)
+                .sceneName("KRATOS_CYCLOPS")
+                .tier(WallpaperTier.FREE)
+                .badge("⚔️ NEW")
+                .glow(0xFF00CC44)  // Verde energía del cíclope
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.GAMING)
+                .featured()
+                .build());
+
         Log.d(TAG, "📚 Catálogo inicializado: " + catalog.size() + " wallpapers");
     }
 }

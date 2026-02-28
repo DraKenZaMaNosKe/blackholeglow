@@ -7,9 +7,7 @@ import android.media.AudioManager;
 import android.media.audiofx.Visualizer;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.SystemClock;
 import android.util.Log;
-import android.view.KeyEvent;
 
 /**
  * MusicVisualizer - Sistema de captura y análisis de audio en tiempo real
@@ -552,50 +550,15 @@ public class MusicVisualizer {
      * Envía un evento genérico MEDIA_PLAY al sistema para reanudar audio
      * que pudo haberse pausado al crear el Visualizer(0).
      *
-     * IMPORTANTE: No lanza ni reinicia ningún reproductor específico (Spotify, YouTube, etc).
-     * Solo envía un KeyEvent genérico al media session activo del sistema.
-     * Usa KEYCODE_MEDIA_PLAY (no PLAY_PAUSE) para evitar pausar música que ya esté sonando.
+     * 🔧 FIX: Deshabilitado — enviar KEYCODE_MEDIA_PLAY puede interferir con
+     * otras apps (TikTok, YouTube, etc.) causando comportamiento inesperado.
+     * El Visualizer(0) rara vez pausa la música en dispositivos modernos,
+     * y el riesgo de interferencia supera el beneficio.
      */
     private void nudgeAudioResume() {
-        if (audioManager == null || handler == null) return;
-
-        // Primer intento a 300ms (dar tiempo al Visualizer de estabilizarse)
-        handler.postDelayed(() -> {
-            try {
-                if (audioManager != null && !audioManager.isMusicActive()) {
-                    Log.d(TAG, "[MusicVisualizer] 🎵 Enviando MEDIA_PLAY genérico al sistema...");
-                    long eventTime = SystemClock.uptimeMillis();
-                    KeyEvent downEvent = new KeyEvent(eventTime, eventTime,
-                        KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PLAY, 0);
-                    audioManager.dispatchMediaKeyEvent(downEvent);
-                    KeyEvent upEvent = new KeyEvent(eventTime, eventTime,
-                        KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PLAY, 0);
-                    audioManager.dispatchMediaKeyEvent(upEvent);
-                } else {
-                    Log.d(TAG, "[MusicVisualizer] ✓ Música sigue activa, nudge innecesario");
-                }
-            } catch (Exception e) {
-                Log.w(TAG, "[MusicVisualizer] Error en nudge: " + e.getMessage());
-            }
-        }, 300);
-
-        // Segundo intento a 1000ms si el primero no funcionó
-        handler.postDelayed(() -> {
-            try {
-                if (audioManager != null && !audioManager.isMusicActive()) {
-                    Log.d(TAG, "[MusicVisualizer] 🎵 Segundo intento MEDIA_PLAY...");
-                    long eventTime = SystemClock.uptimeMillis();
-                    KeyEvent downEvent = new KeyEvent(eventTime, eventTime,
-                        KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PLAY, 0);
-                    audioManager.dispatchMediaKeyEvent(downEvent);
-                    KeyEvent upEvent = new KeyEvent(eventTime, eventTime,
-                        KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PLAY, 0);
-                    audioManager.dispatchMediaKeyEvent(upEvent);
-                }
-            } catch (Exception e) {
-                Log.w(TAG, "[MusicVisualizer] Error en segundo nudge: " + e.getMessage());
-            }
-        }, 1000);
+        // DESHABILITADO: dispatchMediaKeyEvent puede confundir media sessions
+        // de otras apps activas (TikTok, YouTube, etc.)
+        Log.d(TAG, "[MusicVisualizer] nudgeAudioResume: DESHABILITADO (evitar interferencia con otras apps)");
     }
 
     /**
@@ -707,24 +670,15 @@ public class MusicVisualizer {
             resume();
             Log.d(TAG, "[MusicVisualizer] ☀️ Smart resume: música activa, Visualizer ON");
         } else {
-            // No hay música → ir directo a sleep mode sin activar Visualizer
-            // El Visualizer queda pausado (no consume CPU/batería)
-            // Solo iniciamos el wake check para detectar cuando empiece la música
-            if (visualizer == null) {
-                // Necesitamos al menos tener un visualizer creado para cuando despierte
-                initialize();
-                // Inmediatamente ponerlo a dormir
-                if (visualizer != null) {
-                    try {
-                        visualizer.setEnabled(false);
-                    } catch (Exception ignored) {}
-                }
-            }
+            // No hay música → ir directo a sleep mode SIN crear Visualizer
+            // 🔋 FIX: No crear Visualizer(0) innecesariamente — puede interferir con
+            // la sesión de audio de otras apps (TikTok, YouTube, etc.)
+            // El Visualizer se creará cuando exitSleep() detecte música
             isSleeping = true;
             isEnabled = false;
             resetLevels();
             startWakeCheck();
-            Log.d(TAG, "[MusicVisualizer] 💤 Smart resume: sin música, directo a SLEEP");
+            Log.d(TAG, "[MusicVisualizer] 💤 Smart resume: sin música, directo a SLEEP (sin Visualizer)");
         }
     }
 

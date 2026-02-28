@@ -445,6 +445,16 @@ public class ImageConfig {
             1
         ));
 
+        // ═══════════════════════════════════════════════════════════════
+        // KRATOS CYCLOPS - Fondo estático
+        // ═══════════════════════════════════════════════════════════════
+        IMAGES.put("kratos_cyclops_bg.jpg", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "kratos_cyclops_bg.jpg",
+            481_000L,  // ~470 KB
+            "Kratos vs Cyclops Background",
+            1
+        ));
+
     }
 
     // ═══════════════════════════════════════════════════════════════════════
