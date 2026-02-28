@@ -100,6 +100,12 @@ public class MusicSystem {
     public void update(float deltaTime) {
         if (!initialized || !enabled || visualizer == null) return;
 
+        // 🔋 Verificar si debería entrar/salir de sleep mode
+        visualizer.checkSleepState();
+
+        // Si está dormido, las bandas decaen a cero naturalmente
+        // (no hay nuevos datos FFT alimentando los smoothedBands)
+
         // Obtener niveles del visualizador
         bassLevel = visualizer.getBassLevel();
         midLevel = visualizer.getMidLevel();

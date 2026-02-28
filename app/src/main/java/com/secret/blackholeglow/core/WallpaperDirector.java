@@ -94,6 +94,11 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     private boolean panelAutoStartFired = false;
     private static final float PANEL_AUTO_START_DELAY = 0.5f; // 500ms
 
+    // 🔋 Adaptive FPS: reducir FPS cuando no hay actividad
+    private long lastActivityTime = System.currentTimeMillis();
+    private static final long IDLE_TIMEOUT_MS = 5_000;  // 5s sin actividad → idle
+    private boolean isIdle = false;
+
     // TIMING (deltaTime y FPS manejados por GLStateManager)
     private static final float TIME_WRAP = 3600f;  // Reset cada hora para evitar overflow
     private float totalTime = 0f;
@@ -299,7 +304,8 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
                 }
 
                 // 🎵 Reconectar MusicVisualizer si no está activo
-                if (musicVisualizer != null) {
+                // 🔋 NO despertar si está en sleep mode (sin audio)
+                if (musicVisualizer != null && !musicVisualizer.isSleeping()) {
                     if (!musicVisualizer.isEnabled() || !musicVisualizer.isReceivingAudio()) {
                         Log.d(TAG, "🎵 [GL Thread] Reanudando MusicVisualizer post-autoload");
                         musicVisualizer.resume();
@@ -315,6 +321,25 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
         // Actualizar tiempo total para animaciones
         updateTotalTime(deltaTime);
+
+        // 🔋 Adaptive FPS: detectar idle vs activo
+        {
+            long now = System.currentTimeMillis();
+            boolean musicActive = musicVisualizer != null && musicVisualizer.isReceivingAudio();
+            boolean recentActivity = (now - lastActivityTime) < IDLE_TIMEOUT_MS;
+            boolean loading = modeController.isLoadingMode();
+            boolean transitioning = panelRenderer != null && panelRenderer.isTransitioning();
+
+            boolean shouldBeActive = musicActive || recentActivity || loading || transitioning;
+
+            if (shouldBeActive && isIdle) {
+                isIdle = false;
+                GLStateManager.get().setTargetFPS(GLStateManager.getFpsActive());
+            } else if (!shouldBeActive && !isIdle) {
+                isIdle = true;
+                GLStateManager.get().setTargetFPS(GLStateManager.getFpsIdle());
+            }
+        }
 
         // 🛡️ ROBUST ERROR HANDLING: Envolver todo el render en try-catch
         try {
@@ -454,7 +479,8 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         if (musicVisualizer != null) {
             // 🔧 AUTO-RECOVERY: Si estamos renderizando pero el visualizer está pausado,
             // reanudarlo automáticamente (fix para callbacks desordenados de Android)
-            if (!musicVisualizer.isEnabled()) {
+            // 🔋 NO despertar si está en sleep mode (ahorrando batería intencionalmente)
+            if (!musicVisualizer.isEnabled() && !musicVisualizer.isSleeping()) {
                 Log.d(TAG, "🔧 Auto-recovery: MusicVisualizer pausado durante render, reanudando...");
                 musicVisualizer.resume();
             }
@@ -577,7 +603,8 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
         // 🎵 Solo reconectar MusicVisualizer si NO está funcionando
         // ⚠️ Reconectar puede pausar Spotify, así que evitarlo si ya funciona
-        if (musicVisualizer != null) {
+        // 🔋 NO despertar si está en sleep mode (sin audio, ahorrando batería)
+        if (musicVisualizer != null && !musicVisualizer.isSleeping()) {
             if (musicVisualizer.isEnabled() && musicVisualizer.isReceivingAudio()) {
                 Log.d(TAG, "🎵 MusicVisualizer ya funcionando, sin reconectar");
             } else {
@@ -591,6 +618,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         if (!modeController.startLoading()) {
             return;
         }
+        markActivity();
 
         // Reset fallback state para nueva carga
         resourcesReady = false;
@@ -796,6 +824,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
     public boolean onTouchEvent(MotionEvent event) {
         if (!initialized) return false;
+        markActivity();
         touchRouter.setCurrentScene(sceneFactory.getCurrentScene());
         return touchRouter.onTouchEvent(event);
     }
@@ -805,6 +834,18 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     private void updateTotalTime(float deltaTime) {
         totalTime += deltaTime;
         if (totalTime > TIME_WRAP) totalTime -= TIME_WRAP;  // Evitar overflow
+    }
+
+    /**
+     * 🔋 Marca actividad reciente para mantener FPS alto (30)
+     * Llamar desde touch, loading, scene change, resume, etc.
+     */
+    private void markActivity() {
+        lastActivityTime = System.currentTimeMillis();
+        if (isIdle) {
+            isIdle = false;
+            GLStateManager.get().setTargetFPS(GLStateManager.getFpsActive());
+        }
     }
 
     public void pause() {
@@ -832,6 +873,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
     public void resume() {
         paused = false;
+        markActivity();
 
         // 🔧 FIX FREEZE: Si hay una destrucción de escena pendiente, NO resumir la escena actual.
         // La escena actual está a punto de ser destruida y reemplazada por una nueva.
@@ -870,12 +912,11 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
             modeController.goDirectToWallpaper();
         }
 
-        // 🎵 Reanudar MusicVisualizer - SIEMPRE reconectar para evitar estados inválidos
-        // después de ciclos rápidos de pause/resume del sistema Android
+        // 🎵 Reanudar MusicVisualizer con smart resume
+        // 🔋 Si no hay música, entra directo a sleep mode para no consumir batería
         if (musicVisualizer != null) {
-            // SIMPLIFICADO: siempre llamar resume() que maneja reconexión automática si falla
-            musicVisualizer.resume();
-            Log.d(TAG, "🎵 MusicVisualizer estado después de resume: enabled=" + musicVisualizer.isEnabled());
+            musicVisualizer.smartResume();
+            Log.d(TAG, "🎵 MusicVisualizer smart resume: sleeping=" + musicVisualizer.isSleeping());
         }
         Log.d(TAG, "WallpaperDirector reanudado");
     }
@@ -889,6 +930,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
 
     public void changeScene(String sceneName) {
         Log.d(TAG, "🔄 changeScene llamado: " + sceneName + " (actual: " + pendingSceneName + ")");
+        markActivity();
 
         // Si es la misma escena, no hacer nada
         if (sceneName != null && sceneName.equals(pendingSceneName)) {

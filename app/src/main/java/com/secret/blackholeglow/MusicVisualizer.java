@@ -76,6 +76,14 @@ public class MusicVisualizer {
     private boolean hasReceivedData = false;
     private boolean hasReceivedSignificantAudio = false;
 
+    // ════════════════════════════════════════════════════════════════════════
+    // 🔋 SLEEP MODE: Desactivar Visualizer cuando no hay audio para ahorrar batería
+    // ════════════════════════════════════════════════════════════════════════
+    private volatile boolean isSleeping = false;
+    private static final long SLEEP_AFTER_SILENCE_MS = 10_000;  // 10s sin audio → dormir
+    private static final long WAKE_CHECK_INTERVAL_MS = 2_000;   // Cada 2s verificar si hay audio
+    private Runnable wakeCheckRunnable;
+
     /**
      * Constructor sin context
      */
@@ -596,7 +604,9 @@ public class MusicVisualizer {
      * ⚡ Remueve listener ANTES de liberar para evitar memory leaks
      */
     public void release() {
-        // Cancelar callbacks pendientes
+        // Cancelar callbacks pendientes (incluyendo wake check)
+        isSleeping = false;
+        stopWakeCheck();
         if (handler != null) {
             handler.removeCallbacksAndMessages(null);
         }
@@ -623,6 +633,10 @@ public class MusicVisualizer {
      * Optimizado para pausas frecuentes (sistema Play/Stop del wallpaper)
      */
     public void pause() {
+        // Detener wake check si estaba en sleep
+        isSleeping = false;
+        stopWakeCheck();
+
         if (visualizer != null && isEnabled) {
             try {
                 visualizer.setEnabled(false);
@@ -679,6 +693,42 @@ public class MusicVisualizer {
     }
 
     /**
+     * Smart resume: Reactiva el Visualizer SOLO si hay música activa.
+     * Si no hay música, entra directo a sleep mode sin activar el audio pipe.
+     * Ideal para llamar desde onVisibilityChanged(true).
+     */
+    public void smartResume() {
+        boolean musicActive = audioManager != null && audioManager.isMusicActive();
+
+        if (musicActive) {
+            // Hay música → activar Visualizer normalmente
+            isSleeping = false;
+            stopWakeCheck();
+            resume();
+            Log.d(TAG, "[MusicVisualizer] ☀️ Smart resume: música activa, Visualizer ON");
+        } else {
+            // No hay música → ir directo a sleep mode sin activar Visualizer
+            // El Visualizer queda pausado (no consume CPU/batería)
+            // Solo iniciamos el wake check para detectar cuando empiece la música
+            if (visualizer == null) {
+                // Necesitamos al menos tener un visualizer creado para cuando despierte
+                initialize();
+                // Inmediatamente ponerlo a dormir
+                if (visualizer != null) {
+                    try {
+                        visualizer.setEnabled(false);
+                    } catch (Exception ignored) {}
+                }
+            }
+            isSleeping = true;
+            isEnabled = false;
+            resetLevels();
+            startWakeCheck();
+            Log.d(TAG, "[MusicVisualizer] 💤 Smart resume: sin música, directo a SLEEP");
+        }
+    }
+
+    /**
      * Resetea los valores de audio a cero (útil al pausar para evitar valores residuales)
      */
     public void resetLevels() {
@@ -688,5 +738,176 @@ public class MusicVisualizer {
         smoothedVolume = 0f;
         beatIntensity = 0f;
         isBeat = false;
+        for (int i = 0; i < NUM_BANDS; i++) {
+            smoothedBands[i] = 0f;
+            frequencyBands[i] = 0f;
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 🔋 SLEEP MODE
+    // ════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Verifica si el visualizer debería entrar en modo sleep.
+     * Llamar periódicamente desde el render loop (ej. cada frame).
+     * Cuando no hay audio por SLEEP_AFTER_SILENCE_MS, desactiva el Visualizer
+     * y empieza a verificar periódicamente si el audio vuelve.
+     *
+     * También decae las bandas a cero durante sleep para que el ecualizador
+     * se apague suavemente.
+     */
+    public void checkSleepState() {
+        // Decaer bandas a cero cuando dormido (cada frame)
+        if (isSleeping) {
+            decayBandsToZero();
+            return;
+        }
+
+        if (!isEnabled || visualizer == null) return;
+
+        long now = System.currentTimeMillis();
+        long silenceDuration = now - lastSignificantAudioTime;
+
+        // Si lastSignificantAudioTime es 0 (nunca recibió audio), usar lastAudioDataTime
+        if (lastSignificantAudioTime == 0 && hasReceivedData) {
+            silenceDuration = now - lastAudioDataTime;
+        }
+
+        if (silenceDuration >= SLEEP_AFTER_SILENCE_MS) {
+            enterSleep();
+        }
+    }
+
+    /**
+     * Decae suavemente todas las bandas y niveles a cero.
+     * Llamado cada frame durante sleep para efecto visual de "apagado".
+     */
+    private void decayBandsToZero() {
+        float decay = 0.92f;  // ~60 frames para llegar a ~zero
+        boolean allZero = true;
+
+        for (int i = 0; i < NUM_BANDS; i++) {
+            smoothedBands[i] *= decay;
+            if (smoothedBands[i] < 0.001f) {
+                smoothedBands[i] = 0f;
+            } else {
+                allZero = false;
+            }
+        }
+
+        smoothedBass *= decay;
+        smoothedMid *= decay;
+        smoothedTreble *= decay;
+        smoothedVolume *= decay;
+        beatIntensity *= decay;
+
+        if (smoothedBass < 0.001f) smoothedBass = 0f;
+        if (smoothedMid < 0.001f) smoothedMid = 0f;
+        if (smoothedTreble < 0.001f) smoothedTreble = 0f;
+        if (smoothedVolume < 0.001f) smoothedVolume = 0f;
+        if (smoothedBass < 0.001f) beatIntensity = 0f;
+        isBeat = false;
+    }
+
+    /**
+     * Entra en modo sleep: desactiva el Visualizer para ahorrar batería
+     * e inicia verificación periódica de audio via AudioManager.
+     */
+    private void enterSleep() {
+        if (isSleeping) return;
+
+        Log.d(TAG, "[MusicVisualizer] 💤 Entrando en SLEEP MODE (sin audio por " +
+            (SLEEP_AFTER_SILENCE_MS / 1000) + "s) — ahorrando batería");
+
+        isSleeping = true;
+
+        // Desactivar el Visualizer (deja de consumir CPU/batería en el audio pipe)
+        if (visualizer != null) {
+            try {
+                visualizer.setEnabled(false);
+            } catch (Exception e) {
+                Log.w(TAG, "[MusicVisualizer] Error desactivando visualizer para sleep: " + e.getMessage());
+            }
+        }
+
+        // Iniciar verificación periódica de audio
+        startWakeCheck();
+    }
+
+    /**
+     * Sale del modo sleep: reactiva el Visualizer cuando se detecta audio.
+     */
+    private void exitSleep() {
+        if (!isSleeping) return;
+
+        Log.d(TAG, "[MusicVisualizer] ☀️ Saliendo de SLEEP MODE — audio detectado");
+
+        isSleeping = false;
+        stopWakeCheck();
+
+        // Reactivar el Visualizer
+        if (visualizer != null) {
+            try {
+                visualizer.setEnabled(true);
+                isEnabled = true;
+                lastAudioDataTime = System.currentTimeMillis();
+                Log.d(TAG, "[MusicVisualizer] ✓ Visualizer reactivado");
+            } catch (IllegalStateException e) {
+                Log.w(TAG, "[MusicVisualizer] Visualizer en estado inválido, reconectando...");
+                isSleeping = false;
+                reconnect();
+            }
+        } else {
+            // Visualizer fue liberado, reinicializar
+            isSleeping = false;
+            initialize();
+        }
+    }
+
+    /**
+     * Inicia verificación periódica de AudioManager.isMusicActive()
+     * para despertar cuando el usuario empiece a reproducir audio.
+     */
+    private void startWakeCheck() {
+        stopWakeCheck();
+
+        wakeCheckRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (!isSleeping) return;
+
+                boolean musicActive = audioManager != null && audioManager.isMusicActive();
+                if (musicActive) {
+                    exitSleep();
+                } else {
+                    // Seguir verificando
+                    if (handler != null) {
+                        handler.postDelayed(this, WAKE_CHECK_INTERVAL_MS);
+                    }
+                }
+            }
+        };
+
+        if (handler != null) {
+            handler.postDelayed(wakeCheckRunnable, WAKE_CHECK_INTERVAL_MS);
+        }
+    }
+
+    /**
+     * Detiene la verificación periódica de wake.
+     */
+    private void stopWakeCheck() {
+        if (handler != null && wakeCheckRunnable != null) {
+            handler.removeCallbacks(wakeCheckRunnable);
+            wakeCheckRunnable = null;
+        }
+    }
+
+    /**
+     * ¿Está el visualizer en modo sleep?
+     */
+    public boolean isSleeping() {
+        return isSleeping;
     }
 }

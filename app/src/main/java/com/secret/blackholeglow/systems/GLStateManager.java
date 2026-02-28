@@ -70,8 +70,10 @@ public class GLStateManager {
     // ═══════════════════════════════════════════════════════════════
     // 🔋 FPS LIMITER - Ahorro de batería para live wallpapers
     // ═══════════════════════════════════════════════════════════════
-    private static final int TARGET_FPS = 30;  // 30 FPS es suficiente para wallpapers
-    private static final long TARGET_FRAME_TIME_NS = 1_000_000_000L / TARGET_FPS;  // ~33.3ms
+    private static final int FPS_ACTIVE = 30;
+    private static final int FPS_IDLE = 15;
+    private int targetFPS = FPS_ACTIVE;
+    private long targetFrameTimeNs = 1_000_000_000L / FPS_ACTIVE;
     private boolean fpsLimitEnabled = true;
 
     private GLStateManager() {
@@ -152,7 +154,7 @@ public class GLStateManager {
         if (fpsLimitEnabled) {
             long now = System.nanoTime();
             long elapsed = now - lastFrameTime;
-            long sleepTime = TARGET_FRAME_TIME_NS - elapsed;
+            long sleepTime = targetFrameTimeNs - elapsed;
 
             if (sleepTime > 1_000_000) {  // Solo si hay más de 1ms que esperar
                 try {
@@ -188,11 +190,11 @@ public class GLStateManager {
 
     /**
      * 🔋 Habilita/deshabilita el limitador de FPS
-     * @param enabled true para limitar a TARGET_FPS (30), false para ilimitado
+     * @param enabled true para limitar a targetFPS, false para ilimitado
      */
     public void setFpsLimitEnabled(boolean enabled) {
         this.fpsLimitEnabled = enabled;
-        Log.d(TAG, "🔋 FPS Limit: " + (enabled ? "ON (30 FPS)" : "OFF (ilimitado)"));
+        Log.d(TAG, "🔋 FPS Limit: " + (enabled ? "ON (" + targetFPS + " FPS)" : "OFF (ilimitado)"));
     }
 
     /** @return true si el limitador de FPS está activo */
@@ -200,9 +202,31 @@ public class GLStateManager {
         return fpsLimitEnabled;
     }
 
-    /** @return El FPS objetivo cuando el limitador está activo */
+    /**
+     * 🔋 Cambia el FPS objetivo dinámicamente (30 activo, 15 idle)
+     * @param fps nuevo FPS objetivo
+     */
+    public void setTargetFPS(int fps) {
+        if (fps != targetFPS) {
+            Log.d(TAG, "🔋 FPS: " + targetFPS + " → " + fps);
+            targetFPS = fps;
+            targetFrameTimeNs = 1_000_000_000L / fps;
+        }
+    }
+
+    /** @return El FPS objetivo actual */
     public int getTargetFPS() {
-        return TARGET_FPS;
+        return targetFPS;
+    }
+
+    /** @return FPS para modo activo (música, touch, etc) */
+    public static int getFpsActive() {
+        return FPS_ACTIVE;
+    }
+
+    /** @return FPS para modo idle (sin actividad) */
+    public static int getFpsIdle() {
+        return FPS_IDLE;
     }
 
     /**
