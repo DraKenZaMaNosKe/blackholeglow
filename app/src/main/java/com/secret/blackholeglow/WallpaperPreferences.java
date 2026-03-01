@@ -91,6 +91,7 @@ public class WallpaperPreferences {
         "KRATOS_CYCLOPS",    // ⚔️ Kratos vs Cyclops - God of War
         "ITACHI",            // 👁️ Itachi - Sharingan Eye
         "SUPERCAMPEONES",    // ⚽ Supercampeones - Captain Tsubasa
+        "GOKU_KAMEHAME",     // 🐉 Goku Kamehameha - Ki Energy Blast
 
         // ═══════════════════════════════════════════
         // 📦 WALLPAPERS LEGADOS (compatibilidad)

@@ -91,10 +91,10 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     private float resourcesReadyTimer = 0f;
     private static final float LOADING_FALLBACK_TIMEOUT = 2.0f;  // 2 segundos máximo de animación
 
-    // Auto-start: inicia wallpaper automáticamente después de 500ms en panel
+    // Auto-start: inicia wallpaper automáticamente después de 3s en panel
     private float panelAutoStartTimer = 0f;
     private boolean panelAutoStartFired = false;
-    private static final float PANEL_AUTO_START_DELAY = 0.5f; // 500ms
+    private static final float PANEL_AUTO_START_DELAY = 3.0f; // 3 segundos
 
     // 🔋 Adaptive FPS: reducir FPS cuando no hay actividad
     private long lastActivityTime = System.currentTimeMillis();
@@ -352,12 +352,12 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
                 case PANEL_MODE:
                     panelRenderer.updatePanelMode(deltaTime);
                     panelRenderer.drawPanelMode();
-                    // Auto-start wallpaper after 500ms in panel
+                    // Auto-start wallpaper after 3s in panel
                     if (!panelAutoStartFired && pendingSceneName != null && !pendingSceneName.isEmpty()) {
                         panelAutoStartTimer += deltaTime;
                         if (panelAutoStartTimer >= PANEL_AUTO_START_DELAY) {
                             panelAutoStartFired = true;
-                            Log.d(TAG, "⏱️ Auto-start: iniciando wallpaper tras 500ms");
+                            Log.d(TAG, "⏱️ Auto-start: iniciando wallpaper tras 3s");
                             startLoading();
                         }
                     }

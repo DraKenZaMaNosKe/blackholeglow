@@ -714,6 +714,21 @@ public class WallpaperCatalog {
                 .featured()
                 .build());
 
+        // ═══════════════════════════════════════════════════════════════════
+        // 🐉 GOKU KAMEHAMEHA - Ki Energy Blast
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("🐉 GOKU KAMEHAMEHA")
+                .descripcion("Kamehameha!")
+                .preview(R.drawable.preview_goku_kamehame)
+                .sceneName("GOKU_KAMEHAME")
+                .tier(WallpaperTier.FREE)
+                .badge("NEW")
+                .glow(0xFF00BFFF)  // Deep Sky Blue (Ki energy)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIME)
+                .featured()
+                .build());
+
         Log.d(TAG, "📚 Catálogo inicializado: " + catalog.size() + " wallpapers");
     }
 }

@@ -197,6 +197,14 @@ public class VideoConfig {
             "Itachi Uchiha",
             2  // v2: Re-encoded 540p (-82% tamaño)
         ));
+
+        // GokuKamehameScene - SSJ Goku Kamehameha (v1: 540x960, era 1080x1920)
+        VIDEOS.put("goku_kamehame_scene.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "goku_kamehame_scene_540p.mp4",
+            1_135_881L,  // ~1.1 MB (540x960 @ 1.8Mbps, antes 7.8 MB!)
+            "Goku Kamehameha",
+            1  // v1: Re-encoded 540p (-86% tamaño)
+        ));
     }
 
     // =========================================================================

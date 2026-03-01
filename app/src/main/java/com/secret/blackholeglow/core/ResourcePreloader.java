@@ -219,6 +219,10 @@ public class ResourcePreloader {
                 prepareSupercampeonesSceneTasks();
                 break;
 
+            case "GOKU_KAMEHAME":
+                prepareGokuKamehameSceneTasks();
+                break;
+
             default:
                 // Dynamic scenes: DYN_IMG_* / DYN_VID_*
                 if (sceneName.startsWith("DYN_IMG_") || sceneName.startsWith("DYN_VID_")) {
@@ -458,6 +462,9 @@ public class ResourcePreloader {
 
             case "SUPERCAMPEONES":
                 return Arrays.asList("supercampeones_scene.mp4");
+
+            case "GOKU_KAMEHAME":
+                return Arrays.asList("goku_kamehame_scene.mp4");
 
             default:
                 return new ArrayList<>();
@@ -1015,6 +1022,14 @@ public class ResourcePreloader {
         addTextureTask("Preparando escena Supercampeones", R.drawable.preview_supercampeones, 2);
         calculateTotalWeight();
         Log.d(TAG, "⚽ Supercampeones: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    public void prepareGokuKamehameSceneTasks() {
+        tasks.clear();
+        addVideoDownloadTask("Video Goku Kamehameha", "goku_kamehame_scene.mp4", 10);
+        addTextureTask("Preparando escena Goku Kamehameha", R.drawable.preview_goku_kamehame, 2);
+        calculateTotalWeight();
+        Log.d(TAG, "🐉 Goku Kamehameha: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
     }
 
     private void calculateTotalWeight() {
