@@ -181,6 +181,22 @@ public class VideoConfig {
             "Kratos God of War",
             1
         ));
+
+        // SupercampeonesScene - Captain Tsubasa (v2: 540x960, era 1080x1920)
+        VIDEOS.put("supercampeones_scene.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "supercampeones_scene_540p.mp4",
+            1_983_554L,  // ~1.9 MB (540x960 @ 2.0Mbps, antes 12.3 MB!)
+            "Supercampeones",
+            2  // v2: Re-encoded 540p (-84% tamaño)
+        ));
+
+        // ItachiScene - Sharingan eye (v2: 540x960, era 1080x1920)
+        VIDEOS.put("itachi_scene_00.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "itachi_scene_00_540p.mp4",
+            1_418_410L,  // ~1.4 MB (540x960 @ 2.2Mbps, antes 7.9 MB!)
+            "Itachi Uchiha",
+            2  // v2: Re-encoded 540p (-82% tamaño)
+        ));
     }
 
     // =========================================================================

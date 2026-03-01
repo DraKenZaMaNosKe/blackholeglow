@@ -211,6 +211,14 @@ public class ResourcePreloader {
                 prepareKratosCyclopsSceneTasks();
                 break;
 
+            case "ITACHI":
+                prepareItachiSceneTasks();
+                break;
+
+            case "SUPERCAMPEONES":
+                prepareSupercampeonesSceneTasks();
+                break;
+
             default:
                 // Dynamic scenes: DYN_IMG_* / DYN_VID_*
                 if (sceneName.startsWith("DYN_IMG_") || sceneName.startsWith("DYN_VID_")) {
@@ -444,6 +452,12 @@ public class ResourcePreloader {
 
             case "KRATOS_CYCLOPS":
                 return Arrays.asList();  // Solo usa imágenes, no videos
+
+            case "ITACHI":
+                return Arrays.asList("itachi_scene_00.mp4");
+
+            case "SUPERCAMPEONES":
+                return Arrays.asList("supercampeones_scene.mp4");
 
             default:
                 return new ArrayList<>();
@@ -985,6 +999,22 @@ public class ResourcePreloader {
         addTextureTask("Preparando escena Kratos Cyclops", R.drawable.preview_kratos_cyclops, 2);
         calculateTotalWeight();
         Log.d(TAG, "⚔️ Kratos Cyclops: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    public void prepareItachiSceneTasks() {
+        tasks.clear();
+        addVideoDownloadTask("Video Itachi", "itachi_scene_00.mp4", 10);
+        addTextureTask("Preparando escena Itachi", R.drawable.preview_itachi, 2);
+        calculateTotalWeight();
+        Log.d(TAG, "👁️ Itachi: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    public void prepareSupercampeonesSceneTasks() {
+        tasks.clear();
+        addVideoDownloadTask("Video Supercampeones", "supercampeones_scene.mp4", 10);
+        addTextureTask("Preparando escena Supercampeones", R.drawable.preview_supercampeones, 2);
+        calculateTotalWeight();
+        Log.d(TAG, "⚽ Supercampeones: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
     }
 
     private void calculateTotalWeight() {

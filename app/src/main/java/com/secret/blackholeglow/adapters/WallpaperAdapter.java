@@ -195,15 +195,9 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
     public void onBindViewHolder(@NonNull WallpaperViewHolder holder, int position) {
         WallpaperItem item = wallpapers.get(position);
 
-        // ✨ Asignar título con gradiente épico
-        holder.textTitle.setText(item.getNombre());
-
-        // Crear gradiente basado en el color glow del wallpaper
-        int glowColor = item.getGlowColor();
-        int lighterColor = lightenColor(glowColor, 0.4f);
-        holder.textTitle.setGradientColors(Color.WHITE, lighterColor, glowColor, lighterColor, Color.WHITE);
-
-        holder.textDescription.setText(item.getDescripcion());
+        // Ocultar nombre y descripción — dejar que los usuarios imaginen
+        holder.textTitle.setVisibility(View.GONE);
+        holder.textDescription.setVisibility(View.GONE);
 
         // ╔═════════════════════════════════════════════════════════╗
         // ║  🎨 ASIGNAR IMAGEN DE PREVIEW DESDE WallpaperItem      ║

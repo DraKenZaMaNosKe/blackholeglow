@@ -30,6 +30,8 @@ import com.secret.blackholeglow.scenes.GatitoDJScene;
 import com.secret.blackholeglow.scenes.PixelCityScene;
 import com.secret.blackholeglow.scenes.KratosScene;
 import com.secret.blackholeglow.scenes.KratosCyclopsScene;
+import com.secret.blackholeglow.scenes.ItachiScene;
+import com.secret.blackholeglow.scenes.SupercampeonesScene;
 import com.secret.blackholeglow.scenes.DynamicImageScene;
 import com.secret.blackholeglow.scenes.DynamicVideoScene;
 import com.secret.blackholeglow.systems.DynamicCatalog;
@@ -175,6 +177,10 @@ public class SceneFactory {
         registerScene("KRATOS", KratosScene.class);
         // ⚔️ Kratos vs Cyclops: Imagen + aura de energía
         registerScene("KRATOS_CYCLOPS", KratosCyclopsScene.class);
+        // 👁️ Itachi: Sharingan eye video
+        registerScene("ITACHI", ItachiScene.class);
+        // ⚽ Supercampeones: Captain Tsubasa golden kick
+        registerScene("SUPERCAMPEONES", SupercampeonesScene.class);
 
         Log.d(TAG, "🎭 " + registeredScenes.size() + " escenas registradas");
     }

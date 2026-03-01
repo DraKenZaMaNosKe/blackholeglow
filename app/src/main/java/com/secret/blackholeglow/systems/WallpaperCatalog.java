@@ -684,6 +684,36 @@ public class WallpaperCatalog {
                 .featured()
                 .build());
 
+        // ═══════════════════════════════════════════════════════════════════
+        // 👁️ ITACHI - Sharingan Eye
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("👁️ ITACHI")
+                .descripcion("Sharingan awakened.")
+                .preview(R.drawable.preview_itachi)
+                .sceneName("ITACHI")
+                .tier(WallpaperTier.FREE)
+                .badge("NEW")
+                .glow(0xFFCC0000)  // Rojo Sharingan
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIME)
+                .featured()
+                .build());
+
+        // ═══════════════════════════════════════════════════════════════════
+        // ⚽ SUPERCAMPEONES - Captain Tsubasa
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("⚽ SUPERCAMPEONES")
+                .descripcion("Super Strike!")
+                .preview(R.drawable.preview_supercampeones)
+                .sceneName("SUPERCAMPEONES")
+                .tier(WallpaperTier.FREE)
+                .badge("NEW")
+                .glow(0xFFFFAA00)  // Dorado fuego
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIME)
+                .featured()
+                .build());
+
         Log.d(TAG, "📚 Catálogo inicializado: " + catalog.size() + " wallpapers");
     }
 }

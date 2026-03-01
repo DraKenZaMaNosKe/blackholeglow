@@ -89,6 +89,8 @@ public class WallpaperPreferences {
         "PIXEL_CITY",        // 🏙️ Pixel City - Retro Pixel Art
         "KRATOS",            // ⚔️ Kratos - God of War
         "KRATOS_CYCLOPS",    // ⚔️ Kratos vs Cyclops - God of War
+        "ITACHI",            // 👁️ Itachi - Sharingan Eye
+        "SUPERCAMPEONES",    // ⚽ Supercampeones - Captain Tsubasa
 
         // ═══════════════════════════════════════════
         // 📦 WALLPAPERS LEGADOS (compatibilidad)
