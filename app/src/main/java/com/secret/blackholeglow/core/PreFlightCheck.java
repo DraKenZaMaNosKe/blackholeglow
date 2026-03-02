@@ -101,6 +101,9 @@ public class PreFlightCheck {
         long start = System.currentTimeMillis();
         List<Issue> issues = new ArrayList<>();
 
+        // Asegurar que DeviceProfile esté inicializado (puede llamarse antes que WallpaperDirector)
+        DeviceProfile.init(context);
+
         // Obtener info de la escena del catalogo
         WallpaperItem item = WallpaperCatalog.get().getBySceneName(sceneName);
         SceneWeight weight = item != null ? item.getSceneWeight() : SceneWeight.MEDIUM;
@@ -359,7 +362,8 @@ public class PreFlightCheck {
                 }
             }
             this.allResourcesReady = allReady;
-            this.systemHealthy = freeDiskMB >= 30 && availableRamMB >= 50;
+            // Si availableRamMB es -1, no se pudo leer → asumir OK (no bloquear)
+            this.systemHealthy = freeDiskMB >= 30 && (availableRamMB < 0 || availableRamMB >= 50);
             this.canInstall = allResourcesReady && systemHealthy;
         }
 
@@ -377,6 +381,9 @@ public class PreFlightCheck {
      * Ejecuta verificación detallada de recursos + sistema para el dialog pre-instalación.
      */
     public static InstallCheckResult runInstallCheck(Context context, String sceneName) {
+        // Asegurar que DeviceProfile esté inicializado
+        DeviceProfile.init(context);
+
         List<ResourceStatus> resources = new ArrayList<>();
 
         // 1. Videos

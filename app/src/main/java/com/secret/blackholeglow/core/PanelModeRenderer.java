@@ -16,6 +16,7 @@ import com.secret.blackholeglow.effects.PixelationTransition;
 import com.secret.blackholeglow.effects.ProceduralPanelBackground;
 import com.secret.blackholeglow.image.ImageDownloadManager;
 import com.secret.blackholeglow.models.WallpaperItem;
+import com.secret.blackholeglow.systems.DynamicCatalog;
 import com.secret.blackholeglow.systems.WallpaperCatalog;
 
 import java.io.File;
@@ -189,6 +190,30 @@ public class PanelModeRenderer {
 
             Log.d(TAG, "🖼️ Preview seleccionado: " + selectedScene + " -> " + currentPreviewResourceId
                     + (useProceduralBackground ? " (procedural)" : useRemotePreview ? " (remote)" : ""));
+        } else if (selectedScene.startsWith("DYN_IMG_") || selectedScene.startsWith("DYN_VID_")) {
+            // Dynamic wallpaper: try to load its downloaded image/preview as background
+            String dynId = selectedScene.startsWith("DYN_IMG_")
+                    ? selectedScene.substring("DYN_IMG_".length())
+                    : selectedScene.substring("DYN_VID_".length());
+            DynamicCatalog.DynamicEntry entry = DynamicCatalog.get().getEntryById(dynId, context);
+            if (entry != null) {
+                ImageDownloadManager imgMgr = ImageDownloadManager.getInstance(context);
+                // Try image file first (for DYN_IMG), then preview file
+                String imgFile = entry.imageFile != null ? entry.imageFile : entry.previewFile;
+                String path = imgFile != null ? imgMgr.getImagePath(imgFile) : null;
+                if (path != null && new File(path).exists()) {
+                    remotePreviewPath = path;
+                    useProceduralBackground = false;
+                    useRemotePreview = true;
+                    Log.d(TAG, "🖼️ Dynamic preview: " + path);
+                } else {
+                    useProceduralBackground = true;
+                    Log.w(TAG, "⚠️ Dynamic image not downloaded: " + imgFile);
+                }
+            } else {
+                useProceduralBackground = true;
+                Log.w(TAG, "⚠️ Dynamic entry not found: " + dynId);
+            }
         } else {
             useProceduralBackground = true;
             Log.w(TAG, "⚠️ Wallpaper '" + selectedScene + "' no encontrado, usando fondo procedural");

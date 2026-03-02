@@ -70,7 +70,7 @@ public class SceneFactory {
     // ═══════════════════════════════════════════════════════════════
 
     private final Map<String, Class<? extends WallpaperScene>> registeredScenes = new HashMap<>();
-    private final String defaultSceneName = "PYRALIS";
+    private final String defaultSceneName = "GATITO_DJ";
 
     // Dependencias para inyectar
     private Context context;
@@ -293,8 +293,14 @@ public class SceneFactory {
             return scene;
 
         } catch (Exception e) {
-            Log.e(TAG, "❌ Error creando escena: " + e.getMessage());
+            Log.e(TAG, "❌ Error creando escena " + sceneName + ": " + e.getMessage());
             e.printStackTrace();
+
+            // Fallback: try default scene if this wasn't already the default
+            if (!sceneName.equals(defaultSceneName)) {
+                Log.w(TAG, "🔄 Fallback → " + defaultSceneName);
+                return createScene(defaultSceneName);
+            }
             return null;
         }
     }

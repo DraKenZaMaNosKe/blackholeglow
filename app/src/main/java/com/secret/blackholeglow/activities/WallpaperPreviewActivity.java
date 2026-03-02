@@ -581,9 +581,11 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
         systemHeader.setPadding(0, 0, 0, dpToPx(8));
         root.addView(systemHeader);
 
-        // RAM
-        String ramIcon = result.availableRamMB >= 50 ? "\u2705" : "\u26A0\uFE0F";
-        String ramText = "RAM: " + formatSize(result.availableRamMB) + " free " + ramIcon;
+        // RAM (-1 means couldn't read → show as OK)
+        String ramIcon = (result.availableRamMB < 0 || result.availableRamMB >= 50) ? "\u2705" : "\u26A0\uFE0F";
+        String ramText = result.availableRamMB < 0
+                ? "RAM: OK " + ramIcon
+                : "RAM: " + formatSize(result.availableRamMB) + " free " + ramIcon;
         TextView ramLine = new TextView(this);
         ramLine.setText(ramText);
         ramLine.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);

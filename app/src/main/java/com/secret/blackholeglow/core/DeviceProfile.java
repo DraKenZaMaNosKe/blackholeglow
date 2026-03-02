@@ -34,7 +34,7 @@ public class DeviceProfile {
      * Debe llamarse una sola vez al inicio (WallpaperDirector.initializeSharedSystems).
      */
     public static void init(Context context) {
-        if (instance != null) return;
+        if (instance != null && instance.activityManager != null) return;
         instance = new DeviceProfile();
         instance.detect(context.getApplicationContext());
     }
@@ -42,8 +42,9 @@ public class DeviceProfile {
     public static DeviceProfile get() {
         if (instance == null) {
             // Fallback seguro: si no se inicializo, usar MEDIUM por defecto
+            // NO cachear la instancia rota — permitir que init() la reemplace después
             Log.w(TAG, "DeviceProfile.get() llamado sin init() - usando MEDIUM por defecto");
-            instance = new DeviceProfile();
+            return new DeviceProfile();
         }
         return instance;
     }

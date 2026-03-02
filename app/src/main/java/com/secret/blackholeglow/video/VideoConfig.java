@@ -198,6 +198,22 @@ public class VideoConfig {
             2  // v2: Re-encoded 540p (-82% tamaño)
         ));
 
+        // AlienScene - Xenomorph acid terror (v1: 540x960, era 1080x1920)
+        VIDEOS.put("alien_scene.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "alien_scene_540p.mp4",
+            1_472_557L,  // ~1.4 MB (540x960, antes 9.5 MB!)
+            "Alien Xenomorph",
+            1  // v1: Re-encoded 540p (-85% tamaño)
+        ));
+
+        // MegamanShootingScene - Energy blast (v1: 540x960, era 1080x1920)
+        VIDEOS.put("megaman_shooting_scene.mp4", new ResourceInfo(
+            SUPABASE_VIDEOS_URL + "megaman_shooting_scene_540p.mp4",
+            799_817L,  // ~800 KB (540x960, antes 4.8 MB!)
+            "Megaman Shooting",
+            1  // v1: Re-encoded 540p (-83% tamaño)
+        ));
+
         // GokuKamehameScene - SSJ Goku Kamehameha (v1: 540x960, era 1080x1920)
         VIDEOS.put("goku_kamehame_scene.mp4", new ResourceInfo(
             SUPABASE_VIDEOS_URL + "goku_kamehame_scene_540p.mp4",
