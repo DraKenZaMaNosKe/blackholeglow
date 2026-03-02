@@ -319,7 +319,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_oceano_sc)
                 .sceneName("ABYSSIA")
                 .tier(WallpaperTier.FREE)
-                .badge("🌊 NEW")
+                .badge("LIVE")
                 .glow(0xFF00CED1)  // Dark Turquoise
                 .weight(SceneWeight.HEAVY)  // Video + 2 OBJ models + particulas = genuinamente pesado
                 .category(WallpaperCategory.NATURE)
@@ -333,7 +333,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_portal_cosmico)
                 .sceneName("PYRALIS")
                 .tier(WallpaperTier.FREE)
-                .badge("🔥 POPULAR")
+                .badge("LIVE")
                 .glow(0xFFFF4500)  // Orange Red
                 .weight(SceneWeight.MEDIUM)
                 .category(WallpaperCategory.UNIVERSE)
@@ -347,7 +347,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_goku)
                 .sceneName("GOKU")
                 .tier(WallpaperTier.FREE)
-                .badge("🐉 NEW")
+                .badge("VIDEO")
                 .glow(0xFF00BFFF)  // Deep Sky Blue (energía Ki)
                 .weight(SceneWeight.LIGHT)
                 .category(WallpaperCategory.ANIME)
@@ -361,7 +361,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.hdapreview)
                 .sceneName("ADVENTURE_TIME")
                 .tier(WallpaperTier.FREE)
-                .badge("🌳 NEW")
+                .badge("VIDEO")
                 .glow(0xFFFF8C00)  // Dark Orange (fogata)
                 .weight(SceneWeight.LIGHT)
                 .category(WallpaperCategory.ANIME)
@@ -375,7 +375,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_neoncity)
                 .sceneName("NEON_CITY")
                 .tier(WallpaperTier.FREE)
-                .badge("🚗 NEW")
+                .badge("LIVE")
                 .glow(0xFFFF1493)  // Deep Pink (synthwave)
                 .weight(SceneWeight.MEDIUM)
                 .category(WallpaperCategory.SCENES)
@@ -389,7 +389,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_saintseiya)
                 .sceneName("SAINT_SEIYA")
                 .tier(WallpaperTier.FREE)
-                .badge("⭐ COSMOS")
+                .badge("LIVE")
                 .glow(0xFFFFD700)  // Gold (cosmos)
                 .weight(SceneWeight.MEDIUM)
                 .category(WallpaperCategory.ANIME)
@@ -405,7 +405,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_walkingdead)
                 .sceneName("WALKING_DEAD")
                 .tier(WallpaperTier.FREE)
-                .badge("🧟 ZOMBIE")
+                .badge("LIVE")
                 .glow(0xFF00FF00)  // Green zombie
                 .weight(SceneWeight.MEDIUM)
                 .category(WallpaperCategory.SCENES)
@@ -421,7 +421,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_zelda)
                 .sceneName("ZELDA_BOTW")
                 .tier(WallpaperTier.FREE)
-                .badge("🛡️ PARALLAX")
+                .badge("LIVE")
                 .glow(0xFF4CAF50)  // Zelda green
                 .weight(SceneWeight.MEDIUM)  // Sin video: parallax layers + 1 OBJ = MEDIUM
                 .category(WallpaperCategory.GAMING)
@@ -437,7 +437,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_superman)
                 .sceneName("SUPERMAN")
                 .tier(WallpaperTier.FREE)
-                .badge("🦸 HERO")
+                .badge("VIDEO")
                 .glow(0xFFDC143C)  // Superman red
                 .weight(SceneWeight.LIGHT)
                 .category(WallpaperCategory.ANIME)
@@ -453,7 +453,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_aot)
                 .sceneName("AOT")
                 .tier(WallpaperTier.FREE)
-                .badge("⚔️ TITAN")
+                .badge("VIDEO")
                 .glow(0xFF00E5B0)  // Eren's green eyes
                 .weight(SceneWeight.LIGHT)
                 .category(WallpaperCategory.ANIME)
@@ -469,7 +469,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_spider)
                 .sceneName("SPIDER")
                 .tier(WallpaperTier.FREE)
-                .badge("🕷️ HORROR")
+                .badge("VIDEO")
                 .glow(0xFFDC143C)  // Crimson red (spider eyes)
                 .weight(SceneWeight.LIGHT)
                 .category(WallpaperCategory.ANIMALS)
@@ -485,7 +485,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_lost_atlantis)
                 .sceneName("LOST_ATLANTIS")
                 .tier(WallpaperTier.FREE)
-                .badge("🌊 NEW")
+                .badge("VIDEO")
                 .glow(0xFF00CED1)  // Dark Turquoise
                 .weight(SceneWeight.LIGHT)  // Video-only, sin modelos 3D = LIGHT
                 .category(WallpaperCategory.SCENES)
@@ -501,7 +501,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_human_predator)
                 .sceneName("THE_HUMAN_PREDATOR")
                 .tier(WallpaperTier.FREE)
-                .badge("🦁 NEW")
+                .badge("VIDEO")
                 .glow(0xFF8B0000)  // Dark Red (sangre)
                 .weight(SceneWeight.LIGHT)  // Video-only, sin modelos 3D = LIGHT
                 .category(WallpaperCategory.SCENES)
@@ -517,7 +517,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_moonlit_cat)
                 .sceneName("MOONLIT_CAT")
                 .tier(WallpaperTier.FREE)
-                .badge("🌙 NEW")
+                .badge("LIVE")
                 .glow(0xFF4169E1)  // Royal Blue (moonlight)
                 .weight(SceneWeight.MEDIUM)  // Sin video: shaders + 2 OBJ + texturas optimizadas = MEDIUM
                 .category(WallpaperCategory.ANIMALS)
@@ -533,7 +533,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_frieza_deathbeam)
                 .sceneName("FRIEZA_DEATHBEAM")
                 .tier(WallpaperTier.FREE)
-                .badge("💜 NEW")
+                .badge("LIVE")
                 .glow(0xFF8B00FF)  // Purple (Frieza energy)
                 .weight(SceneWeight.MEDIUM)
                 .category(WallpaperCategory.ANIME)
@@ -549,7 +549,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_ken)
                 .sceneName("KEN")
                 .tier(WallpaperTier.FREE)
-                .badge("🥊 NEW")
+                .badge("LIVE")
                 .glow(0xFFFF4500)  // Orange Red (Ken's gi)
                 .weight(SceneWeight.LIGHT)
                 .category(WallpaperCategory.GAMING)
@@ -565,7 +565,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_scorpion)
                 .sceneName("SCORPION")
                 .tier(WallpaperTier.FREE)
-                .badge("🔥 NEW")
+                .badge("VIDEO")
                 .glow(0xFFFF8C00)  // Dark Orange (Scorpion fire)
                 .weight(SceneWeight.LIGHT)
                 .category(WallpaperCategory.GAMING)
@@ -581,7 +581,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_tren_nocturno)
                 .sceneName("TREN_NOCTURNO")
                 .tier(WallpaperTier.FREE)
-                .badge("🌃 NEW")
+                .badge("VIDEO")
                 .glow(0xFF6A0DAD)  // Purple (night sky)
                 .weight(SceneWeight.LIGHT)
                 .category(WallpaperCategory.SCENES)
@@ -597,7 +597,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_the_eye)
                 .sceneName("THE_EYE")
                 .tier(WallpaperTier.FREE)
-                .badge("👁️ NEW")
+                .badge("VIDEO")
                 .glow(0xFF00FF7F)  // Spring Green (iris glow)
                 .weight(SceneWeight.LIGHT)
                 .category(WallpaperCategory.UNIVERSE)
@@ -613,7 +613,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_gatito)
                 .sceneName("GATITO")
                 .tier(WallpaperTier.FREE)
-                .badge("🐱 NEW")
+                .badge("VIDEO")
                 .glow(0xFFFFB6C1)  // Light Pink (cute)
                 .weight(SceneWeight.LIGHT)
                 .category(WallpaperCategory.ANIMALS)
@@ -629,7 +629,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_gatito_dj)
                 .sceneName("GATITO_DJ")
                 .tier(WallpaperTier.FREE)
-                .badge("🎧 NEW")
+                .badge("VIDEO")
                 .glow(0xFFDA70D6)  // Orchid purple (neon)
                 .weight(SceneWeight.LIGHT)
                 .category(WallpaperCategory.ANIMALS)
@@ -645,7 +645,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_pixel_city)
                 .sceneName("PIXEL_CITY")
                 .tier(WallpaperTier.FREE)
-                .badge("🏙️ NEW")
+                .badge("VIDEO")
                 .glow(0xFF00BFFF)  // Deep Sky Blue (neon city)
                 .weight(SceneWeight.LIGHT)
                 .category(WallpaperCategory.SCENES)
@@ -661,7 +661,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_kratos)
                 .sceneName("KRATOS")
                 .tier(WallpaperTier.FREE)
-                .badge("⚔️ NEW")
+                .badge("VIDEO")
                 .glow(0xFFCC2200)  // Rojo oscuro (sangre espartana)
                 .weight(SceneWeight.LIGHT)
                 .category(WallpaperCategory.GAMING)
@@ -677,7 +677,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_kratos_cyclops)
                 .sceneName("KRATOS_CYCLOPS")
                 .tier(WallpaperTier.FREE)
-                .badge("⚔️ NEW")
+                .badge("IMAGE")
                 .glow(0xFF00CC44)  // Verde energía del cíclope
                 .weight(SceneWeight.LIGHT)
                 .category(WallpaperCategory.GAMING)
@@ -692,7 +692,7 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_itachi)
                 .sceneName("ITACHI")
                 .tier(WallpaperTier.FREE)
-                .badge("NEW")
+                .badge("VIDEO")
                 .glow(0xFFCC0000)  // Rojo Sharingan
                 .weight(SceneWeight.LIGHT)
                 .category(WallpaperCategory.ANIME)
@@ -707,11 +707,63 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_supercampeones)
                 .sceneName("SUPERCAMPEONES")
                 .tier(WallpaperTier.FREE)
-                .badge("NEW")
+                .badge("VIDEO")
                 .glow(0xFFFFAA00)  // Dorado fuego
                 .weight(SceneWeight.LIGHT)
                 .category(WallpaperCategory.ANIME)
                 .featured()
+                .build());
+
+        // ═══════════════════════════════════════════════════════════════════
+        // 👽 ALIEN - Xenomorph Acid Terror
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("👽 ALIEN")
+                .descripcion("Xenomorph!")
+                .preview(R.drawable.preview_alien)
+                .sceneName("ALIEN")
+                .tier(WallpaperTier.FREE)
+                .badge("VIDEO")
+                .glow(0xFF00FF44)  // Verde ácido
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.SCENES)
+                .featured()
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("👽 ALIEN XENOMORPH")
+                .descripcion("Xenomorph!")
+                .preview(R.drawable.preview_alien)
+                .sceneName("ALIEN_STATIC")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFF00FF44)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.SCENES)
+                .build());
+
+        // ═══════════════════════════════════════════════════════════════════
+        // 🔫 MEGAMAN SHOOTING - Energy Blast
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("🔫 MEGAMAN")
+                .descripcion("Mega Buster!")
+                .preview(R.drawable.preview_megaman_shooting)
+                .sceneName("MEGAMAN_SHOOTING")
+                .tier(WallpaperTier.FREE)
+                .badge("VIDEO")
+                .glow(0xFF00BFFF)  // Azul energía
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.GAMING)
+                .featured()
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🔫 MEGAMAN X")
+                .descripcion("Mega Buster!")
+                .preview(R.drawable.preview_megaman_shooting)
+                .sceneName("MEGAMAN_SHOOTING_STATIC")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFF00BFFF)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.GAMING)
                 .build());
 
         // ═══════════════════════════════════════════════════════════════════
@@ -722,11 +774,268 @@ public class WallpaperCatalog {
                 .preview(R.drawable.preview_goku_kamehame)
                 .sceneName("GOKU_KAMEHAME")
                 .tier(WallpaperTier.FREE)
-                .badge("NEW")
+                .badge("VIDEO")
                 .glow(0xFF00BFFF)  // Deep Sky Blue (Ki energy)
                 .weight(SceneWeight.LIGHT)
                 .category(WallpaperCategory.ANIME)
                 .featured()
+                .build());
+
+        // ═══════════════════════════════════════════════════════════════════
+        // 🖼️ IMAGE (STATIC) VERSIONS
+        // ═══════════════════════════════════════════════════════════════════
+
+        catalog.add(new WallpaperItem.Builder("🖼️ GOKU")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_goku)
+                .sceneName("GOKU_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFF00BFFF)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIME)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ ADVENTURE TIME")
+                .descripcion("Static image.")
+                .preview(R.drawable.hdapreview)
+                .sceneName("ADVENTURE_TIME_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFFFF8C00)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIME)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ NEON CITY")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_neoncity)
+                .sceneName("NEON_CITY_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFFFF1493)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.SCENES)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ SAINT SEIYA")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_saintseiya)
+                .sceneName("SAINT_SEIYA_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFFFFD700)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIME)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ WALKING DEAD")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_walkingdead)
+                .sceneName("WALKING_DEAD_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFF00FF00)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.SCENES)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ ZELDA BOTW")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_zelda)
+                .sceneName("ZELDA_BOTW_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFF4CAF50)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.GAMING)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ SUPERMAN")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_superman)
+                .sceneName("SUPERMAN_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFFDC143C)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIME)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ ATTACK ON TITAN")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_aot)
+                .sceneName("AOT_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFF00E5B0)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIME)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ BLACK SPIDER")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_spider)
+                .sceneName("SPIDER_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFFDC143C)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIMALS)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ LOST ATLANTIS")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_lost_atlantis)
+                .sceneName("LOST_ATLANTIS_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFF00CED1)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.SCENES)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ HUMAN PREDATOR")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_human_predator)
+                .sceneName("THE_HUMAN_PREDATOR_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFF8B0000)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.SCENES)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ MOONLIT CAT")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_moonlit_cat)
+                .sceneName("MOONLIT_CAT_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFF4169E1)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIMALS)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ KEN")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_ken)
+                .sceneName("KEN_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFFFF4500)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.GAMING)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ SCORPION")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_scorpion)
+                .sceneName("SCORPION_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFFFF8C00)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.GAMING)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ TREN NOCTURNO")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_tren_nocturno)
+                .sceneName("TREN_NOCTURNO_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFF6A0DAD)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.SCENES)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ THE EYE")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_the_eye)
+                .sceneName("THE_EYE_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFF00FF7F)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.UNIVERSE)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ GATITO")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_gatito)
+                .sceneName("GATITO_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFFFFB6C1)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIMALS)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ GATITO DJ")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_gatito_dj)
+                .sceneName("GATITO_DJ_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFFDA70D6)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIMALS)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ PIXEL CITY")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_pixel_city)
+                .sceneName("PIXEL_CITY_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFF00BFFF)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.SCENES)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ KRATOS")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_kratos)
+                .sceneName("KRATOS_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFFCC2200)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.GAMING)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ ITACHI")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_itachi)
+                .sceneName("ITACHI_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFFCC0000)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIME)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ SUPERCAMPEONES")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_supercampeones)
+                .sceneName("SUPERCAMPEONES_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFFFFAA00)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIME)
+                .build());
+
+        catalog.add(new WallpaperItem.Builder("🖼️ GOKU KAMEHAMEHA")
+                .descripcion("Static image.")
+                .preview(R.drawable.preview_goku_kamehame)
+                .sceneName("GOKU_KAMEHAME_IMG")
+                .tier(WallpaperTier.FREE)
+                .badge("IMAGE")
+                .glow(0xFF00BFFF)
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.ANIME)
                 .build());
 
         Log.d(TAG, "📚 Catálogo inicializado: " + catalog.size() + " wallpapers");

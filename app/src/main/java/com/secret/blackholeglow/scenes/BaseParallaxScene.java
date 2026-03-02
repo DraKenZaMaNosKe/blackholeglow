@@ -364,6 +364,8 @@ public abstract class BaseParallaxScene extends WallpaperScene {
         // Texturas OpenGL (se llenan al cargar)
         public int colorTextureId = -1;
         public int depthTextureId = -1;
+        public int imageWidth = 0;   // Actual image dimensions (set during loading)
+        public int imageHeight = 0;
 
         /**
          * Constructor completo
@@ -937,10 +939,17 @@ public abstract class BaseParallaxScene extends WallpaperScene {
 
             // Cargar textura de color
             downloadIfNeeded(imageManager, layer.colorFile, "Capa " + i + " Color");
-            layer.colorTextureId = loadTextureFromFile(
-                imageManager.getImagePath(layer.colorFile),
-                "Capa " + i + " Color"
-            );
+            String colorPath = imageManager.getImagePath(layer.colorFile);
+            layer.colorTextureId = loadTextureFromFile(colorPath, "Capa " + i + " Color");
+
+            // Store image dimensions for cover mode aspect ratio
+            if (colorPath != null && layer.useCoverMode) {
+                BitmapFactory.Options bounds = new BitmapFactory.Options();
+                bounds.inJustDecodeBounds = true;
+                BitmapFactory.decodeFile(colorPath, bounds);
+                layer.imageWidth = bounds.outWidth;
+                layer.imageHeight = bounds.outHeight;
+            }
 
             // Cargar depth map si existe
             if (layer.depthFile != null) {
@@ -952,8 +961,12 @@ public abstract class BaseParallaxScene extends WallpaperScene {
             }
 
             Log.d(TAG, "║ Capa " + i + ": Color=" + layer.colorTextureId +
-                      (layer.hasDepthMap() ? " Depth=" + layer.depthTextureId + " ✅ PARALLAX" : " (estática)"));
+                      (layer.hasDepthMap() ? " Depth=" + layer.depthTextureId + " ✅ PARALLAX" : " (estática)") +
+                      (layer.imageWidth > 0 ? " [" + layer.imageWidth + "x" + layer.imageHeight + "]" : ""));
         }
+
+        // Recalculate cover UV coords now that we know actual image dimensions
+        updateQuadForAspectRatio();
 
         Log.d(TAG, "╚══════════════════════════════════════════════════════════════╝");
     }
@@ -1200,8 +1213,10 @@ public abstract class BaseParallaxScene extends WallpaperScene {
         GLES30.glEnableVertexAttribArray(simplePosLoc);
         GLES30.glVertexAttribPointer(simplePosLoc, 2, GLES30.GL_FLOAT, false, 0, quadVertexBuffer);
 
+        // Use cover mode UV coords when layer requests it (fills entire screen)
+        FloatBuffer uvBuffer = layer.useCoverMode ? quadTexCoordBufferCover : quadTexCoordBuffer;
         GLES30.glEnableVertexAttribArray(simpleTexCoordLoc);
-        GLES30.glVertexAttribPointer(simpleTexCoordLoc, 2, GLES30.GL_FLOAT, false, 0, quadTexCoordBuffer);
+        GLES30.glVertexAttribPointer(simpleTexCoordLoc, 2, GLES30.GL_FLOAT, false, 0, uvBuffer);
 
         GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
 
@@ -1299,26 +1314,35 @@ public abstract class BaseParallaxScene extends WallpaperScene {
     private void updateQuadForAspectRatio() {
         if (screenWidth <= 0 || screenHeight <= 0 || quadTexCoordBufferCover == null) return;
 
-        float imageAspect = 16f / 9f;
+        // Use actual image aspect from first cover-mode layer, fallback to 9:16 portrait
+        float imageAspect = 9f / 16f;  // Default portrait
+        if (layers != null) {
+            for (ParallaxLayer layer : layers) {
+                if (layer.useCoverMode && layer.imageWidth > 0 && layer.imageHeight > 0) {
+                    imageAspect = (float) layer.imageWidth / layer.imageHeight;
+                    break;
+                }
+            }
+        }
+
         float screenAspect = (float) screenWidth / screenHeight;
 
         float uMin = 0f, uMax = 1f;
         float vMin = 0f, vMax = 1f;
 
-        if (screenAspect < imageAspect) {
-            float maxCrop = 0.15f;
-            float visibleWidth = screenAspect / imageAspect;
-            float naturalCrop = (1f - visibleWidth) / 2f;
-            float offset = Math.min(naturalCrop, maxCrop);
-            uMin = offset;
-            uMax = 1f - offset;
-        } else {
-            float maxCrop = 0.15f;
+        // True cover mode: always fill the screen completely (crop excess)
+        if (screenAspect > imageAspect) {
+            // Screen is wider than image → crop top/bottom
             float visibleHeight = imageAspect / screenAspect;
-            float naturalCrop = (1f - visibleHeight) / 2f;
-            float offset = Math.min(naturalCrop, maxCrop);
-            vMin = offset;
-            vMax = 1f - offset;
+            float crop = (1f - visibleHeight) / 2f;
+            vMin = crop;
+            vMax = 1f - crop;
+        } else if (screenAspect < imageAspect) {
+            // Screen is taller than image → crop left/right
+            float visibleWidth = screenAspect / imageAspect;
+            float crop = (1f - visibleWidth) / 2f;
+            uMin = crop;
+            uMax = 1f - crop;
         }
 
         float[] texCoords = {

@@ -92,6 +92,37 @@ public class WallpaperPreferences {
         "ITACHI",            // 👁️ Itachi - Sharingan Eye
         "SUPERCAMPEONES",    // ⚽ Supercampeones - Captain Tsubasa
         "GOKU_KAMEHAME",     // 🐉 Goku Kamehameha - Ki Energy Blast
+        "ALIEN",             // 👽 Alien Xenomorph - Video
+        "ALIEN_STATIC",      // 👽 Alien Xenomorph - Static Image
+        "MEGAMAN_SHOOTING",  // 🔫 Megaman Shooting - Video
+        "MEGAMAN_SHOOTING_STATIC", // 🔫 Megaman Shooting - Static Image
+
+        // ═══════════════════════════════════════════
+        // 🖼️ IMAGE (STATIC) VERSIONS
+        // ═══════════════════════════════════════════
+        "GOKU_IMG",
+        "ADVENTURE_TIME_IMG",
+        "NEON_CITY_IMG",
+        "SAINT_SEIYA_IMG",
+        "WALKING_DEAD_IMG",
+        "ZELDA_BOTW_IMG",
+        "SUPERMAN_IMG",
+        "AOT_IMG",
+        "SPIDER_IMG",
+        "LOST_ATLANTIS_IMG",
+        "THE_HUMAN_PREDATOR_IMG",
+        "MOONLIT_CAT_IMG",
+        "KEN_IMG",
+        "SCORPION_IMG",
+        "TREN_NOCTURNO_IMG",
+        "THE_EYE_IMG",
+        "GATITO_IMG",
+        "GATITO_DJ_IMG",
+        "PIXEL_CITY_IMG",
+        "KRATOS_IMG",
+        "ITACHI_IMG",
+        "SUPERCAMPEONES_IMG",
+        "GOKU_KAMEHAME_IMG",
 
         // ═══════════════════════════════════════════
         // 📦 WALLPAPERS LEGADOS (compatibilidad)

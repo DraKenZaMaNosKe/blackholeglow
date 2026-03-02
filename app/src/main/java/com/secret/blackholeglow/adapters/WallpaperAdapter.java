@@ -360,11 +360,21 @@ public class WallpaperAdapter extends RecyclerView.Adapter<WallpaperAdapter.Wall
                 holder.textBadge.setVisibility(View.VISIBLE);
             } else if (item.hasBadge()) {
                 holder.textBadge.setText(item.getBadge());
-                holder.textBadge.setBackgroundResource(R.drawable.badge_background);
+                holder.textBadge.setBackgroundResource(getBadgeDrawable(item.getBadge()));
                 holder.textBadge.setVisibility(View.VISIBLE);
             } else {
                 holder.textBadge.setVisibility(View.GONE);
             }
+        }
+    }
+
+    private int getBadgeDrawable(String badge) {
+        if (badge == null) return R.drawable.badge_background;
+        switch (badge) {
+            case "VIDEO":  return R.drawable.badge_background_video;
+            case "IMAGE":  return R.drawable.badge_background_image;
+            case "LIVE":   return R.drawable.badge_background_live;
+            default:       return R.drawable.badge_background;
         }
     }
 

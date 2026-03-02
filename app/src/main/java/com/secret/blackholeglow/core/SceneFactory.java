@@ -33,6 +33,11 @@ import com.secret.blackholeglow.scenes.KratosCyclopsScene;
 import com.secret.blackholeglow.scenes.ItachiScene;
 import com.secret.blackholeglow.scenes.SupercampeonesScene;
 import com.secret.blackholeglow.scenes.GokuKamehameScene;
+import com.secret.blackholeglow.scenes.AlienScene;
+import com.secret.blackholeglow.scenes.AlienStaticScene;
+import com.secret.blackholeglow.scenes.MegamanShootingScene;
+import com.secret.blackholeglow.scenes.MegamanShootingStaticScene;
+import com.secret.blackholeglow.scenes.ImageWallpaperScene;
 import com.secret.blackholeglow.scenes.DynamicImageScene;
 import com.secret.blackholeglow.scenes.DynamicVideoScene;
 import com.secret.blackholeglow.systems.DynamicCatalog;
@@ -184,6 +189,17 @@ public class SceneFactory {
         registerScene("SUPERCAMPEONES", SupercampeonesScene.class);
         // 🐉 Goku Kamehameha: SSJ Ki energy blast
         registerScene("GOKU_KAMEHAME", GokuKamehameScene.class);
+        // 👽 Alien: Xenomorph acid terror
+        registerScene("ALIEN", AlienScene.class);
+        registerScene("ALIEN_STATIC", AlienStaticScene.class);
+        // 🔫 Megaman: Energy blast
+        registerScene("MEGAMAN_SHOOTING", MegamanShootingScene.class);
+        registerScene("MEGAMAN_SHOOTING_STATIC", MegamanShootingStaticScene.class);
+
+        // 🖼️ Image (static) versions - all use ImageWallpaperScene with configure()
+        for (String name : ImageWallpaperScene.getRegisteredNames()) {
+            registerScene(name, ImageWallpaperScene.class);
+        }
 
         Log.d(TAG, "🎭 " + registeredScenes.size() + " escenas registradas");
     }
@@ -249,6 +265,11 @@ public class SceneFactory {
         try {
             // Crear instancia
             WallpaperScene scene = sceneClass.getConstructor().newInstance();
+
+            // Configurar escenas genéricas (ImageWallpaperScene)
+            if (scene instanceof ImageWallpaperScene) {
+                ((ImageWallpaperScene) scene).configure(sceneName);
+            }
 
             // Inyectar dependencias
             if (resourceManager != null) {

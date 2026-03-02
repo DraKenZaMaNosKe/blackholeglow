@@ -12,6 +12,7 @@ import com.secret.blackholeglow.image.ImageDownloadManager;
 import com.secret.blackholeglow.model.ModelDownloadManager;
 import com.secret.blackholeglow.video.VideoDownloadManager;
 
+import com.secret.blackholeglow.scenes.ImageWallpaperScene;
 import com.secret.blackholeglow.systems.DynamicCatalog;
 
 import java.util.ArrayList;
@@ -223,9 +224,29 @@ public class ResourcePreloader {
                 prepareGokuKamehameSceneTasks();
                 break;
 
+            case "ALIEN":
+                prepareAlienSceneTasks();
+                break;
+
+            case "ALIEN_STATIC":
+                prepareAlienStaticSceneTasks();
+                break;
+
+            case "MEGAMAN_SHOOTING":
+                prepareMegamanShootingSceneTasks();
+                break;
+
+            case "MEGAMAN_SHOOTING_STATIC":
+                prepareMegamanShootingStaticSceneTasks();
+                break;
+
             default:
+                // 🖼️ Generic image scenes (_IMG suffix)
+                if (sceneName.endsWith("_IMG") && ImageWallpaperScene.getImageFile(sceneName) != null) {
+                    prepareGenericImageSceneTasks(sceneName);
+                }
                 // Dynamic scenes: DYN_IMG_* / DYN_VID_*
-                if (sceneName.startsWith("DYN_IMG_") || sceneName.startsWith("DYN_VID_")) {
+                else if (sceneName.startsWith("DYN_IMG_") || sceneName.startsWith("DYN_VID_")) {
                     prepareDynamicSceneTasks(sceneName);
                 } else {
                     prepareLabSceneTasks();
@@ -466,7 +487,19 @@ public class ResourcePreloader {
             case "GOKU_KAMEHAME":
                 return Arrays.asList("goku_kamehame_scene.mp4");
 
+            case "ALIEN":
+                return Arrays.asList("alien_scene.mp4");
+
+            case "MEGAMAN_SHOOTING":
+                return Arrays.asList("megaman_shooting_scene.mp4");
+
+            case "ALIEN_STATIC":
+            case "MEGAMAN_SHOOTING_STATIC":
+                return Arrays.asList();  // Image-only
+
             default:
+                // All _IMG scenes are image-only (no video)
+                if (sceneName.endsWith("_IMG")) return Arrays.asList();
                 return new ArrayList<>();
         }
     }
@@ -544,8 +577,19 @@ public class ResourcePreloader {
             case "KRATOS_CYCLOPS":
                 return Arrays.asList("kratos_cyclops_bg.jpg");
 
+            case "ALIEN_STATIC":
+                return Arrays.asList("alien_bg.webp");
+
+            case "MEGAMAN_SHOOTING_STATIC":
+                return Arrays.asList("megaman_shooting_bg.webp");
+
             // GOKU, ADVENTURE_TIME solo usan videos
             default:
+                // All _IMG scenes: single background image
+                if (sceneName.endsWith("_IMG")) {
+                    String img = ImageWallpaperScene.getImageFile(sceneName);
+                    if (img != null) return Arrays.asList(img);
+                }
                 return new ArrayList<>();
         }
     }
@@ -595,6 +639,8 @@ public class ResourcePreloader {
 
             // GOKU, ADVENTURE_TIME, SAINT_SEIYA no usan modelos 3D
             default:
+                // All _IMG scenes: no 3D models
+                if (sceneName.endsWith("_IMG")) return Arrays.asList();
                 return new ArrayList<>();
         }
     }
@@ -1032,6 +1078,54 @@ public class ResourcePreloader {
         Log.d(TAG, "🐉 Goku Kamehameha: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
     }
 
+    public void prepareAlienSceneTasks() {
+        tasks.clear();
+        addVideoDownloadTask("Video Alien", "alien_scene.mp4", 10);
+        addTextureTask("Preparando escena Alien", R.drawable.preview_alien, 2);
+        calculateTotalWeight();
+        Log.d(TAG, "👽 Alien: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    public void prepareAlienStaticSceneTasks() {
+        tasks.clear();
+        addImageDownloadTask("Imagen Alien", "alien_bg.webp", 5);
+        addTextureTask("Preparando escena Alien Static", R.drawable.preview_alien, 2);
+        calculateTotalWeight();
+        Log.d(TAG, "👽 Alien Static: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    public void prepareMegamanShootingSceneTasks() {
+        tasks.clear();
+        addVideoDownloadTask("Video Megaman", "megaman_shooting_scene.mp4", 10);
+        addTextureTask("Preparando escena Megaman", R.drawable.preview_megaman_shooting, 2);
+        calculateTotalWeight();
+        Log.d(TAG, "🔫 Megaman Shooting: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    public void prepareMegamanShootingStaticSceneTasks() {
+        tasks.clear();
+        addImageDownloadTask("Imagen Megaman", "megaman_shooting_bg.webp", 5);
+        addTextureTask("Preparando escena Megaman Static", R.drawable.preview_megaman_shooting, 2);
+        calculateTotalWeight();
+        Log.d(TAG, "🔫 Megaman Static: " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
+    /**
+     * Generic prepare method for all _IMG static image scenes.
+     * Uses ImageWallpaperScene config map to look up image file and preview.
+     */
+    private void prepareGenericImageSceneTasks(String sceneName) {
+        tasks.clear();
+        String imageFile = ImageWallpaperScene.getImageFile(sceneName);
+        int previewRes = ImageWallpaperScene.getPreviewRes(sceneName);
+        if (imageFile != null) {
+            addImageDownloadTask("Imagen " + sceneName, imageFile, 5);
+        }
+        addTextureTask("Preparando " + sceneName, previewRes, 2);
+        calculateTotalWeight();
+        Log.d(TAG, "🖼️ " + sceneName + ": " + tasks.size() + " tareas (peso: " + totalTasks + ")");
+    }
+
     private void calculateTotalWeight() {
         totalTasks = 0;
         for (PreloadTask task : tasks) {
@@ -1138,6 +1232,8 @@ public class ResourcePreloader {
             case "KRATOS_CYCLOPS":
                 return Arrays.asList();  // No video
             default:
+                // All _IMG scenes: no video
+                if (sceneName.endsWith("_IMG")) return Arrays.asList();
                 return new ArrayList<>();
         }
     }
@@ -1444,6 +1540,11 @@ public class ResourcePreloader {
             case "KRATOS_CYCLOPS":
                 return Arrays.asList("kratos_cyclops_bg.jpg");
             default:
+                // All _IMG scenes: single background image
+                if (sceneName.endsWith("_IMG")) {
+                    String img = ImageWallpaperScene.getImageFile(sceneName);
+                    if (img != null) return Arrays.asList(img);
+                }
                 return new ArrayList<>();
         }
     }
@@ -1478,6 +1579,8 @@ public class ResourcePreloader {
             case "KRATOS_CYCLOPS":
                 return Arrays.asList();  // aura_energy.obj is in assets/
             default:
+                // All _IMG scenes: no 3D models
+                if (sceneName.endsWith("_IMG")) return Arrays.asList();
                 return new ArrayList<>();
         }
     }

@@ -455,6 +455,187 @@ public class ImageConfig {
             1
         ));
 
+        // ALIEN STATIC - Fondo estático
+        IMAGES.put("alien_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "alien_bg.webp",
+            176_784L,  // ~177 KB
+            "Alien Xenomorph Background",
+            1
+        ));
+
+        // MEGAMAN SHOOTING STATIC - Fondo estático
+        IMAGES.put("megaman_shooting_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "megaman_shooting_bg.webp",
+            315_186L,  // ~315 KB
+            "Megaman Shooting Background",
+            1
+        ));
+
+        // ═══════════════════════════════════════════════════════════════
+        // 🖼️ IMAGE (STATIC) VERSIONS - Fondos estáticos
+        // ═══════════════════════════════════════════════════════════════
+
+        IMAGES.put("goku_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "goku_bg.webp",
+            119_980L,
+            "Goku Static Background",
+            1
+        ));
+
+        IMAGES.put("adventure_time_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "adventure_time_bg.webp",
+            89_102L,
+            "Adventure Time Static Background",
+            1
+        ));
+
+        IMAGES.put("neon_city_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "neon_city_bg.webp",
+            80_696L,
+            "Neon City Static Background",
+            1
+        ));
+
+        IMAGES.put("saint_seiya_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "saint_seiya_bg.webp",
+            189_062L,
+            "Saint Seiya Static Background",
+            1
+        ));
+
+        IMAGES.put("walking_dead_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "walking_dead_bg.webp",
+            152_348L,
+            "Walking Dead Static Background",
+            1
+        ));
+
+        IMAGES.put("zelda_botw_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "zelda_botw_bg.webp",
+            185_834L,
+            "Zelda BOTW Static Background",
+            1
+        ));
+
+        IMAGES.put("superman_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "superman_bg.webp",
+            134_192L,
+            "Superman Static Background",
+            1
+        ));
+
+        IMAGES.put("aot_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "aot_bg.webp",
+            118_646L,
+            "Attack on Titan Static Background",
+            1
+        ));
+
+        IMAGES.put("spider_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "spider_bg.webp",
+            133_740L,
+            "Black Spider Static Background",
+            1
+        ));
+
+        IMAGES.put("lost_atlantis_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "lost_atlantis_bg.webp",
+            278_164L,
+            "Lost Atlantis Static Background",
+            1
+        ));
+
+        IMAGES.put("human_predator_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "human_predator_bg.webp",
+            209_954L,
+            "Human Predator Static Background",
+            1
+        ));
+
+        IMAGES.put("moonlit_cat_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "moonlit_cat_bg.webp",
+            126_734L,
+            "Moonlit Cat Static Background",
+            1
+        ));
+
+        IMAGES.put("ken_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "ken_bg.webp",
+            37_252L,
+            "Ken Static Background",
+            1
+        ));
+
+        IMAGES.put("scorpion_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "scorpion_bg.webp",
+            93_206L,
+            "Scorpion Static Background",
+            1
+        ));
+
+        IMAGES.put("tren_nocturno_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "tren_nocturno_bg.webp",
+            167_976L,
+            "Tren Nocturno Static Background",
+            1
+        ));
+
+        IMAGES.put("the_eye_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "the_eye_bg.webp",
+            105_034L,
+            "The Eye Static Background",
+            1
+        ));
+
+        IMAGES.put("gatito_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "gatito_bg.webp",
+            73_662L,
+            "Gatito Static Background",
+            1
+        ));
+
+        IMAGES.put("gatito_dj_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "gatito_dj_bg.webp",
+            156_836L,
+            "Gatito DJ Static Background",
+            1
+        ));
+
+        IMAGES.put("pixel_city_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "pixel_city_bg.webp",
+            162_494L,
+            "Pixel City Static Background",
+            1
+        ));
+
+        IMAGES.put("kratos_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "kratos_bg.webp",
+            204_616L,
+            "Kratos Static Background",
+            1
+        ));
+
+        IMAGES.put("itachi_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "itachi_bg.webp",
+            113_640L,
+            "Itachi Static Background",
+            1
+        ));
+
+        IMAGES.put("supercampeones_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "supercampeones_bg.webp",
+            238_954L,
+            "Supercampeones Static Background",
+            1
+        ));
+
+        IMAGES.put("goku_kamehame_bg.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "goku_kamehame_bg.webp",
+            156_670L,
+            "Goku Kamehameha Static Background",
+            1
+        ));
+
     }
 
     // ═══════════════════════════════════════════════════════════════════════
