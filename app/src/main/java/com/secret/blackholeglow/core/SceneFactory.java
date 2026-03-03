@@ -37,6 +37,7 @@ import com.secret.blackholeglow.scenes.AlienScene;
 import com.secret.blackholeglow.scenes.AlienStaticScene;
 import com.secret.blackholeglow.scenes.MegamanShootingScene;
 import com.secret.blackholeglow.scenes.MegamanShootingStaticScene;
+import com.secret.blackholeglow.scenes.T1000Scene;
 import com.secret.blackholeglow.scenes.ImageWallpaperScene;
 import com.secret.blackholeglow.scenes.DynamicImageScene;
 import com.secret.blackholeglow.scenes.DynamicVideoScene;
@@ -195,6 +196,8 @@ public class SceneFactory {
         // 🔫 Megaman: Energy blast
         registerScene("MEGAMAN_SHOOTING", MegamanShootingScene.class);
         registerScene("MEGAMAN_SHOOTING_STATIC", MegamanShootingStaticScene.class);
+        // 🤖 T-1000 Terminator: Liquid metal shader scene
+        registerScene("T1000", T1000Scene.class);
 
         // 🖼️ Image (static) versions - all use ImageWallpaperScene with configure()
         for (String name : ImageWallpaperScene.getRegisteredNames()) {

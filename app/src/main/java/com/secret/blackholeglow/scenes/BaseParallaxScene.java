@@ -433,9 +433,9 @@ public abstract class BaseParallaxScene extends WallpaperScene {
     // ⚠️ NO BORRAR POR FAVOR - BUFFERS DEL QUAD FULLSCREEN
     // ═══════════════════════════════════════════════════════════════════════════════════
 
-    private FloatBuffer quadVertexBuffer;
-    private FloatBuffer quadTexCoordBuffer;       // UV normal (fullscreen)
-    private FloatBuffer quadTexCoordBufferCover;  // UV con aspect ratio (cover mode)
+    protected FloatBuffer quadVertexBuffer;
+    protected FloatBuffer quadTexCoordBuffer;       // UV normal (fullscreen)
+    protected FloatBuffer quadTexCoordBufferCover;  // UV con aspect ratio (cover mode)
 
     // ═══════════════════════════════════════════════════════════════════════════════════
     // ⚠️ NO BORRAR POR FAVOR - UI COMPONENTS
@@ -1141,11 +1141,7 @@ public abstract class BaseParallaxScene extends WallpaperScene {
         if (layers != null) {
             for (ParallaxLayer layer : layers) {
                 if (layer.colorTextureId > 0) {
-                    if (layer.hasDepthMap()) {
-                        drawLayerWithDepth(layer);
-                    } else {
-                        drawLayerStatic(layer);
-                    }
+                    drawLayer(layer);
                 }
             }
         }
@@ -1165,6 +1161,17 @@ public abstract class BaseParallaxScene extends WallpaperScene {
     /**
      * ⚠️ NO BORRAR POR FAVOR - DIBUJA CAPA CON DEPTH MAP
      */
+    /**
+     * Draws a single layer. Override in subclasses for custom shader effects.
+     */
+    protected void drawLayer(ParallaxLayer layer) {
+        if (layer.hasDepthMap()) {
+            drawLayerWithDepth(layer);
+        } else {
+            drawLayerStatic(layer);
+        }
+    }
+
     private void drawLayerWithDepth(ParallaxLayer layer) {
         GLES30.glUseProgram(depthShaderProgram);
 

@@ -636,6 +636,16 @@ public class ImageConfig {
             1
         ));
 
+        // ═══════════════════════════════════════════════════════════════
+        // 🤖 T-1000 TERMINATOR - Liquid Metal Shader Scene
+        // ═══════════════════════════════════════════════════════════════
+        IMAGES.put("dyn_t1000.webp", new ResourceInfo(
+            SUPABASE_IMAGES_URL + "dyn_t1000.webp",
+            208_590L,
+            "T-1000 Liquid Metal Background",
+            1
+        ));
+
     }
 
     // ═══════════════════════════════════════════════════════════════════════
