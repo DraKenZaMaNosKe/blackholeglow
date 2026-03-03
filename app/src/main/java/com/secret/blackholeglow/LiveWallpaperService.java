@@ -113,7 +113,7 @@ public class LiveWallpaperService extends WallpaperService {
 
         // 🔄 Auto-rotate: cambia wallpaper cada 5 minutos (runs even in background)
         private final Handler autoRotateHandler = new Handler(Looper.getMainLooper());
-        private static final long AUTO_ROTATE_INTERVAL_MS = 30 * 1000; // ⚠️ TEST MODE (production: 5*60*1000)
+        private static final long AUTO_ROTATE_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
         private boolean autoRotateScheduled = false;
         private long autoRotateNextChangeTime = 0; // epoch ms when next rotation fires
         private final Runnable autoPlayRunnable = () -> {
