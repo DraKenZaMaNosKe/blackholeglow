@@ -673,7 +673,13 @@ public class WallpaperPreviewActivity extends AppCompatActivity {
      */
     private void proceedToSetWallpaper() {
         // \uD83D\uDEE1\uFE0F CONSOLIDADO: Solo usar WallpaperPreferences (maneja SharedPrefs + Firebase)
-        WallpaperPreferences.getInstance(this).setSelectedWallpaper(nombre_wallpaper, null);
+        WallpaperPreferences prefs = WallpaperPreferences.getInstance(this);
+        prefs.setSelectedWallpaper(nombre_wallpaper, null);
+        // 🔄 Manual install disables auto-rotate so user's choice sticks
+        if (prefs.isAutoRotateEnabled()) {
+            prefs.setAutoRotateEnabled(false);
+            Log.d(TAG, "🔄 Auto-rotate disabled (manual install)");
+        }
         Log.d(TAG, "\u2705 Wallpaper guardado via WallpaperPreferences: " + nombre_wallpaper);
 
         EventBus.get().publish("wallpaper_set",

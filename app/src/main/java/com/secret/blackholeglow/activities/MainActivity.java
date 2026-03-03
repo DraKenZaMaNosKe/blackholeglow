@@ -44,6 +44,7 @@ import com.secret.blackholeglow.LoginActivity;
 import com.secret.blackholeglow.MusicPermissionActivity;
 import com.secret.blackholeglow.R;
 import com.secret.blackholeglow.UserManager;
+import com.secret.blackholeglow.WallpaperPreferences;
 import com.secret.blackholeglow.fragments.AnimatedWallpaperListFragment;
 import com.secret.blackholeglow.fragments.DiagnosticFragment;
 import com.secret.blackholeglow.systems.AdsManager;
@@ -287,6 +288,11 @@ public class MainActivity extends AppCompatActivity
                     .replace(R.id.fragment_container, new DiagnosticFragment())
                     .commit();
 
+        } else if (id == R.id.nav_auto_rotate) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+            toggleAutoRotate();
+            return true;
+
         } else if (id == R.id.nav_language) {
             drawerLayout.closeDrawer(GravityCompat.START);
             showLanguageDialog();
@@ -521,6 +527,21 @@ public class MainActivity extends AppCompatActivity
             android.widget.Toast.makeText(this,
                     "Could not open settings. Please do it manually from Settings.",
                     android.widget.Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /**
+     * Toggles auto-rotate mode on/off.
+     */
+    private void toggleAutoRotate() {
+        WallpaperPreferences prefs = WallpaperPreferences.getInstance(this);
+        boolean newState = !prefs.isAutoRotateEnabled();
+        prefs.setAutoRotateEnabled(newState);
+
+        if (newState) {
+            Toast.makeText(this, "Auto-Rotate ON — wallpaper changes every 5 min", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, "Auto-Rotate OFF", Toast.LENGTH_SHORT).show();
         }
     }
 

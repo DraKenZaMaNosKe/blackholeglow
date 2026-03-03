@@ -22,6 +22,11 @@
         android:title="@string/menu_diagnostic" />
 
     <item
+        android:id="@+id/nav_auto_rotate"
+        android:icon="@android:drawable/ic_menu_rotate"
+        android:title="@string/menu_auto_rotate" />
+
+    <item
         android:id="@+id/nav_language"
         android:icon="@android:drawable/ic_menu_manage"
         android:title="@string/menu_language" />

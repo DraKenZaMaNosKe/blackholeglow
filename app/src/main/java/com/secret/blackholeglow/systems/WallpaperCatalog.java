@@ -168,6 +168,26 @@ public class WallpaperCatalog {
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // AUTO-ROTATE CANDIDATES (IMAGE + VIDEO only, no LIVE)
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Returns wallpapers eligible for auto-rotate: badge "IMAGE" or "VIDEO".
+     * Includes dynamic DYN_IMG/DYN_VID entries. Excludes LIVE (heavier scenes).
+     */
+    public synchronized List<WallpaperItem> getAutoRotateCandidates() {
+        List<WallpaperItem> result = new ArrayList<>();
+        for (WallpaperItem item : catalog) {
+            String badge = item.getBadge();
+            if (badge == null) continue;
+            if (badge.equals("IMAGE") || badge.equals("VIDEO")) {
+                result.add(item);
+            }
+        }
+        return result;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // 3. FILTRAR POR ACCESO DEL USUARIO
     // ═══════════════════════════════════════════════════════════════
 
@@ -1036,6 +1056,21 @@ public class WallpaperCatalog {
                 .glow(0xFF00BFFF)
                 .weight(SceneWeight.LIGHT)
                 .category(WallpaperCategory.ANIME)
+                .build());
+
+        // ═══════════════════════════════════════════════════════════════════
+        // 🤖 T-1000 TERMINATOR - Liquid Metal Shader
+        // ═══════════════════════════════════════════════════════════════════
+        catalog.add(new WallpaperItem.Builder("🤖 T-1000 TERMINATOR")
+                .descripcion("Liquid metal. The T-1000 rises with chrome reflections and mercury drops.")
+                .preview(R.drawable.preview_t1000)
+                .sceneName("T1000")
+                .tier(WallpaperTier.FREE)
+                .badge("LIVE")
+                .glow(0xFFC0C0C0)  // Silver chrome
+                .weight(SceneWeight.LIGHT)
+                .category(WallpaperCategory.SCENES)
+                .featured()
                 .build());
 
         Log.d(TAG, "📚 Catálogo inicializado: " + catalog.size() + " wallpapers");

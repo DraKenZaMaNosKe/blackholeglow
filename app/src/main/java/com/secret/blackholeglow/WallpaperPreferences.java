@@ -47,6 +47,8 @@ public class WallpaperPreferences {
     // ============================================
     private static final String PREFS_NAME = "blackholeglow_prefs";
     private static final String KEY_SELECTED_WALLPAPER = "selected_wallpaper";
+    private static final String KEY_AUTO_ROTATE_ENABLED = "auto_rotate_enabled";
+    private static final String KEY_AUTO_ROTATE_LAST_INDEX = "auto_rotate_last_index";
     private static final String DEFAULT_WALLPAPER = "Batalla Cósmica";
 
     // Colección de Firebase Firestore
@@ -123,6 +125,7 @@ public class WallpaperPreferences {
         "ITACHI_IMG",
         "SUPERCAMPEONES_IMG",
         "GOKU_KAMEHAME_IMG",
+        "T1000",              // 🤖 T-1000 Terminator Liquid Metal
 
         // ═══════════════════════════════════════════
         // 📦 WALLPAPERS LEGADOS (compatibilidad)
@@ -354,6 +357,27 @@ public class WallpaperPreferences {
             .putString(KEY_SELECTED_WALLPAPER, wallpaperName)
             .apply();  // 🔧 FIX ANR: apply() es asíncrono, no bloquea
         return true;  // apply() siempre tiene éxito (escribe en memoria inmediatamente)
+    }
+
+    // ============================================
+    // AUTO-ROTATE
+    // ============================================
+
+    public boolean isAutoRotateEnabled() {
+        return sharedPrefs.getBoolean(KEY_AUTO_ROTATE_ENABLED, false);
+    }
+
+    public void setAutoRotateEnabled(boolean enabled) {
+        sharedPrefs.edit().putBoolean(KEY_AUTO_ROTATE_ENABLED, enabled).apply();
+        Log.d(TAG, "🔄 Auto-rotate " + (enabled ? "ENABLED" : "DISABLED"));
+    }
+
+    public int getAutoRotateLastIndex() {
+        return sharedPrefs.getInt(KEY_AUTO_ROTATE_LAST_INDEX, 0);
+    }
+
+    public void setAutoRotateLastIndex(int index) {
+        sharedPrefs.edit().putInt(KEY_AUTO_ROTATE_LAST_INDEX, index).apply();
     }
 
     // ============================================

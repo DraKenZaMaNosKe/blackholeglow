@@ -54,6 +54,7 @@
     <string name="menu_my_account">MiCuenta</string>
     <string name="menu_music_settings">Configurar Música</string>
     <string name="menu_diagnostic">Diagnóstico</string>
+    <string name="menu_auto_rotate">Auto-Rotar</string>
     <string name="menu_language">Idioma</string>
     <string name="menu_logout">Cerrar sesión</string>
     <string name="menu_delete_account">Eliminar mi cuenta</string>
