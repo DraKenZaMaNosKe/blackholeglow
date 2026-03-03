@@ -48,7 +48,6 @@ public class WallpaperPreferences {
     private static final String PREFS_NAME = "blackholeglow_prefs";
     private static final String KEY_SELECTED_WALLPAPER = "selected_wallpaper";
     private static final String KEY_AUTO_ROTATE_ENABLED = "auto_rotate_enabled";
-    private static final String KEY_AUTO_ROTATE_LAST_INDEX = "auto_rotate_last_index";
     private static final String DEFAULT_WALLPAPER = "Batalla Cósmica";
 
     // Colección de Firebase Firestore
@@ -370,14 +369,6 @@ public class WallpaperPreferences {
     public void setAutoRotateEnabled(boolean enabled) {
         sharedPrefs.edit().putBoolean(KEY_AUTO_ROTATE_ENABLED, enabled).apply();
         Log.d(TAG, "🔄 Auto-rotate " + (enabled ? "ENABLED" : "DISABLED"));
-    }
-
-    public int getAutoRotateLastIndex() {
-        return sharedPrefs.getInt(KEY_AUTO_ROTATE_LAST_INDEX, 0);
-    }
-
-    public void setAutoRotateLastIndex(int index) {
-        sharedPrefs.edit().putInt(KEY_AUTO_ROTATE_LAST_INDEX, index).apply();
     }
 
     // ============================================

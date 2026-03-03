@@ -121,54 +121,64 @@ public class LiveWallpaperService extends WallpaperService {
             }
         };
 
-        // 🔄 Auto-rotate runnable (safe: checks resources before switching)
+        // 🔄 Auto-rotate runnable (crash-safe: always reschedules)
         private final Runnable autoRotateRunnable = new Runnable() {
             @Override
             public void run() {
-                if (!wallpaperPrefs.isAutoRotateEnabled()) return;
-                autoRotateScheduled = false;
+                if (!wallpaperPrefs.isAutoRotateEnabled()) {
+                    Log.d(TAG, "🔄 Auto-rotate: disabled, stopping");
+                    autoRotateScheduled = false;
+                    return;
+                }
+
+                Log.d(TAG, "🔄 Auto-rotate: timer FIRED — finding next wallpaper...");
 
                 // Run resource check + download on background thread to avoid ANR
                 new Thread(() -> {
-                    String nextScene = findNextReadyScene();
-                    if (nextScene == null) {
-                        Log.w(TAG, "🔄 Auto-rotate: no ready wallpaper found, retrying next cycle");
+                    try {
+                        String nextScene = findNextReadyScene();
+                        if (nextScene == null) {
+                            Log.w(TAG, "🔄 Auto-rotate: no ready wallpaper found, retrying next cycle");
+                            autoRotateHandler.post(() -> scheduleNextRotation());
+                            return;
+                        }
+
+                        // Switch on main thread
+                        autoRotateHandler.post(() -> {
+                            try {
+                                Log.d(TAG, "🔄 Auto-rotate: switching to " + nextScene);
+
+                                wallpaperPrefs.setSelectedWallpaper(nextScene);
+
+                                if (wallpaperDirector != null) {
+                                    wallpaperDirector.changeScene(nextScene);
+                                    wallpaperDirector.startLoading();
+                                }
+
+                                // Cleanup old resources (keep current + panel only)
+                                try {
+                                    new ResourcePreloader(context).cleanupAfterInstallation(nextScene);
+                                } catch (Exception e) {
+                                    Log.w(TAG, "🔄 Auto-rotate cleanup error: " + e.getMessage());
+                                }
+                            } finally {
+                                // ALWAYS reschedule, even if switch failed
+                                scheduleNextRotation();
+                            }
+                        });
+                    } catch (Exception e) {
+                        Log.e(TAG, "🔄 Auto-rotate: CRASH in background thread: " + e.getMessage());
+                        // Reschedule even on crash
                         autoRotateHandler.post(() -> scheduleNextRotation());
-                        return;
                     }
-
-                    // Switch on main thread
-                    autoRotateHandler.post(() -> {
-                        Log.d(TAG, "🔄 Auto-rotate: switching to " + nextScene);
-
-                        wallpaperPrefs.setSelectedWallpaper(nextScene);
-
-                        if (wallpaperDirector != null) {
-                            wallpaperDirector.changeScene(nextScene);
-                            wallpaperDirector.startLoading();
-                        }
-
-                        // Cleanup old resources (keep current + panel only)
-                        try {
-                            new ResourcePreloader(context).cleanupAfterInstallation(nextScene);
-                        } catch (Exception e) {
-                            Log.w(TAG, "🔄 Auto-rotate cleanup error: " + e.getMessage());
-                        }
-
-                        scheduleNextRotation();
-                    });
                 }, "AutoRotate").start();
             }
         };
 
         /**
-         * Finds the next wallpaper that has all resources ready (or downloads them).
-         * Tries up to candidates.size() wallpapers before giving up.
-         * Returns sceneName or null if none available.
-         */
-        /**
          * Picks a random wallpaper (never the same as current).
          * Shuffles candidates and tries each until one is ready or downloadable.
+         * Returns sceneName or null if none available.
          */
         private String findNextReadyScene() {
             List<WallpaperItem> candidates = WallpaperCatalog.get().getAutoRotateCandidates();
@@ -254,7 +264,25 @@ public class LiveWallpaperService extends WallpaperService {
                 autoRotateHandler.postDelayed(autoRotateRunnable, AUTO_ROTATE_INTERVAL_MS);
                 autoRotateScheduled = true;
                 autoRotateNextChangeTime = System.currentTimeMillis() + AUTO_ROTATE_INTERVAL_MS;
-                Log.d(TAG, "🔄 Auto-rotate: next change in 5:00");
+                long min = (AUTO_ROTATE_INTERVAL_MS / 1000) / 60;
+                Log.d(TAG, "🔄 Auto-rotate: SCHEDULED — next change in " + min + " min (enabled=true)");
+            } else {
+                autoRotateScheduled = false;
+                Log.d(TAG, "🔄 Auto-rotate: NOT scheduled (enabled=false)");
+            }
+        }
+
+        /**
+         * Ensures auto-rotate is running if enabled. Safe to call multiple times.
+         */
+        private void ensureAutoRotateRunning() {
+            if (wallpaperPrefs.isAutoRotateEnabled()) {
+                if (!autoRotateScheduled) {
+                    Log.d(TAG, "🔄 Auto-rotate: was not scheduled, starting now");
+                    scheduleNextRotation();
+                } else {
+                    logAutoRotateRemaining();
+                }
             }
         }
 
@@ -303,6 +331,9 @@ public class LiveWallpaperService extends WallpaperService {
 
             // Habilitar touch
             setTouchEventsEnabled(true);
+
+            // 🔄 Start auto-rotate timer at engine creation
+            ensureAutoRotateRunning();
 
             // Gestor de pantalla de carga
             chargingScreenManager = new ChargingScreenManager(context);
@@ -359,7 +390,8 @@ public class LiveWallpaperService extends WallpaperService {
 
                     case Intent.ACTION_USER_PRESENT:
                         Log.d(TAG, "📱 USER_PRESENT - Usuario desbloqueó");
-                        // El sistema llamará onVisibilityChanged si es necesario
+                        // 🔄 Ensure auto-rotate survived sleep
+                        ensureAutoRotateRunning();
                         break;
 
                     case Intent.ACTION_CLOSE_SYSTEM_DIALOGS:
@@ -469,11 +501,8 @@ public class LiveWallpaperService extends WallpaperService {
                 if (visible) {
                     lastVisibilityChangeTime = System.currentTimeMillis();
                     startRendering();
-                    // 🔄 Start auto-rotate if enabled and not already scheduled
-                    if (wallpaperPrefs.isAutoRotateEnabled() && !autoRotateScheduled) {
-                        scheduleNextRotation();
-                    }
-                    logAutoRotateRemaining();
+                    // 🔄 Ensure auto-rotate is running (safe to call repeatedly)
+                    ensureAutoRotateRunning();
                 } else {
                     // 🎬 En preview del sistema, NO parar rendering
                     if (isSystemPreviewMode) {
