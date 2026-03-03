@@ -448,6 +448,11 @@ public class SceneFactory {
         return currentScene != null && currentScene.isReady();
     }
 
+    /** True if scene has actual renderable content (textures/video loaded) */
+    public boolean hasRenderableContent() {
+        return currentScene != null && currentScene.hasRenderableContent();
+    }
+
     public String getDefaultSceneName() {
         return defaultSceneName;
     }

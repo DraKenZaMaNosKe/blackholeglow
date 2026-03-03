@@ -5,6 +5,8 @@ import android.content.BroadcastReceiver;
 import android.content.ComponentCallbacks2;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -111,7 +113,7 @@ public class LiveWallpaperService extends WallpaperService {
 
         // 🔄 Auto-rotate: cambia wallpaper cada 5 minutos (runs even in background)
         private final Handler autoRotateHandler = new Handler(Looper.getMainLooper());
-        private static final long AUTO_ROTATE_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+        private static final long AUTO_ROTATE_INTERVAL_MS = 30 * 1000; // ⚠️ TEST MODE (production: 5*60*1000)
         private boolean autoRotateScheduled = false;
         private long autoRotateNextChangeTime = 0; // epoch ms when next rotation fires
         private final Runnable autoPlayRunnable = () -> {
@@ -121,7 +123,11 @@ public class LiveWallpaperService extends WallpaperService {
             }
         };
 
-        // 🔄 Auto-rotate runnable (crash-safe: always reschedules)
+        // 🔄 Fallback wallpaper: always available, downloaded at engine start, never cleaned up
+        private static final String FALLBACK_SCENE = "GATITO_IMG";
+
+        // 🔄 Auto-rotate runnable
+        // Strategy: pick random → download if needed → switch ONLY if ready → cleanup old → fallback if all fails
         private final Runnable autoRotateRunnable = new Runnable() {
             @Override
             public void run() {
@@ -133,42 +139,34 @@ public class LiveWallpaperService extends WallpaperService {
 
                 Log.d(TAG, "🔄 Auto-rotate: timer FIRED — finding next wallpaper...");
 
-                // Run resource check + download on background thread to avoid ANR
                 new Thread(() -> {
                     try {
-                        String nextScene = findNextReadyScene();
-                        if (nextScene == null) {
-                            Log.w(TAG, "🔄 Auto-rotate: no ready wallpaper found, retrying next cycle");
-                            autoRotateHandler.post(() -> scheduleNextRotation());
-                            return;
-                        }
+                        String nextScene = findAndPrepareNextScene();
 
-                        // Switch on main thread
+                        // Switch on main thread ONLY if we have a confirmed-ready scene
                         autoRotateHandler.post(() -> {
                             try {
-                                Log.d(TAG, "🔄 Auto-rotate: switching to " + nextScene);
+                                if (nextScene != null) {
+                                    String previousScene = wallpaperPrefs.getSelectedWallpaperSync();
+                                    Log.d(TAG, "🔄 Auto-rotate: switching " + previousScene + " → " + nextScene);
 
-                                wallpaperPrefs.setSelectedWallpaper(nextScene);
+                                    wallpaperPrefs.setSelectedWallpaper(nextScene);
+                                    if (wallpaperDirector != null) {
+                                        wallpaperDirector.changeScene(nextScene);
+                                        wallpaperDirector.startLoading();
+                                    }
 
-                                if (wallpaperDirector != null) {
-                                    wallpaperDirector.changeScene(nextScene);
-                                    wallpaperDirector.startLoading();
-                                }
-
-                                // Cleanup old resources (keep current + panel only)
-                                try {
-                                    new ResourcePreloader(context).cleanupAfterInstallation(nextScene);
-                                } catch (Exception e) {
-                                    Log.w(TAG, "🔄 Auto-rotate cleanup error: " + e.getMessage());
+                                    // Cleanup: keep max 2 wallpapers (current + previous) + fallback + panel
+                                    cleanupWithHistory(nextScene, previousScene);
+                                } else {
+                                    Log.w(TAG, "🔄 Auto-rotate: nothing ready, keeping current wallpaper");
                                 }
                             } finally {
-                                // ALWAYS reschedule, even if switch failed
                                 scheduleNextRotation();
                             }
                         });
                     } catch (Exception e) {
-                        Log.e(TAG, "🔄 Auto-rotate: CRASH in background thread: " + e.getMessage());
-                        // Reschedule even on crash
+                        Log.e(TAG, "🔄 Auto-rotate CRASH: " + e.getMessage());
                         autoRotateHandler.post(() -> scheduleNextRotation());
                     }
                 }, "AutoRotate").start();
@@ -176,84 +174,143 @@ public class LiveWallpaperService extends WallpaperService {
         };
 
         /**
-         * Picks a random wallpaper (never the same as current).
-         * Shuffles candidates and tries each until one is ready or downloadable.
-         * Returns sceneName or null if none available.
+         * Ensures the fallback wallpaper resources are downloaded.
+         * Called once at engine startup. Skips if already available.
          */
-        private String findNextReadyScene() {
+        private void ensureFallbackDownloaded() {
+            new Thread(() -> {
+                try {
+                    PreFlightCheck.InstallCheckResult check =
+                            PreFlightCheck.runInstallCheck(context, FALLBACK_SCENE);
+                    if (check.allResourcesReady) {
+                        Log.d(TAG, "🔄 Fallback " + FALLBACK_SCENE + " already downloaded");
+                        return;
+                    }
+                    Log.d(TAG, "🔄 Downloading fallback " + FALLBACK_SCENE + "...");
+                    boolean ok = downloadResources(check.getAllMissing());
+                    Log.d(TAG, "🔄 Fallback download: " + (ok ? "OK" : "FAILED"));
+                } catch (Exception e) {
+                    Log.w(TAG, "🔄 Fallback download error: " + e.getMessage());
+                }
+            }, "FallbackDownload").start();
+        }
+
+        /**
+         * Picks a random wallpaper, downloads its resources if needed.
+         * Returns sceneName ONLY if resources are confirmed ready.
+         * Falls back to FALLBACK_SCENE if everything else fails.
+         * Returns null only if even fallback is unavailable.
+         */
+        private String findAndPrepareNextScene() {
             List<WallpaperItem> candidates = WallpaperCatalog.get().getAutoRotateCandidates();
             if (candidates.isEmpty()) return null;
 
             String currentScene = wallpaperPrefs.getSelectedWallpaperSync();
             Log.d(TAG, "🔄 Auto-rotate: current=" + currentScene + " candidates=" + candidates.size());
 
-            // Shuffle for random order
             Collections.shuffle(candidates);
 
             for (WallpaperItem candidate : candidates) {
                 String sceneName = candidate.getSceneName();
+                if (sceneName.equals(currentScene)) continue;
 
-                // Never pick the same wallpaper twice in a row
-                if (sceneName.equals(currentScene)) {
-                    continue;
+                try {
+                    PreFlightCheck.InstallCheckResult check =
+                            PreFlightCheck.runInstallCheck(context, sceneName);
+
+                    if (check.allResourcesReady) {
+                        Log.d(TAG, "🔄 " + sceneName + " ✓ ready (local)");
+                        return sceneName;
+                    }
+
+                    // Only attempt download if internet is available
+                    if (isInternetAvailable()) {
+                        Log.d(TAG, "🔄 " + sceneName + " — downloading...");
+                        boolean ok = downloadResources(check.getAllMissing());
+                        if (ok) {
+                            // Double-check: files actually exist and are complete
+                            PreFlightCheck.InstallCheckResult recheck =
+                                    PreFlightCheck.runInstallCheck(context, sceneName);
+                            if (recheck.allResourcesReady) {
+                                Log.d(TAG, "🔄 " + sceneName + " ✓ downloaded + verified");
+                                return sceneName;
+                            }
+                            Log.w(TAG, "🔄 " + sceneName + " ✗ verify FAILED (corrupt/partial)");
+                        }
+                    } else {
+                        Log.d(TAG, "🔄 " + sceneName + " ✗ no internet, skipping download");
+                    }
+                    Log.w(TAG, "🔄 " + sceneName + " ✗ download failed, skipping");
+                } catch (Exception e) {
+                    Log.w(TAG, "🔄 " + sceneName + " ✗ error: " + e.getMessage());
                 }
-
-                Log.d(TAG, "🔄 Auto-rotate: checking " + sceneName);
-
-                // Check if resources are already downloaded
-                PreFlightCheck.InstallCheckResult check =
-                        PreFlightCheck.runInstallCheck(context, sceneName);
-
-                if (check.allResourcesReady) {
-                    Log.d(TAG, "🔄 Auto-rotate: " + sceneName + " ready (local)");
-                    return sceneName;
-                }
-
-                // Try to download missing resources
-                Log.d(TAG, "🔄 Auto-rotate: downloading resources for " + sceneName);
-                boolean downloadOk = downloadMissingResources(check.getAllMissing());
-
-                if (downloadOk) {
-                    Log.d(TAG, "🔄 Auto-rotate: " + sceneName + " downloaded OK");
-                    return sceneName;
-                }
-
-                // Download failed — skip, try next random candidate
-                Log.w(TAG, "🔄 Auto-rotate: " + sceneName + " download FAILED, skipping");
             }
 
-            return null; // all candidates failed
+            // All candidates failed — try fallback
+            if (!FALLBACK_SCENE.equals(currentScene)) {
+                try {
+                    PreFlightCheck.InstallCheckResult check =
+                            PreFlightCheck.runInstallCheck(context, FALLBACK_SCENE);
+                    if (check.allResourcesReady) {
+                        Log.d(TAG, "🔄 Using fallback: " + FALLBACK_SCENE);
+                        return FALLBACK_SCENE;
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "🔄 Fallback check error: " + e.getMessage());
+                }
+            }
+
+            return null; // even fallback unavailable — keep current
         }
 
         /**
-         * Downloads missing resource files synchronously.
-         * Returns true if ALL files downloaded successfully.
+         * Cleanup keeping only: current + previous + fallback + panel.
+         * Max 2 wallpapers stored + fallback (GATITO_IMG).
          */
-        private boolean downloadMissingResources(List<String> missing) {
-            if (missing.isEmpty()) return true;
+        private void cleanupWithHistory(String currentScene, String previousScene) {
+            new Thread(() -> {
+                try {
+                    ResourcePreloader preloader = new ResourcePreloader(context);
+                    // Protect previous scene (current is protected by cleanupAfterInstallation)
+                    preloader.setActiveSceneToProtect(previousScene);
+                    preloader.cleanupAfterInstallation(currentScene);
+                    Log.d(TAG, "🔄 Cleanup: keeping " + currentScene + " + " + previousScene + " + " + FALLBACK_SCENE);
+                } catch (Exception e) {
+                    Log.w(TAG, "🔄 Cleanup error: " + e.getMessage());
+                }
+            }, "AutoRotateCleanup").start();
+        }
 
-            for (String file : missing) {
+        private boolean isInternetAvailable() {
+            try {
+                ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+                NetworkInfo net = cm.getActiveNetworkInfo();
+                return net != null && net.isConnected();
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+        /**
+         * Downloads resource files synchronously. Returns true only if ALL succeed.
+         */
+        private boolean downloadResources(List<String> files) {
+            if (files.isEmpty()) return true;
+            for (String file : files) {
                 boolean ok;
                 try {
                     if (file.endsWith(".mp4")) {
-                        ok = VideoDownloadManager.getInstance(context)
-                                .downloadVideoSync(file, percent -> {});
+                        ok = VideoDownloadManager.getInstance(context).downloadVideoSync(file, p -> {});
                     } else if (file.endsWith(".obj")) {
-                        ok = ModelDownloadManager.getInstance(context)
-                                .downloadModelSync(file, percent -> {});
+                        ok = ModelDownloadManager.getInstance(context).downloadModelSync(file, p -> {});
                     } else {
-                        ok = ImageDownloadManager.getInstance(context)
-                                .downloadImageSync(file, percent -> {});
+                        ok = ImageDownloadManager.getInstance(context).downloadImageSync(file, p -> {});
                     }
                 } catch (Exception e) {
                     Log.w(TAG, "🔄 Download error: " + file + " → " + e.getMessage());
                     ok = false;
                 }
-
-                if (!ok) {
-                    Log.w(TAG, "🔄 Download failed: " + file);
-                    return false;
-                }
+                if (!ok) return false;
             }
             return true;
         }
@@ -332,7 +389,8 @@ public class LiveWallpaperService extends WallpaperService {
             // Habilitar touch
             setTouchEventsEnabled(true);
 
-            // 🔄 Start auto-rotate timer at engine creation
+            // 🔄 Ensure fallback wallpaper is always available + start auto-rotate
+            ensureFallbackDownloaded();
             ensureAutoRotateRunning();
 
             // Gestor de pantalla de carga
@@ -437,9 +495,44 @@ public class LiveWallpaperService extends WallpaperService {
             }
         }
 
+        /**
+         * Verifies a wallpaper's resources are locally available.
+         * If not, falls back to FALLBACK_SCENE. If even that fails, uses default.
+         */
+        private String getSafeWallpaper(String requested) {
+            try {
+                PreFlightCheck.InstallCheckResult check =
+                        PreFlightCheck.runInstallCheck(context, requested);
+                if (check.allResourcesReady) return requested;
+                Log.w(TAG, "🔄 " + requested + " resources missing, trying fallback");
+            } catch (Exception e) {
+                Log.w(TAG, "🔄 Error checking " + requested + ": " + e.getMessage());
+            }
+
+            // Try fallback
+            if (!FALLBACK_SCENE.equals(requested)) {
+                try {
+                    PreFlightCheck.InstallCheckResult fallbackCheck =
+                            PreFlightCheck.runInstallCheck(context, FALLBACK_SCENE);
+                    if (fallbackCheck.allResourcesReady) {
+                        Log.d(TAG, "🔄 Using fallback: " + FALLBACK_SCENE);
+                        wallpaperPrefs.setSelectedWallpaper(FALLBACK_SCENE);
+                        return FALLBACK_SCENE;
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "🔄 Fallback check error: " + e.getMessage());
+                }
+            }
+
+            // Last resort: return fallback anyway — WallpaperDirector will show
+            // "Orbix iA" branded screen if the scene can't render
+            Log.w(TAG, "🔄 No resources available — Director will show Orbix iA fallback");
+            return FALLBACK_SCENE;
+        }
+
         private void initializeGL() {
             try {
-                String nombreWallpaper = wallpaperPrefs.getSelectedWallpaperSync();
+                String nombreWallpaper = getSafeWallpaper(wallpaperPrefs.getSelectedWallpaperSync());
                 Log.d(TAG, "🎬 Escena seleccionada: " + nombreWallpaper);
 
                 Log.d(TAG, "Inicializando OpenGL ES 3.0...");

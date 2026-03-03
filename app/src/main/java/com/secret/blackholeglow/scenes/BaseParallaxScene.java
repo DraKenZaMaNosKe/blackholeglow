@@ -695,13 +695,23 @@ public abstract class BaseParallaxScene extends WallpaperScene {
         return DEFAULT_MAX_OFFSET;
     }
 
+    @Override
+    public boolean hasRenderableContent() {
+        if (!isReady() || layers == null) return false;
+        for (ParallaxLayer layer : layers) {
+            if (layer.colorTextureId > 0) return true;
+        }
+        return false;
+    }
+
     /**
      * Color de fondo (clear color) - RGBA
-     * Por defecto: azul cielo
+     * Por defecto: negro oscuro (safe fallback when no texture loads)
      */
     protected float[] getBackgroundColor() {
-        return new float[] { 0.4f, 0.6f, 0.8f, 1.0f };
+        return new float[] { 0.04f, 0.04f, 0.08f, 1.0f };
     }
+
 
     /**
      * Tema del reloj (por defecto usa el tema del ecualizador)
@@ -1145,6 +1155,7 @@ public abstract class BaseParallaxScene extends WallpaperScene {
                 }
             }
         }
+
 
         // Hook para objetos 3D
         drawSceneSpecific();

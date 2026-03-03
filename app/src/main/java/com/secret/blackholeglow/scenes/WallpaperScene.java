@@ -330,6 +330,15 @@ public abstract class WallpaperScene implements Disposable {
         return isLoaded && !isDisposed;
     }
 
+    /**
+     * Whether the scene has actual renderable content (textures, video, etc).
+     * Override in subclasses to check for valid content.
+     * Returns true by default (assumes content is available if loaded).
+     */
+    public boolean hasRenderableContent() {
+        return isLoaded && !isDisposed;
+    }
+
     public boolean isPaused() {
         return isPaused;
     }

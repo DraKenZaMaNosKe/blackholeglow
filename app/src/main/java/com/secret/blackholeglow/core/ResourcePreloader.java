@@ -366,6 +366,15 @@ public class ResourcePreloader {
             sceneModels.addAll(getSceneModels(activeSceneToProtect));
         }
 
+        // 🔄 ALWAYS protect fallback scene (auto-rotate safety net)
+        String fallback = "GATITO_IMG";
+        if (!fallback.equals(newScene) && (activeSceneToProtect == null || !fallback.equals(activeSceneToProtect))) {
+            Log.d(TAG, "🛡️ Protegiendo fallback: " + fallback);
+            sceneVideos.addAll(getSceneVideos(fallback));
+            sceneImages.addAll(getSceneImages(fallback));
+            sceneModels.addAll(getSceneModels(fallback));
+        }
+
         // Combinar con recursos del panel (siempre se mantienen)
         List<String> keepVideos = new ArrayList<>(sceneVideos);
 

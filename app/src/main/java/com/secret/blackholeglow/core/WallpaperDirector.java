@@ -1,11 +1,21 @@
 package com.secret.blackholeglow.core;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Typeface;
 import android.opengl.GLES30;
 import android.opengl.GLSurfaceView;
+import android.opengl.GLUtils;
 import android.opengl.Matrix;
 import android.util.Log;
 import android.view.MotionEvent;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
 
 import com.secret.blackholeglow.CameraController;
 import com.secret.blackholeglow.MusicVisualizer;
@@ -504,7 +514,140 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
         songSharing.update(deltaTime);
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // 🔄 BRANDED FALLBACK — "Orbix iA" when no scene can render
+    // Self-contained: own shader + own texture, no external files
+    // ═══════════════════════════════════════════════════════════════
+    private int fallbackShader = 0;
+    private int fallbackTexture = 0;
+    private int fallbackTimeLoc = -1;
+    private FloatBuffer fallbackVB;
+    private float fallbackTime = 0f;
+
+    private void drawFallbackScreen() {
+        if (fallbackShader == 0) {
+            String vs = "#version 300 es\n"
+                + "in vec2 p; in vec2 t; out vec2 uv;\n"
+                + "void main() { uv = t; gl_Position = vec4(p, 0, 1); }";
+
+            String fs = "#version 300 es\n"
+                + "precision mediump float;\n"
+                + "in vec2 uv;\n"
+                + "uniform sampler2D s;\n"
+                + "uniform float u_time;\n"
+                + "out vec4 fc;\n"
+                + "void main() {\n"
+                // Elegant purple/blue/pink aurora
+                + "  float w1 = sin(uv.y * 3.5 + u_time * 0.35) * 0.5 + 0.5;\n"
+                + "  float w2 = cos(uv.x * 2.5 + u_time * 0.25 + uv.y * 1.8) * 0.5 + 0.5;\n"
+                + "  float w3 = sin((uv.x + uv.y) * 2.0 - u_time * 0.2) * 0.5 + 0.5;\n"
+                + "  float w4 = sin(uv.y * 5.0 - u_time * 0.15 + uv.x * 1.5) * 0.5 + 0.5;\n"
+                + "  vec3 bg = vec3(0.04, 0.02, 0.08);\n"           // dark purple base
+                + "  bg += vec3(0.03, 0.01, 0.06) * w1;\n"          // deep purple wave
+                + "  bg += vec3(0.01, 0.02, 0.05) * w2;\n"          // blue wave
+                + "  bg += vec3(0.04, 0.01, 0.04) * w3;\n"          // pink/magenta wave
+                + "  bg += vec3(0.02, 0.01, 0.03) * w4;\n"          // violet accent
+                // Soft vignette
+                + "  float vig = 1.0 - length((uv - 0.5) * 1.3);\n"
+                + "  vig = smoothstep(0.0, 1.0, vig);\n"
+                + "  bg *= (0.5 + 0.5 * vig);\n"
+                // Text with gentle breathing glow
+                + "  vec4 tex = texture(s, uv);\n"
+                + "  float breathe = 0.6 + 0.4 * sin(u_time * 1.0);\n"
+                + "  vec3 color = bg + tex.rgb * tex.a * breathe;\n"
+                + "  fc = vec4(color, 1.0);\n"
+                + "}";
+
+            int vId = GLES30.glCreateShader(GLES30.GL_VERTEX_SHADER);
+            GLES30.glShaderSource(vId, vs); GLES30.glCompileShader(vId);
+            int fId = GLES30.glCreateShader(GLES30.GL_FRAGMENT_SHADER);
+            GLES30.glShaderSource(fId, fs); GLES30.glCompileShader(fId);
+            fallbackShader = GLES30.glCreateProgram();
+            GLES30.glAttachShader(fallbackShader, vId);
+            GLES30.glAttachShader(fallbackShader, fId);
+            GLES30.glLinkProgram(fallbackShader);
+            GLES30.glDeleteShader(vId); GLES30.glDeleteShader(fId);
+            fallbackTimeLoc = GLES30.glGetUniformLocation(fallbackShader, "u_time");
+
+            float[] v = {-1,-1,0,1, 1,-1,1,1, -1,1,0,0, 1,1,1,0};
+            fallbackVB = ByteBuffer.allocateDirect(v.length * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+            fallbackVB.put(v).position(0);
+        }
+        if (fallbackTexture == 0) {
+            int w = 512, h = 512;
+            Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bmp);
+            canvas.drawColor(0); // transparent — shader handles background
+            Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            paint.setTextAlign(Paint.Align.CENTER);
+
+            // "Orbix" — soft lavender/periwinkle
+            paint.setColor(Color.parseColor("#B8A9E8"));
+            paint.setTextSize(78f);
+            paint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+            paint.setShadowLayer(16f, 0f, 0f, Color.parseColor("#6B3FA0"));
+            canvas.drawText("Orbix", 256f, 220f, paint);
+            paint.clearShadowLayer();
+
+            // "iA" — soft rose/pink
+            paint.setTextSize(44f);
+            paint.setColor(Color.parseColor("#D4A0C0"));
+            paint.setShadowLayer(8f, 0f, 0f, Color.parseColor("#8B4070"));
+            canvas.drawText("iA", 256f, 275f, paint);
+            paint.clearShadowLayer();
+
+            // "Waiting for connection..." — muted blue-gray
+            paint.setTextSize(17f);
+            paint.setColor(Color.parseColor("#5A5080"));
+            canvas.drawText("Waiting for connection...", 256f, 340f, paint);
+
+            int[] tex = new int[1];
+            GLES30.glGenTextures(1, tex, 0);
+            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, tex[0]);
+            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
+            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
+            GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, bmp, 0);
+            bmp.recycle();
+            fallbackTexture = tex[0];
+            Log.d(TAG, "🔄 Fallback elegant texture created");
+        }
+
+        // Advance time for animation
+        fallbackTime += 0.016f; // ~60fps
+
+        GLES30.glClearColor(0.03f, 0.03f, 0.07f, 1f);
+        GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT);
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
+        GLES30.glUseProgram(fallbackShader);
+        if (fallbackTimeLoc >= 0) GLES30.glUniform1f(fallbackTimeLoc, fallbackTime);
+
+        int pLoc = GLES30.glGetAttribLocation(fallbackShader, "p");
+        int tLoc = GLES30.glGetAttribLocation(fallbackShader, "t");
+        int sLoc = GLES30.glGetUniformLocation(fallbackShader, "s");
+
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, fallbackTexture);
+        GLES30.glUniform1i(sLoc, 0);
+        GLES30.glEnableVertexAttribArray(pLoc);
+        GLES30.glEnableVertexAttribArray(tLoc);
+        fallbackVB.position(0);
+        GLES30.glVertexAttribPointer(pLoc, 2, GLES30.GL_FLOAT, false, 16, fallbackVB);
+        fallbackVB.position(2);
+        GLES30.glVertexAttribPointer(tLoc, 2, GLES30.GL_FLOAT, false, 16, fallbackVB);
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
+        GLES30.glDisableVertexAttribArray(pLoc);
+        GLES30.glDisableVertexAttribArray(tLoc);
+    }
+
     private void drawWallpaperMode() {
+        // 🔄 If scene has no renderable content (missing textures/video), show branded fallback
+        if (!sceneFactory.hasRenderableContent()) {
+            drawFallbackScreen();
+            return;
+        }
+
         // ✨ Bloom: DESHABILITADO TEMPORALMENTE para debug
         // if (bloomEffect != null && bloomEffect.isEnabled()) {
         //     bloomEffect.beginCapture();

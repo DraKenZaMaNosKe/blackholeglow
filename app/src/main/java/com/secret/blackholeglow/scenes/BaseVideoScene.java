@@ -679,6 +679,12 @@ public abstract class BaseVideoScene extends WallpaperScene {
         return true;
     }
 
+    @Override
+    public boolean hasRenderableContent() {
+        if (!isReady()) return false;
+        return videoBackground != null && videoBackground.isReadyToRender();
+    }
+
     /**
      * Hook para pausar recursos específicos de la escena.
      * Override para pausar giroscopio, sensores, etc.
