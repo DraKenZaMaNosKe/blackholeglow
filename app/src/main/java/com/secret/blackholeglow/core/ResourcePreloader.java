@@ -85,6 +85,7 @@ public class ResourcePreloader {
     }
 
     private volatile String activeSceneToProtect = null;  // 🔧 Escena activa que NO debe limpiarse
+    private volatile String additionalSceneToProtect = null;  // 🔄 Pre-downloaded scene to protect
 
     /**
      * 🔧 Establece la escena activa que debe protegerse durante limpieza.
@@ -92,6 +93,13 @@ public class ResourcePreloader {
      */
     public void setActiveSceneToProtect(String sceneName) {
         this.activeSceneToProtect = sceneName;
+    }
+
+    /**
+     * 🔄 Protects an additional scene during cleanup (e.g., pre-downloaded for auto-rotate).
+     */
+    public void setAdditionalSceneToProtect(String sceneName) {
+        this.additionalSceneToProtect = sceneName;
     }
 
     /**
@@ -364,6 +372,15 @@ public class ResourcePreloader {
             sceneVideos.addAll(getSceneVideos(activeSceneToProtect));
             sceneImages.addAll(getSceneImages(activeSceneToProtect));
             sceneModels.addAll(getSceneModels(activeSceneToProtect));
+        }
+
+        // 🔄 Protect additional scene (pre-downloaded for auto-rotate)
+        if (additionalSceneToProtect != null && !additionalSceneToProtect.equals(newScene)
+                && !additionalSceneToProtect.equals(activeSceneToProtect)) {
+            Log.d(TAG, "🛡️ Protegiendo escena pre-descargada: " + additionalSceneToProtect);
+            sceneVideos.addAll(getSceneVideos(additionalSceneToProtect));
+            sceneImages.addAll(getSceneImages(additionalSceneToProtect));
+            sceneModels.addAll(getSceneModels(additionalSceneToProtect));
         }
 
         // 🔄 ALWAYS protect fallback scene (auto-rotate safety net)

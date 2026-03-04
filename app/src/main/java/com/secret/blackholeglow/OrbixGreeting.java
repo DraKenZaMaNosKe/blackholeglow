@@ -80,6 +80,7 @@ public class OrbixGreeting implements SceneObject {
         // Vertex shader with breathing animation
         String vertexShader =
             "#version 300 es\n" +
+            "precision mediump float;\n" +
             "in vec2 a_Position;\n" +
             "in vec2 a_TexCoord;\n" +
             "out vec2 v_TexCoord;\n" +

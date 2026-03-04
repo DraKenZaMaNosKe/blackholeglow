@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver;
 import android.content.ComponentCallbacks2;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
@@ -116,6 +117,14 @@ public class LiveWallpaperService extends WallpaperService {
         private static final long AUTO_ROTATE_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
         private boolean autoRotateScheduled = false;
         private long autoRotateNextChangeTime = 0; // epoch ms when next rotation fires
+        private long autoRotateScheduledAt = 0; // epoch ms when rotation was scheduled (freeze detection)
+
+        // 🔄 Pre-download: after each rotation, download the NEXT wallpaper in background
+        private volatile String preDownloadedScene = null;
+        private volatile boolean preDownloadInProgress = false;
+
+        // 🔔 Preference listener: react immediately when auto-rotate toggle changes
+        private SharedPreferences.OnSharedPreferenceChangeListener prefListener;
         private final Runnable autoPlayRunnable = () -> {
             if (wallpaperDirector != null) {
                 Log.d(TAG, "▶️ Auto-play: iniciando wallpaper automáticamente");
@@ -135,6 +144,16 @@ public class LiveWallpaperService extends WallpaperService {
                     Log.d(TAG, "🔄 Auto-rotate: disabled, stopping");
                     autoRotateScheduled = false;
                     return;
+                }
+
+                // 📊 Samsung freeze detection: if timer fired >30s late, it was frozen
+                if (autoRotateScheduledAt > 0) {
+                    long expectedDelay = AUTO_ROTATE_INTERVAL_MS;
+                    long actualDelay = System.currentTimeMillis() - autoRotateScheduledAt;
+                    long drift = actualDelay - expectedDelay;
+                    if (drift > 30_000) {
+                        Log.w(TAG, "🔄 Auto-rotate: timer was FROZEN for ~" + (drift / 1000) + "s (Samsung FreecessHandler?)");
+                    }
                 }
 
                 Log.d(TAG, "🔄 Auto-rotate: timer FIRED — finding next wallpaper...");
@@ -158,6 +177,9 @@ public class LiveWallpaperService extends WallpaperService {
 
                                     // Cleanup: keep max 2 wallpapers (current + previous) + fallback + panel
                                     cleanupWithHistory(nextScene, previousScene);
+
+                                    // 🚀 Pre-download the NEXT wallpaper for instant switch
+                                    preDownloadNextScene();
                                 } else {
                                     Log.w(TAG, "🔄 Auto-rotate: nothing ready, keeping current wallpaper");
                                 }
@@ -202,6 +224,27 @@ public class LiveWallpaperService extends WallpaperService {
          * Returns null only if even fallback is unavailable.
          */
         private String findAndPrepareNextScene() {
+            // 🚀 Check pre-downloaded scene first (instant switch)
+            String preDownloaded = preDownloadedScene;
+            if (preDownloaded != null) {
+                String currentScene = wallpaperPrefs.getSelectedWallpaperSync();
+                if (!preDownloaded.equals(currentScene)) {
+                    try {
+                        PreFlightCheck.InstallCheckResult check =
+                                PreFlightCheck.runInstallCheck(context, preDownloaded);
+                        if (check.allResourcesReady) {
+                            Log.d(TAG, "🔄 Pre-downloaded " + preDownloaded + " ✓ INSTANT switch");
+                            preDownloadedScene = null;
+                            return preDownloaded;
+                        }
+                        Log.w(TAG, "🔄 Pre-downloaded " + preDownloaded + " resources gone (cleanup?), discarding");
+                    } catch (Exception e) {
+                        Log.w(TAG, "🔄 Pre-download verify error: " + e.getMessage());
+                    }
+                }
+                preDownloadedScene = null; // discard stale or same-as-current
+            }
+
             List<WallpaperItem> candidates = WallpaperCatalog.get().getAutoRotateCandidates();
             if (candidates.isEmpty()) return null;
 
@@ -273,12 +316,78 @@ public class LiveWallpaperService extends WallpaperService {
                     ResourcePreloader preloader = new ResourcePreloader(context);
                     // Protect previous scene (current is protected by cleanupAfterInstallation)
                     preloader.setActiveSceneToProtect(previousScene);
+                    // Protect pre-downloaded scene if one exists
+                    String preDown = preDownloadedScene;
+                    if (preDown != null) {
+                        preloader.setAdditionalSceneToProtect(preDown);
+                    }
                     preloader.cleanupAfterInstallation(currentScene);
                     Log.d(TAG, "🔄 Cleanup: keeping " + currentScene + " + " + previousScene + " + " + FALLBACK_SCENE);
                 } catch (Exception e) {
                     Log.w(TAG, "🔄 Cleanup error: " + e.getMessage());
                 }
             }, "AutoRotateCleanup").start();
+        }
+
+        /**
+         * 🚀 Pre-downloads the NEXT random wallpaper in background.
+         * Called after each successful rotation so the next switch is instant.
+         */
+        private void preDownloadNextScene() {
+            if (preDownloadInProgress) {
+                Log.d(TAG, "🔄 Pre-download: already in progress, skipping");
+                return;
+            }
+            if (!wallpaperPrefs.isAutoRotateEnabled()) return;
+            if (!isInternetAvailable()) {
+                Log.d(TAG, "🔄 Pre-download: no internet, skipping");
+                return;
+            }
+
+            preDownloadInProgress = true;
+            new Thread(() -> {
+                try {
+                    List<WallpaperItem> candidates = WallpaperCatalog.get().getAutoRotateCandidates();
+                    if (candidates.isEmpty()) return;
+
+                    String currentScene = wallpaperPrefs.getSelectedWallpaperSync();
+                    Collections.shuffle(candidates);
+
+                    for (WallpaperItem candidate : candidates) {
+                        String sceneName = candidate.getSceneName();
+                        if (sceneName.equals(currentScene)) continue;
+
+                        PreFlightCheck.InstallCheckResult check =
+                                PreFlightCheck.runInstallCheck(context, sceneName);
+                        if (check.allResourcesReady) {
+                            // Already downloaded — save as pre-downloaded
+                            preDownloadedScene = sceneName;
+                            Log.d(TAG, "🔄 Pre-download: " + sceneName + " already local ✓");
+                            return;
+                        }
+
+                        // Download it
+                        Log.d(TAG, "🔄 Pre-download: downloading " + sceneName + "...");
+                        boolean ok = downloadResources(check.getAllMissing());
+                        if (ok) {
+                            PreFlightCheck.InstallCheckResult recheck =
+                                    PreFlightCheck.runInstallCheck(context, sceneName);
+                            if (recheck.allResourcesReady) {
+                                preDownloadedScene = sceneName;
+                                Log.d(TAG, "🔄 Pre-download: " + sceneName + " ✓ ready for next rotation");
+                                return;
+                            }
+                        }
+                        Log.w(TAG, "🔄 Pre-download: " + sceneName + " failed, trying next...");
+                    }
+
+                    Log.d(TAG, "🔄 Pre-download: no candidates downloaded (will download at rotation time)");
+                } catch (Exception e) {
+                    Log.w(TAG, "🔄 Pre-download error: " + e.getMessage());
+                } finally {
+                    preDownloadInProgress = false;
+                }
+            }, "PreDownload").start();
         }
 
         private boolean isInternetAvailable() {
@@ -320,7 +429,8 @@ public class LiveWallpaperService extends WallpaperService {
             if (wallpaperPrefs.isAutoRotateEnabled()) {
                 autoRotateHandler.postDelayed(autoRotateRunnable, AUTO_ROTATE_INTERVAL_MS);
                 autoRotateScheduled = true;
-                autoRotateNextChangeTime = System.currentTimeMillis() + AUTO_ROTATE_INTERVAL_MS;
+                autoRotateScheduledAt = System.currentTimeMillis();
+                autoRotateNextChangeTime = autoRotateScheduledAt + AUTO_ROTATE_INTERVAL_MS;
                 long min = (AUTO_ROTATE_INTERVAL_MS / 1000) / 60;
                 Log.d(TAG, "🔄 Auto-rotate: SCHEDULED — next change in " + min + " min (enabled=true)");
             } else {
@@ -392,6 +502,22 @@ public class LiveWallpaperService extends WallpaperService {
             // 🔄 Ensure fallback wallpaper is always available + start auto-rotate
             ensureFallbackDownloaded();
             ensureAutoRotateRunning();
+
+            // 🔔 Listen for auto-rotate toggle changes → react immediately
+            prefListener = (sharedPreferences, key) -> {
+                if (WallpaperPreferences.KEY_AUTO_ROTATE_ENABLED.equals(key)) {
+                    boolean enabled = wallpaperPrefs.isAutoRotateEnabled();
+                    Log.d(TAG, "🔔 Auto-rotate toggled → " + (enabled ? "ON" : "OFF"));
+                    if (enabled) {
+                        ensureAutoRotateRunning();
+                        preDownloadNextScene();
+                    } else {
+                        stopAutoRotation();
+                        preDownloadedScene = null;
+                    }
+                }
+            };
+            wallpaperPrefs.registerOnPreferenceChangeListener(prefListener);
 
             // Gestor de pantalla de carga
             chargingScreenManager = new ChargingScreenManager(context);
@@ -809,6 +935,12 @@ public class LiveWallpaperService extends WallpaperService {
 
             // 🔄 Stop auto-rotate
             stopAutoRotation();
+
+            // 🔔 Unregister preference listener
+            if (prefListener != null) {
+                wallpaperPrefs.unregisterOnPreferenceChangeListener(prefListener);
+                prefListener = null;
+            }
 
             // 📱 Desregistrar receptor de eventos de pantalla
             if (screenStateReceiver != null) {

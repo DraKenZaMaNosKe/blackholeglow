@@ -700,7 +700,7 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     }
 
     private void onLoadingComplete() {
-        if (modeController.isWallpaperMode()) return;
+        if (modeController == null || modeController.isWallpaperMode()) return;
 
         // Reset fallback state
         resourcesReady = false;
@@ -764,6 +764,10 @@ public class WallpaperDirector implements GLSurfaceView.Renderer {
     }
 
     public void startLoading() {
+        if (modeController == null) {
+            Log.w(TAG, "startLoading() called before GL init, ignoring");
+            return;
+        }
         if (!modeController.startLoading()) {
             return;
         }
